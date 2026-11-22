@@ -63,7 +63,8 @@ const arrowsOf = new WeakMap<PaintSampleContext, readonly SelectArrow[]>();
 function arrows(ctx: PaintSampleContext): readonly SelectArrow[] {
   let a = arrowsOf.get(ctx);
   if (a === undefined) {
-    a = selectArrows(ctx.program, ctx.boxes, ctx.dpr);
+    // The program's own select-arrow writes say whether any arrow is drawn; a program without one has no engine tree to walk for it.
+    a = ctx.program.nodes.some((n) => n.writes.some((w) => w.kind === 'select-arrow')) ? selectArrows(ctx.program, ctx.boxes, ctx.dpr) : [];
     arrowsOf.set(ctx, a);
   }
   return a;

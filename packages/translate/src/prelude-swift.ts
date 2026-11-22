@@ -316,6 +316,32 @@ public func jsCopy<T>(_ a: JsArray<T>) -> JsArray<T> { JsArray(a.items) }
 public func jsConcatArrays<T>(_ parts: [JsArray<T>]) -> JsArray<T> { JsArray(parts.flatMap { $0.items }) }
 public func jsCastArray<T, U>(_ a: JsArray<T>, _ to: U.Type) -> JsArray<U> { JsArray(a.items.map { $0 as! U }) }
 
+// Uint8Array: one unboxed byte per element, a shared reference like an array.
+
+public final class JsBytes {
+  public var items: [UInt8]
+  public init(_ items: [UInt8]) { self.items = items }
+}
+
+/// new Uint8Array(length): the length truncated (NaN is 0), a negative or unallocatable one a RangeError; zero-filled.
+public func jsBytesNew(_ n: Double) throws -> JsBytes {
+  let len = n.isNaN ? 0 : n.rounded(.towardZero)
+  guard len >= 0 && len <= Double(Int32.max) else { throw JsError(message: JsString("Invalid typed array length")) }
+  return JsBytes([UInt8](repeating: 0, count: Int(len)))
+}
+@inline(__always) public func jsBytesLength(_ a: JsBytes) -> Double { Double(a.items.count) }
+/// An element: an integer index in range, else absent, as jsAt.
+@inline(__always) public func jsBytesAt(_ a: JsBytes, _ i: Double) -> Double? {
+  guard i >= 0 && i < Double(a.items.count) && i.rounded(.towardZero) == i else { return nil }
+  return Double(a.items[Int(i)])
+}
+/// a[i] = v: ToUint8(v) (truncated, modulo 256; NaN and infinities are 0) at an integer index in range, else nothing.
+@inline(__always) public func jsBytesSet(_ a: JsBytes, _ i: Double, _ v: Double) {
+  guard i >= 0 && i < Double(a.items.count) && i.rounded(.towardZero) == i else { return }
+  let r = v.isFinite ? v.rounded(.towardZero).truncatingRemainder(dividingBy: 256) : 0
+  a.items[Int(i)] = UInt8(r < 0 ? r + 256 : r)
+}
+
 ${sort}
 
 // Maps (section 1.6): JS Map iterates in insertion order; Swift Dictionary does not, so it only indexes.

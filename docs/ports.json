@@ -56,6 +56,22 @@
       ]
     },
     {
+      "upstream": "cc/paint/display_item_list.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2014 The Chromium Authors",
+      "fileSha256": "a08df6ae4505f40c56771fb08125d2cf5b05bef3ec58a2b21a6c52dfb82ef4d9",
+      "headerSha256": "4c3117587e3ca0fd9ed20e33c26da0be4135eba8aa7e4d06b28c21e999cd5cb1",
+      "ranges": [
+        { "lines": "28-34", "symbol": "GetCanvasClipBounds", "source": "cited" },
+        { "lines": "120-129", "symbol": "DisplayItemList::OffsetsOfOpsToRaster", "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/paint-group.ts", "symbol": "groupTileFoldIndex", "use": "reference" }
+      ]
+    },
+    {
       "upstream": "cc/paint/paint_op_buffer_iterator.cc",
       "licence": "bsd-chromium",
       "noticeText": "chromium-bsd",
@@ -2183,6 +2199,7 @@
         { "lines": "2453-2463", "symbol": "ColorsMatchAtCorner", "source": "cited" }
       ],
       "dragon": [
+        { "file": "packages/dragon/src/analysis/paint-values/effects.ts", "symbol": "boxProblem", "use": "reference" },
         { "file": "packages/dragon/src/analysis/paint-values/radius.ts", "symbol": "checkRoundedElement", "use": "reference" },
         { "file": "packages/dragon/src/css/color.ts", "symbol": "insetOutsetTones", "use": "port" },
         { "file": "packages/dragon/src/emit/paint/effects.ts", "symbol": null, "use": "reference" },
@@ -2192,6 +2209,22 @@
         { "file": "packages/layout/src/paint-radius.ts", "symbol": "outlineRings", "use": "port" },
         { "file": "packages/layout/test/paint-dash.test.ts", "symbol": null, "use": "reference" },
         { "file": "packages/parity/test/pnt1-effects.test.ts", "symbol": null, "use": "reference" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/paint/box_decoration_data.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2014 The Chromium Authors",
+      "fileSha256": "1a182883c8488b3ca5037d43aec1ad2d99fa68477f9ab7800f25dfa7e49188d0",
+      "headerSha256": "4c3117587e3ca0fd9ed20e33c26da0be4135eba8aa7e4d06b28c21e999cd5cb1",
+      "ranges": [
+        { "lines": "11-21", "symbol": "BorderObscuresBackgroundEdge", "source": "located" },
+        { "lines": "23-70", "symbol": "ComputeBleedAvoidance", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/analysis/paint-values/effects.ts", "symbol": "boxProblem", "use": "reference" }
       ]
     },
     {
@@ -3923,6 +3956,21 @@
       "dragon": [
         { "file": "packages/dragon/src/fonts/synthetic-bold.ts", "symbol": "SYNTHETIC_BOLD_KEYS", "use": "port" },
         { "file": "packages/dragon/src/fonts/synthetic-bold.ts", "symbol": "SYNTHETIC_BOLD_VALUES", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/skia/src/core/SkCanvas.cpp",
+      "licence": "bsd-skia",
+      "noticeText": "skia-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2008 The Android Open Source Project",
+      "fileSha256": "78803a53fbf14de364e8c6981c3725da990746e54810d8dbb21362e7ee8109cb",
+      "headerSha256": "4ad16b04cc93dff9ee2b55b441cfce26d0f7bad8c25137e052b64353f17ca302",
+      "ranges": [
+        { "lines": "1621-1625", "symbol": "SkCanvas::getLocalClipBounds", "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/paint-group.ts", "symbol": "groupTileFoldIndex", "use": "reference" }
       ]
     },
     {

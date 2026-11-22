@@ -11,7 +11,8 @@
 // paint order, the group opacity and the alpha byte before any device runs. Chrome's composite is measured, not assumed: the first
 // test fits the two blits and the byte against a captured sweep of opacities.
 import { describe, expect, it } from 'vitest';
-import { groupComposite, groupFill, groupFilterComposite, groupFilterMatrices, groupFoldAlpha, groupTileFoldIndex, groupTileFolds, opacityAlpha8, snapEdges } from '@dragon/layout';
+import { groupComposite, groupFill, groupFilterComposite, groupFilterMatrices, groupFoldAlpha, groupTileFoldIndex, groupTileFolds, hasRoundedCorner, LU_PER_PX, mapPoint, NO_RADIUS_FAULTS, opacityAlpha8, paintTransformMatrix, roundedShape, snapEdges } from '@dragon/layout';
+import type { Matrix2D, TransformOp, TransformOrigin } from '@dragon/layout';
 import { filterPairs } from '../../dragon/src/emit/paint/effects.ts';
 import { ccTileEnd, ccTileIndex, ccTileSize, ccTileStart } from '../../layout/src/paint-dither.ts';
 import type { NativeProgram, ProgramNode } from 'dragon';
@@ -19,10 +20,15 @@ import { androidProfile, borderDevicePx, createProjectWith, engineLayoutProjecti
 import { casesOf, fixtureInput } from '../src/cases.ts';
 import { DPRS } from '../src/dpr.ts';
 import { FIXTURE_GROUPS, FIXTURES as CORPUS } from '../src/fixtures.ts';
+import { PLANT_CASES, PLANT_RULES } from '../src/device-run.ts';
 import { expectedEngine, nativeCompile, nativeCompileOnce } from '../src/native-host.ts';
 import { casePoints, committedPixels, devicePoints, glyphLines } from '../src/pixel-reference.ts';
 import { ruleKind } from '../src/samples.ts';
+import { radiusFacts } from '../src/paint-samples/radius.ts';
 import { shapedCaseIds } from '../src/text-latin-run.ts';
+import type { Rings } from './outline-model.ts';
+import { opsOver, outlines } from './outline-model.ts';
+import { insideRounded } from './paint-model.ts';
 
 type Px = [number, number, number, number];
 type FilterFunction = { readonly name: Parameters<typeof filterPairs>[0][number]['name']; readonly amount: number };
@@ -82,7 +88,34 @@ describe('Chrome 145 composites opacity with Skia\'s getAlpha byte and the Color
 
 // ---------------------------------------------------------------- the model
 
-type Box = { readonly node: ProgramNode; readonly l: number; readonly t: number; readonly r: number; readonly b: number; readonly border: readonly number[] };
+/** radii: the outer then padding-edge corner radii (16, device px, paint-radius.ts roundedShape), or null for square corners. */
+type Box = { readonly node: ProgramNode; readonly l: number; readonly t: number; readonly r: number; readonly b: number; readonly border: readonly number[]; readonly radii: readonly number[] | null };
+
+type TransformFacts = { readonly ops: readonly TransformOp[]; readonly origin: TransformOrigin };
+
+/** A pre-composited group with a transform of its own, which the model draws through its matrix (groupMatrix). */
+const transformedGroup = (n: ProgramNode): boolean => ((n.facts['transform'] as TransformFacts | undefined)?.ops.length ?? 0) > 0 && groupPlanOf(n) !== null;
+
+/** A transformed group's matrix in device px (paint-transform.ts at its box size, about its box origin), mapping its local points. */
+function groupMatrix(n: ProgramNode, b: Box, dpr: number): Matrix2D {
+  const f = n.facts['transform'] as TransformFacts;
+  const m = paintTransformMatrix(f.ops, f.origin, (b.r - b.l) / dpr, (b.b - b.t) / dpr, { sin: Math.sin, cos: Math.cos });
+  return { full: true, a: m.a, b: m.b, c: m.c, d: m.d, e: b.l + m.e * dpr - m.a * b.l - m.c * b.t, f: b.t + m.f * dpr - m.b * b.l - m.d * b.t };
+}
+
+/** The inverse of an invertible 2D matrix. */
+function inverse(m: Matrix2D): Matrix2D {
+  const det = m.a * m.d - m.b * m.c;
+  if (det === 0) throw new Error('a group matrix that is not invertible');
+  return { full: true, a: m.d / det, b: -m.b / det, c: -m.c / det, d: m.a / det, e: (m.c * m.f - m.d * m.e) / det, f: (m.b * m.e - m.a * m.f) / det };
+}
+
+/** A rect's bounding box through a matrix (null: the rect itself). */
+function mappedRect(m: Matrix2D | null, l: number, t: number, r: number, b: number): [number, number, number, number] {
+  if (m === null) return [l, t, r, b];
+  const ps = [mapPoint(m, l, t), mapPoint(m, r, t), mapPoint(m, r, b), mapPoint(m, l, b)];
+  return [Math.min(...ps.map((q) => q.x)), Math.min(...ps.map((q) => q.y)), Math.max(...ps.map((q) => q.x)), Math.max(...ps.map((q) => q.y))];
+}
 
 /** A node's translation in device px: its own and its ancestors' translate functions, each a whole number of device px. */
 function translationOf(p: NativeProgram, id: string, dpr: number): [number, number] {
@@ -90,7 +123,7 @@ function translationOf(p: NativeProgram, id: string, dpr: number): [number, numb
   let dy = 0;
   for (let n = p.nodes.find((x) => x.id === id); n !== undefined; n = n.parent === null ? undefined : p.nodes.find((x) => x.id === n?.parent)) {
     const w = n.writes.find((x) => x.kind === 'transform');
-    if (w === undefined || w.kind !== 'transform') continue;
+    if (w === undefined || w.kind !== 'transform' || transformedGroup(n)) continue;
     for (const o of w.ops) {
       if (!o.fn.startsWith('translate') || o.x.kind !== 'px' || o.y.kind !== 'px') throw new Error(`${n.id}: the model moves boxes by px translations only`);
       const [x, y] = [o.x.px * dpr, o.y.px * dpr];
@@ -103,7 +136,7 @@ function translationOf(p: NativeProgram, id: string, dpr: number): [number, numb
 }
 
 /** The boxes of a program at a DPR with their snapped edges (moved by their translations) and device-px borders. */
-function boxes(p: NativeProgram, viewport: { width: number; height: number }, dpr: number): Box[] {
+function boxes(p: NativeProgram, viewport: { width: number; height: number }, dpr: number, squareCorners = false): Box[] {
   const engine = expectedEngine();
   const input = programInput(p, viewport, dpr);
   const out = engine.layout(input, engine.measurer);
@@ -117,16 +150,21 @@ function boxes(p: NativeProgram, viewport: { width: number; height: number }, dp
     if (n === undefined || n.kind === 'text') return;
     const s = snapped[i] as { left: number; top: number; right: number; bottom: number };
     const [dx, dy] = translationOf(p, n.id, dpr);
-    list.push({ node: n, l: s.left + dx, t: s.top + dy, r: s.right + dx, b: s.bottom + dy, border: borders.get(r.id) ?? [0, 0, 0, 0] });
+    const border = borders.get(r.id) ?? [0, 0, 0, 0];
+    const f = squareCorners ? null : radiusFacts(p, n.id);
+    const shape = f === null ? null : roundedShape(s.left + dx, s.top + dy, s.right + dx, s.bottom + dy, r.width / LU_PER_PX, r.height / LU_PER_PX, border, f.lengths, dpr, NO_RADIUS_FAULTS);
+    const radii = shape !== null && hasRoundedCorner(shape.slice(0, 8)) ? shape : null;
+    list.push({ node: n, l: s.left + dx, t: s.top + dy, r: s.right + dx, b: s.bottom + dy, border, radii });
   });
   return list;
 }
 
-type Stacking = { paintOrder: number; clipChain: readonly string[] };
+type Stacking = { paintOrder: number; clipChain: readonly string[]; paintLayer: string };
 type Item =
   | { readonly kind: 'box'; readonly box: Box }
+  | { readonly kind: 'outline'; readonly owner: ProgramNode; readonly rings: Rings }
   | { readonly kind: 'text'; readonly node: ProgramNode; readonly glyphs: readonly { left: number; top: number; right: number; bottom: number }[] }
-  | { readonly kind: 'group'; readonly box: Box; readonly opacity: number; readonly alpha8: number; readonly matrices: readonly number[] | null; readonly items: readonly Item[] };
+  | { readonly kind: 'group'; readonly box: Box; readonly opacity: number; readonly alpha8: number; readonly matrices: readonly number[] | null; readonly matrix: Matrix2D | null; readonly items: readonly Item[] };
 
 const stackingOf = (n: ProgramNode): Stacking => {
   const s = n.facts['stacking'] as Stacking | undefined;
@@ -136,14 +174,20 @@ const stackingOf = (n: ProgramNode): Stacking => {
 
 /**
  * Planted model faults the test must catch: the alpha ignored (alpha-ignored), tree order instead of the paint order (order-swap),
- * and a colour-matrix filter list ignored (filter-ignored).
+ * a colour-matrix filter list ignored (filter-ignored), every outline painted last over the whole case (outline-root-hosted), square
+ * corners for rounded boxes, and groups drawn untransformed.
  */
-type ModelFaults = { readonly alphaIgnored: boolean; readonly treeOrder: boolean; readonly filterIgnored?: boolean };
+type ModelFaults = { readonly alphaIgnored: boolean; readonly treeOrder: boolean; readonly filterIgnored?: boolean; readonly outlinesLast?: boolean; readonly squareCorners?: boolean; readonly untransformedGroups?: boolean };
 const NO_MODEL_FAULTS: ModelFaults = { alphaIgnored: false, treeOrder: false };
 
-/** The case's paint items in Appendix E order, each opacity context holding its subtree's items as a group. */
+/**
+ * The case's paint items in Appendix E order, each opacity context holding its subtree's items as a group. A box's outline paints in
+ * its paint layer (stacking facts paintLayer) after the layer's flow content and before its other layer items, in outline-phase
+ * order (outline-model.ts outlineOrder): Chrome 145 PaintLayerPainter::PaintLayerContents paints a layer's foreground phases, ending
+ * with kDescendantOutlinesOnly, then kSelfOutlineOnly, then kNormalFlowAndPositiveZOrderChildren.
+ */
 function paintItems(p: NativeProgram, viewport: { width: number; height: number }, dpr: number, faults: ModelFaults = NO_MODEL_FAULTS): Item[] {
-  const list = boxes(p, viewport, dpr);
+  const list = boxes(p, viewport, dpr, faults.squareCorners === true);
   const byId = new Map(list.map((b) => [b.node.id, b]));
   const children = new Map<string, ProgramNode[]>();
   for (const n of p.nodes) if (n.parent !== null) children.set(n.parent, [...(children.get(n.parent) ?? []), n]);
@@ -157,33 +201,87 @@ function paintItems(p: NativeProgram, viewport: { width: number; height: number 
   const item = (n: ProgramNode): Item => (n.kind === 'text' ? { kind: 'text', node: n, glyphs: glyphsOf.get(n.id) ?? [] } : { kind: 'box', box: byId.get(n.id) as Box });
   // A text leaf paints right after its box (a box's children are all boxes or all text leaves), so only boxes are sorted.
   const withText = (n: ProgramNode): Item[] => [item(n), ...(children.get(n.id) ?? []).filter((c) => c.kind === 'text').map(item)];
-  const build = (nodes: readonly ProgramNode[]): Item[] => {
-    const tree = new Map(p.nodes.map((x, k) => [x.id, k]));
-    const rank = (x: ProgramNode): number => (faults.treeOrder ? (tree.get(x.id) as number) : stackingOf(x).paintOrder);
-    const sorted = nodes.filter((x) => x.kind !== 'text').sort((a, b) => rank(a) - rank(b));
+  const tree = new Map(p.nodes.map((x, k) => [x.id, k]));
+  const rank = (x: ProgramNode): number => (faults.treeOrder ? (tree.get(x.id) as number) : stackingOf(x).paintOrder);
+  // Each paint layer's last flow node: the outlines of the layer paint right after it.
+  const layerEnd = new Map<string, number>();
+  for (const n of p.nodes) if (n.kind !== 'text') layerEnd.set(stackingOf(n).paintLayer, Math.max(layerEnd.get(stackingOf(n).paintLayer) ?? -1, rank(n)));
+  const owners = new Map(p.nodes.map((n) => [n.id, n]));
+  const rings = outlines(p, list.map((b) => ({ ...b, radii: null })), dpr, 0);
+  type Entry = { readonly node: ProgramNode; readonly rank: number; readonly rings: Rings | null };
+  const entries: Entry[] = [
+    ...p.nodes.filter((x) => x.kind !== 'text').map((n) => ({ node: n, rank: rank(n), rings: null })),
+    ...rings.map((r, k) => {
+      const owner = owners.get(r.box.node.id) as ProgramNode;
+      if (owner.writes.some((w) => w.kind === 'border-radius')) throw new Error(`${owner.id}: the model draws square outlines only`);
+      return { node: owner, rank: faults.outlinesLast ? p.nodes.length + k : (layerEnd.get(stackingOf(owner).paintLayer) as number) + 0.5 + k / (2 * rings.length), rings: r };
+    }),
+  ];
+  const build = (es: readonly Entry[]): Item[] => {
+    const sorted = [...es].sort((a, b) => a.rank - b.rank);
     const out: Item[] = [];
     for (let k = 0; k < sorted.length; k++) {
-      const n = sorted[k] as ProgramNode;
+      const e = sorted[k] as Entry;
+      const n = e.node;
+      if (e.rings !== null) {
+        out.push({ kind: 'outline', owner: n, rings: e.rings });
+        continue;
+      }
       const effects = n.facts['effects'] as { opacity: number; filter?: readonly FilterFunction[] } | undefined;
       if (effects === undefined) {
         out.push(...withText(n));
         continue;
       }
       const inside = new Set(subtree(n).map((x) => x.id));
-      const members = sorted.filter((x) => inside.has(x.id));
-      // A stacking context is atomic: its subtree is contiguous in the paint order.
-      if (sorted.slice(k, k + members.length).some((x) => !inside.has(x.id))) throw new Error(`${n.id}: its subtree is not contiguous in the paint order`);
+      const members = sorted.filter((x) => inside.has(x.node.id));
+      // A stacking context is atomic: its subtree (and the outlines it paints) is contiguous in the paint order.
+      if (sorted.slice(k, k + members.length).some((x) => !inside.has(x.node.id))) throw new Error(`${n.id}: its subtree is not contiguous in the paint order`);
       const filter = effects.filter ?? [];
       const matrices = filter.length === 0 ? null : groupFilterMatrices(faults.filterIgnored ? [] : filterPairs(filter));
-      out.push({ kind: 'group', box: byId.get(n.id) as Box, opacity: faults.alphaIgnored ? 1 : effects.opacity, alpha8: faults.alphaIgnored ? 255 : opacityAlpha8(effects.opacity), matrices, items: [...withText(n), ...build(members.filter((x) => x !== n))] });
+      out.push({ kind: 'group', box: byId.get(n.id) as Box, opacity: faults.alphaIgnored ? 1 : effects.opacity, alpha8: faults.alphaIgnored ? 255 : opacityAlpha8(effects.opacity), matrices, matrix: transformedGroup(n) && faults.untransformedGroups !== true ? groupMatrix(n, byId.get(n.id) as Box, dpr) : null, items: [...withText(n), ...build(members.filter((x) => x !== e))] });
       k += members.length - 1;
     }
     return out;
   };
-  return build(p.nodes);
+  return build(entries);
+}
+
+/**
+ * An outline painted onto a premultiplied pixel at its centre: a ring as a solid colour blit, a side painter's operations over an
+ * opaque pixel; with fold, a group's opacity folded into the ring's one op (groupFoldAlpha), as paintBox folds a fill.
+ */
+function paintOutline(dst: Px, o: Rings, cx: number, cy: number, fold: number | null = null): Px {
+  if (o.ops !== null) {
+    if (fold !== null) throw new Error(`${o.box.node.id}: a side painter outline in a group is not modelled (the native targets refuse it)`);
+    if (dst[3] !== 255) throw new Error(`${o.box.node.id}: the model paints a side painter outline over an opaque pixel only`);
+    return opsOver(dst, o.ops, o.palette, cx, cy) as Px;
+  }
+  const r = o.rings;
+  let out = dst;
+  for (let k = 0; k + 24 <= r.length; k += 24) {
+    const v = (j: number): number => r[k + j] as number;
+    if (insideRounded(cx, cy, v(0), v(1), v(2), v(3), r.slice(k + 8, k + 16)) && !insideRounded(cx, cy, v(4), v(5), v(6), v(7), r.slice(k + 16, k + 24))) out = color32(out, { r: o.color[0], g: o.color[1], b: o.color[2] }, fold === null ? o.color[3] : groupFoldAlpha(o.color[3], fold));
+  }
+  return out;
 }
 
 const inside = (x: number, y: number, l: number, t: number, r: number, b: number): boolean => x >= l && x < r && y >= t && y < b;
+
+/** Whether a point is inside a rect rounded by eight radii (horizontal then vertical, top-left first). */
+function insideRoundedBox(x: number, y: number, l: number, t: number, r: number, b: number, radii: readonly number[]): boolean {
+  if (!inside(x, y, l, t, r, b)) return false;
+  for (const [k, sx, sy] of [[0, -1, -1], [1, 1, -1], [2, 1, 1], [3, -1, 1]] as const) {
+    const rx = radii[k] as number;
+    const ry = radii[k + 4] as number;
+    if (!(rx > 0 && ry > 0)) continue;
+    const cx = sx < 0 ? l + rx : r - rx;
+    const cy = sy < 0 ? t + ry : b - ry;
+    const dx = (x - cx) * sx;
+    const dy = (y - cy) * sy;
+    if (dx > 0 && dy > 0 && (dx / rx) ** 2 + (dy / ry) ** 2 > 1) return false;
+  }
+  return true;
+}
 
 /**
  * The draw ops of a box's display item: a background rect, then its border: four solid sides in one colour are one op (Blink
@@ -207,17 +305,23 @@ function boxOps(b: Box): { readonly count: number; readonly foldable: boolean } 
 }
 
 type Tile = { l: number; t: number; r: number; b: number };
-const meets = (tile: Tile, l: number, t: number, r: number, b: number): boolean => l < tile.r && r > tile.l && t < tile.b && b > tile.t;
+// cc's rtree query for a tile is the canvas's local clip bounds, outset by one pixel (paint-group.ts groupTileFoldIndex).
+const meets = (tile: Tile, l: number, t: number, r: number, b: number): boolean => l < tile.r + 1 && r > tile.l - 1 && t < tile.b + 1 && b > tile.t - 1;
 
-/** The display items of a group's content in a tile: each box with ops, each text run, and nested groups as their own items. */
-function tileItems(items: readonly Item[], tile: Tile): { direct: Item[]; nested: number } {
+/**
+ * The display items of a group's content in a tile: each box with ops, each text run, and nested groups as their own items. Under a
+ * group transform m, each item's rect is its bounding box through m (cc's rtree holds rects in the layer's space; measured).
+ */
+function tileItems(items: readonly Item[], tile: Tile, m: Matrix2D | null = null): { direct: Item[]; nested: number } {
   const direct: Item[] = [];
   let nested = 0;
+  const hits = (l: number, t: number, r: number, b: number): boolean => meets(tile, ...mappedRect(m, l, t, r, b));
   for (const it of items) {
-    if (it.kind === 'box' && boxOps(it.box).count > 0 && meets(tile, it.box.l, it.box.t, it.box.r, it.box.b)) direct.push(it);
-    if (it.kind === 'text' && it.glyphs.some((g) => meets(tile, Math.floor(g.left), Math.floor(g.top), Math.ceil(g.right), Math.ceil(g.bottom)))) direct.push(it);
+    if (it.kind === 'box' && boxOps(it.box).count > 0 && hits(it.box.l, it.box.t, it.box.r, it.box.b)) direct.push(it);
+    if (it.kind === 'text' && it.glyphs.some((g) => hits(Math.floor(g.left), Math.floor(g.top), Math.ceil(g.right), Math.ceil(g.bottom)))) direct.push(it);
+    if (it.kind === 'outline' && hits(it.rings.rings[0] as number, it.rings.rings[1] as number, it.rings.rings[2] as number, it.rings.rings[3] as number)) direct.push(it);
     if (it.kind === 'group') {
-      const inner = tileItems(it.items, tile);
+      const inner = tileItems(it.items, tile, m);
       nested += inner.direct.length + inner.nested;
     }
   }
@@ -235,31 +339,38 @@ function clippedOut(n: ProgramNode, byId: ReadonlyMap<string, Box>, cx: number, 
   return false;
 }
 
-/** One item painted onto a premultiplied pixel. */
-function paintItem(dst: Px, it: Item, x: number, y: number, tile: Tile, byId: ReadonlyMap<string, Box>): Px {
-  const cx = x + 0.5;
-  const cy = y + 0.5;
+/** One item painted onto a premultiplied pixel; inside a transformed group, inv maps the pixel centre to the group's local space. */
+function paintItem(dst: Px, it: Item, x: number, y: number, tile: Tile, byId: ReadonlyMap<string, Box>, inv: Matrix2D | null = null): Px {
+  const at = inv === null ? { x: x + 0.5, y: y + 0.5 } : mapPoint(inv, x + 0.5, y + 0.5);
+  const cx = at.x;
+  const cy = at.y;
   if (it.kind === 'text') {
-    if (clippedOut(it.node, byId, cx, cy) || !it.glyphs.some((g) => cx > g.left && cx < g.right && cy > g.top && cy < g.bottom)) return dst;
+    if (clippedOut(it.node, byId, x + 0.5, y + 0.5) || !it.glyphs.some((g) => cx > g.left && cx < g.right && cy > g.top && cy < g.bottom)) return dst;
     const c = it.node.writes.find((w) => w.kind === 'text-color');
     if (c === undefined || c.kind !== 'text-color') throw new Error(`${it.node.id}: no text colour`);
     return color32(dst, c.color, c.color.alpha);
   }
-  if (it.kind === 'box') return paintBox(dst, it.box, cx, cy, byId, null);
+  if (it.kind === 'box') return paintBox(dst, it.box, cx, cy, byId, null, x + 0.5, y + 0.5);
+  if (it.kind === 'outline') return clippedOut(it.owner, byId, x + 0.5, y + 0.5) ? dst : paintOutline(dst, it.rings, cx, cy);
   if (it.alpha8 === 0) return dst;
+  if (it.matrix !== null && inv !== null) throw new Error(`${it.box.node.id}: a transformed group inside a transformed group, which native refuses`);
+  const inner = it.matrix === null ? inv : inverse(it.matrix);
   // A filtered group is a layer drawn through the filter's colour matrices, then composited at its alpha; it never folds
   // (paint-group.ts groupFilterComposite, measured against Chrome 145).
   if (it.matrices !== null) {
     let layer: Px = [0, 0, 0, 0];
-    for (const inner of it.items) layer = paintItem(layer, inner, x, y, tile, byId);
+    for (const member of it.items) layer = paintItem(layer, member, x, y, tile, byId, inner);
     return unpack(groupFilterComposite(layer[0], layer[1], layer[2], layer[3], dst[0], dst[1], dst[2], dst[3], it.matrices, it.alpha8));
   }
   // The group's one drawing in this tile, when it is a background rect, takes the alpha itself (cc folds the layer into it).
-  const content = tileItems(it.items, tile);
+  const content = tileItems(it.items, tile, it.matrix);
   const only = content.direct[0];
-  if (content.direct.length === 1 && content.nested === 0 && only !== undefined && only.kind === 'box' && boxOps(only.box).foldable) return paintBox(dst, only.box, cx, cy, byId, it.opacity);
+  const local = inner === null ? { x: x + 0.5, y: y + 0.5 } : mapPoint(inner, x + 0.5, y + 0.5);
+  if (content.direct.length === 1 && content.nested === 0 && only !== undefined && only.kind === 'box' && boxOps(only.box).foldable) return paintBox(dst, only.box, local.x, local.y, byId, it.opacity, x + 0.5, y + 0.5);
+  // PNT1-opacity-c C1: a solid outline is one ring op, which cc folds like any other lone op in its tile (a double outline is two).
+  if (content.direct.length === 1 && content.nested === 0 && only !== undefined && only.kind === 'outline' && only.rings.ops === null && only.rings.rings.length === 24) return clippedOut(only.owner, byId, x + 0.5, y + 0.5) ? dst : paintOutline(dst, only.rings, local.x, local.y, it.opacity);
   let layer: Px = [0, 0, 0, 0];
-  for (const inner of it.items) layer = paintItem(layer, inner, x, y, tile, byId);
+  for (const member of it.items) layer = paintItem(layer, member, x, y, tile, byId, inner);
   return s32aBlend(dst, layer, it.alpha8);
 }
 
@@ -267,15 +378,16 @@ function paintItem(dst: Px, it: Item, x: number, y: number, tile: Tile, byId: Re
  * A box's background and solid border sides at a pixel centre; with fold, the opacity of the group folded into the box's one op,
  * which takes the colour's alpha times it in float (cc ScopedRasterFlags, measured: groupFoldAlpha).
  */
-function paintBox(dst: Px, b: Box, cx: number, cy: number, byId: ReadonlyMap<string, Box>, fold: number | null): Px {
-  if (clippedOut(b.node, byId, cx, cy) || !inside(cx, cy, b.l, b.t, b.r, b.b)) return dst;
+function paintBox(dst: Px, b: Box, cx: number, cy: number, byId: ReadonlyMap<string, Box>, fold: number | null, rootX = cx, rootY = cy): Px {
+  if (clippedOut(b.node, byId, rootX, rootY) || !(b.radii === null ? inside(cx, cy, b.l, b.t, b.r, b.b) : insideRoundedBox(cx, cy, b.l, b.t, b.r, b.b, b.radii))) return dst;
   let out = dst;
   const bg = b.node.writes.find((w) => w.kind === 'background-color');
   if (bg !== undefined && bg.kind === 'background-color' && bg.color.alpha > 0) {
     out = color32(out, bg.color, fold === null ? bg.color.alpha : groupFoldAlpha(bg.color.alpha, fold));
   }
   const [bt, br, bb, bl] = b.border as [number, number, number, number];
-  if (inside(cx, cy, b.l + bl, b.t + bt, b.r - br, b.b - bb)) return out;
+  // A rounded box's border is four opaque solid sides in one colour (analysis paint-values/effects.ts): one DrawDRRect over the fill.
+  if (b.radii === null ? inside(cx, cy, b.l + bl, b.t + bt, b.r - br, b.b - bb) : insideRoundedBox(cx, cy, b.l + bl, b.t + bt, b.r - br, b.b - bb, b.radii.slice(8))) return out;
   const styles = b.node.writes.find((w) => w.kind === 'border-styles');
   const colours = b.node.writes.find((w) => w.kind === 'border-colors');
   if (styles === undefined || styles.kind !== 'border-styles' || colours === undefined || colours.kind !== 'border-colors') return out;
@@ -315,6 +427,8 @@ function groupPlanOf(n: ProgramNode): GroupPlan | null {
 function itemsById(items: readonly Item[], into = new Map<string, Item>()): Map<string, Item> {
   for (const it of items) {
     // A group's own box is the first of its items; the id names the group.
+    // An outline is drawn by its own view, never a group painter, so the id keeps naming its box.
+    if (it.kind === 'outline') continue;
     if (it.kind === 'group') itemsById(it.items, into);
     into.set(it.kind === 'text' ? it.node.id : it.box.node.id, it);
   }
@@ -323,6 +437,7 @@ function itemsById(items: readonly Item[], into = new Map<string, Item>()): Map<
 
 /** A backdrop painter box as the device paints it (DragonGroupView): its opaque fill and solid opaque sides, unclipped. */
 function backdropBox(dst: Px, b: Box, cx: number, cy: number): Px {
+  if (b.radii !== null) throw new Error(`${b.node.id}: a rounded backdrop painter, which native refuses`);
   if (!inside(cx, cy, b.l, b.t, b.r, b.b)) return dst;
   if (b.node.writes.some((w) => w.kind === 'visibility')) return dst;
   let out = dst;
@@ -369,7 +484,7 @@ function sidesOf(b: Box): { readonly shown: readonly boolean[]; readonly colours
  * The display items the device counts for the per-tile fold and each item's one colour: each painting box (a lone op folds), each
  * glyph, and every item of a nested group, which never folds the group it is in (DragonGroupView.dragonSoftwareDraws).
  */
-function groupDraws(items: readonly Item[], nested = false, colours: Rgba[] = []): number[] {
+function groupDraws(items: readonly Item[], nested = false, colours: Rgba[] = [], outlineFold = true): number[] {
   return items.flatMap((it) => {
     if (it.kind === 'box') {
       const ops = boxOps(it.box);
@@ -384,7 +499,21 @@ function groupDraws(items: readonly Item[], nested = false, colours: Rgba[] = []
       for (const _ of it.glyphs) colours.push(c !== undefined && c.kind === 'text-color' ? c.color : { r: 0, g: 0, b: 0, alpha: 0 });
       return it.glyphs.flatMap((g) => [Math.floor(g.left), Math.floor(g.top), Math.ceil(g.right), Math.ceil(g.bottom), 0]);
     }
-    return groupDraws(it.items, true, colours);
+    if (it.kind === 'outline') {
+      if (it.rings.ops !== null) throw new Error(`${it.owner.id}: a side painter outline in a pre-composited group is not modelled (the native targets refuse it)`);
+      // The outline-fold-ignored plant's twin leaves the rings out of the fold.
+      if (!outlineFold) return [];
+      // Each ring is a display item: a solid outline's one ring folds when it is alone in its tile (opacity-group-outline), a double
+      // outline's two never do.
+      const one = it.rings.rings.length === 24;
+      const out: number[] = [];
+      for (let k = 0; k + 24 <= it.rings.rings.length; k += 24) {
+        colours.push({ r: it.rings.color[0], g: it.rings.color[1], b: it.rings.color[2], alpha: it.rings.color[3] });
+        out.push(...(it.rings.rings.slice(k, k + 4) as number[]), one && !nested ? 1 : 0);
+      }
+      return out;
+    }
+    return groupDraws(it.items, true, colours, outlineFold);
   });
 }
 
@@ -400,6 +529,7 @@ const softwareGroup = (items: readonly Item[]): boolean => items.some((it) => it
 
 /** A box's own paint as the device's software layer draws it: its background over the box, then one side's colour, each with groupFill. */
 function softwareBox(dst: Px, b: Box, x: number, y: number): Px {
+  if (b.radii !== null) throw new Error(`${b.node.id}: a rounded box in a software group, which native refuses`);
   if (!(x >= b.l && x < b.r && y >= b.t && y < b.b) || b.node.writes.some((w) => w.kind === 'visibility')) return dst;
   let out = dst;
   const bg = bgOf(b);
@@ -421,6 +551,7 @@ function deviceSoftware(dst: Px, items: readonly Item[], opacity: number, alpha8
   for (const it of items) {
     if (it.kind === 'box') layer = softwareBox(layer, it.box, x, y);
     else if (it.kind === 'text') layer = paintItem(layer, it, x, y, tile, byId);
+    else if (it.kind === 'outline') throw new Error(`${it.owner.id}: an outline in a software group is not modelled (the native targets refuse it)`);
     // The device builds a nested group's layer over the nested group's own extent only; outside it the layer is clear.
     else if (inExtent(it.items, x, y)) layer = deviceSoftware(layer, it.items, it.opacity, it.alpha8, null, x, y, tile, byId);
   }
@@ -436,57 +567,55 @@ function deviceSoftware(dst: Px, items: readonly Item[], opacity: number, alpha8
 
 /** Whether a pixel lies in a group's extent: its boxes and its glyphs, widened to whole device px. */
 function inExtent(items: readonly Item[], x: number, y: number): boolean {
-  return items.some((it) => (it.kind === 'box' ? x >= it.box.l && x < it.box.r && y >= it.box.t && y < it.box.b : it.kind === 'text' ? it.glyphs.some((g) => x >= Math.floor(g.left) && x < Math.ceil(g.right) && y >= Math.floor(g.top) && y < Math.ceil(g.bottom)) : inExtent(it.items, x, y)));
+  return items.some((it) => {
+    if (it.kind === 'outline') {
+      const [l, t, r, b] = it.rings.rings as [number, number, number, number];
+      return x >= Math.floor(l) && x < Math.ceil(r) && y >= Math.floor(t) && y < Math.ceil(b);
+    }
+    return it.kind === 'box' ? x >= it.box.l && x < it.box.r && y >= it.box.t && y < it.box.b : it.kind === 'text' ? it.glyphs.some((g) => x >= Math.floor(g.left) && x < Math.ceil(g.right) && y >= Math.floor(g.top) && y < Math.ceil(g.bottom)) : inExtent(it.items, x, y);
+  });
 }
 
 /**
- * The device's composite Q of a pre-composited group at pixel (x, y), null outside its extent: the layer (the group's content
- * drawn opaque into a transparent bitmap), the backdrop (white, then each painter: a box's fill and sides, an earlier group's Q),
- * and layout paint-group.ts groupComposite with the tile's fold (groupTileFolds), as DragonGroupView computes it.
+ * A group's composite Q on the device at a pixel (null outside its extent): its layer over d, the platform's own drawing of what
+ * paints before it, which equals the model there (DragonGroupView captures it); clear where the layer is clear, so d shows. Under the
+ * group's transform the platform maps Q, so the layer is read at the pixel centre mapped back into the group.
  */
-function deviceQ(g: Item & { kind: 'group' }, plan: GroupPlan, x: number, y: number, tile: Tile, all: ReadonlyMap<string, Item>, byId: ReadonlyMap<string, Box>, programs: ReadonlyMap<string, ProgramNode>): Px | null {
+function deviceQ(g: Item & { kind: 'group' }, plan: GroupPlan, x: number, y: number, tile: Tile, byId: ReadonlyMap<string, Box>, d: Px, outlineFold = true): Px | null {
   // paintItems puts the group's own box first among its items.
   const members = g.items;
-  if (!inExtent(members, x, y)) return null;
-  let d: Px = [255, 255, 255, 255];
-  for (const id of plan.painters) {
-    const it = all.get(id);
-    const node = programs.get(id);
-    if (it === undefined || node === undefined) throw new Error(`${g.box.node.id}: painter ${id} is not painted`);
-    const inner = groupPlanOf(node);
-    if (inner !== null) {
-      if (it.kind !== 'group') throw new Error(`${id}: a planned group that is not a group item`);
-      d = deviceQ(it, inner, x, y, tile, all, byId, programs) ?? d;
-      continue;
-    }
-    if (it.kind === 'text') throw new Error(`${id}: a text painter`);
-    d = backdropBox(d, it.box, x + 0.5, y + 0.5);
+  const inv = g.matrix === null ? null : inverse(g.matrix);
+  const local = inv === null ? { x, y } : (({ x: lx, y: ly }) => ({ x: Math.floor(lx), y: Math.floor(ly) }))(mapPoint(inv, x + 0.5, y + 0.5));
+  if (!inExtent(members, local.x, local.y)) return null;
+  if (softwareGroup(members)) {
+    if (inv !== null) throw new Error(`${g.box.node.id}: a transformed software group, which native refuses`);
+    return deviceSoftware(d, members, plan.opacity, plan.alpha8, plan.matrices, x, y, tile, byId);
   }
-  if (softwareGroup(members)) return deviceSoftware(d, members, plan.opacity, plan.alpha8, plan.matrices, x, y, tile, byId);
   let layer: Px = [0, 0, 0, 0];
-  for (const it of members) layer = paintItem(layer, it, x, y, tile, byId);
+  for (const it of members) layer = paintItem(layer, it, x, y, tile, byId, inv);
+  if (layer[3] === 0) return d;
   if (plan.matrices !== null) return unpack(groupFilterComposite(layer[0], layer[1], layer[2], layer[3], d[0], d[1], d[2], d[3], plan.matrices, plan.alpha8));
-  const fold = groupTileFolds(groupDraws(members), tile.l, tile.t, tile.r, tile.b);
+  const fold = groupTileFolds(groupDraws(members, false, [], outlineFold), tile.l, tile.t, tile.r, tile.b);
   return unpack(groupComposite(layer[0], layer[1], layer[2], layer[3], d[0], d[1], d[2], d[3], plan.alpha8, fold));
 }
 
 /** The device's colour at the centre of pixel (x, y): the model, with each pre-composited group shown as its Q over its extent. */
-function deviceAt(p: NativeProgram, items: readonly Item[], byId: ReadonlyMap<string, Box>, x: number, y: number, dpr: number): Px {
+function deviceAt(p: NativeProgram, items: readonly Item[], byId: ReadonlyMap<string, Box>, x: number, y: number, dpr: number, outlineFold = true, textlessBackdrop = false): Px {
   const size = ccTileSize(true, dpr);
   const ix = ccTileIndex(x, size);
   const iy = ccTileIndex(y, size);
   const tile: Tile = { l: ccTileStart(ix, size), t: ccTileStart(iy, size), r: ccTileEnd(ix, size), b: ccTileEnd(iy, size) };
-  const all = itemsById(items);
-  const programs = new Map(p.nodes.map((n) => [n.id, n]));
   let out: Px = [255, 255, 255, 255];
   for (const it of items) {
     const plan = it.kind === 'group' ? groupPlanOf(it.box.node) : null;
     if (it.kind !== 'group' || plan === null) {
+      // Planted: master's software backdrop, which drew no text.
+      if (textlessBackdrop && it.kind === 'text') continue;
       out = paintItem(out, it, x, y, tile, byId);
       continue;
     }
     if (clippedOut(it.box.node, byId, x + 0.5, y + 0.5)) continue;
-    out = deviceQ(it, plan, x, y, tile, all, byId, programs) ?? out;
+    out = deviceQ(it, plan, x, y, tile, byId, out, outlineFold) ?? out;
   }
   return out;
 }
@@ -497,14 +626,14 @@ const GROUPS = ['effects', 'filter'];
 const FIXTURES = FIXTURE_GROUPS.filter((g) => GROUPS.includes(g.id)).flatMap((g) => g.fixtures).filter((f) => f.kind === 'layout');
 
 /** The mismatches of the model against the committed Chrome PNGs at every non-edge point of a program, and the points compared. */
-function modelProblems(caseId: string, p: NativeProgram, viewport: { width: number; height: number }): { problems: string[]; compared: number } {
+function modelProblems(caseId: string, p: NativeProgram, viewport: { width: number; height: number }, faults: ModelFaults = NO_MODEL_FAULTS): { problems: string[]; compared: number } {
   const problems: string[] = [];
   let compared = 0;
   for (const dpr of DPRS) {
     const chrome = committedPixels(caseId, dpr);
     if (chrome === null) throw new Error(`${caseId}@${dpr}: no committed Chrome PNG`);
-    const items = paintItems(p, viewport, dpr);
-    const byId = new Map(boxes(p, viewport, dpr).map((b) => [b.node.id, b]));
+    const items = paintItems(p, viewport, dpr, faults);
+    const byId = new Map(boxes(p, viewport, dpr, faults.squareCorners === true).map((b) => [b.node.id, b]));
     for (const pt of casePoints(p, viewport, dpr)) {
       if (ruleKind(pt.rule) === 'edge') continue;
       compared++;
@@ -519,7 +648,7 @@ function modelProblems(caseId: string, p: NativeProgram, viewport: { width: numb
 
 describe('PNT1 effects: the paint model at every sample point equals the committed Chrome pixels', () => {
   it('covers the opacity, stacking and filter fixtures', () => {
-    expect(FIXTURES.map((f) => f.id)).toEqual(['opacity-basic', 'opacity-cascade', 'opacity-web', 'opacity-fold', 'opacity-group-text', 'opacity-group-border', 'opacity-group-border-only', 'opacity-group-over-rects', 'opacity-group-over-group', 'opacity-group-clipped', 'opacity-group-nested', 'opacity-group-translucent', 'stacking-basic', 'stacking-context', 'stacking-escape', 'stacking-transform', 'stacking-grid-items', 'stacking-isolation', 'stacking-backface', 'filter-none', 'filter-matrix-text', 'filter-matrix-over-rects']);
+    expect(FIXTURES.map((f) => f.id)).toEqual(['opacity-basic', 'opacity-cascade', 'opacity-web', 'opacity-fold', 'opacity-group-text', 'opacity-group-border', 'opacity-group-border-only', 'opacity-group-over-rects', 'opacity-group-over-group', 'opacity-group-clipped', 'opacity-group-nested', 'opacity-group-translucent', 'opacity-group-outline', 'opacity-group-rounded', 'opacity-group-transform', 'stacking-basic', 'stacking-context', 'stacking-escape', 'stacking-transform', 'stacking-grid-items', 'stacking-isolation', 'stacking-backface', 'filter-none', 'filter-matrix-text', 'filter-matrix-over-rects']);
   });
   it('every opacity group lies inside one cc raster tile at every DPR, so a device composite of the whole group can match', () => {
     let groups = 0;
@@ -823,10 +952,30 @@ describe('PNT1-opacity-b: the device\'s group composite equals the paint model',
       expect(groupTileFolds(groupDraws(it.items), it.box.l, it.box.t, it.box.r, it.box.b), it.box.node.id).toBe(false);
     }
   });
+  it('renders rounded boxes in a group as Chrome draws them, folding a lone rounded fill or rounded four-side border, one op each', () => {
+    const spec = FIXTURES.find((f) => f.id === 'opacity-group-rounded');
+    if (spec === undefined) throw new Error('no opacity-group-rounded fixture');
+    for (const c of casesOf(spec, fixtureInput(spec))) {
+      const r = nativePrograms(nativeCompile(spec, c.environment.direction), c.assignment);
+      if (r.kind !== 'ready') throw new Error(r.reason);
+      const p = r.programs.uikit;
+      for (const dpr of DPRS) {
+        const folds: Record<string, boolean> = {};
+        for (const g of paintItems(p, c.environment.viewport, dpr)) {
+          if (g.kind === 'group') folds[g.box.node.id] = groupTileFolds(groupDraws(g.items), g.box.l, g.box.t, g.box.r, g.box.b);
+        }
+        expect(folds, `${c.id} @${dpr}`).toEqual({ 'or-a': true, 'or-b': false, 'or-d': false, 'or-e': true, 'or-f': false, 'or-g': false });
+      }
+      expect(modelProblems(c.id, p, c.environment.viewport).problems, c.id).toEqual([]);
+      // Planted: square corners miss Chrome at a point outside a rounded corner at every DPR.
+      const square = modelProblems(c.id, p, c.environment.viewport, { ...NO_MODEL_FAULTS, squareCorners: true }).problems;
+      for (const dpr of DPRS) expect(square.some((m) => m.startsWith('radius') && m.includes(` @${dpr}:`)), `${c.id} square corners @${dpr}`).toBe(true);
+    }
+  });
   const precomposited = (id: string): boolean => id.startsWith('opacity-group-') || id.startsWith('filter-matrix-');
   const groupFixtures = FIXTURES.filter((f) => precomposited(f.id));
   it('admits every translucent or filtered group of the opacity-group and filter-matrix fixtures, which compile on native as user cases', () => {
-    expect(groupFixtures.length).toBe(10);
+    expect(groupFixtures.length).toBe(13);
     for (const spec of groupFixtures) {
       for (const c of casesOf(spec, fixtureInput(spec))) {
         const lanes = nativeCompile(spec, c.environment.direction);
@@ -878,6 +1027,58 @@ describe('PNT1-opacity-b: the device\'s group composite equals the paint model',
   }
 });
 
+// PNT1-opacity-c C1: the device model with the outline rings left out of the fold (the outline-fold-ignored plant's twin) must differ
+// from Chrome's pixels at a point of the plant's rules, where a ring is alone in its tile.
+describe('PNT1 opacity: an outline ring alone in a tile folds, as Chrome folds it', () => {
+  const spec = FIXTURES.find((f) => f.id === 'opacity-group-outline');
+  if (spec === undefined) throw new Error('no opacity-group-outline fixture');
+  it('the twin without the rings in the fold differs from Chrome at a ring point', () => {
+    expect(PLANT_CASES['outline-fold-ignored']).toEqual(['opacity-group-outline']);
+    let caught = 0;
+    for (const c of casesOf(spec, fixtureInput(spec))) {
+      const r = nativePrograms(nativeCompile(spec, c.environment.direction), c.assignment);
+      if (r.kind !== 'ready') throw new Error(r.reason);
+      const p = r.programs.uikit;
+      for (const dpr of DPRS) {
+        const chrome = committedPixels(c.id, dpr);
+        if (chrome === null) throw new Error(`${c.id}@${dpr}: no committed Chrome PNG`);
+        const items = paintItems(p, c.environment.viewport, dpr);
+        const byId = new Map(boxes(p, c.environment.viewport, dpr).map((b) => [b.node.id, b]));
+        for (const pt of casePoints(p, c.environment.viewport, dpr)) {
+          if (!PLANT_RULES['outline-fold-ignored'].test(pt.rule)) continue;
+          const i = (pt.y * chrome.width + pt.x) * 4;
+          const got = [chrome.data[i], chrome.data[i + 1], chrome.data[i + 2], chrome.data[i + 3]];
+          if (deviceAt(p, items, byId, pt.x, pt.y, dpr, false).some((v, k) => v !== got[k])) caught++;
+        }
+      }
+    }
+    expect(caught).toBeGreaterThan(0);
+  });
+});
+
+describe('PNT1-opacity-d: groups over the platform-drawn backdrop, scaled or translated', () => {
+  it('the model maps each group by its transform and the device composites over everything painted before; the twins miss', () => {
+    const spec = FIXTURES.find((f) => f.id === 'opacity-group-transform');
+    if (spec === undefined) throw new Error('no opacity-group-transform fixture');
+    for (const c of casesOf(spec, fixtureInput(spec))) {
+      const r = nativePrograms(nativeCompile(spec, c.environment.direction), c.assignment);
+      if (r.kind !== 'ready') throw new Error(r.reason);
+      const p = r.programs.uikit;
+      expect(p.nodes.filter((n) => transformedGroup(n)).map((n) => n.id), c.id).toEqual(['ot-a', 'ot-b', 'ot-d', 'ot-e', 'ot-f', 'ot-g', 'ot-h']);
+      // Planted: groups drawn at their layout boxes miss Chrome at every DPR.
+      const flat = modelProblems(c.id, p, c.environment.viewport, { ...NO_MODEL_FAULTS, untransformedGroups: true }).problems;
+      for (const dpr of DPRS) {
+        expect(flat.some((m) => m.includes(` @${dpr}:`)), `${c.id} untransformed @${dpr}`).toBe(true);
+        // Planted: master's software backdrop, which drew no text, misses the groups over text.
+        const items = paintItems(p, c.environment.viewport, dpr);
+        const byId = new Map(boxes(p, c.environment.viewport, dpr).map((b) => [b.node.id, b]));
+        const missed = casePoints(p, c.environment.viewport, dpr).some((pt) => deviceAt(p, items, byId, pt.x, pt.y, dpr, true, true).join() !== effectsModelAt(items, byId, pt.x, pt.y, dpr).join());
+        expect(missed, `${c.id} textless backdrop @${dpr}`).toBe(true);
+      }
+    }
+  });
+});
+
 // The cases of the rest of the corpus whose paint order PNT1 changes (every layer item gets a placement): the model in the Appendix E
 // order equals Chrome at every non-edge point. A case is left out only for paint the model does not draw, each named by modelOut and
 // pinned in OUT below, so a new case outside the model is seen: an image, a web view, a video player, background layers (gradients) or a url() layer, a transform
@@ -915,11 +1116,50 @@ function modelOut(p: NativeProgram, viewport: { width: number; height: number })
 
 /** The corpus cases outside the model (modelOut), pinned: a change here is a decision, not drift. */
 const OUT = [
-  'alias-paint', 'backface-values', 'backface-values-rtl', 'gradient-abspos', 'gradient-abspos-rtl', 'gradient-north-star', 'hit-order', 'hit-order-rtl', 'overflow-replaced', 'overflow-replaced-rtl', 'replaced-block', 'replaced-block-rtl', 'replaced-demo', 'replaced-demo-rtl', 'replaced-intrinsic', 'replaced-intrinsic-rtl',
+  'alias-paint', 'backface-values', 'backface-values-rtl', 'gradient-abspos', 'gradient-abspos-rtl', 'gradient-north-star', 'hit-order', 'hit-order-rtl', 'outline-transform', 'outline-transform-rtl', 'overflow-replaced', 'overflow-replaced-rtl', 'replaced-block', 'replaced-block-rtl', 'replaced-demo', 'replaced-demo-rtl', 'replaced-intrinsic', 'replaced-intrinsic-rtl',
   'transform-clip', 'transform-demo', 'transform-direction', 'transform-direction-rtl', 'transform-flex', 'transform-indiv-compose', 'transform-indiv-values', 'transform-indiv-values-rtl', 'transform-matrix', 'transform-nested',
   'transform-origin', 'transform-perspective', 'transform-perspective-rtl', 'transform-rotate', 'transform-scale', 'transform-text', 'transform-translate', 'transform-will-change', 'var-logical',
   'var-logical-rtl',
 ];
+
+// PNT1-outline-layer: outline-layers (outlines under and inside sticky, fixed, relative, absolute, negative and positive z-index
+// layers, beside an opacity group) against Chrome, with every outline in its paint layer's outline phase. The twin paints every
+// outline last over the whole case (master's root-view order, the outline-root-hosted plant's device order): it must differ from the
+// model at points of the plant's rules at every DPR, so the device plant is visible where the lanes look for it.
+describe('PNT1 outline-layer: outlines paint in their paint layer, as Chrome paints outline-layers', () => {
+  const spec = FIXTURE_GROUPS.find((g) => g.id === 'outline')?.fixtures.find((f) => f.id === 'outline-layers');
+  if (spec === undefined) throw new Error('no outline-layers fixture');
+  it('is the outline-root-hosted plant case', () => {
+    expect(PLANT_CASES['outline-root-hosted']).toContain('outline-layers');
+  });
+  for (const c of casesOf(spec, fixtureInput(spec))) {
+    it(`${c.id}: every sample point equals Chrome, outline points included, and the root-hosted twin differs at the plant's rules`, () => {
+      const r = nativePrograms(nativeCompile(spec, c.environment.direction), c.assignment);
+      if (r.kind !== 'ready') throw new Error(r.reason);
+      const p = r.programs.uikit;
+      expect(modelOut(p, c.environment.viewport)).toBe(null);
+      const { problems, compared } = modelProblems(c.id, p, c.environment.viewport);
+      expect(problems).toEqual([]);
+      expect(compared).toBeGreaterThan(0);
+      for (const dpr of DPRS) {
+        const items = paintItems(p, c.environment.viewport, dpr);
+        const twin = paintItems(p, c.environment.viewport, dpr, { ...NO_MODEL_FAULTS, outlinesLast: true });
+        const byId = new Map(boxes(p, c.environment.viewport, dpr).map((b) => [b.node.id, b]));
+        let outlinePoints = 0;
+        let caught = 0;
+        for (const pt of casePoints(p, c.environment.viewport, dpr)) {
+          if (ruleKind(pt.rule) === 'edge') continue;
+          if (pt.rule.includes(':outline-')) outlinePoints++;
+          const want = effectsModelAt(items, byId, pt.x, pt.y, dpr);
+          const planted = effectsModelAt(twin, byId, pt.x, pt.y, dpr);
+          if (PLANT_RULES['outline-root-hosted'].test(pt.rule) && planted.some((v, k) => v !== want[k])) caught++;
+        }
+        expect(outlinePoints, `outline points @${dpr}`).toBeGreaterThan(0);
+        expect(caught, `points of the plant's rules the twin gets wrong @${dpr}`).toBeGreaterThan(0);
+      }
+    });
+  }
+});
 
 describe('PNT1 stacking: the corpus cases the placements reach paint in Chrome\'s order', () => {
   // A case native refuses only for its real faces (deferred to TXT1a-2 phase R) gets the engine lowering instead; it is left out here.

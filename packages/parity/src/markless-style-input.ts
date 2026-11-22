@@ -11,6 +11,7 @@ import type { rtBand } from '@dragon/layout';
 import { textDecoration } from '@dragon/layout';
 import { FONT_REFERENCE_MAP } from './font-reference.ts';
 import { checkPlan, hexBits, PLAN_HEIGHTS, slottedLayout } from './markless-plan.ts';
+import type { MarklessPlan } from './markless-plan.ts';
 import { withFontMapAssets } from './fixture-groups/fonts.ts';
 import { DOCUMENT_ID, PROJECT_ID } from './fixture-reader.ts';
 import type { ExportAssignment, ExportDevice, ExportNode, ExportTarget, NativeStyleExport } from './native-style-export.ts';
@@ -309,7 +310,6 @@ export function parseMarklessStyleInput(text: string): MarklessStyleInput {
     ids.add(id);
   }
   checkSlots(o['slots'], o['nodes'] as Record<string, unknown>[]);
-  if (o['slots'] !== undefined && repeats.size > 0) fail(`slots and @for rows (${[...repeats.keys()].join(', ')}) in one input are not supported yet: a phone lays rows out with no slot values`);
   return v as MarklessStyleInput;
 }
 
@@ -383,7 +383,7 @@ export function marklessWithRows(input: MarklessStyleInput, rows: ReadonlyMap<st
           const v = valueUnder(entries, row.states, t.id);
           if (v !== null) attributes[name] = v;
         }
-        nodes.push({ kind: 'element', id: `${t.id}@${row.key}`, element: t.element, parent, attributes, ...(t.boxless === true ? { boxless: true as const } : {}), ...place });
+        nodes.push({ kind: 'element', id: `${t.id}@${row.key}`, element: t.element, parent, attributes, ...(t.boxless === true ? { boxless: true as const } : {}), ...(t.styleTemplate === undefined ? {} : { styleTemplate: t.styleTemplate }), ...place });
       }
     }
   }
@@ -786,6 +786,36 @@ export function inSelectOptions(byId: ReadonlyMap<string, MarklessStyleInput['no
   return false;
 }
 
+type PlanNode = { readonly id: string; readonly kind: string; readonly children?: readonly PlanNode[] };
+
+/**
+ * The plan with every text leaf the build lays out with a text-transform in any case and band (resolve.ts transformRun) listed in
+ * `transformed`, which the phone refuses to replace with a page text, as it would lay out that text as typed.
+ */
+function withTransformed(plan: MarklessPlan, compiled: object): MarklessPlan {
+  const on = new Set<string>();
+  const elements = new Set<string>();
+  const bands = nativeBands(compiled);
+  for (let band = 0; band < (bands === null ? 1 : bands.table.bands.length); band++) {
+    for (const c of compiledCases(compiled)) {
+      const transforms = resolvedTextTransforms(compiled, c.assignment, band);
+      if (transforms === null) return fail(`a case did not resolve in band ${band}`);
+      for (const [address, transform] of transforms) {
+        elements.add(address);
+        if (transform !== 'none') on.add(address);
+      }
+    }
+  }
+  const leaves = new Set<string>();
+  const walk = (n: PlanNode, element: string | null): void => {
+    const own = elements.has(n.id) ? n.id : element;
+    if (n.kind === 'text' && own !== null && on.has(own)) leaves.add(n.id);
+    for (const child of n.children ?? []) walk(child, own);
+  };
+  for (const v of plan.variants) walk(v.root as unknown as PlanNode, null);
+  return leaves.size === 0 ? plan : { ...plan, transformed: [...leaves].sort() };
+}
+
 /** The media features whose value changes with the viewport's height. */
 const HEIGHT_FEATURES: ReadonlySet<rtBand.BandFeature> = new Set(['height', 'orientation', 'aspect-ratio']);
 
@@ -806,7 +836,7 @@ function exportMarkless(parsed: MarklessStyleInput, inputText: string, inputPath
       ...x,
       assignments: x.assignments.map(renamed),
       // The plan lays out Dragon's own ids; a host names each assignment's geometry with the input's, by the export's rule.
-      ...(x.plan === undefined ? {} : { planNames: x.assignments.map((a) => {
+      ...(x.plan === undefined ? {} : { plan: withTransformed(x.plan, compiled), planNames: x.assignments.map((a) => {
         const rename = renameIn(a);
         return a.nodes.map((n) => [n.id, rename(n.id)] as const).filter(([d, m]) => d !== m);
       }), planRepeats: planRepeats(parsed, dragonIds) }),
@@ -1038,23 +1068,6 @@ function checkRows(parsed: MarklessStyleInput, inputPath: string, exported: Nati
     }
   }
   const rowStates = new Set(parsed.states.filter((st) => st.row !== undefined).map((st) => st.cell));
-  for (const [t, x] of Object.entries(exported.targets)) {
-    const byKey = new Map<string, ExportAssignment>();
-    // The export's values are still keyed by Dragon's state names here; the input names them by cell.
-    const rekey = cellKey(parsed);
-    const pageKey = (values: Readonly<Record<string, unknown>>): string => JSON.stringify(Object.entries(values).map(([k, v]) => [rekey(k), v] as const).filter(([k]) => !rowStates.has(k)).sort());
-    for (const a of x.assignments) {
-      const key = pageKey(a.values);
-      const first = byKey.get(key);
-      if (first === undefined) {
-        byKey.set(key, a);
-        continue;
-      }
-      const before = new Map(first.nodes.map((n) => [n.id, JSON.stringify([n.frame, n.writes])]));
-      const own = new Set(parsed.nodes.filter((n) => n.row !== undefined).map((n) => n.id));
-      for (const n of a.nodes) if (!own.has(n.id) && before.has(n.id) && before.get(n.id) !== JSON.stringify([n.frame, n.writes])) fail(`${t}: ${n.id} is outside the rows, and its style follows a row's own state; a phone styles each row by itself`);
-    }
-  }
   const rowsOf = new Map((parsed.repeats ?? []).map((r) => {
     const combos = rowStateCombinations(parsed, r.id);
     return [r.id, [...combos, ...combos].map((states, k): MarklessRow => ({ key: `r${k}`, states, texts: new Map() }))] as const;
@@ -1089,6 +1102,25 @@ function checkRows(parsed: MarklessStyleInput, inputPath: string, exported: Nati
     for (const n of programAt(sp, i).nodes) out.set(n.id, `${out.get(n.id) ?? ''}${JSON.stringify(n.writes)}`);
     return out;
   };
+  // A box outside the rows keeps its own style and writes at every row state; its frame may move as rows change size, and the rows layout places it again on the phone.
+  const outside = parsed.nodes.filter((n) => n.row === undefined && n.kind === 'element').map((n) => mainIds.get(n.id) as string);
+  for (const t of Object.keys(exported.targets) as NativeStyleTarget[]) {
+    const o = mainStyles.targets[t];
+    if (o === undefined || o.kind !== 'emitted') continue;
+    const byPage = new Map<string, Map<string, string>>();
+    for (const a of o.program.assignments) {
+      const values = Object.fromEntries(Object.entries(valuesOf(a.assignment)).map(([k, v]) => [mainKey(k), v]));
+      const look = lookOf(mainStyles, t, mainKey, values);
+      if (look === null) continue;
+      const page = JSON.stringify(Object.entries(values).filter(([k]) => !rowStates.has(k)).sort());
+      const first = byPage.get(page);
+      if (first === undefined) {
+        byPage.set(page, look);
+        continue;
+      }
+      for (const id of ['html', 'body', ...outside]) if (first.has(id) && look.has(id) && first.get(id) !== look.get(id)) fail(`${t}: ${id} is outside the rows, and its style follows a row's own state; a phone styles each row by itself`);
+    }
+  }
   for (const t of Object.keys(exported.targets) as NativeStyleTarget[]) {
     const o = mainStyles.targets[t];
     if (o === undefined || o.kind !== 'emitted') continue;

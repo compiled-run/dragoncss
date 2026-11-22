@@ -1,7 +1,7 @@
 // GRID G1a and G2 engine checks beside the G-P differential test (packages/parity/test/grid-corpus-*.test.ts): the grid arithmetic
 // helpers, the validator's grid shape rules with a planted input for each, and small engine cases pinned to Chrome 145 corpus values.
 import { describe, expect, it } from 'vitest';
-import type { GridAutoRepeat, GridContainerStyle, GridItemStyle, GridLine, LayoutBox, LayoutInput, TrackSize } from '../src/index.ts';
+import type { GridAutoRepeat, GridContainerStyle, GridItemStyle, GridLine, LayoutBox, LayoutInput, LayoutNode, ReplacedLeaf, TrackSize } from '../src/index.ts';
 import { absoluteRects, ahemMeasurer, layout, validateLayoutInput } from '../src/index.ts';
 import type { LU } from '../src/units.ts';
 import { ceilToInt, divLu, equalShare, floorToInt, frLeftover, frShareToLu, intDiv, intMod, rawOverFloat, setFlexFactor } from '../src/units.ts';
@@ -155,15 +155,15 @@ describe('the validator\'s grid rules, each with a planted input', () => {
       (r.children[0] as unknown as { children: unknown[] }).children = [button(style)];
     });
     expect(codes(withControl({ gridItem: autoItem }))).toEqual([]);
-    // The engine places a block button as a grid item (GRID-controls); a range stays unsupported, never an internal error.
-    const placed = layout(withControl({ gridItem: autoItem }) as LayoutInput, ahemMeasurer);
-    expect(placed.kind).toBe('ok');
-    const range = (style: Record<string, unknown>): unknown => JSON.parse(JSON.stringify(control('rng', { kind: 'range', defaultInlineSize: 129 }, { display: 'flex', ...style })));
-    const withRange = mutate((r) => {
-      (r.children[0] as unknown as { children: unknown[] }).children = [range({ gridItem: autoItem })];
-    });
-    const unplaced = layout(withRange as LayoutInput, ahemMeasurer);
-    expect(unplaced.kind === 'unsupported' ? [unplaced.unsupported.code, unplaced.unsupported.nodeId] : unplaced.kind).toEqual(['grid-control', 'rng']);
+    // A block button is a grid item; a range, fieldset or legend grid item is unsupported, never an internal error.
+    expect(layout(withControl({ gridItem: autoItem }) as LayoutInput, ahemMeasurer).kind).toBe('ok');
+    for (const kind of [{ kind: 'range', defaultInlineSize: 129 }, { kind: 'fieldset' }, { kind: 'legend' }] as const) {
+      const other = mutate((r) => {
+        (r.children[0] as unknown as { children: unknown[] }).children = [JSON.parse(JSON.stringify(control('btn', kind, { gridItem: autoItem })))];
+      });
+      const placed = layout(other as LayoutInput, ahemMeasurer);
+      expect(placed.kind === 'unsupported' ? [placed.unsupported.code, placed.unsupported.nodeId, placed.unsupported.detail] : placed.kind, kind.kind).toEqual(['grid-control', 'btn', `a ${kind.kind} control as a grid item (not yet supported)`]);
+    }
     expect(codes(withControl({}))).toContain('grid-shape $.root.children[0].children[0].style.gridItem');
     const placedOutside = input(box('root', {}, []));
     (placedOutside.root as unknown as { children: unknown[] }).children = [button({ gridItem: autoItem })];
@@ -597,5 +597,54 @@ describe('calculated and viewport track sizes (Blink GridTrackSize over a calcul
     const definite = box('g', { display: 'grid', width: { kind: 'px', value: 100 }, height: { kind: 'px', value: 40 }, grid: gridStyle({ templateRows: [{ count: 1, sizes: [pp(30, 50)] }], explicitRowCount: 1 }) }, [box('i0', { gridItem: autoItem })]);
     // 30px + 50% of 40px, and the item stretches to the row.
     expect(inGrid(definite, ['i0'])).toEqual([[0, 0, 6400, 50 * 64]]);
+  });
+});
+
+describe('replaced elements and block buttons as grid items (GRID-items, pinned to Chrome 145 in grid-replaced-items and grid-replaced-tracks)', () => {
+  const leaf = (id: string, w: number, h: number, style: Partial<LayoutBox['style']> = {}, justifySelf: GridItemStyle['justifySelf'] = 'auto'): ReplacedLeaf =>
+    ({ kind: 'replaced', id, style: { ...box(id, {}).style, gridItem: { ...autoItem, justifySelf }, ...style }, natural: { kind: 'image', width: w, height: h }, defaultWidth: 300, defaultHeight: 150, objectFit: 'fill', objectPositionX: { kind: 'px', value: 0 }, objectPositionY: { kind: 'px', value: 0 } });
+  const area = (items: readonly LayoutNode[], over: Partial<GridContainerStyle> = {}, width = 200): LayoutBox =>
+    box('g', { display: 'grid', width: { kind: 'px', value: width }, grid: gridStyle({ templateColumns: [{ count: 1, sizes: [px(200)] }], explicitColumnCount: 1, templateRows: [{ count: 1, sizes: [px(120)] }], explicitRowCount: 1, ...over }) }, [...items]);
+  const at = (cssPx: number): number => cssPx * 64;
+
+  it('sizes a replaced item as fit-content under normal, and stretches it only under an explicit stretch (AxisEdgeFromItemPosition)', () => {
+    // A 160x80 image in a 200x120 area: its natural size; justify-self stretch 200 wide with the ratio's 100; align-self stretch
+    // 120 tall with the ratio's 240; both 200x120.
+    expect(inGrid(area([leaf('a1', 160, 80)]), ['a1'])).toEqual([[0, 0, at(160), at(80)]]);
+    expect(inGrid(area([leaf('a2', 160, 80, {}, 'stretch')]), ['a2'])).toEqual([[0, 0, at(200), at(100)]]);
+    expect(inGrid(area([leaf('a3', 160, 80, { alignSelf: 'stretch' })]), ['a3'])).toEqual([[0, 0, at(240), at(120)]]);
+    expect(inGrid(area([leaf('a4', 160, 80, { alignSelf: 'stretch' }, 'stretch')]), ['a4'])).toEqual([[0, 0, at(200), at(120)]]);
+    // justify-items: stretch on the container is an explicit stretch too.
+    expect(inGrid(area([leaf('a6', 160, 80)], { justifyItems: 'stretch' }), ['a6'])).toEqual([[0, 0, at(200), at(100)]]);
+  });
+
+  it('measures a replaced item\'s column contribution with its row area as its block size, and a compressible width as zero', () => {
+    // auto 1fr columns and a 100px row: height 50% is 50px there, so the image and its auto column are 100px wide.
+    const tracks = { templateColumns: [{ count: 1, sizes: [AUTO, fr(1)] }], explicitColumnCount: 2, templateRows: [{ count: 1, sizes: [px(100)] }], explicitRowCount: 1 };
+    expect(inGrid(area([leaf('b11', 160, 80, { height: { kind: 'percent', value: 50 } }), box('x7', { gridItem: autoItem })], tracks, 300), ['b11', 'x7'])).toEqual([[0, 0, at(100), at(50)], [at(100), 0, at(200), at(100)]]);
+    // A min-content column with a width: 100% image (ComputeMinAndMaxContentContributionForReplaced) is 0 wide.
+    const minContent = { templateColumns: [{ count: 1, sizes: [{ kind: 'breadth' as const, breadth: { kind: 'min-content' as const } }, fr(1)] }], explicitColumnCount: 2, templateRows: [], explicitRowCount: 0 };
+    expect(inGrid(area([leaf('b3', 160, 80, { width: { kind: 'percent', value: 100 } }), box('x2', { gridItem: autoItem, height: { kind: 'px', value: 10 } })], minContent, 300), ['b3'])).toEqual([[0, 0, 0, 0]]);
+  });
+
+  it('refuses a baseline-aligned replaced grid item by name, and an absolutely positioned one as any container does', () => {
+    const refused = (root: LayoutBox): unknown => {
+      const r = layout(input(box('root', {}, [root])), ahemMeasurer);
+      return r.kind === 'unsupported' ? [r.unsupported.code, r.unsupported.nodeId] : r.kind;
+    };
+    expect(refused(area([leaf('i', 10, 10, { alignSelf: 'baseline' })]))).toEqual(['grid-replaced', 'i']);
+    expect(refused(area([leaf('i', 10, 10, {}, 'last baseline')]))).toEqual(['grid-replaced', 'i']);
+    expect(refused(area([leaf('i', 10, 10, { position: 'absolute' })]))).toEqual(['replaced-out-of-flow', 'i']);
+    // Through the intrinsic size of a shrink-to-fit grid too, which builds the grid without laying out its container first.
+    const shrink = box('f', { display: 'flex' }, [box('g', { display: 'grid', grid: gridStyle({}) }, [leaf('i', 10, 10, { position: 'absolute' })])]);
+    expect(refused(shrink)).toEqual(['replaced-out-of-flow', 'i']);
+    expect(refused(area([control('c', { kind: 'button-block' }, { gridItem: autoItem, position: 'absolute' })]))).toEqual(['control-out-of-flow', 'c']);
+  });
+
+  it('lays out a block button grid item with its control facts: its contents centred in a stretched row', () => {
+    const button = control('b6', { kind: 'button-block' }, { gridItem: autoItem }, [box('b6-t', { height: { kind: 'px', value: 10 } })]);
+    const tall = { templateColumns: [{ count: 1, sizes: [px(300)] }], explicitColumnCount: 1, templateRows: [{ count: 1, sizes: [px(60)] }], explicitRowCount: 1 };
+    // The button fills its 300x60 area, and its 10px content sits at (60 - 10) / 2.
+    expect(inGrid(area([button], tall, 300), ['b6', 'b6-t'])).toEqual([[0, 0, at(300), at(60)], [0, at(25), at(300), at(10)]]);
   });
 });

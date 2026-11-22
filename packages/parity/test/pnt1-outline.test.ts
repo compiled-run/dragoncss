@@ -22,9 +22,14 @@ import { ruleKind } from '../src/samples.ts';
 import type { Box, Rgba } from './paint-model.ts';
 import { boxes } from './paint-model.ts';
 import type { OutlineFaults } from './outline-model.ts';
-import { NO_OUTLINE_FAULTS, outlineModelAt, outlineOrder, outlines } from './outline-model.ts';
+import { NO_OUTLINE_FAULTS, outlineModelAt, outlineOrder, outlines, ringsOver } from './outline-model.ts';
+import { outlineWrite } from '../src/paint-samples/outline.ts';
 
-const OUTLINE_FIXTURES = (FIXTURE_GROUPS.find((g) => g.id === 'outline')?.fixtures ?? []).filter((f) => f.kind === 'layout');
+// outline-layers paints outlines in their paint layers, under and inside positioned boxes: pnt1-effects proves it with the Appendix E
+// model. outline-transform draws them inside transformed layers: the describe block below proves it. This model (boxes in tree
+// order and untransformed, every outline last) leaves both out.
+const OUTSIDE_THE_MODEL = ['outline-layers', 'outline-transform'];
+const OUTLINE_FIXTURES = (FIXTURE_GROUPS.find((g) => g.id === 'outline')?.fixtures ?? []).filter((f) => f.kind === 'layout' && !OUTSIDE_THE_MODEL.includes(f.id));
 
 /** Each outline plant's host twin: a shift in device px and the model's faults. */
 const TWINS: Record<'outline-offset-1' | 'outline-dash-unfitted' | 'outline-tones-swapped', { readonly shift: number; readonly faults: OutlineFaults }> = {
@@ -136,4 +141,58 @@ describe('PNT1 outline: translucent side-painter outlines are proven on web only
     expect(cites(webProfile.rows)).toEqual(expect.arrayContaining(['outline-web', 'outline-web-rtl']));
     for (const profile of [iosProfile, androidProfile]) expect(cites(profile.rows).filter((id) => id.startsWith('outline-web'))).toEqual([]);
   });
+});
+
+// PNT1-outline-transform: an outline inside a transformed layer (scaled, translated, rotated, scaled about a corner, a child of a
+// translated box) is drawn in the layer's view, so it moves with the layer's matrices. Every colour point of such a ring, which
+// the transform sample module maps through the matrices and keeps clear of every transformed edge, must be the outline's colour
+// in Chrome's pixels. The untransformed rings (what the outline-root-hosted plant draws) must miss some of those points at every DPR.
+describe('PNT1 outline: a ring inside a transformed layer is where Chrome draws it', () => {
+  const spec = (FIXTURE_GROUPS.find((g) => g.id === 'outline')?.fixtures ?? []).find((f) => f.id === 'outline-transform');
+  if (spec === undefined) throw new Error('no outline-transform fixture');
+  it('is an outline-root-hosted plant case', () => {
+    expect(PLANT_CASES['outline-root-hosted']).toContain('outline-transform');
+  });
+  for (const c of casesOf(spec, fixtureInput(spec))) {
+    it(`${c.id} at ${DPRS.join(', ')}`, () => {
+      const programs = nativePrograms(nativeCompile(spec, c.environment.direction), c.assignment);
+      if (programs.kind !== 'ready') throw new Error(programs.reason);
+      const p = programs.programs.uikit;
+      const byId = new Map(p.nodes.map((n) => [n.id, n]));
+      const transformed = (id: string): boolean => {
+        for (let n = byId.get(id); n !== undefined; n = n.parent === null ? undefined : byId.get(n.parent)) if (((n.facts['transform'] as { ops: readonly unknown[] } | undefined)?.ops.length ?? 0) > 0) return true;
+        return false;
+      };
+      const problems: string[] = [];
+      for (const dpr of DPRS) {
+        const owners = new Set<string>();
+        const chrome = committedPixels(c.id, dpr);
+        if (chrome === null) throw new Error(`${c.id}@${dpr}: no committed Chrome PNG`);
+        const flat = outlines(p, boxes(p, c.environment.viewport, dpr), dpr, 0);
+        let points = 0;
+        let missed = 0;
+        for (const pt of casePoints(p, c.environment.viewport, dpr)) {
+          const m = /^border:(.+):outline-\d+-(top|right|bottom|left)$/.exec(pt.rule);
+          if (m === null || !transformed(m[1] as string)) continue;
+          const id = m[1] as string;
+          const w = outlineWrite({ program: p } as never, id);
+          if (w === null) throw new Error(`${id}: an outline point with no outline write`);
+          points++;
+          owners.add(id);
+          const i = (pt.y * chrome.width + pt.x) * 4;
+          const got = [chrome.data[i], chrome.data[i + 1], chrome.data[i + 2], chrome.data[i + 3]];
+          const want = [w.color.r, w.color.g, w.color.b, 255];
+          if (w.color.alpha !== 255) throw new Error(`${id}: a translucent outline is not modelled here`);
+          if (got.some((v, k) => v !== want[k])) problems.push(`${pt.rule} at ${pt.x},${pt.y} @${dpr}: Chrome ${JSON.stringify(got)}, outline ${JSON.stringify(want)}`);
+          const ring = flat.find((r) => r.box.node.id === id);
+          if (ring === undefined || ringsOver([0, 0, 0, 0], [ring], pt.x, pt.y)[3] === 0) missed++;
+        }
+        expect(points, `transformed outline points @${dpr}`).toBeGreaterThan(0);
+        // Every transformed outline is compared at every DPR, the double ring and the transform-origin case included.
+        expect([...owners].sort(), `transformed outlines with points @${dpr}`).toEqual(['grow', 'kid', 'press', 'turn']);
+        expect(missed, `points the untransformed rings miss @${dpr}`).toBeGreaterThan(0);
+      }
+      expect(problems).toEqual([]);
+    });
+  }
 });

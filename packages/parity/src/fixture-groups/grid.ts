@@ -3,8 +3,8 @@
 // justify-self only on flex items (block children and absolutely positioned boxes align by it). G1a's fixtures lay out display:
 // grid: placement, named lines and areas, fr, intrinsic tracks, alignment, sizing and nesting. The rejects are inline-grid, subgrid,
 // masonry, values Chrome's parser drops beyond the webref grammar, math functions inside track lists, and justify-* where unproven.
-// The hit lane refuses the G1a cases by name (rt-hit.ts hitRefusal), and native :hover, :active and :focus rules in a case with a
-// grid container are refused (DRAGON_UNSUPPORTED_SELECTOR, package GRID hit model) until grid hit testing is built.
+// The hit lane hit-tests grid items in order-modified document order (GRID G-HIT, rt-hit.ts gridOrders), so native :hover, :active
+// and :focus rules compile in a case with a grid container.
 import type { FixtureSpec } from '../fixtures.ts';
 import { both, layout, reject } from './define.ts';
 
