@@ -44,6 +44,10 @@ export const CONTROLS: readonly FixtureSpec[] = [
   reject('reject-controls-text-field-inline-rtl', 'DRAGON_UNSUPPORTED_VALUE', 'rtl', 'the inline-block <input> f is on a right-to-left line of d'),
   reject('reject-controls-text-field-inline-valign', 'DRAGON_UNSUPPORTED_VALUE', 'middle', 'vertical-align: middle on the inline-block <input> f is not supported'),
   reject('reject-controls-text-field-inline-flex', 'DRAGON_UNSUPPORTED_VALUE', 'inline-flex', 'display: inline-flex on <input> f is not supported on a text field'),
+  // OVFL-B with PNT1: the Markless notes form's field, a rounded textarea (1px border, 10px radius, padding 12px 14px, a background),
+  // and the same field with a 4px border, whose corners the sampler can reach. Native clips a textarea at rest, so its content is
+  // clipped to the rounded padding box as Chrome's scroll container clips it (pnt1-radius.test.ts).
+  layout('controls-textarea-rounded'),
   // FORM-checkbox: a themed checkbox, 13px unless sized, as a block and a flex item (the notes form's row), checked
   // and not, under a dark and a light accent; the rejects name what the slice does not draw.
   both('controls-checkbox'),
