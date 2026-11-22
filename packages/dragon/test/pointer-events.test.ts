@@ -70,22 +70,19 @@ describe('pointer-events: compile and hit facts', () => {
     }
   });
 
-  it('compiles border-radius (PNT1) and carries its eight components in the hit facts of the rounded element only (SELD-R2b)', () => {
+  it('compiles border-radius (PNT1) and leaves the hit facts unchanged; the hit lane refuses a rounded case by name (parity hit-report.test)', () => {
     const plain = project().compile(inputFor('.a { pointer-events: none; }', tree));
-    const c = project().compile(inputFor('.a { pointer-events: none; border-radius: 4px 10%; }', tree));
+    const c = project().compile(inputFor('.a { pointer-events: none; border-radius: 4px; }', tree));
     expect(c.diagnostics.map((d) => d.code)).not.toContain('DRAGON_UNSUPPORTED_PROPERTY');
     expect(c.outputs.web.kind).toBe('ready');
-    const px = { percent: false, value: 4 };
-    const pc = { percent: true, value: 10 };
-    expect(hitFacts(c, [])?.get('a')).toEqual({ pointerEvents: 'none', inherited: false, activation: false, radii: [px, pc, px, pc, px, pc, px, pc] });
-    for (const [id, f] of hitFacts(c, []) ?? []) if (id !== 'a') expect(f, id).toEqual(hitFacts(plain, [])?.get(id));
+    expect(hitFacts(c, [])).toEqual(hitFacts(plain, []));
   });
 
   it('carries the computed value, its inheritance and the activation handler', () => {
     const c = project().compile(inputFor('.a { pointer-events: none; }', tree));
     const facts = hitFacts(c, []);
-    expect(facts?.get('a')).toEqual({ pointerEvents: 'none', inherited: false, activation: false, radii: [] });
-    expect(facts?.get('b')).toEqual({ pointerEvents: 'none', inherited: true, activation: false, radii: [] });
+    expect(facts?.get('a')).toEqual({ pointerEvents: 'none', inherited: false, activation: false });
+    expect(facts?.get('b')).toEqual({ pointerEvents: 'none', inherited: true, activation: false });
     for (const [id, f] of facts ?? []) if (id !== 'a' && id !== 'b') expect(f.pointerEvents, id).toBe('auto');
     expect([...ACTIVATION_TAGS]).toEqual(['a', 'button']);
     expect(hitFacts({}, [])).toBeNull();

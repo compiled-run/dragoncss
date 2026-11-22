@@ -6,7 +6,6 @@
 // inline axis and rows the block axis; rtl mirrors the inline offsets at the end.
 import type {
   AlignItems,
-  ControlBox,
   Direction,
   GridAutoRepeat,
   GridContainerStyle,
@@ -15,6 +14,7 @@ import type {
   GridSelfAlign,
   GridSpan,
   CalcExpr,
+  ControlBox,
   LayoutBox,
   LayoutNode,
   LayoutStyle,

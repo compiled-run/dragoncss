@@ -20,18 +20,6 @@ export const ATTRIBUTES: readonly FixtureSpec[] = [
   both('attr-neutral-overlay'),
   both('attr-neutral-rel'),
   both('attr-neutral-target'),
-  both('attr-neutral-name'),
-  both('attr-neutral-autocomplete'),
-  both('attr-neutral-required'),
-  both('attr-neutral-minlength'),
-  both('attr-neutral-maxlength'),
-  // The form attributes on the controls they constrain: each attr-neutral-form-<name> equals attr-neutral-form-none in Chrome.
-  both('attr-neutral-form-none'),
-  both('attr-neutral-form-name'),
-  both('attr-neutral-form-autocomplete'),
-  both('attr-neutral-form-required'),
-  both('attr-neutral-form-minlength'),
-  both('attr-neutral-form-maxlength'),
   reject('reject-attr-href', 'DRAGON_UNSUPPORTED_ATTRIBUTE', '<div data-dragon-id="a" class="a" href="https://example.com/">', 'attribute href on a is not supported: its rendering effect belongs to the inline and link package INL1'),
   reject('reject-attr-lang', 'DRAGON_UNSUPPORTED_ATTRIBUTE', '<div data-dragon-id="a" class="a" lang="en">', 'attribute lang on a is not supported: its rendering effect belongs to the text package TXT1-C'),
   // css-style-attr: element-attached declarations (analysis/style-attribute.ts), and the visually-hidden pattern written as one.

@@ -223,10 +223,12 @@ describe('outline: the native targets draw every style but auto, the side painte
         expect(errors(own).filter((d) => d.message.includes('outline')), `${css} ${outline}`).toEqual([]);
       }
     }
-    const dashed = tree('.b { height: 5px; outline: 2px dashed red; } .q { transform: scale(0.97); }', (r) => [div(r, 'q', ['q'], [div(r, 'b', ['b'])])]);
-    const got = errors(dashed).filter((d) => d.message.startsWith('b has a dashed outline'));
-    expect(got.map((d) => [d.target, d.message])).toEqual([['ios', `b has a dashed outline inside q, which has a transform, and Dragon draws only solid and double outlines inside a transformed layer${SUFFIX}`]]);
-    expectCatalogued(got);
+    for (const style of ['dotted', 'dashed', 'groove', 'ridge', 'inset', 'outset']) {
+      const sided = tree(`.b { height: 5px; outline: 3px ${style} red; } .q { transform: scale(0.97); }`, (r) => [div(r, 'q', ['q'], [div(r, 'b', ['b'])])]);
+      const got = errors(sided).filter((d) => d.message.startsWith(`b has a ${style} outline`));
+      expect(got.map((d) => [d.target, d.message]), style).toEqual([['ios', `b has a ${style} outline inside q, which has a transform, and Dragon draws only solid and double outlines inside a transformed layer${SUFFIX}`]]);
+      expectCatalogued(got);
+    }
     // A transform with opacity is still a layer the outline would have to join the composite of.
     const both = tree('.b { height: 5px; outline: 2px solid red; } .q { transform: scale(0.97); opacity: 0.85; }', (r) => [div(r, 'q', ['q'], [div(r, 'b', ['b'])])]);
     expect(errors(both).filter((d) => d.message.startsWith('b has an outline')).map((d) => d.message.split(',')[0])).toEqual(['b has an outline inside q']);
@@ -531,9 +533,9 @@ describe("outline: the 3D tones (Blink 145's Color::Dark, Color::Light and Calcu
 });
 
 describe('outline: the hit model (R13)', () => {
-  it('models every outline longhand value (SELD-R2b): Blink never hit-tests an outline, so an outline that paints is a modelled fact', () => {
+  it('models the outline longhands at their computed initial values only, so an outline that paints stays an unmodelled fact', () => {
     const m = (p: 'outline-color' | 'outline-style' | 'outline-width' | 'outline-offset', v: unknown): boolean | undefined => HIT_MODELLED.get(p)?.(v as never);
     expect([m('outline-color', { kind: 'keyword', value: 'currentcolor' }), m('outline-style', { kind: 'keyword', value: 'none' }), m('outline-width', { kind: 'length', value: 0, unit: 'px' }), m('outline-offset', { kind: 'length', value: 0, unit: 'px' })]).toEqual([true, true, true, true]);
-    expect([m('outline-color', { kind: 'keyword', value: 'red' }), m('outline-style', { kind: 'keyword', value: 'solid' }), m('outline-width', { kind: 'length', value: 2, unit: 'px' }), m('outline-offset', { kind: 'length', value: -1, unit: 'px' })]).toEqual([true, true, true, true]);
+    expect([m('outline-color', { kind: 'keyword', value: 'red' }), m('outline-style', { kind: 'keyword', value: 'solid' }), m('outline-width', { kind: 'length', value: 2, unit: 'px' }), m('outline-offset', { kind: 'length', value: -1, unit: 'px' })]).toEqual([false, false, false, false]);
   });
 });

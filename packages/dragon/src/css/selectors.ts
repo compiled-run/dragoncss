@@ -6,8 +6,7 @@ import { authored, diagnostic } from '../diagnostics/catalogue.ts';
 import type { Diagnostic, Span } from '../types.ts';
 import { list, spanOf } from './ast.ts';
 import { asciiLower, decodeName } from './escapes.ts';
-import { DIR_ARGUMENT_VALID, PSEUDO_CLASS_VALID, PSEUDO_ELEMENT_VALID } from './selector-validity.generated.ts';
-import type { Directionality } from './selector-validity.generated.ts';
+import { PSEUDO_CLASS_VALID, PSEUDO_ELEMENT_VALID } from './selector-validity.generated.ts';
 import type { SheetUse } from './stylesheet.ts';
 
 /** Selectors-4 §6 attribute operators; null tests presence only. */
@@ -31,9 +30,7 @@ export type PseudoClass =
   | { readonly kind: 'interaction'; readonly pseudo: InteractionPseudo }
   | { readonly kind: 'link'; readonly state: LinkState }
   /** :disabled, or :enabled (Selectors-4 §12.1.1, HTML §4.16.3): a form control's disabled attribute, a state like any other. */
-  | { readonly kind: 'disabled'; readonly enabled: boolean }
-  /** :dir() (Selectors-4 §9.1): the directionality the element's dir attributes give it; null for an argument that matches nothing. */
-  | { readonly kind: 'dir'; readonly direction: Directionality | null };
+  | { readonly kind: 'disabled'; readonly enabled: boolean };
 
 /** :link (an unvisited hyperlink), :visited, or :any-link (either). */
 export type LinkState = 'unvisited' | 'visited' | 'any';
@@ -95,7 +92,7 @@ export type Selector = {
 };
 
 const SELECTOR_FIX =
-  'Use type, class, id, attribute and structural pseudo-class selectors (:root, :empty, :first-child, :nth-child(), :is(), :where(), :not(), :has(), :dir() and the like), joined by descendant, child or sibling combinators.';
+  'Use type, class, id, attribute and structural pseudo-class selectors (:root, :empty, :first-child, :nth-child(), :is(), :where(), :not(), :has() and the like), joined by descendant, child or sibling combinators.';
 const INTERACTIVE = new Set(['focus-within', 'target', 'checked']);
 const COMBINATORS: ReadonlySet<string> = new Set([' ', '>', '+', '~']);
 const LEGACY_GENERATED: ReadonlySet<string> = new Set(GENERATED_PSEUDOS);
@@ -275,35 +272,8 @@ function parsePseudoClass(part: CssNode, ctx: Context, refuse: Refuse): PseudoCl
     if (name === 'not') return { kind: 'not', selectors: inner };
     return { kind: 'is', where: name === 'where', selectors: inner };
   }
-  if (name === 'dir' && args !== null) return parseDir(part, args, text, ctx, refuse);
   refuse(part, `${text} is not supported`);
   return null;
-}
-
-/**
- * :dir() from Chrome 145's capture (DIR_ARGUMENT_VALID): an empty argument is invalid, and an identifier matches the
- * directionality its row gives, looked up as written or ASCII-lowercased. An identifier with no row is refused, as missing data.
- */
-function parseDir(part: CssNode, args: readonly CssNode[], text: string, ctx: Context, refuse: Refuse): PseudoClass | null {
-  const only = args[0];
-  if (args.length === 0) {
-    const row = DIR_ARGUMENT_VALID[''];
-    if (row === undefined) throw new Error('the :dir() capture has no row for an empty argument');
-    if (!row.valid) chromeInvalid(part, text, ctx, refuse);
-    else refuse(part, `${text} is not supported`);
-    return null;
-  }
-  if (args.length !== 1 || only === undefined || only.type !== 'Identifier') {
-    refuse(part, `${text} is not supported: :dir() takes one identifier`);
-    return null;
-  }
-  const ident = decodeName(String(only['name']));
-  const row = DIR_ARGUMENT_VALID[ident] ?? DIR_ARGUMENT_VALID[asciiLower(ident)];
-  if (row === undefined || !row.valid) {
-    refuse(part, `${text} is not supported: Chrome 145's handling of :dir(${ident}) is not captured (scripts/capture-selector-validity.ts)`, 'Use :dir(ltr) or :dir(rtl).');
-    return null;
-  }
-  return { kind: 'dir', direction: row.matches };
 }
 
 /** A selector list; relative: the default anchor of a :has() argument (its selectors may start with a combinator). undefined: refused. */

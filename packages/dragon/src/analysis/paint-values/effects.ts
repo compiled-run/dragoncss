@@ -328,8 +328,8 @@ export function opacityGroupPlans(root: ResolvedElement): ReadonlyMap<string, Gr
     const outlined = members.filter((m) => paintedOutlineStyle(m) !== null);
     if (outlined.length > 0) {
       const o = outlined[0] as ResolvedElement;
-      const style = paintedOutlineStyle(o) as string;
-      if (style !== 'solid' && style !== 'double') return refused(`${o.element.address} has a ${style} outline`);
+      const sided = outlined.find((m) => !['solid', 'double'].includes(paintedOutlineStyle(m) as string));
+      if (sided !== undefined) return refused(`${sided.element.address} has a ${paintedOutlineStyle(sided)} outline`);
       const translucentOutline = outlined.find((m) => outlineColor(m).color.alpha !== 255);
       if (translucentOutline !== undefined) return refused(`${translucentOutline.element.address} has an outline that is not opaque`);
       const soft = members.find((m) => (m !== g && opacityAt(m) > 0 && opacityAt(m) < 1) || translucentPaint(m));
@@ -415,6 +415,17 @@ export function opacityGroupPlans(root: ResolvedElement): ReadonlyMap<string, Gr
       for (const [p, ok] of [['clip-path', ['none']], ['mask-image', ['none']], ['filter', ['none']], ['backdrop-filter', ['none']], ['mix-blend-mode', ['normal']]] as const) {
         const k = keywordAt(el, p);
         if (k !== null && !(ok as readonly string[]).includes(k)) return refused(`${id} paints before it with a ${p}, which the backdrop capture is not proven to draw as the screen does`);
+      }
+      if (up.includes(el)) continue;
+      // Paint Chrome may composite in a layer of its own (so the group over it is composited for overlap, with its own tiles), or
+      // that changes without a box invalidation (a scroller's offset, a video frame, a control's own drawing).
+      const tag = el.element.tag;
+      if (tag !== 'html' && tag !== 'body' && (FOLD_TAGS_OUT.has(tag) || isReplacedTag(tag) || SVG_SHAPE_TAGS.includes(tag))) return refused(`${id} paints before it and is a <${tag}>, a control, replaced or svg box, which the backdrop capture is not proven to draw as the screen does`);
+      if (el !== propagated) for (const p of ['overflow-x', 'overflow-y']) if (['auto', 'scroll'].includes(keywordAt(el, p) ?? 'visible')) return refused(`${id} paints before it and scrolls (${p}: ${keywordAt(el, p)}), which the backdrop capture does not follow`);
+      if (elementWillChange(el).length > 0) return refused(`${id} paints before it with will-change, a compositor layer`);
+      for (const [p, ok] of [['transform-style', ['flat']], ['backface-visibility', ['visible']], ['perspective', ['none']]] as const) {
+        const k = keywordAt(el, p);
+        if (k !== null && !(ok as readonly string[]).includes(k)) return refused(`${id} paints before it with ${p}: ${k}, a compositor layer`);
       }
     }
     return { kind: 'group', filter, backdrop: null, painters, before };

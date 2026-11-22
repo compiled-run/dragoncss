@@ -187,7 +187,7 @@ function scanlinesNearRings(ctx: PaintSampleContext): ReadonlySet<string> {
 }
 
 /** The colour points and edge scanlines of one box's outline rings, on its untransformed geometry. */
-export function ringPoints(ctx: PaintSampleContext, box: SampleBox, rings: readonly Ring[], ops: readonly BorderOp[] | null): SamplePoint[] {
+export function ringPoints(ctx: PaintSampleContext, box: SampleBox, rings: readonly Ring[], ops: readonly BorderOp[] | null, scale: { readonly x: number; readonly y: number } = { x: 1, y: 1 }): SamplePoint[] {
   const inset = SAMPLE_INSET_DEVICE_PX;
   const inImage = (x: number, y: number): boolean => x >= 0 && y >= 0 && x < ctx.size.width && y < ctx.size.height;
   const out: SamplePoint[] = [];
@@ -197,6 +197,8 @@ export function ringPoints(ctx: PaintSampleContext, box: SampleBox, rings: reado
     for (const side of SIDES) {
       const horizontal = side === 'top' || side === 'bottom';
       const band = side === 'top' ? it - ot : side === 'bottom' ? ob - ib : side === 'left' ? il - ol : or - ir;
+      // The band as it is drawn: a transform the points are mapped through (transform.ts) scales it across the side.
+      const drawn = band * (horizontal ? scale.y : scale.x);
       const middle = horizontal ? Math.floor((il + ir) / 2) : Math.floor((it + ib) / 2);
       // A ring style takes the middle of the side; the side painter's styles try every position of the side's straight part
       // (between the inner corners, clear of them by the inset), nearest the middle first.
@@ -205,7 +207,7 @@ export function ringPoints(ctx: PaintSampleContext, box: SampleBox, rings: reado
       const crisp = (pts: readonly (readonly [number, number])[]): boolean => ops === null || pts.every(([x, y]) => crispUnder(ops, x, y, horizontal ? inset : 0, horizontal ? 0 : inset));
       const outerEdge = side === 'top' ? ot : side === 'bottom' ? ob : side === 'left' ? ol : or;
       const inward = side === 'top' || side === 'left' ? 1 : -1;
-      if (band >= 2 * inset + 1) {
+      if (drawn >= 2 * inset + 1) {
         const across = inward > 0 ? outerEdge + Math.floor((band - 1) / 2) : outerEdge - 1 - Math.floor((band - 1) / 2);
         const along = alongs.find((a) => {
           const [x, y] = horizontal ? [a, across] : [across, a];
@@ -216,7 +218,7 @@ export function ringPoints(ctx: PaintSampleContext, box: SampleBox, rings: reado
           out.push({ x, y, rule: `border:${box.id}:outline-${k}-${side}` });
         }
       }
-      if (band >= inset + 1) {
+      if (drawn >= inset + 1) {
         const first = inward > 0 ? outerEdge - inset - 1 : outerEdge + inset;
         const lineAt = (along: number): (readonly [number, number])[] => Array.from({ length: 2 * inset + 2 }, (_, j) => (horizontal ? [along, first + inward * j] : [first + inward * j, along]) as [number, number]);
         const along = alongs.find((a) => lineAt(a).every(([x, y]) => inImage(x, y)) && crisp(lineAt(a)));

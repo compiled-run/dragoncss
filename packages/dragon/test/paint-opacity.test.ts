@@ -126,6 +126,8 @@ describe('opacity: a group of one opaque fill folds into the fill on native', ()
     // the outline in its layer (opacity-group); a translucent member makes the layer software-built, which draws no outline.
     for (const outline of ['outline: 1px solid rgb(0, 0, 0);', 'outline: 6px double rgb(0, 90, 0); outline-offset: 2px;']) expect(errors(`.b { ${leaf} ${outline} opacity: 0.3; }`), outline).toEqual([]);
     expect(errors(`.a { ${leaf} outline: 1px solid rgb(0, 0, 0); opacity: 0.3; } .b { height: 2px; background-color: rgba(0, 0, 0, 0.5); }`)).toEqual(['ios a has opacity 0.', 'android a has opacity 0.']);
+    // Every outlined member's style is checked, not only the first's: a dashed ring on a later member is side-painter ops cc never folds.
+    expect(errors(`.a { ${leaf} outline: 1px solid rgb(0, 0, 0); opacity: 0.3; } .b { height: 2px; background-color: rgb(0, 0, 200); outline: 3px dashed rgb(0, 0, 0); }`)).toEqual(['ios a has opacity 0.', 'android a has opacity 0.']);
     // A box with a child is a group of more than one draw: it does not fold, and native pre-composites it (opacity-group).
     expect(errors(`.a { ${leaf} opacity: 0.3; } .b { height: 2px; }`)).toEqual([]);
     // A rounded box draws one DrawRRect, and with a border of four opaque solid sides in one width a fill and one DrawDRRect (Blink
@@ -332,6 +334,9 @@ describe('opacity: a group native pre-composites', () => {
       ['.g { opacity: 0.4; } .u { position: sticky; top: 0; }', false, 'u has position sticky and paints before it, so Chrome may composite it in a compositor layer whose tiles Dragon does not know'],
       ['.g { opacity: 0.4; } .u { position: fixed; top: 0; width: 5px; }', false, 'u has position fixed and paints before it, so Chrome may composite it in a compositor layer whose tiles Dragon does not know'],
       ['.g { opacity: 0.4; } .w { overflow: hidden; border-radius: 3px; }', false, 'it is inside w, a rounded overflow clip'],
+      ['.g { opacity: 0.4; } .u { overflow: auto; }', false, 'u paints before it and scrolls (overflow-x: auto), which the backdrop capture does not follow'],
+      ['.g { opacity: 0.4; } .u { will-change: transform; }', false, 'u paints before it with will-change, a compositor layer'],
+      ['.g { opacity: 0.4; } .u { backface-visibility: hidden; }', false, 'u paints before it with backface-visibility: hidden, a compositor layer'],
       ['.g { opacity: 0.4; transform: rotate(5deg); } .k { border: 1px solid rgb(0, 0, 0); }', false, "it has rotate(5deg), and Dragon samples a transformed group's backdrop for scale and translate only"],
       ['.g { opacity: 0.4; transform: scale(1.2); } .k { border: 1px solid rgb(0, 0, 0); }', false, "it has scale(1.2), and Dragon samples a transformed group's backdrop for scales up to 1 only"],
       ['.g { opacity: 0.4; transform: scale(0.9); }', false, 'it is transformed and k inside it is one draw op, which cc may fold in a tile Dragon cannot place'],

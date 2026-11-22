@@ -57,19 +57,10 @@ export function parseFrames(text: string, where: string): FramesSpec {
 
 /** Every frame fixture, by glob: a fixture directory anim-* or motion-* with frames.json. YUI-1 adds its own the same way. */
 export function animFixtures(dir: string = FIXTURES()): AnimFixture[] {
-  return sidecarFixtures(dir, 'frames.json');
-}
-
-/** Every event fixture: an anim-* fixture directory with events.json (dragon-frames/1), run only against Chrome's animation events, never captured. */
-export function animEventFixtures(dir: string = FIXTURES()): AnimFixture[] {
-  return sidecarFixtures(dir, 'events.json');
-}
-
-function sidecarFixtures(dir: string, sidecar: string): AnimFixture[] {
-  return readdirSync(dir).filter((f) => /^(anim|motion)-/.test(f) && existsSync(join(dir, f, sidecar))).sort().map((id) => ({
+  return readdirSync(dir).filter((f) => /^(anim|motion)-/.test(f) && existsSync(join(dir, f, 'frames.json'))).sort().map((id) => ({
     id,
     spec: tree(id),
-    frames: parseFrames(readFileSync(join(dir, id, sidecar), 'utf8'), `${id}/${sidecar}`),
+    frames: parseFrames(readFileSync(join(dir, id, 'frames.json'), 'utf8'), `${id}/frames.json`),
   }));
 }
 
@@ -411,20 +402,6 @@ export class Animator {
   /** One lane step (R2): every running, unfinished transition and animation moves by ms. */
   advance(ms: number): void {
     this.state = rtAnimator.animatorAdvance(this.state, this.tables, this.inputs, this.initial, ms, this.faults, this.anim);
-  }
-
-  /** event, giving the CSS animation events the style change causes (rt-animator.ts animationEvents). */
-  eventWithEvents(to: number): rtAnimator.AnimationEventRecord[] {
-    const before = this.state;
-    this.event(to);
-    return rtAnimator.animationEvents(before, this.state, this.tables, this.faults);
-  }
-
-  /** advance, giving the CSS animation events the step crosses (rt-animator.ts animationEvents). */
-  advanceWithEvents(ms: number): rtAnimator.AnimationEventRecord[] {
-    const before = this.state;
-    this.advance(ms);
-    return rtAnimator.animationEvents(before, this.state, this.tables, this.faults);
   }
 
   /** Every animated (node, property) value now, transitions and animations, in CSS px and legacy colour. */

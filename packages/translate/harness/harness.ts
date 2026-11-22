@@ -160,7 +160,7 @@ import {
   zoomViewportPx,
   ZERO,
 } from '../../layout/src/units.ts';
-import type { AnimationEntry, AnimationState, KeyframesRule, RunningAnimation } from '../../layout/src/rt-animations.ts';
+import type { AnimationEntry, AnimationState, KeyframesRule } from '../../layout/src/rt-animations.ts';
 import { runAnimationScript } from '../../layout/src/rt-animations.ts';
 import type { EasingSpec, RtFaults, StepPosition } from '../../layout/src/rt-easing.ts';
 import { cubicBezier, easingFromSpec, froundOf, LINEAR, solveBezier } from '../../layout/src/rt-easing.ts';
@@ -172,14 +172,14 @@ import type { RuleKeyframe } from '../../layout/src/rt-keyframes.ts';
 import { groupFromRule, sampleKeyframeEffect } from '../../layout/src/rt-keyframes.ts';
 import type { EffectTimingSpec, FillMode, PlaybackDirection, SecondsTiming } from '../../layout/src/rt-timing.ts';
 import { advanceHeld, computeSecondsTiming, computeTiming, currentTimeAt, HELD_ZERO, seekPaused } from '../../layout/src/rt-timing.ts';
-import type { RunningTransition, ScriptStep, TransitionListing, TransitionState } from '../../layout/src/rt-transition.ts';
+import type { ScriptStep, TransitionListing, TransitionState } from '../../layout/src/rt-transition.ts';
 import { runTransitionScript } from '../../layout/src/rt-transition.ts';
 import type { HitFact, HitFaults, HitTableFaults } from '../../layout/src/rt-hit.ts';
 import { hitGrid, hitRuns, hitTableOf } from '../../layout/src/rt-hit.ts';
 import type { SelectFacts } from '../../layout/src/rt-select.ts';
 import { selectAnswers, selectionTableOf } from '../../layout/src/rt-select.ts';
 import type { AnimationTable, AnimatorFaults, AnimatorState, AnimTables, BaseTable, ClosureTable, EasingCode, EasingKind, EntryCode, KeyframeBlock, KeyframesTable, KeyframeValue, ListingCode, ListingMode, OriginTable, RenderedTable, SlotTable, TrackKind, TrackRef, ValueCode, ValueKind } from '../../layout/src/rt-animator.ts';
-import { animationEvents, animatorAdvance, animatorBusy, animatorEvent, animatorFrame, animatorStart, frameColors, frameTransforms } from '../../layout/src/rt-animator.ts';
+import { animatorAdvance, animatorEvent, animatorFrame, animatorStart, frameColors, frameTransforms } from '../../layout/src/rt-animator.ts';
 import type { ForcedKind, InteractionFaults, InteractionPointer, InteractionTables } from '../../layout/src/rt-interaction.ts';
 import { activeMatches, checkInteractionTables, focusMatch, focusVisibleMatch, forcePseudo, hoverExitStarted, hoverMatches, interactionCombo, interactionFrame, interactionStart, interactionState, keyboardFocused, keyPressed, layoutChanged, mousePressed, mouseReleased, pointerExited, pointerMoved, remapPointer, touchCancelled, touchPressed, touchReleased } from '../../layout/src/rt-interaction.ts';
 import type { BackgroundLayer, BackgroundPaint, BoxKeyword, CssStop, GradientImage, LayerGeometry, LengthPct, RepeatKeyword, SizeComponent, StopColor } from '../../layout/src/paint-gradient.ts';
@@ -1847,15 +1847,6 @@ function radiusLength(a: readonly JsonValue[], i: number): RadiusLength {
   return { percent: flag === 1, value: arg(a, i + 1) };
 }
 
-/** One [percent, value] border-radius component of a hit fact. */
-function factRadius(v: JsonValue, path: string): RadiusLength {
-  const pair = arr(v, path);
-  if (pair.length !== 2) return fail(`${path}: expected [percent, value]`);
-  const value = num(item(pair, 1, path), path);
-  if (value < 0) return fail(`${path}: radius ${value} is negative`);
-  return { percent: bool(item(pair, 0, path), path), value };
-}
-
 /** Eight radius lengths from argument i on. */
 function radiusLengths(a: readonly JsonValue[], i: number): RadiusLength[] {
   const out: RadiusLength[] = [];
@@ -2834,14 +2825,10 @@ function rtHitResult(a: readonly JsonValue[]): string {
   arr(item(a, 3, '$'), '$[3]').forEach((f, i) => {
     const path = `$[3][${i.toString(16)}]`;
     const g = arr(f, path);
-    if (g.length !== 5) return fail(`${path}: expected [id, pointerEvents, inherited, activation, radii]`);
+    if (g.length !== 4) return fail(`${path}: expected [id, pointerEvents, inherited, activation]`);
     const pe = str(item(g, 1, path), path);
     if (pe !== 'auto' && pe !== 'none') return fail(`${path}: pointer-events ${pe} is not auto or none`);
-    const rs = arr(item(g, 4, path), `${path}[4]`);
-    if (rs.length !== 0 && rs.length !== 8) return fail(`${path}[4]: ${rs.length} radius components, not 0 or 8`);
-    const radii: RadiusLength[] = [];
-    for (let k = 0; k < rs.length; k++) radii.push(factRadius(item(rs, k, `${path}[4]`), `${path}[4][${k}]`));
-    facts.set(str(item(g, 0, path), path), { pointerEvents: pe, inherited: bool(item(g, 2, path), path), activation: bool(item(g, 3, path), path), radii });
+    facts.set(str(item(g, 0, path), path), { pointerEvents: pe, inherited: bool(item(g, 2, path), path), activation: bool(item(g, 3, path), path) });
   });
   const m = measurerFor(platform);
   if (m.kind !== 'ok') return fail(`rt-hit: no measurer for ${platform}`);
@@ -3875,10 +3862,21 @@ function slottedRoot(root: JsonValue, fields: readonly SlotField[], refusals: re
 }
 
 function planObj(v: JsonValue): JsonObj {
-  const slotted = v.kind === 'obj' && v.values.has('slots');
-  const plan = obj(v, slotted ? ['version', 'faces', 'densities', 'variants', 'assignments', 'slots'] : ['version', 'faces', 'densities', 'variants', 'assignments'], '$.plan');
+  const keys: string[] = ['version', 'faces', 'densities', 'variants', 'assignments'];
+  if (v.kind === 'obj' && v.values.has('slots')) keys.push('slots');
+  if (v.kind === 'obj' && v.values.has('transformed')) keys.push('transformed');
+  const plan = obj(v, keys, '$.plan');
   if (str(field(plan, 'version', '$.plan'), '$.plan.version') !== 'dragon.markless-plan/1') fail('$.plan.version: not dragon.markless-plan/1');
+  planTransformed(plan);
   return plan;
+}
+
+/** The text leaves the build lays out with a text-transform ($.plan.transformed), which a page text may not replace. */
+function planTransformed(plan: JsonObj): Map<string, boolean> {
+  const out = new Map<string, boolean>();
+  if (!plan.values.has('transformed')) return out;
+  for (const leaf of arr(field(plan, 'transformed', '$.plan'), '$.plan.transformed')) out.set(str(leaf, '$.plan.transformed'), true);
+  return out;
 }
 
 function planFaces(plan: JsonObj): Map<string, FontData> {
@@ -3993,83 +3991,6 @@ export function runMarklessLayout(line: string): string {
  * text]], "slots": one value per plan slot, required when the plan has slots}]}. Each row is a copy of the template named "<id>@<key>";
  * `shaper` shapes the text the build did not record.
  */
-/**
- * A Markless page's transitions and animations on the device: the export's animator tables run over the plan's assignments from
- * `initial` through `steps` (["event", assignment] for a style change, ["advance", ms] for time), as rtAnimatorResult runs them.
- * The answer is ["ok", events, colours, transforms, lengths, busy]: each CSS animation event as [step, type, node, name,
- * elapsedTime] (step -1 for the first style), then the frame now: the colour writes the device draws, the transform writes its
- * views take, each animated length as [node, property, kind, px, percent], and whether the animator still runs.
- */
-export function runMarklessAnimation(line: string): string {
-  try {
-    return marklessAnimation(obj(parseJson(line), ['dpr', 'viewport', 'plan', 'anim', 'initial', 'steps'], '$'));
-  } catch (e) {
-    if (e instanceof HarnessError) return `["harness-error",${q(e.detail)}]`;
-    return '["threw"]';
-  }
-}
-
-/** `out` with the animation events between two animator states appended, each as `[step, type, node, name, elapsedTime]`. */
-function eventsJson(out: string, step: number, before: AnimatorState, after: AnimatorState, t: AnimTables): string {
-  let all = out;
-  for (const e of animationEvents(before, after, t, RT_NO_FAULTS)) all += `${all === '' ? '' : ','}[${h(step)},${q(e.type)},${q(e.node)},${q(e.name)},${h(e.elapsedTime)}]`;
-  return all;
-}
-
-function marklessAnimation(o: JsonObj): string {
-  const plan = planObj(field(o, 'plan', '$'));
-  const dpr = numField(o, 'dpr', '$');
-  const faces = planFaces(plan);
-  let density: PlanDensity | null = null;
-  const densities = arr(field(plan, 'densities', '$.plan'), '$.plan.densities');
-  for (let i = 0; i < densities.length; i++) {
-    const at = `$.plan.densities[${i}]`;
-    const d = densities[i] as JsonValue;
-    if (density === null && numField(obj(d, ['dpr', 'calls', 'metrics', 'lengths'], at), 'dpr', at) === dpr) density = planDensity(d, at);
-  }
-  if (density === null) return fail(`the plan holds no text measured at ratio ${dpr}`);
-  const measurer = planMeasurer(faces, density, null);
-  const viewport = decodeViewport(field(o, 'viewport', '$'), '$.viewport');
-  const t = anTables(field(o, 'anim', '$'), '$.anim');
-  const count = arr(field(plan, 'assignments', '$.plan'), '$.plan.assignments').length;
-  if (t.assignments !== count) fail(`$.anim: the tables hold ${t.assignments} assignments, the plan ${count}`);
-  // Every assignment's engine input at DPR 1, where length endpoints come from (anim-cases.ts resolvedInputs).
-  const inputs: LayoutInput[] = [];
-  for (let k = 0; k < count; k++) {
-    const v = planVariant(plan, planAssignment(plan, k).variant);
-    inputs.push(resolvedInput({ viewport: viewport, devicePixelRatio: 1, viewportUnits: { small: viewport, large: viewport, dynamic: viewport }, safeArea: { top: 0, right: 0, bottom: 0, left: 0 }, rootFontSize: v.rootFontSize, root: v.root }, measurer, NO_ENGINE_FAULTS));
-  }
-  const initial = numField(o, 'initial', '$');
-  if (!Number.isInteger(initial) || initial < 0 || initial >= count) fail(`$.initial: ${initial} is not an assignment`);
-  let s: AnimatorState = animatorStart(t, inputs, initial, RT_NO_FAULTS, AN_NO_FAULTS);
-  const none: AnimatorState = { current: initial, transitions: s.transitions.map((): RunningTransition | null => null), lists: s.lists.map((): RunningAnimation[] => []), composed: s.composed };
-  let events = '';
-  events = eventsJson(events, -1, none, s, t);
-  const steps = arr(field(o, 'steps', '$'), '$.steps');
-  for (let i = 0; i < steps.length; i++) {
-    const path = `$.steps[${i}]`;
-    const g = arr(steps[i] as JsonValue, path);
-    const op = str(item(g, 0, path), path);
-    const before = s;
-    if (op === 'event') s = animatorEvent(s, t, inputs, initial, num(item(g, 1, path), path), RT_NO_FAULTS, AN_NO_FAULTS);
-    else if (op === 'advance') s = animatorAdvance(s, t, inputs, initial, num(item(g, 1, path), path), RT_NO_FAULTS, AN_NO_FAULTS);
-    else fail(`${path}: unknown step ${op}`);
-    events = eventsJson(events, i, before, s, t);
-  }
-  const frame = animatorFrame(s, t, RT_NO_FAULTS);
-  let colors = '';
-  for (const c of frameColors(frame, t, AN_NO_FAULTS)) colors += `${colors === '' ? '' : ','}[${q(c.node)},${q(c.property)},${h(c.rgba.r)},${h(c.rgba.g)},${h(c.rgba.b)},${h(c.rgba.alpha)}]`;
-  let transforms = '';
-  for (const w of frameTransforms(s, t, frame)) {
-    let ops = '';
-    for (const p of w.ops) ops += `${ops === '' ? '' : ','}[${q(p.fn)},[${q(p.x.kind)},${h(p.x.px)},${h(p.x.percent)}],[${q(p.y.kind)},${h(p.y.px)},${h(p.y.percent)}],${h(p.angle)},${h(p.sx)},${h(p.sy)}]`;
-    transforms += `${transforms === '' ? '' : ','}[${q(w.node)},[${ops}],[${q(w.origin.x.kind)},${h(w.origin.x.px)},${h(w.origin.x.percent)}],[${q(w.origin.y.kind)},${h(w.origin.y.px)},${h(w.origin.y.percent)}]]`;
-  }
-  let lengths = '';
-  for (const e of frame) if (e.value.kind === 'length') lengths += `${lengths === '' ? '' : ','}[${q(e.node)},${q(e.property)},${q(e.value.length.kind)},${h(e.value.length.px)},${h(e.value.length.percent)}]`;
-  return `["ok",[${events}],[${colors}],[${transforms}],[${lengths}],${animatorBusy(s) ? 'true' : 'false'}]`;
-}
-
 export function runMarklessRowsLayout(line: string, shaper: GlyphShaper): string {
   try {
     const parsed = parseJson(line);
@@ -4481,6 +4402,8 @@ function rowsVariant(plan: JsonObj, parts: PlanAssignmentParts, rowsValue: JsonV
   for (const [id, on] of parts.scrollers) if (on) sink.scrollers.set(id, true);
   const page = slotted(plan) ? slottedRoot(variantRootJson(plan, vi), parts.fields, parts.refusals, values, '$.slots') : variantRootJson(plan, vi);
   const texts = pageTexts(textsValue);
+  const transformed = planTransformed(plan);
+  for (const [leaf, _text] of texts) if (transformed.has(leaf)) fail(`$.texts: ${leaf} is laid out with a text-transform, which a phone does not apply to the text it is given`);
   const usedTexts = new Map<string, boolean>();
   const root = withRows(withPageTexts(page, texts, usedTexts, false), lists, sink);
   const kept = new Map<string, boolean>();
