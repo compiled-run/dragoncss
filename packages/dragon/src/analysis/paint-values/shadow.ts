@@ -10,9 +10,7 @@ import { authored, diagnostic } from '../../diagnostics/catalogue.ts';
 import type { ResolvedValue } from '../computed.ts';
 import { containsDescendants } from '../containment.ts';
 import { isReplacedTag } from '../elements/replaced.ts';
-import type { ResolvedElement, ResolvedText } from '../resolve.ts';
-import { blockInInlineChild } from '../resolve.ts';
-import { stackingContextOf } from '../text-shadow.ts';
+import type { ResolvedElement } from '../resolve.ts';
 import { elementTransform, elementWillChange, hasPerspective } from './transform.ts';
 import type { PaintCheck, PaintValueContext, PaintValues } from './types.ts';
 
@@ -81,31 +79,6 @@ function unshadowed(el: ResolvedElement, t: string): { readonly what: string; re
   return null;
 }
 
-/** Whether a child paints anything: an element that generates a box, or text that is not blank. */
-const paints = (k: ResolvedElement | ResolvedText): boolean => {
-  if (k.kind === 'element') return keyword(k, 'display') !== 'none';
-  const c = blockInInlineChild(k);
-  return !(c.kind === 'text' && c.blank);
-};
-
-/**
- * The transformed shadowed boxes with paint after them in their stacking context, in tree order: Chrome paints such a box, shadow
- * included, after that paint (CSS 2.1 Appendix E), where the companion view stays at the box's tree place.
- */
-function transformedBeneathLaterPaint(root: ResolvedElement): ResolvedElement[] {
-  const out: ResolvedElement[] = [];
-  const visit = (el: ResolvedElement, later: boolean): void => {
-    el.children.forEach((k, i) => {
-      if (k.kind !== 'element' || keyword(k, 'display') === 'none') return;
-      const after = later || el.children.slice(i + 1).some(paints);
-      if (shadowDeclaration(k) !== null && elementTransform(k).length > 0 && after) out.push(k);
-      visit(k, stackingContextOf(k) !== null || keyword(k, 'position') !== 'static' ? false : after);
-    });
-  };
-  visit(root, false);
-  return out;
-}
-
 /** The shadowed elements below el that generate boxes, in tree order. */
 function shadowedBelow(el: ResolvedElement): ResolvedElement[] {
   const out: ResolvedElement[] = [];
@@ -139,11 +112,6 @@ const checkShadowedElement: PaintCheck = (el, targets, diagnostics, reported) =>
     }
   };
   refuse(el, (t) => unshadowed(el, t));
-  if (el.element.tag === 'html') {
-    for (const s of transformedBeneathLaterPaint(el)) {
-      refuse(s, (t) => (unshadowed(s, t) !== null ? null : { what: 'transform-order', message: `${s.element.address} has a box-shadow and a transform, and content paints after it in its stacking context; Chrome paints the transformed box and its shadow over that content, and ${t} keeps its shadow at its tree place until the stacking sort lands`, manual: `Put the shadow on an untransformed element, or make ${s.element.address} the last content of its stacking context.` }));
-    }
-  }
   const group = groupOf(el);
   if (group === null) return;
   for (const s of shadowedBelow(el)) {
