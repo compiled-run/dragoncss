@@ -22,7 +22,7 @@ import { authored, diagnostic } from '../../diagnostics/catalogue.ts';
 import type { Diagnostic } from '../../types.ts';
 import type { ResolvedValue } from '../computed.ts';
 import type { ResolvedElement } from '../resolve.ts';
-import { paintedOutlineStyle, rounds } from './outline.ts';
+import { outlineColor, paintedOutlineStyle, rounds } from './outline.ts';
 import type { PaintValues } from './types.ts';
 import type { AnimationAnalysis } from '../animations.ts';
 import { elementWillChange } from './transform.ts';
@@ -203,7 +203,8 @@ function boxProblem(el: ResolvedElement, role: 'group' | 'member' | 'painter' | 
   // The element whose overflow the viewport takes neither clips nor scrolls itself.
   if (!viewportScroller) for (const p of ['overflow-x', 'overflow-y']) if (!allowed.includes(keywordAt(el, p) ?? 'visible')) return `${a} has ${p}: ${keywordAt(el, p)}${role === 'ancestor-painter' ? ', a scroller' : ', a clip or scroller'}`;
   if ((keywordAt(el, 'visibility') ?? 'visible') !== 'visible') return `${a} is not visible`;
-  if (paintedOutlineStyle(el) !== null) return `${a} has an outline`;
+  // A member's outline is in the platform's rendering of the group's view (its view hosts the outline view); planOf checks it.
+  if (!content && paintedOutlineStyle(el) !== null) return `${a} has an outline`;
   if (rounds(el)) return `${a} has a border radius`;
   const colors = usedColors(el);
   const bg = colors['background-color'].alpha;
@@ -231,6 +232,19 @@ function boxProblem(el: ResolvedElement, role: 'group' | 'member' | 'painter' | 
   if (translucent && sides.length !== 4 && sides.length !== 1) return `${a} has a translucent border on ${sides.length} sides, which Chrome draws otherwise than four sides or one`;
   if (canvasTag && sides.length > 0) return `${a} has a border`;
   return null;
+}
+
+/** Whether a box paints a translucent fill or border side, which makes the device build its group's layer in software (S2). */
+function translucentPaint(el: ResolvedElement): boolean {
+  const colors = usedColors(el);
+  const bg = colors['background-color'].alpha;
+  if (bg > 0 && bg < 255) return true;
+  return SIDES.some((side) => {
+    const style = keywordAt(el, `border-${side}-style`);
+    const w = el.props.get(`border-${side}-width` as never)?.value;
+    const a = colors[`border-${side}-color` as 'border-top-color'].alpha;
+    return style !== null && style !== 'none' && style !== 'hidden' && w !== undefined && w.kind === 'length' && w.value > 0 && a > 0 && a < 255;
+  });
 }
 
 /** Why a text run of a group cannot be rendered as Chrome draws it (null when it can): an opaque fill and nothing else. */
@@ -296,6 +310,19 @@ export function opacityGroupPlans(root: ResolvedElement): ReadonlyMap<string, Gr
       // A decoration reaches the text of the boxes inside its box too.
       const line = keywordAt(m, 'text-decoration-line') ?? 'none';
       if (line !== 'none' && members.some((x) => x !== m && x.children.some((c) => c.kind === 'text') && ancestors(x).includes(m))) return refused(`${m.element.address} has a text-decoration-line, which reaches the text inside it`);
+    }
+    // PNT1-opacity-c C1: an outline in the group is drawn by the platform into the group's layer, so it must be a ring the platform
+    // draws as Chrome does (a solid or double outline in an opaque colour), in a layer the platform renders (not S2's software layer,
+    // which draws boxes and text only).
+    const outlined = members.filter((m) => paintedOutlineStyle(m) !== null);
+    if (outlined.length > 0) {
+      const o = outlined[0] as ResolvedElement;
+      const style = paintedOutlineStyle(o) as string;
+      if (style !== 'solid' && style !== 'double') return refused(`${o.element.address} has a ${style} outline`);
+      const translucentOutline = outlined.find((m) => outlineColor(m).color.alpha !== 255);
+      if (translucentOutline !== undefined) return refused(`${translucentOutline.element.address} has an outline that is not opaque`);
+      const soft = members.find((m) => (m !== g && opacityAt(m) > 0 && opacityAt(m) < 1) || translucentPaint(m));
+      if (soft !== undefined) return refused(`${o.element.address} has an outline, and ${soft.element.address} makes Dragon build the group's layer in software, which draws boxes and text only`);
     }
     // What composites it differently: an enclosing group, layer, scroller or fixed box, or a decoration from above.
     const up = ancestors(g);

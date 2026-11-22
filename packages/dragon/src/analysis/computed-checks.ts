@@ -120,6 +120,7 @@ import { glyphFill, usedColors } from '../lower/paint/colors.ts';
 import { checkOutlinePlacement } from './paint-values/outline.ts';
 import { checkTransformContexts, elementWillChange } from './paint-values/transform.ts';
 import { opacityOf } from '../css/properties/effects.ts';
+import { opacityGroupPlans } from './paint-values/effects.ts';
 import { checkTextTransform } from './text-transform.ts';
 import { checkFx } from './fx.ts';
 import { checkLineClamp, isLineClampContainer, lineClampOf } from './line-clamp.ts';
@@ -2096,7 +2097,8 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
   // css-contain-2: containment Dragon does not lay out (analysis/containment-checks.ts).
   checkContainment(root, targets, diagnostics, reported);
   // PNT1: outlines the native root view would paint out of Chrome's order (analysis/paint-values/outline.ts).
-  checkOutlinePlacement(root, propagated, targets, diagnostics, reported);
+  const opacityGroups = new Set([...opacityGroupPlans(root)].flatMap(([id, plan]) => (plan.kind === 'group' && plan.filter.length === 0 ? [id] : [])));
+  checkOutlinePlacement(root, propagated, targets, diagnostics, reported, opacityGroups);
   checkDecorations(root, targets, diagnostics, reported, realFaceAt);
   // TXT-FONTFEAT: synthesized small caps beside what no Chrome case proves (analysis/small-caps.ts).
   checkSmallCaps(root, targets, diagnostics, reported, shapedAt);

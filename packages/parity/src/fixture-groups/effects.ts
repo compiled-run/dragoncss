@@ -40,7 +40,7 @@
 // number. The native-only stacking refusals cannot be reject fixtures (a reject blocks web too); dragon test/paint-stacking.test.ts
 // compiles each of them.
 import type { FixtureSpec } from '../fixtures.ts';
-import { both, reject } from './define.ts';
+import { both, layout, reject } from './define.ts';
 
 export const EFFECTS: readonly FixtureSpec[] = [
   both('opacity-basic'),
@@ -55,6 +55,7 @@ export const EFFECTS: readonly FixtureSpec[] = [
   both('opacity-group-clipped'),
   both('opacity-group-nested'),
   both('opacity-group-translucent'),
+  layout('opacity-group-outline'),
   reject('opacity-reject-calc', 'DRAGON_UNSUPPORTED_VALUE', 'calc(50% + 10%)', 'opacity: calc(50% + 10%) is unsupported:'),
   both('stacking-basic'),
   both('stacking-context'),

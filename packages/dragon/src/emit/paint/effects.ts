@@ -60,6 +60,8 @@ import CoreText
 
 /// Whether the opacity writer ignores the alpha; false except in the alpha-ignored plant build.
 public let dragonAlphaPlantIgnored = false
+/// Whether a group's fold leaves its outline rings out; false except in the outline-fold-ignored raster plant build.
+public let dragonOutlineFoldIgnored = false
 
 /// The opacity write of a box (runtime writer): the computed opacity, shown as UIView.alpha = Chrome's alpha byte / 255 (group
 /// opacity).
@@ -397,6 +399,11 @@ public final class DragonGroupView: UIView {
       // each text line's ink (a DrawTextBlob, which cc never folds).
       var draws: [Double] = []
       for b in boxes where b.dragonVisible {
+        // PNT1-opacity-c C1: each outline ring is a display item at its outer rect; a solid outline's one ring folds alone in a tile.
+        if let o = b.dragonOutlineView, !dragonOutlineFoldIgnored {
+          let n = o.rings.count / 24
+          for k in 0..<n { draws += [o.origin[0] + o.rings[k * 24], o.origin[1] + o.rings[k * 24 + 1], o.origin[0] + o.rings[k * 24 + 2], o.origin[1] + o.rings[k * 24 + 3], n == 1 ? 1 : 0] }
+        }
         let fillsBg = b.dragonBackgroundColor.a > 0
         let sides = (0..<4).filter { b.dragonShape.borders[$0] > 0 && b.dragonBorderStyles[$0] != "none" && b.dragonBorderStyles[$0] != "hidden" }.count
         let ops = dragonGroupBoxOps(fillsBg, sides)
@@ -682,6 +689,8 @@ import java.nio.ByteBuffer
 
 /** Whether the opacity writer ignores the alpha; false except in the alpha-ignored plant build. */
 const val DRAGON_ALPHA_PLANT_IGNORED = false
+/** Whether a group's fold leaves its outline rings out; false except in the outline-fold-ignored raster plant build. */
+const val DRAGON_OUTLINE_FOLD_IGNORED = false
 
 /** The opacity write of a box (runtime writer): the computed opacity, shown as View.setAlpha(Chrome's alpha byte / 255f) (group opacity). */
 fun dragonSetOpacity(v: DragonBoxView, opacity: Double) {
@@ -1035,6 +1044,15 @@ class DragonGroupView(ctx: Context, val dragonTree: DragonTree, val dragonGroupB
       val draws = ArrayList<Double>()
       for (b in boxes) {
         if (!b.dragonVisible) continue
+        // PNT1-opacity-c C1: each outline ring is a display item at its outer rect; a solid outline's one ring folds alone in a tile.
+        val o = b.dragonOutlineView
+        if (o != null && !DRAGON_OUTLINE_FOLD_IGNORED) {
+          val n = o.rings.size / 24
+          for (k in 0 until n) {
+            draws.add(o.origin[0] + o.rings[k * 24]); draws.add(o.origin[1] + o.rings[k * 24 + 1]); draws.add(o.origin[0] + o.rings[k * 24 + 2]); draws.add(o.origin[1] + o.rings[k * 24 + 3])
+            draws.add(if (n == 1) 1.0 else 0.0)
+          }
+        }
         val fillsBg = b.dragonBackgroundColor.a > 0
         val sides = (0 until 4).count { b.dragonShape.borders[it] > 0 && b.dragonBorderStyles[it] != "none" && b.dragonBorderStyles[it] != "hidden" }
         val ops = dragonGroupBoxOps(fillsBg, sides)
@@ -1294,7 +1312,7 @@ const lineOf = (lang: 'swift' | 'kotlin', v: string, w: EffectsWrite): string =>
   return `  dragonSetFilterGroup(t, ${v}, ${w.opacity === 1 ? '1.0' : opacityLit(w.opacity)}, ${pairsLit(lang, w.filter)}, ${optStr(lang, w.backdrop)}, ${strList(lang, w.painters)})`;
 };
 
-export const EFFECTS_EMITTER: PaintEmitter<'opacity' | 'opacity-group' | 'filter-group' | 'opacity-nested', 'alpha-ignored'> = {
+export const EFFECTS_EMITTER: PaintEmitter<'opacity' | 'opacity-group' | 'filter-group' | 'opacity-nested', 'alpha-ignored' | 'outline-fold-ignored'> = {
   name: 'effects',
   kinds: ['opacity', 'opacity-group', 'filter-group', 'opacity-nested'],
   lines: {
@@ -1310,6 +1328,13 @@ export const EFFECTS_EMITTER: PaintEmitter<'opacity' | 'opacity-group' | 'filter
     'android-views': { ...NO_NATIVE_PAINT, boxMembers: KOTLIN_MEMBERS, file: KOTLIN, afterLayout: 'dragonAfterLayoutEffects', applied: 'dragonAppliedEffects' },
   },
   plants: [
+    {
+      name: 'outline-fold-ignored',
+      replace: {
+        uikit: ['public let dragonOutlineFoldIgnored = false\n', 'public let dragonOutlineFoldIgnored = true\n'],
+        'android-views': ['const val DRAGON_OUTLINE_FOLD_IGNORED = false\n', 'const val DRAGON_OUTLINE_FOLD_IGNORED = true\n'],
+      },
+    },
     {
       name: 'alpha-ignored',
       replace: {

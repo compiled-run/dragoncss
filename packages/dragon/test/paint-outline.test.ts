@@ -190,7 +190,8 @@ describe('outline: the native targets draw every style but auto, the side painte
   });
   it('an outline inside a layer made by opacity, a transform, will-change, isolation or containment is refused on ios by name, on the box itself too; web compiles', () => {
     const groups = [
-      ['.q { opacity: 0.5; }', 'opacity: 0.5'],
+      // A translucent fill makes the group's layer software-built (S2), so it is no group an outline can be in.
+      ['.q { opacity: 0.5; background-color: rgba(0, 0, 0, 0.5); }', 'opacity: 0.5'],
       ['.q { transform: translateX(2px); }', 'a transform'],
       ['.q { will-change: opacity; }', 'will-change: opacity'],
       ['.q { isolation: isolate; }', 'isolation: isolate'],
@@ -207,6 +208,9 @@ describe('outline: the native targets draw every style but auto, the side painte
       const nested = tree(`.b { height: 5px; outline: 2px solid red; } .m { position: relative; } ${css}`, (r) => [div(r, 'q', ['q'], [div(r, 'm', ['m'], [div(r, 'b', ['b'])])])]);
       expect(errors(nested).filter((d) => d.message.startsWith('b has an outline')).map((d) => d.message.split(',')[0]), css).toEqual(['b has an outline inside q']);
     }
+    // PNT1-opacity-c C1: an opacity group native pre-composites from the platform's rendering of its view holds the outline view.
+    const admitted = tree('.b { height: 5px; background-color: rgb(10, 20, 30); outline: 2px solid red; } .q { opacity: 0.5; }', (r) => [div(r, 'q', ['q'], [div(r, 'b', ['b'])])]);
+    expect(errors(admitted)).toEqual([]);
     // Web paints every outline itself.
     const web = tree('.b { height: 5px; outline: 2px solid red; } .q { opacity: 0.5; }', (r) => [div(r, 'q', ['q'], [div(r, 'b', ['b'])])], { web: {} });
     expect(errors(web)).toEqual([]);

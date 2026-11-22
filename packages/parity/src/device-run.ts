@@ -96,6 +96,8 @@ export const PLANT_CASES: { readonly [P in PaintPlant]: readonly string[] } = {
   'outline-offset-1': ['outline-solid'],
   // outline-dashed's dashes and round dots move along each side when the gap is not fitted; outline-3d's ring points swap colours.
   'outline-dash-unfitted': ['outline-dashed'],
+  // PNT1-opacity-c C1: a ring alone in a tile folds there; left out of the fold, the tile composites as a layer, a channel off.
+  'outline-fold-ignored': ['opacity-group-outline'],
   // PNT1-outline-layer: an outline a later layer covers, or one inside a layer under another layer, paints over them from the root.
   'outline-root-hosted': ['outline-layers'],
   'outline-tones-swapped': ['outline-3d'],
@@ -155,6 +157,8 @@ export const PLANT_RULES: { readonly [P in PaintPlant]: RegExp } = {
   'outline-offset-1': /^(border|edge):[^:]+:outline-/,
   // An unfitted gap moves the dashes and dots the outline points sit on; swapped tones change a 3D ring point's colour.
   'outline-dash-unfitted': /^(border|edge):[^:]+:outline-/,
+  // The unfolded ring points move one level in a channel.
+  'outline-fold-ignored': /^border:[^:]+:outline-/,
   // Root-hosted outlines paint over the layer boxes that cover them in Chrome: those boxes' interior and border points catch it.
   'outline-root-hosted': /^(interior|border):/,
   'outline-tones-swapped': /^border:[^:]+:outline-/,

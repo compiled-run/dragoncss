@@ -119,9 +119,13 @@ describe('opacity: a group of one opaque fill folds into the fill on native', ()
     }
   });
   it('refuses on native a fraction whose group paints more than one fill, or composites as a layer', () => {
-    for (const extra of ['border-radius: 3px;', 'border: 1px dashed rgb(0, 0, 0);', 'border: 1px solid rgb(0, 0, 0); border-left-color: rgb(9, 9, 9);', 'outline: 1px solid rgb(0, 0, 0);', 'box-shadow: 1px 1px rgb(0, 0, 0);', 'transform: translateX(1px);', 'position: fixed;', 'display: list-item;', 'will-change: transform;', 'overflow: scroll;']) {
+    for (const extra of ['border-radius: 3px;', 'border: 1px dashed rgb(0, 0, 0);', 'border: 1px solid rgb(0, 0, 0); border-left-color: rgb(9, 9, 9);', 'outline: 1px dashed rgb(0, 0, 0);', 'outline: 1px solid rgba(0, 0, 0, 0.5);', 'box-shadow: 1px 1px rgb(0, 0, 0);', 'transform: translateX(1px);', 'position: fixed;', 'display: list-item;', 'will-change: transform;', 'overflow: scroll;']) {
       expect(errors(`.b { ${leaf} ${extra} opacity: 0.3; }`), extra).toEqual(['ios b has opacity 0.', 'android b has opacity 0.']);
     }
+    // PNT1-opacity-c C1: an opaque solid or double outline is a second draw: the box does not fold, and native pre-composites it with
+    // the outline in its layer (opacity-group); a translucent member makes the layer software-built, which draws no outline.
+    for (const outline of ['outline: 1px solid rgb(0, 0, 0);', 'outline: 6px double rgb(0, 90, 0); outline-offset: 2px;']) expect(errors(`.b { ${leaf} ${outline} opacity: 0.3; }`), outline).toEqual([]);
+    expect(errors(`.a { ${leaf} outline: 1px solid rgb(0, 0, 0); opacity: 0.3; } .b { height: 2px; background-color: rgba(0, 0, 0, 0.5); }`)).toEqual(['ios a has opacity 0.', 'android a has opacity 0.']);
     // A box with a child is a group of more than one draw: it does not fold, and native pre-composites it (opacity-group).
     expect(errors(`.a { ${leaf} opacity: 0.3; } .b { height: 2px; }`)).toEqual([]);
     expect(errors(`.a { ${leaf} opacity: 0.3; } .b { height: 2px; border-radius: 1px; }`)).toEqual(['ios a has opacity 0.', 'android a has opacity 0.']);
