@@ -164,12 +164,19 @@ function dashedBorder(id: string, writes: readonly Write[], rect: { readonly x: 
   return { borderOps: { origin: { x: b.left - rect.x / LU_PER_PX, y: b.top - rect.y / LU_PER_PX }, size: { width: b.width, height: b.height }, widths: [...widths], ops } };
 }
 
+/** The refused ranges of nodes with a scroll-container write: a clipping box that is none (a select's inner element) never scrolls on a phone. */
+export function scrollerRefusals<R extends { readonly id: string }>(program: Pick<NativeProgram, 'nodes'>, refused: readonly R[]): R[] {
+  const scrollers = new Set(program.nodes.filter((n) => n.writes.some((w) => w.kind === 'scroll-container')).map((n) => n.id));
+  return refused.filter((r) => scrollers.has(r.id));
+}
+
 /** The viewport's and every scroll container's offset range for one assignment's layout; a range the engine does not decide throws, naming it. */
 function scrollOffsets(component: string, program: NativeProgram, viewport: ExportDevice['viewport'], dpr: number, measurer: () => TextMeasurer): { readonly page: ScrollOffsets | { readonly undecided: string; readonly nodeId: string; readonly detail: string }; readonly containers: ReadonlyMap<string, ScrollOffsets> } {
   const input = programInput(program, viewport, dpr);
   const ranges = scrollRanges(input, measurer());
   if (ranges.kind === 'refused') throw new Error(`${component}: the engine refused the scroll ranges at ${ranges.nodeId}: ${ranges.detail}`);
-  if (ranges.refused.length > 0) throw new Error(`${component}: no scroll range for ${ranges.refused.map((r) => `${r.id} (at ${r.nodeId}: ${r.detail})`).join('; ')}`);
+  const refused = scrollerRefusals(program, ranges.refused);
+  if (refused.length > 0) throw new Error(`${component}: no scroll range for ${refused.map((r) => `${r.id} (at ${r.nodeId}: ${r.detail})`).join('; ')}`);
   const metrics = scrollMetricsWithFaults(input, measurer(), viewportDirectionOf(input), NO_ENGINE_FAULTS);
   const containers = new Map(ranges.ranges.map((r) => [r.id, offsetsOf(r)]));
   if (metrics.kind === 'refused') return { page: { undecided: `the page's scroll range is not decided at ${metrics.nodeId}: ${metrics.detail}`, nodeId: metrics.nodeId, detail: metrics.detail }, containers };
@@ -255,7 +262,7 @@ export function nativeStyleExport(styles: NativeStyles, component: string, sourc
       const laid = engineBoxes(program, d.viewport, d.dpr, measurer());
       const boxes = new Map(laid.map((b) => [b.id, b]));
       const absolute = absoluteRects(laid);
-      const deviceBorders = borderDevicePx(expectedEngine(), programInput(program, d.viewport, d.dpr));
+      const deviceBorders = borderDevicePx(expectedEngine(), programInput(program, d.viewport, d.dpr), measurer());
       const style = boxStyles(program.root);
       const scroll = scrollOffsets(component, program, d.viewport, d.dpr, measurer);
       const px = (v: number): number => v / LU_PER_PX;

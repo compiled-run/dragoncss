@@ -7,9 +7,11 @@ export type FormFaults = {
   readonly stepTieDown: boolean;
   /** Author background and border never devolve a themed control to CSS painting (appearance). */
   readonly devolveIgnored: boolean;
+  /** A menulist-button select's arrow and end margin stay at the right in rtl (menulist). */
+  readonly arrowUnmirrored: boolean;
 };
 
-export const NO_FORM_FAULTS: FormFaults = { thumbUnmirrored: false, stepTieDown: false, devolveIgnored: false };
+export const NO_FORM_FAULTS: FormFaults = { thumbUnmirrored: false, stepTieDown: false, devolveIgnored: false, arrowUnmirrored: false };
 
 export const FORM_FAULT_NAMES: readonly (keyof FormFaults)[] = Object.keys(NO_FORM_FAULTS) as (keyof FormFaults)[];
 
@@ -18,4 +20,5 @@ export const FORM_PLANTS: Readonly<Record<string, keyof FormFaults>> = {
   'thumb-unmirrored': 'thumbUnmirrored',
   'step-tie-down': 'stepTieDown',
   'devolve-ignored': 'devolveIgnored',
+  'arrow-unmirrored': 'arrowUnmirrored',
 };

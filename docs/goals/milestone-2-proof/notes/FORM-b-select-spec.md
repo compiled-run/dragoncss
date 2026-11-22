@@ -102,3 +102,9 @@ The `select` element itself stays a Markless-native control: Markless's host ope
 - **Capture.** Shadow boxes come through CDP pierce (as FORM-0 does), with `--check` and a planted failure (`arrow-unmirrored`).
 - **Split (2026-11-21).** The branch measured 182 KB reviewed (spec+S1 111 KB, S2 97 KB), so spec+S1 is one PR on #571 and S2 opens on it only after #571 merges.
 - **S3.** The arrow's points, colour and stroke come from the same compiler result as the plain-data property list. Device lanes follow the async device-refresh rule.
+- **Ruling on the measurer (2026-11-21, option C).** A select in a web font (Lato WOFF2) failed its style export with text-glyph, because the device-border, font-size, replaced-paint and arrow helpers resolved the input with the Ahem measurer (layout.ts zoomInput).
+  - The menulist line-height rule stays in environment resolution, as Chrome's style-time MenuListInnerElement::CustomStyleForLayoutObject has it.
+  - Any caller that holds a measurer resolves with `resolvedInput(input, measurer, faults)`: paint.ts `menuListArrows` takes the measurer, and so do the ExpectedEngine helpers, the export, the harness and the Swift and Kotlin `apply()`.
+  - `zoomInput` is only for Ahem or planted-fault inputs.
+- **Ruling on scroll ranges (2026-11-21).** The style export refuses a missing scroll range only for a node with a scroll-container write, as expectedDump and the harness do, because a select's inner element clips (overflow hidden) but never scrolls on a phone.
+- **Ruling on options (2026-11-21).** The Markless export check treats an `<option>` or `<optgroup>` inside a `<select>`, and its text, as having no box, read from the input's element names and tree, because Chrome's closed control draws only the shown label; an option anywhere else is still required.

@@ -3,7 +3,7 @@
 // box; both backends cover the same CSS longhands on every node; the digest is the sha256 of the canonical expected dump.
 import { describe, expect, it } from 'vitest';
 import type { ControlBox, LayoutBox, LU } from '@dragon/layout';
-import { layout, LU_PER_PX, measurerFor, NO_ENGINE_FAULTS, opacityAlpha8, outlineOffsetPx, outlineRings, outlineWidthPx, platformFontSize, replacedPaint, resolveBorder, resolvePadding, roundedShape, scrollRanges, snapEdges, zoomFontSize, zoomInput } from '@dragon/layout';
+import { layout, LU_PER_PX, measurerFor, menuListArrows, NO_ENGINE_FAULTS, opacityAlpha8, outlineOffsetPx, outlineRings, outlineWidthPx, platformFontSize, replacedPaint, resolveBorder, resolvedInput, resolvePadding, roundedShape, scrollRanges, snapEdges, zoomFontSize, zoomInput } from '@dragon/layout';
 import type { ExpectedEngine } from '../src/internal.ts';
 import { appliedKeyMap, createProjectWith, cssCoverage, expectedDigest, expectedDump, nativePrograms, NO_FAULTS, programInput } from '../src/internal.ts';
 import { resolvedFontSizes } from '../src/emit/expected-dump.ts';
@@ -14,7 +14,7 @@ const input = inputFor(CSS, (r) => [div(r, 'long', ['long']), div(r, 'thin', ['t
 const m = measurerFor('darwin-arm64');
 if (m.kind !== 'ok') throw new Error(m.code);
 const VIEW = { width: 400, height: 300 };
-const engine: ExpectedEngine = { layout, measurer: m.measurer, snapEdges, zoomInput, noFaults: NO_ENGINE_FAULTS, resolveBorder, resolvePadding: (st, cb) => resolvePadding(st, cb as LU), replacedPaint, opacityAlpha8, luPerPx: LU_PER_PX, platformFontSize, zoomFontSize, float32: Math.fround, scrollRanges, paint: { roundedShape, outlineRings, outlineWidthPx, outlineOffsetPx } };
+const engine: ExpectedEngine = { layout, measurer: m.measurer, snapEdges, zoomInput, resolvedInput, noFaults: NO_ENGINE_FAULTS, resolveBorder, resolvePadding: (st, cb) => resolvePadding(st, cb as LU), replacedPaint, opacityAlpha8, luPerPx: LU_PER_PX, platformFontSize, zoomFontSize, float32: Math.fround, scrollRanges, menuListArrows, paint: { roundedShape, outlineRings, outlineWidthPx, outlineOffsetPx } };
 
 function programs() {
   const c = createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 } } }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(input);
@@ -74,8 +74,8 @@ describe('expected dumps', () => {
     if (p.kind !== 'ready') throw new Error(p.reason);
     const input = programInput(p.programs.uikit, VIEW, 2);
     const asControl = (b: LayoutBox): LayoutBox => ({ ...b, children: b.children.map((k) => (k.kind === 'box' && k.id.endsWith('label') ? ({ ...k, kind: 'control', control: { kind: 'button-block' } } satisfies ControlBox) : k.kind === 'box' ? asControl(k) : k)) });
-    const plain = resolvedFontSizes(engine, input);
-    const controlled = resolvedFontSizes(engine, { ...input, root: asControl(input.root) });
+    const plain = resolvedFontSizes(engine, input, engine.measurer);
+    const controlled = resolvedFontSizes(engine, { ...input, root: asControl(input.root) }, engine.measurer);
     expect([...plain.values()]).toContain(40);
     expect(controlled).toEqual(plain);
   });
