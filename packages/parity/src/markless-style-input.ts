@@ -388,7 +388,7 @@ export function marklessWithRows(input: MarklessStyleInput, rows: ReadonlyMap<st
           const v = valueUnder(entries, row.states, t.id);
           if (v !== null) attributes[name] = v;
         }
-        nodes.push({ kind: 'element', id: `${t.id}@${row.key}`, element: t.element, parent, attributes, ...(t.boxless === true ? { boxless: true as const } : {}), ...place });
+        nodes.push({ kind: 'element', id: `${t.id}@${row.key}`, element: t.element, parent, attributes, ...(t.boxless === true ? { boxless: true as const } : {}), ...(t.runtimeSrc === undefined ? {} : { runtimeSrc: t.runtimeSrc }), ...place });
       }
     }
   }
