@@ -263,7 +263,7 @@ export const replacedLeafSchema = obj({
 });
 
 /** A control box's facts (input.ts ControlKind); the ratio is also checked to be at most 1. */
-export const controlKindSchema = tagged({ range: { defaultInlineSize: num(0) }, 'slider-thumb': { ratio: num(0) }, 'button-block': {}, 'text-field': { size: num(1), font: fontSpecSchema, lineHeight: lineHeightSchema }, 'text-editor': {}, 'text-placeholder': {}, fieldset: {}, legend: {}, 'select-menulist': { font: fontSpecSchema, lineHeight: lineHeightSchema, arrowWidth: num(0), options: arr(textLeafSchema, 0) }, 'select-inner': {} });
+export const controlKindSchema = tagged({ range: { defaultInlineSize: num(0) }, 'slider-thumb': { ratio: num(0) }, 'button-block': {}, 'text-field': { size: num(1), font: fontSpecSchema, lineHeight: lineHeightSchema }, 'text-area': { cols: num(1), rows: num(1), font: fontSpecSchema, lineHeight: lineHeightSchema }, 'text-editor': {}, 'text-placeholder': {}, fieldset: {}, legend: {}, 'select-menulist': { font: fontSpecSchema, lineHeight: lineHeightSchema, arrowWidth: num(0), options: arr(textLeafSchema, 0) }, 'select-inner': {} });
 
 /** A <br> (input.ts LineBreak). */
 export const lineBreakSchema = obj({ kind: lit('br'), id: str, font: fontSpecSchema, lineHeight: lineHeightSchema });
@@ -632,19 +632,28 @@ function checkNode(value: unknown, path: string, errors: ValidationError[], ids:
     if (controlKind !== 'fieldset') errors.push({ path: `${path}.children[${i}].control`, code: 'bad-value', message: 'a legend control is the rendered legend of a fieldset control: its parent is one' });
     else if (legends > 1) errors.push({ path: `${path}.children[${i}].control`, code: 'bad-value', message: 'a fieldset control has at most one rendered legend' });
   });
-  // A text field holds its inner editor and at most one placeholder, and nothing else (block.ts layoutTextField).
+  // A text field or textarea holds its inner editor and at most one placeholder, and nothing else (block.ts layoutTextField, layoutTextArea).
   const fieldPart = (c: unknown): unknown => (isRecord(c) && c['kind'] === 'control' && isRecord(c['control']) ? c['control']['kind'] : null);
-  if (controlKind === 'text-field') {
+  if (controlKind === 'text-field' || controlKind === 'text-area') {
+    const name = controlKind === 'text-field' ? 'a text field control' : 'a text area control';
     let editors = 0;
     let placeholders = 0;
     children.forEach((child: unknown, i: number) => {
       const part = fieldPart(child);
+      // An input's empty editor lays out one empty line in its strut; a textarea's empty editor has no line (Chrome 145: 0 tall).
+      const empty = part === 'text-editor' && isRecord(child) && Array.isArray(child['children']) && child['children'].length === 0;
+      if (empty && controlKind === 'text-field' && child['strut'] === null) {
+        errors.push({ path: `${path}.children[${i}].strut`, code: 'strut', message: 'an empty text-editor control has a strut, whose one empty line it lays out' });
+      }
+      if (empty && controlKind === 'text-area' && child['strut'] !== null) {
+        errors.push({ path: `${path}.children[${i}].strut`, code: 'strut', message: "a text area control's empty text-editor control has a null strut: it has no line" });
+      }
       if (part === 'text-editor') editors++;
       else if (part === 'text-placeholder') placeholders++;
-      else errors.push({ path: `${path}.children[${i}]`, code: 'bad-value', message: 'a text field control holds only its text-editor control and at most one text-placeholder control' });
+      else errors.push({ path: `${path}.children[${i}]`, code: 'bad-value', message: `${name} holds only its text-editor control and at most one text-placeholder control` });
     });
-    if (editors !== 1) errors.push({ path: `${path}.children`, code: 'bad-value', message: 'a text field control holds exactly one text-editor control' });
-    if (placeholders > 1) errors.push({ path: `${path}.children`, code: 'bad-value', message: 'a text field control holds at most one text-placeholder control' });
+    if (editors !== 1) errors.push({ path: `${path}.children`, code: 'bad-value', message: `${name} holds exactly one text-editor control` });
+    if (placeholders > 1) errors.push({ path: `${path}.children`, code: 'bad-value', message: `${name} holds at most one text-placeholder control` });
   } else {
     children.forEach((child: unknown, i: number) => {
       const part = fieldPart(child);
@@ -851,7 +860,7 @@ function checkControl(value: Record<string, unknown>, path: string, errors: Vali
   };
   if (control['kind'] === 'range' && style['display'] !== 'flex') bad('style.display', 'a range control is a flex container');
   if (control['kind'] === 'button-block' && style['display'] !== 'block') bad('style.display', 'a block button control is a block container');
-  if ((control['kind'] === 'text-field' || control['kind'] === 'text-editor' || control['kind'] === 'text-placeholder') && style['display'] !== 'block') bad('style.display', 'a text field and its parts are block containers');
+  if ((control['kind'] === 'text-field' || control['kind'] === 'text-area' || control['kind'] === 'text-editor' || control['kind'] === 'text-placeholder') && style['display'] !== 'block') bad('style.display', 'a text field and its parts are block containers');
   if (control['kind'] === 'select-menulist' && style['display'] !== 'flex') bad('style.display', 'a select is a flex container');
   if (control['kind'] === 'select-inner' && style['display'] !== 'block') bad('style.display', 'a select inner element is a block container');
   if ((control['kind'] === 'fieldset' || control['kind'] === 'legend') && style['display'] !== 'block') bad('style.display', `a ${control['kind']} control is a block container`);
@@ -931,14 +940,15 @@ function checkStrut(box: Record<string, unknown>, children: readonly unknown[], 
   const inline = children.some(isInlineLevel);
   // FORM-b: an empty inner editor or select inner element keeps its strut, whose one empty line it lays out (block.ts).
   const emptyKind = isRecord(box['control']) && children.length === 0 ? box['control']['kind'] : null;
-  const emptyEditor = emptyKind === 'text-editor' || emptyKind === 'select-inner';
+  const emptyEditor = emptyKind === 'select-inner';
+  const editorLine = emptyKind === 'text-editor';
   if (strut === null) {
     if (inline) errors.push({ path: `${path}.strut`, code: 'strut', message: 'a box with inline content has a strut' });
     else if (emptyEditor) errors.push({ path: `${path}.strut`, code: 'strut', message: `an empty ${String(emptyKind)} control has a strut, whose one empty line it lays out` });
     return;
   }
   checkRule(strut, strutSchema, `${path}.strut`, errors);
-  if (!inline && !emptyEditor) errors.push({ path: `${path}.strut`, code: 'strut', message: 'a box without inline content has a null strut' });
+  if (!inline && !emptyEditor && !editorLine) errors.push({ path: `${path}.strut`, code: 'strut', message: 'a box without inline content has a null strut' });
   else if (isRecord(strut)) checkLeafFonts(children, strut['font'], strut['lineHeight'], path, errors);
 }
 

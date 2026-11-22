@@ -267,19 +267,20 @@ describe('hitTableOf and hitRefusal refuse a form control by name', () => {
     }
   });
 
-  it('hits a select and a text field as one box, retargeting their UA shadow parts to the control', async () => {
+  it('hits a select, a text field and a textarea as one box, retargeting their UA shadow parts to the control', async () => {
     const { box, control, neutralEnvironment, px, text, ahemFont } = await import('./helpers.ts');
     const { hitRefusal, hitTableOf } = await import('../src/rt-hit.ts');
     const { ahemMeasurer } = await import('../src/index.ts');
     const strut = { font: ahemFont(10), lineHeight: { kind: 'normal' } } as const;
     const select = control('s', { kind: 'select-menulist', font: ahemFont(10), lineHeight: { kind: 'normal' }, arrowWidth: 0, options: [] }, { display: 'flex', width: px(60) }, [control('s::inner', { kind: 'select-inner' }, {}, [text('s::inner:text0', 'XX')], strut)]);
     const field = control('f', { kind: 'text-field', size: 4, font: ahemFont(10), lineHeight: { kind: 'normal' } }, { display: 'block', width: px(60) }, [control('f::editor', { kind: 'text-editor' }, {}, [text('f::editor:text0', 'XX')], strut)], null);
-    const root = { ...box('html', { width: px(100) }), children: [select, field] };
+    const area = control('a', { kind: 'text-area', cols: 4, rows: 2, font: ahemFont(10), lineHeight: { kind: 'normal' } }, { display: 'block' }, [control('a::editor', { kind: 'text-editor' }, {}, [text('a::editor:text0', 'XX XX')], strut)], null);
+    const root = { ...box('html', { width: px(100) }), children: [select, field, area] };
     const input = { viewport: { width: 400, height: 300 }, devicePixelRatio: 1, ...neutralEnvironment({ width: 400, height: 300 }), root };
     expect(hitRefusal(input)).toBeNull();
-    const facts = new Map(['html', 's', 'f'].map((id) => [id, { pointerEvents: 'auto', inherited: true, activation: false, radii: [] }] as const));
+    const facts = new Map(['html', 's', 'f', 'a'].map((id) => [id, { pointerEvents: 'auto', inherited: true, activation: false, radii: [] }] as const));
     const t = hitTableOf(input, ahemMeasurer, facts, NO_HIT_TABLE_FAULTS);
-    expect(t.ids).toEqual(['html', 's', 'f']);
+    expect(t.ids).toEqual(['html', 's', 'f', 'a']);
   });
 
   it('leaves the same tree with a plain box in the control\'s place unaffected', async () => {

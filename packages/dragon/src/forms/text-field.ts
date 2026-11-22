@@ -5,7 +5,11 @@
 //   display: block !important that text_field_input_type.cc:566-608 UpdatePlaceholderText writes in its style attribute.
 // - The inner editor's style is built in C++, inheriting from the input (text_control_inner_elements.cc:131-216
 //   TextControlInnerEditorElement::CustomStyleForLayoutObject), after the div rule of html.css: its declarations are written here as
-//   rules. Its line height is decided in layout (packages/layout/src/controls.ts), which reads the input's font metrics.
+//   rules. Its line height is decided in layout (packages/layout/src/environment.ts editorLineHeightIsNormal), which reads the
+//   input's font metrics.
+// FORM-b adds <textarea>, whose shadow tree is the same pair of divs (html_text_area_element.cc builds it; LGPL, a reference
+// only). Its placeholder takes only the ::-webkit-input-placeholder rule, and its editor only the editing and display declarations of
+// CustomStyleForLayoutObject: no line height, wrapping or overflow of its own, so it wraps as the textarea's pre-wrap says.
 
 /** A UA rule of a shadow part, as RANGE_UA_SHADOW holds them: [property, value, important] in cascade order. */
 export type ShadowRule = { readonly selectors: readonly string[]; readonly declarations: readonly (readonly [string, string, boolean])[] };
@@ -52,6 +56,41 @@ export const TEXT_FIELD_UA_SHADOW: { readonly placeholder: readonly ShadowRule[]
     },
   ],
 };
+
+export const TEXT_AREA_UA_SHADOW: { readonly placeholder: readonly ShadowRule[]; readonly editor: readonly ShadowRule[] } = {
+  placeholder: [
+    { selectors: ['div'], declarations: [['display', 'block', false]] },
+    { selectors: ['div'], declarations: [['unicode-bidi', 'isolate', false]] },
+    { selectors: ['::-webkit-input-placeholder'], declarations: [['-webkit-text-security', 'none', false], ['color', 'rgb(117, 117, 117)', false], ['direction', 'inherit', true], ['pointer-events', 'none', true], ['text-orientation', 'inherit', true], ['writing-mode', 'inherit', true]] },
+    { selectors: ['[style]'], declarations: [['display', 'block', true]] },
+  ],
+  editor: [
+    { selectors: ['div'], declarations: [['display', 'block', false]] },
+    {
+      selectors: ['(CustomStyleForLayoutObject)'],
+      declarations: [
+        ['unicode-bidi', 'inherit', true],
+        ['user-select', 'text', true],
+        ['-webkit-user-modify', 'read-write-plaintext-only', true],
+        ['display', 'block', true],
+      ],
+    },
+  ],
+};
+
+/** HTML §4.10.11: a textarea's raw value is its child text content; its API value turns CRLF and lone CR into LF. */
+export function textAreaValue(children: readonly string[]): string {
+  return children.join('').replace(/\r\n?/g, '\n');
+}
+
+/**
+ * HTML §4.10.11: the placeholder a textarea shows while its value is empty, line breaks kept as LF (a textarea's hint may span
+ * lines), or null while it shows none.
+ */
+export function shownTextAreaPlaceholder(value: string, placeholder: string | undefined): string | null {
+  if (value !== '' || placeholder === undefined || placeholder === '') return null;
+  return placeholder.replace(/\r\n?/g, '\n');
+}
 
 const stripLineBreaks = (s: string): string => s.replace(/[\n\r]/g, '');
 const stripAsciiWhitespace = (s: string): string => s.replace(/^[\t\n\f\r ]+|[\t\n\f\r ]+$/g, '');
