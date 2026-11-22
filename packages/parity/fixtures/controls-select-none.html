@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+select { display: block; appearance: none; font: inherit; color: #000; background-color: #fff; border: 1px solid #036; margin: 0 0 2px; width: 100px; }
+.wrap { width: 300px; background-color: #eee; }
+.row { display: flex; width: 200px; background-color: #ddd; }
+.row select { width: 150px; min-width: 0; }
+.long { width: 60px; }
+.lh { line-height: 30px; }
+.tall { height: 40px; line-height: 4px; }
+.short { height: 4px; }
+.pad { padding: 2px 3px; border-width: 2px 4px; }
+.pct { width: 50%; }
+.center { text-align: center; }
+.rtl { direction: rtl; }
+.ltr { direction: ltr; }
+.big { font-size: 16px; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="wrap" class="wrap">
+<select data-dragon-id="s1"><option data-dragon-id="s1a">AA</option><option data-dragon-id="s1b">BBB</option></select>
+<select data-dragon-id="s2"><option data-dragon-id="s2a">AA</option><option data-dragon-id="s2b" selected="">BBB</option></select>
+<select data-dragon-id="s3"><option data-dragon-id="s3a" selected="">AA</option><option data-dragon-id="s3b" selected="">BBB</option><option data-dragon-id="s3c">C</option></select>
+<select data-dragon-id="s4"><option data-dragon-id="s4a" disabled="">AA</option><option data-dragon-id="s4b">BBBB</option></select>
+<select data-dragon-id="s5"><option data-dragon-id="s5a" disabled="">AA</option><option data-dragon-id="s5b" disabled="">B</option></select>
+<select data-dragon-id="s6"><option data-dragon-id="s6a" selected="" disabled="">AAAAA</option><option data-dragon-id="s6b">B</option></select>
+<select data-dragon-id="s9"></select>
+<select data-dragon-id="s10" class="long"><option data-dragon-id="s10a">XXXXXXXXXXXX</option></select>
+<select data-dragon-id="s11" class="lh"><option data-dragon-id="s11a">AA</option></select>
+<select data-dragon-id="s12" class="tall"><option data-dragon-id="s12a">AA</option></select>
+<select data-dragon-id="s13" class="short"><option data-dragon-id="s13a">AA</option></select>
+<select data-dragon-id="s14" disabled=""><option data-dragon-id="s14a">AA</option></select>
+<select data-dragon-id="s15" class="pad"><option data-dragon-id="s15a">AAXX</option></select>
+<select data-dragon-id="s16" class="pct"><option data-dragon-id="s16a">AA</option></select>
+<select data-dragon-id="s17" class="center"><option data-dragon-id="s17a">AA</option></select>
+<select data-dragon-id="s18" class="rtl"><option data-dragon-id="s18a">AAB</option></select>
+<select data-dragon-id="s19" class="ltr"><option data-dragon-id="s19a">AAB</option></select>
+<select data-dragon-id="s20" class="big"><option data-dragon-id="s20a">AA</option></select>
+</div>
+<div data-dragon-id="row" class="row">
+<select data-dragon-id="f1"><option data-dragon-id="f1a">XXXXXXXXXXXX</option></select>
+<select data-dragon-id="f2"><option data-dragon-id="f2a">AA</option></select>
+</div>
+</body>
+</html>

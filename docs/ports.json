@@ -940,6 +940,77 @@
       ]
     },
     {
+      "upstream": "third_party/blink/renderer/core/html/forms/menu_list_inner_element.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2020 The Chromium Authors",
+      "fileSha256": "278f479631fc328077aff311634d7a2c6a749f798f0a6482f14c6d7ea1f10f3e",
+      "headerSha256": "fc58abb313b0dbb837baebcadf633a83df109528c3a0516c4bb18b3c05ed3c69",
+      "ranges": [
+        { "lines": "20-102", "symbol": "MenuListInnerElement::CustomStyleForLayoutObject", "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/forms/select.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/src/environment.ts", "symbol": "menuListLineHeight", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/html/forms/select_type.cc",
+      "licence": "lgpl",
+      "ruling": {
+        "class": "A",
+        "basis": "HTML's selectedness setting algorithm and option label, and Chrome 145 captures of the closed select",
+        "proof": [
+          "packages/parity/test/form-b-select.test.ts"
+        ]
+      },
+      "licencePhrase": "GNU Library General Public License",
+      "copyright": "Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies).; Copyright (C) 1999 Lars Knoll (knoll@kde.org); Copyright (C) 2004, 2005, 2006, 2007, 2009, 2010, 2011 Apple Inc. All rights reserved.",
+      "fileSha256": "4cc911d04b934703c2570e50db6aeeaedc97800c554c429957bde69c7113961a",
+      "headerSha256": "c5445c3e78fcb0af460f18c2f21ee68c6920d0eed11d6f0a795a4bcf97a1a9c8",
+      "ranges": [
+        { "lines": "1001-1062", "symbol": "MenuListSelectType::UpdateTextStyleInternal", "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/analysis/resolve.ts", "symbol": "applySelectShadow", "use": "reference" },
+        { "file": "packages/dragon/src/forms/select.ts", "symbol": null, "use": "reference" },
+        { "file": "packages/dragon/src/forms/select.ts", "symbol": "shownLabel", "use": "reference" },
+        { "file": "packages/dragon/src/project.ts", "symbol": "checkTemplates", "use": "reference" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/html/forms/text_control_inner_elements.cc",
+      "licence": "bsd-google",
+      "noticeText": "header-bsd-2",
+      "licencePhrase": "Redistributions of source code must retain the above copyright",
+      "copyright": "Copyright (C) 2006, 2008, 2010 Apple Inc. All rights reserved.; Copyright (C) 2010 Google Inc. All rights reserved.",
+      "fileSha256": "507698b3cca3c47c2663bde4bcf581476388396ebe3a227f1c81366132db6ff5",
+      "headerSha256": "cea988bc135fa77247259838d4750689e2d6e0d51a196ef9c39a8a7b129b08ef",
+      "ranges": [
+        { "lines": "131-216", "symbol": "TextControlInnerEditorElement::CustomStyleForLayoutObject", "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/forms/text-field.ts", "symbol": null, "use": "port" },
+        { "file": "packages/layout/src/environment.ts", "symbol": "editorLineHeightIsNormal", "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/html/forms/text_field_input_type.cc",
+      "licence": "bsd-google",
+      "noticeText": "header-bsd-1",
+      "licencePhrase": "Redistributions of source code must retain the above copyright",
+      "copyright": "Copyright (C) 2010 Google Inc. All rights reserved.; Copyright (C) 2011 Apple Inc. All rights reserved.",
+      "fileSha256": "0038c8d45fc259b11b48bf6b6a827fc307f2dea53659cb9631f0c786af6b5394",
+      "headerSha256": "197231ebf03469885c9b8cf54c5b7a7bd70edd943f314c02ee35bfdc14c8f33c",
+      "ranges": [
+        { "lines": "566-608", "symbol": "TextFieldInputType::UpdatePlaceholderText", "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/forms/text-field.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
       "upstream": "third_party/blink/renderer/core/html/forms/step_range.cc",
       "licence": "lgpl",
       "ruling": {
@@ -1743,6 +1814,27 @@
         { "file": "packages/dragon/src/forms/appearance.generated.ts", "symbol": "APPEARANCE_PROBE", "use": "reference" },
         { "file": "packages/dragon/src/forms/appearance.ts", "symbol": null, "use": "reference" },
         { "file": "scripts/capture-form-data.ts", "symbol": "appearanceModule", "use": "reference" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/layout/layout_theme_default.cc",
+      "licence": "lgpl",
+      "ruling": {
+        "class": "A",
+        "basis": "Chrome observation: the select inner element's margins and paddings, captured through CDP, are 0 under appearance: none",
+        "proof": [
+          "packages/parity/test/form-b-select.test.ts"
+        ]
+      },
+      "licencePhrase": "GNU Library General Public License",
+      "copyright": "Copyright (C) 2007 Apple Inc.; Copyright (C) 2007 Alp Toker <alp@atoker.com>; Copyright (C) 2008 Collabora Ltd.; Copyright (C) 2008, 2009 Google Inc.; Copyright (C) 2009 Kenneth Rohde Christiansen",
+      "fileSha256": "76a4363b67f4dbd3a0c3eb224fd4e4e2815e5627d83a2d33f60d0bda73972e51",
+      "headerSha256": "422eab9d8a2ab79c588f134bec98dfe6c7991b14b3cf6bbe20e7ed742cf07739",
+      "ranges": [
+        { "lines": "237-260", "symbol": "LayoutThemeDefault::PopupInternalPaddingStart", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/forms/select.ts", "symbol": null, "use": "reference" }
       ]
     },
     {

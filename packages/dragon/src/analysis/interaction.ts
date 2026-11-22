@@ -22,7 +22,7 @@ import type { ResolvedValue } from './computed.ts';
 import { initialValue } from './computed.ts';
 import type { LinkedElement } from './link.ts';
 import type { InteractionProbe, InteractionState } from './match.ts';
-import { NO_INTERACTION } from './match.ts';
+import { NO_INTERACTION, selectorMatches } from './match.ts';
 import type { ResolvedElement } from './resolve.ts';
 import { propagatedFrom } from './computed-checks.ts';
 
@@ -442,6 +442,32 @@ export function interactionRefusals(rules: readonly Rule[]): Diagnostic[] {
       }));
     }
   }
+  return out;
+}
+
+/** FORM-b: a :focus or :focus-visible rule matching a select, focused or not, is refused until FORM-c's focus states land. */
+export function selectFocusRefusals(rules: readonly Rule[], cases: readonly { readonly root: LinkedElement }[] | null, faults: CompilerFaults): Diagnostic[] {
+  const focusRules = rules.filter((r) => r.declarations.length > 0 && interactionPseudosOf(r).some((p) => p === 'focus' || p === 'focus-visible'));
+  if (cases === null || focusRules.length === 0) return [];
+  const out: Diagnostic[] = [];
+  const seen = new Set<string>();
+  const walk = (el: LinkedElement, chain: readonly LinkedElement[]): void => {
+    const here = [...chain, el];
+    if (el.tag === 'select' && !seen.has(el.address)) {
+      const ix: InteractionState = { hover: new Set(), active: new Set(), focus: new Set([el.address]), focusVisible: new Set([el.address]) };
+      const rule = focusRules.find((r) => r.selectors.some((sel) => selectorMatches(r, sel, here, here.length - 1, 0, faults, ix) || selectorMatches(r, sel, here, here.length - 1, 0, faults, NO_INTERACTION)));
+      if (rule !== undefined) {
+        seen.add(el.address);
+        out.push(diagnostic('DRAGON_UNSUPPORTED_SELECTOR', {
+          origin: authored((rule.declarations[0] as Rule['declarations'][number]).span),
+          message: `a :focus or :focus-visible rule on <select> ${el.address} is not supported: a focused select's style and Chrome's focus ring wait for FORM-c's focus states`,
+          manual: `Remove the :focus and :focus-visible rules that match <select> ${el.address}.`,
+        }));
+      }
+    }
+    for (const c of el.children) if (c.kind === 'element') walk(c, here);
+  };
+  for (const c of cases) walk(c.root, []);
   return out;
 }
 

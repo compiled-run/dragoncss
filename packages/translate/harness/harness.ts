@@ -1118,6 +1118,18 @@ function controlKind(v: JsonValue, path: string): ControlKind {
     obj(v, ['kind'], path);
     return { kind: 'button-block' };
   }
+  if (k === 'text-field') {
+    const o = obj(v, ['kind', 'size', 'font', 'lineHeight'], path);
+    return { kind: 'text-field', size: numField(o, 'size', path), font: fontSpec(field(o, 'font', path), `${path}.font`), lineHeight: lineHeightValue(field(o, 'lineHeight', path), `${path}.lineHeight`) };
+  }
+  if (k === 'text-editor') {
+    obj(v, ['kind'], path);
+    return { kind: 'text-editor' };
+  }
+  if (k === 'text-placeholder') {
+    obj(v, ['kind'], path);
+    return { kind: 'text-placeholder' };
+  }
   if (k === 'fieldset') {
     obj(v, ['kind'], path);
     return { kind: 'fieldset' };
@@ -1125,6 +1137,14 @@ function controlKind(v: JsonValue, path: string): ControlKind {
   if (k === 'legend') {
     obj(v, ['kind'], path);
     return { kind: 'legend' };
+  }
+  if (k === 'select-menulist') {
+    const o = obj(v, ['kind', 'font', 'lineHeight'], path);
+    return { kind: 'select-menulist', font: fontSpec(field(o, 'font', path), `${path}.font`), lineHeight: lineHeightValue(field(o, 'lineHeight', path), `${path}.lineHeight`) };
+  }
+  if (k === 'select-inner') {
+    obj(v, ['kind'], path);
+    return { kind: 'select-inner' };
   }
   return fail(`${path}: unknown kind ${k}`);
 }
