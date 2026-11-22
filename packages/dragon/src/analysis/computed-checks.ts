@@ -2164,6 +2164,13 @@ function checkCheckbox(el: ResolvedElement, parentDisplay: string | null, chain:
   } else if (accent.value.kind !== 'color' && keywordOf(accent) !== 'auto') {
     refuse(accent, 'checkbox-accent', `accent-color: ${valueToString(accent.value)} on <input type=checkbox> ${address} did not resolve to a colour`, `Use a colour for accent-color on <input> ${address}.`);
   }
+  for (const p of ['width', 'height'] as const) {
+    const v = el.props.get(p) as ResolvedValue;
+    // Chrome draws a checkbox of 2 CSS px or less as a plain square without antialiasing, which the native draws do not match.
+    if (v.value.kind === 'length' && v.value.unit === 'px' && v.value.value <= 2) {
+      refuse(v, 'checkbox-tiny', `${p}: ${valueToString(v.value)} on <input type=checkbox> ${address} is not supported: Chrome draws a checkbox of 2px or less as a plain square without antialiasing, which Dragon does not draw yet`, `Give <input> ${address} a ${p} above 2px.`);
+    }
+  }
   if (el.element.attributes.has('disabled')) {
     refuse(null, 'checkbox-disabled', `a disabled <input type=checkbox> ${address} is not supported: its theme colours are not captured`, `Remove disabled from <input> ${address}, or draw a disabled state with a div.`);
   }

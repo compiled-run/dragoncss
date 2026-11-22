@@ -4386,7 +4386,7 @@
       ],
       "dragon": [
         { "file": "packages/layout/src/controls.ts", "symbol": "menuListArrow", "use": "port" },
-        { "file": "packages/layout/src/controls.ts", "symbol": "CheckboxMarks", "use": "port" },
+        { "file": "packages/layout/src/controls.ts", "symbol": "checkboxMarks", "use": "port" },
         { "file": "packages/dragon/src/forms/checkbox.ts", "symbol": null, "use": "reference" },
         { "file": "packages/dragon/src/forms/checkbox.ts", "symbol": "CHECKBOX_PART_SIZE", "use": "reference" },
         { "file": "packages/dragon/src/lower/ios-layout.ts", "symbol": "lowerBox", "use": "reference" }

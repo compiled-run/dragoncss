@@ -30,6 +30,7 @@ const VARIANTS: readonly Variant[] = [
   { name: '22 unchecked accent', width: 22, height: 22, checked: false, accent: ORANGE },
   { name: '22 checked accent', width: 22, height: 22, checked: true, accent: ORANGE },
   { name: '22 checked light accent', width: 22, height: 22, checked: true, accent: LIGHT_ORANGE },
+  { name: '22 unchecked light accent', width: 22, height: 22, checked: false, accent: LIGHT_ORANGE },
   { name: '30x22 checked', width: 30, height: 22, checked: true, accent: null },
 ];
 const css = (c: Rgba8): string => `rgb(${c.r}, ${c.g}, ${c.b})`;
@@ -173,6 +174,7 @@ describe("FORM-checkbox: Chrome's themed checkbox", () => {
     expect(compile(page('input { color-scheme: dark; }', '<input data-dragon-id="c" type="checkbox">')).length).toBeGreaterThan(0);
     expect(compile(page('input:checked { outline: 1px solid red; }', '<input data-dragon-id="c" type="checkbox">')).length).toBeGreaterThan(0);
     expect(compile(page('body { zoom: 2; }', '<input data-dragon-id="c" type="checkbox">'))).toContainEqual(expect.stringMatching(/^zoom: 2 on body zooms <input type=checkbox> c/));
+    expect(compile(page('input { display: block; width: 2px; height: 2px; }', '<input data-dragon-id="c" type="checkbox">'))).toContainEqual(expect.stringMatching(/^width: 2px on <input type=checkbox> c is not supported: Chrome draws a checkbox of 2px or less as a plain square/));
   });
 
   it("toggles from a tap on the label's text, which the hit table names as Chrome does, and keeps the user's checkedness over the attribute", async () => {

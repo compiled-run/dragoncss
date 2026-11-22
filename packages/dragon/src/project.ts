@@ -1139,12 +1139,6 @@ function checkCases(linked: Linked, rules: readonly Rule[], targets: readonly Kn
 const assignmentLabel = (a: Assignment): string => (a.length === 0 ? '(the initial assignment)' : a.map((x) => `${x.state.state}=${String(x.value)}`).join(', '));
 
 /**
- * R13: on native, a pointer-reachable interaction state needs Dragon's hit test, which models only the HIT_MODELLED paint facts.
- * A case with a reachable state and an unmodelled fact that compiles for the target (no error already refuses its declaration
- * there) refuses every interaction rule on that target, naming SELD-R2b. Run after the value checks, so a refused value is not
- * counted as compiled.
- */
-/**
  * FORM-checkbox: Chrome draws a themed checkbox in its pressed or hovered colours while it is :active or :hover, which Dragon does
  * not draw yet, so an author rule that tests either on a themed checkbox is refused on native rather than shown beside the resting
  * colours.
@@ -1180,6 +1174,12 @@ function themedCheckboxes(root: ResolvedElement): ResolvedElement[] {
   return out;
 }
 
+/**
+ * R13: on native, a pointer-reachable interaction state needs Dragon's hit test, which models only the HIT_MODELLED paint facts.
+ * A case with a reachable state and an unmodelled fact that compiles for the target (no error already refuses its declaration
+ * there) refuses every interaction rule on that target, naming SELD-R2b. Run after the value checks, so a refused value is not
+ * counted as compiled.
+ */
 function hitModelRefusals(cases: readonly CaseResult[], rules: readonly Rule[], targets: readonly KnownTarget[], options: Resolved, diagnostics: Diagnostic[]): void {
   // Forced-only :focus and :focus-visible need no hit test, so outside the lanes this runs whenever gateInteractionFeatures could
   // accept a mouse or touch row: an enforced profile of a target here proves one.
