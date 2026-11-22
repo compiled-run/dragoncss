@@ -393,7 +393,9 @@ export function opacityGroupPlans(root: ResolvedElement): ReadonlyMap<string, Gr
     // D3: after one sticky box, with nothing else painted between that box and it, Chrome composites it in a layer of its own over
     // transparent pixels when the page scrolls (the sticky box is then composited) and in the root layer when it does not; the device
     // picks the composite by whether the root overflows (groupCompositeLayered).
-    const earlier = before.filter((id) => !id.includes(':text#')).map(elementOf).filter((el) => !up.includes(el) && ['sticky', 'fixed'].includes(keywordAt(el, 'position') ?? 'static'));
+    // A sticky box with every inset auto never sticks, so Chrome never composites it (measured).
+    const sticks = (el: ResolvedElement): boolean => ['top', 'right', 'bottom', 'left'].some((p) => (keywordAt(el, p) ?? '') !== 'auto');
+    const earlier = before.filter((id) => !id.includes(':text#')).map(elementOf).filter((el) => !up.includes(el) && (keywordAt(el, 'position') === 'fixed' || (keywordAt(el, 'position') === 'sticky' && sticks(el))));
     // Inside a sticky or fixed box the group composites into that box's layer (or the root's) over the box's opaque paint (D2).
     const after = layerBox === null ? (earlier[0] ?? null) : null;
     if (after !== null) {

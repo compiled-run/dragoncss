@@ -11,8 +11,8 @@
 // paint order, the group opacity and the alpha byte before any device runs. Chrome's composite is measured, not assumed: the first
 // test fits the two blits and the byte against a captured sweep of opacities.
 import { describe, expect, it } from 'vitest';
-import { groupComposite, groupFill, groupFilterComposite, groupFilterMatrices, groupFoldAlpha, groupTileFoldIndex, groupTileFolds, groupCompositeLayered, hasRoundedCorner, LU_PER_PX, mapPoint, NO_RADIUS_FAULTS, opacityAlpha8, paintTransformMatrix, roundedShape, snapEdges } from '@dragon/layout';
-import type { Matrix2D, TransformOp, TransformOrigin } from '@dragon/layout';
+import { absoluteRects, groupComposite, groupFill, groupFilterComposite, groupFilterMatrices, groupFoldAlpha, groupTileFoldIndex, groupTileFolds, groupCompositeLayered, hasRoundedCorner, LU_PER_PX, mapPoint, NO_RADIUS_FAULTS, opacityAlpha8, paintTransformMatrix, roundedShape, snapEdges } from '@dragon/layout';
+import type { LayoutNode, Matrix2D, TransformOp, TransformOrigin } from '@dragon/layout';
 import { filterPairs } from '../../dragon/src/emit/paint/effects.ts';
 import { ccTileEnd, ccTileIndex, ccTileSize, ccTileStart } from '../../layout/src/paint-dither.ts';
 import type { NativeProgram, ProgramNode } from 'dragon';
@@ -159,6 +159,40 @@ function boxes(p: NativeProgram, viewport: { width: number; height: number }, dp
   return list;
 }
 
+/**
+ * Chrome's root scroller has a scroll range (and composites sticky boxes): a box or line no clipping box below body holds and no
+ * fixed box carries reaches past the viewport's end edges, or its start edge in rtl, in pixel-snapped device px.
+ */
+function rootScrolls(p: NativeProgram, viewport: { width: number; height: number }, dpr: number): boolean {
+  const engine = expectedEngine();
+  const input = programInput(p, viewport, dpr);
+  const out = engine.layout(input, engine.measurer);
+  if (out.kind !== 'ok') throw new Error('the engine refused the case');
+  const abs = absoluteRects(out.boxes);
+  const fixed = new Set<string>();
+  const visit = (b: LayoutNode): void => {
+    if ('style' in b && b.style.position === 'fixed') fixed.add(b.id);
+    if ('children' in b) for (const k of b.children) visit(k as LayoutNode);
+  };
+  visit(input.root);
+  const clips = new Set(p.nodes.filter((n) => n.clips).map((n) => n.id));
+  const parentOf = new Map(out.boxes.flatMap((r) => (r.parent === null ? [] : [[r.id, r.parent] as const])));
+  const depth = (id: string): number => {
+    let d = 0;
+    for (let q = parentOf.get(id); q !== undefined; q = parentOf.get(q)) d++;
+    return d;
+  };
+  const snap = (css: number): number => Math.floor(css * dpr + 0.5);
+  const rtl = input.root.style.direction === 'rtl';
+  return out.boxes.some((r) => {
+    if (fixed.has(r.id)) return false;
+    for (let q = parentOf.get(r.id); q !== undefined; q = parentOf.get(q)) if (fixed.has(q) || (depth(q) >= 2 && clips.has(q))) return false;
+    const a = abs.get(r.id);
+    if (a === undefined) return false;
+    return snap((a.y + a.height) / LU_PER_PX) > snap(viewport.height) || (rtl ? snap(-a.x / LU_PER_PX) > 0 : snap((a.x + a.width) / LU_PER_PX) > snap(viewport.width));
+  });
+}
+
 type Stacking = { paintOrder: number; clipChain: readonly string[]; paintLayer: string };
 type Item =
   | { readonly kind: 'box'; readonly box: Box }
@@ -189,8 +223,7 @@ const NO_MODEL_FAULTS: ModelFaults = { alphaIgnored: false, treeOrder: false };
 function paintItems(p: NativeProgram, viewport: { width: number; height: number }, dpr: number, faults: ModelFaults = NO_MODEL_FAULTS): Item[] {
   const list = boxes(p, viewport, dpr, faults.squareCorners === true);
   const byId = new Map(list.map((b) => [b.node.id, b]));
-  // Chrome's root scroller overflows (and composites sticky boxes) when a box reaches past the viewport.
-  const overflows = list.some((b) => b.l < 0 || b.t < 0 || b.r > viewport.width * dpr || b.b > viewport.height * dpr);
+  const overflows = rootScrolls(p, viewport, dpr);
   const children = new Map<string, ProgramNode[]>();
   for (const n of p.nodes) if (n.parent !== null) children.set(n.parent, [...(children.get(n.parent) ?? []), n]);
   const glyphsOf = new Map<string, { left: number; top: number; right: number; bottom: number }[]>();

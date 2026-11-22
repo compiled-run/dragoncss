@@ -339,6 +339,14 @@ describe('opacity: a group native pre-composites', () => {
     const w = p.programs.uikit.nodes.find((n) => n.id === 'g')?.writes.find((x) => x.kind === 'opacity-group') as { backdrop: string | null; after?: string } | undefined;
     expect([w?.backdrop, w?.after]).toEqual(['w', undefined]);
   });
+  it('composites a group after a sticky box with every inset auto in one step: that box never sticks, so Chrome never composites it', () => {
+    const c = build('.u { position: sticky; } .g { opacity: 0.4; } .k { border: 1px solid rgb(0, 0, 0); }');
+    expect(errors(c)).toEqual([]);
+    const p = nativePrograms(c, []);
+    if (p.kind !== 'ready') throw new Error(p.reason);
+    const w = p.programs.uikit.nodes.find((n) => n.id === 'g')?.writes.find((x) => x.kind === 'opacity-group') as { after?: string } | undefined;
+    expect(w?.after).toBeUndefined();
+  });
   it('admits a group painted right after one sticky box, naming it for the device\'s two-step composite when the page scrolls', () => {
     const c = build('.u { position: sticky; top: 0; } .g { opacity: 0.4; } .k { border: 1px solid rgb(0, 0, 0); }');
     expect(errors(c)).toEqual([]);

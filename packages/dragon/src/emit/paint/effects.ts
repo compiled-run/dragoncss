@@ -224,24 +224,6 @@ func dragonGroupLineInk(_ tv: DragonTextView, _ font: UIFont, _ l: DragonLineSpe
   return [o[0].rounded(.down), o[1].rounded(.down), o[2].rounded(.up), o[3].rounded(.up)]
 }
 
-/// D3: whether the page's boxes reach past the root (the viewport), so Chrome's root scroller overflows and composites sticky boxes;
-/// boxes inside an overflow clip or scroller are not the page's overflow.
-func dragonRootOverflows(_ root: UIView) -> Bool {
-  let w = root.bounds.width, h = root.bounds.height
-  func walk(_ v: UIView) -> Bool {
-    for c in v.subviews {
-      if c is DragonBoxView {
-        let r = dragonLayoutRect(c, in: root)
-        if r.maxX > w || r.maxY > h || r.minX < 0 || r.minY < 0 { return true }
-      }
-      if c is DragonClipView { continue }
-      if walk(c) { return true }
-    }
-    return false
-  }
-  return walk(root)
-}
-
 /// Every layer's pending drawing done, so render(in:) sees this frame's contents.
 func dragonDisplayTree(_ l: CALayer) {
   l.displayIfNeeded()
@@ -398,10 +380,14 @@ public final class DragonGroupView: UIView {
       let le = dragonGroupEdges(dragonLayoutRect(lb, in: root), s)
       dragonContained = bext[0] >= le[0] + r && bext[1] >= le[1] + r && bext[2] <= le[2] - r && bext[3] <= le[3] - r
     }
+    // Chrome's layer for the painter holds its descendants' paint too, so each of their views must stay clear as well.
+    func clear(_ v: UIView) -> Bool {
+      let e = dragonGroupEdges(dragonLayoutRect(v, in: root), s)
+      return (e[2] <= bext[0] || e[0] >= bext[2] || e[3] <= bext[1] || e[1] >= bext[3]) && v.subviews.allSatisfy(clear)
+    }
     dragonClearOfUnstable = dragonUnstable.allSatisfy { id in
       guard let v = t.node(id) as? UIView else { fatalError("dragon: \(g.dragonId): unstable painter \(id) is not built") }
-      let e = dragonGroupEdges(dragonLayoutRect(v, in: root), s)
-      return e[2] <= bext[0] || e[0] >= bext[2] || e[3] <= bext[1] || e[1] >= bext[3]
+      return clear(v)
     }
     let bw = max(bext[2] - bext[0], 0), bh = max(bext[3] - bext[1], 0)
     var bb = [UInt8](repeating: 255, count: bw * bh * 4)
@@ -501,7 +487,7 @@ public final class DragonGroupView: UIView {
       q = [UInt8](repeating: 0, count: w * h * 4)
       let a8 = Double(dragonAlpha8)
       // D3: after a sticky box on a page that scrolls, Chrome composites the group in a layer of its own over transparent pixels.
-      let layered = dragonAfter != nil && dragonRootOverflows(root)
+      let layered = dragonAfter != nil && t.rootScrolls
       do {
         for y in 0..<h {
           for x in 0..<w {
@@ -801,26 +787,6 @@ object DragonGroups {
   var backdropSkip: Set<View> = emptySet()
 }
 
-/**
- * D3: whether the page's boxes reach past the root (the viewport), so Chrome's root scroller overflows and composites sticky boxes;
- * boxes inside an overflow clip or scroller are not the page's overflow.
- */
-fun dragonRootOverflows(root: ViewGroup): Boolean {
-  fun walk(v: ViewGroup): Boolean {
-    for (i in 0 until v.childCount) {
-      val c = v.getChildAt(i)
-      if (c is DragonBoxView) {
-        val o = dragonLayoutOffset(c, root)
-        if (o[0] < 0 || o[1] < 0 || o[0] + c.width > root.width || o[1] + c.height > root.height) return true
-      }
-      if (c is DragonClipView) continue
-      if (c is ViewGroup && walk(c)) return true
-    }
-    return false
-  }
-  return walk(root)
-}
-
 /** A box's layout or paint changed: every overlay's composite is stale (DragonBoxView.invalidate calls this). */
 fun dragonGroupsChanged() {
   if (DragonGroups.computing > 0) return
@@ -1111,10 +1077,15 @@ class DragonGroupView(ctx: Context, val dragonTree: DragonTree, val dragonGroupB
       val lo = dragonLayoutOffset(lb, root)
       dragonContained = bext[0] >= lo[0] + r && bext[1] >= lo[1] + r && bext[2] <= lo[0] + lb.width - r && bext[3] <= lo[1] + lb.height - r
     }
+    // Chrome's layer for the painter holds its descendants' paint too, so each of their views must stay clear as well.
+    fun clear(v: View): Boolean {
+      val o = dragonLayoutOffset(v, root)
+      if (!(o[0] + v.width <= bext[0] || o[0] >= bext[2] || o[1] + v.height <= bext[1] || o[1] >= bext[3])) return false
+      return v !is ViewGroup || (0 until v.childCount).all { clear(v.getChildAt(it)) }
+    }
     dragonClearOfUnstable = dragonUnstable.all { id ->
       val v = t.node(id) ?: throw IllegalStateException("dragon: " + g.dragonId + ": unstable painter " + id + " is not built")
-      val o = dragonLayoutOffset(v, root)
-      o[0] + v.width <= bext[0] || o[0] >= bext[2] || o[1] + v.height <= bext[1] || o[1] >= bext[3]
+      clear(v)
     }
     val bw = maxOf(bext[2] - bext[0], 0)
     val bh = maxOf(bext[3] - bext[1], 0)
@@ -1220,7 +1191,7 @@ class DragonGroupView(ctx: Context, val dragonTree: DragonTree, val dragonGroupB
       q = ByteArray(w * h * 4)
       val a8 = dragonAlpha8.toDouble()
       // D3: after a sticky box on a page that scrolls, Chrome composites the group in a layer of its own over transparent pixels.
-      val layered = dragonAfter != null && dragonRootOverflows(root)
+      val layered = dragonAfter != null && t.rootScrolls
       fun u(b: Byte): Double = (b.toInt() and 0xff).toDouble()
       for (y in 0 until h) {
         for (x in 0 until w) {
