@@ -711,8 +711,11 @@ export function hitTransformRefusal(id: string, ops: readonly TransformOp[]): st
     if (o.sx < 0 || o.sy < 0) return `${id} flips, and the hit table models scales by positive factors only (SELD-R2b)`;
   }
   // Measured at DPR 2.625: Chrome's mapping through a translate after a scale differs from this float mapping at an exact edge.
-  const scaled = ops.findIndex((o) => o.fn.startsWith('scale') && (o.sx !== 1 || o.sy !== 1));
-  if (scaled >= 0 && ops.slice(scaled + 1).some((o) => o.fn.startsWith('translate'))) return `${id} translates after it scales, and the hit table models a translate before a scale only (SELD-R2b)`;
+  let scaled = false;
+  for (const o of ops) {
+    if (scaled && (o.fn === 'translate' || o.fn === 'translateX' || o.fn === 'translateY')) return `${id} translates after it scales, and the hit table models a translate before a scale only (SELD-R2b)`;
+    if ((o.fn === 'scale' || o.fn === 'scaleX' || o.fn === 'scaleY') && (o.sx !== 1 || o.sy !== 1)) scaled = true;
+  }
   return null;
 }
 

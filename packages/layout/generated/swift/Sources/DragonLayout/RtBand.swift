@@ -72,7 +72,7 @@ public final class BandError: JsError {
   public let detail: JsString
   public init(_ detail: JsString) throws {
     self.detail = detail
-    super.init(message: jsConcat(S.s627, detail))
+    super.init(message: jsConcat(S.s634, detail))
   }
 }
 
@@ -114,11 +114,11 @@ public let rtBand_SOURCE_TOUCHPAD: Double = 1048584.0
 public func rtBand_mediaSize(_ px: Double, _ dpr: Double) throws -> Double {
   // ts: packages/layout/src/rt-band.ts:74
   if try ((!(px >= 0.0)) || (px != rtEasing_truncOf(px))) {
-    throw try BandError(jsConcat(S.s566, jsNumberToString(px)))
+    throw try BandError(jsConcat(S.s573, jsNumberToString(px)))
   }
   // ts: packages/layout/src/rt-band.ts:75
   if ((!(dpr > 0.0)) || (dpr == (1.0 / 0.0))) {
-    throw try BandError(jsConcat(S.s549, jsNumberToString(dpr)))
+    throw try BandError(jsConcat(S.s556, jsNumberToString(dpr)))
   }
   return try rtEasing_froundOf((rtEasing_froundOf(px) * rtEasing_froundOf((1.0 / rtEasing_froundOf(dpr)))))
 }
@@ -318,7 +318,7 @@ public func rtBand_bandIndex(_ table: BandTable, _ width: Double, _ height: Doub
       let b: JsArray<Bool> = try jsUnwrap(jsAt(table.bands, k))
       // ts: packages/layout/src/rt-band.ts:167
       if (jsLength(b) != jsLength(v)) {
-        throw try BandError(jsConcat(S.s626, jsNumberToString(k), S.s41, jsNumberToString(jsLength(b)), S.s181, jsNumberToString(jsLength(v)), S.s24))
+        throw try BandError(jsConcat(S.s633, jsNumberToString(k), S.s42, jsNumberToString(jsLength(b)), S.s187, jsNumberToString(jsLength(v)), S.s24))
       }
       var same: Bool = true
       // ts: packages/layout/src/rt-band.ts:169
@@ -347,10 +347,10 @@ public func rtBand_bandIndex(_ table: BandTable, _ width: Double, _ height: Doub
     while _i282 < _a282.items.count {
       let x: Bool = _a282.items[_i282]
       _i282 += 1
-      bits += (x ? S.s243 : S.s241)
+      bits += (x ? S.s249 : S.s247)
     }
   }
-  throw try BandError(jsConcat(S.s934, bits, S.s21, jsNumberToString(width), S.s194, jsNumberToString(height), S.s35))
+  throw try BandError(jsConcat(S.s941, bits, S.s21, jsNumberToString(width), S.s200, jsNumberToString(height), S.s35))
 }
 
 // ts: packages/layout/src/rt-band.ts:178
@@ -362,7 +362,7 @@ public func rtBand_bandAtPx(_ table: BandTable, _ widthPx: Double, _ heightPx: D
 public func rtBand_hasSource(_ sources: Double, _ source: Double) throws -> Bool {
   // ts: packages/layout/src/rt-band.ts:205
   if try ((((!(sources >= 0.0)) || (sources != rtEasing_truncOf(sources))) || (!(source > 0.0))) || (source != rtEasing_truncOf(source))) {
-    throw try BandError(jsConcat(S.s847, jsNumberToString(sources), S.s15, jsNumberToString(source)))
+    throw try BandError(jsConcat(S.s854, jsNumberToString(sources), S.s15, jsNumberToString(source)))
   }
   var s: Double = sources
   var m: Double = source
