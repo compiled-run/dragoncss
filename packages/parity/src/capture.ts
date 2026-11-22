@@ -366,21 +366,58 @@ async function captureSelectParts(page: Page, props: readonly string[]): Promise
   return out;
 }
 
+/** Runs on one text node through CDP (it closes over nothing): its lines and each code unit's line by its rect's centre, as captureBreakTexts reads light-DOM text. */
+function shadowTextLines(this: Text): { data: string; lines: number; units: number[]; blank: number[]; transform: string } {
+  const whole = document.createRange();
+  whole.selectNodeContents(this);
+  const lines: DOMRect[] = [];
+  for (const r of Array.from(whole.getClientRects())) {
+    const last = lines[lines.length - 1];
+    if (last !== undefined && Math.abs(last.y - r.y) < 0.001 && Math.abs(last.height - r.height) < 0.001) continue;
+    lines.push(r);
+  }
+  const units: number[] = [];
+  const blank: number[] = [];
+  for (let i = 0; i < this.data.length; i++) {
+    const r = document.createRange();
+    r.setStart(this, i);
+    r.setEnd(this, i + 1);
+    const pick = r.getClientRects()[0];
+    if (pick === undefined || lines.length === 0) {
+      units.push(-1);
+      continue;
+    }
+    const cy = pick.y + pick.height / 2;
+    let best = 0;
+    lines.forEach((l, j) => {
+      const b = lines[best] as DOMRect;
+      if (Math.abs(l.y + l.height / 2 - cy) < Math.abs(b.y + b.height / 2 - cy)) best = j;
+    });
+    units.push(best);
+    if (pick.width === 0) blank.push(i);
+  }
+  return { data: this.data, lines: lines.length, units, blank, transform: getComputedStyle(this.parentElement as Element).textTransform };
+}
+
 /**
- * FORM-b: the text of each UA shadow part (a text field's placeholder and editor, a select's inner element) as a break text
- * "<partId>:text0", which no script Range reaches. None of them wraps (text-wrap-mode: nowrap), so every unit is on the text's one
- * fragment; a text of more fragments, or one holding a character whose break or width the fragment count cannot show, is an error.
+ * FORM-b: the text of each UA shadow part (a text field's placeholder and editor, a textarea's, a select's inner element) as a break
+ * text "<partId>:text0", which page script cannot reach: its lines are read on the node itself through CDP, so a textarea editor's
+ * wrapped lines are captured as light-DOM lines are. A text holding a control, soft hyphen or zero-width space is an error.
  */
-export async function captureShadowBreakTexts(page: Page): Promise<{ id: string; data: string; lines: number; units: number[]; blank: number[] }[]> {
-  const out: { id: string; data: string; lines: number; units: number[]; blank: number[] }[] = [];
+export async function captureShadowBreakTexts(page: Page): Promise<{ id: string; data: string; lines: number; units: number[]; blank: number[]; transform?: string }[]> {
+  const out: { id: string; data: string; lines: number; units: number[]; blank: number[]; transform?: string }[] = [];
   const read = async (cdp: CDPSession, partId: string, n: DomNode): Promise<void> => {
     const text = (n.children ?? []).find((c) => c.nodeName === '#text' && c.nodeValue !== '');
     if (text === undefined) return;
     const data = text.nodeValue as string;
     if (/[\u0000-\u001f\u00ad\u200b]/.test(data)) throw new Error(`${partId}: the shadow text ${JSON.stringify(data)} holds a control, soft hyphen or zero-width space, whose breaks are not captured`);
-    const quads = ((await cdp.send('DOM.getContentQuads', { nodeId: text.nodeId })) as { quads: number[][] }).quads;
-    if (quads.length !== 1) throw new Error(`${partId}: the shadow text has ${quads.length} fragments, not one`);
-    out.push({ id: `${partId}:text0`, data, lines: 1, units: new Array<number>(data.length).fill(0), blank: [] });
+    const { object } = (await cdp.send('DOM.resolveNode', { nodeId: text.nodeId })) as { object: { objectId?: string } };
+    if (object.objectId === undefined) throw new Error(`${partId}: CDP resolved its shadow text to no object`);
+    const got = (await cdp.send('Runtime.callFunctionOn', { objectId: object.objectId, functionDeclaration: shadowTextLines.toString(), returnByValue: true })) as { result: { value?: ReturnType<typeof shadowTextLines> }; exceptionDetails?: unknown };
+    const v = got.result.value;
+    if (got.exceptionDetails !== undefined || v === undefined || v.data !== data) throw new Error(`${partId}: reading its shadow text's lines failed: ${JSON.stringify(got.exceptionDetails ?? null)}`);
+    const { transform, ...t } = v;
+    out.push(transform === 'none' ? { id: `${partId}:text0`, ...t } : { id: `${partId}:text0`, ...t, transform });
   };
   await withTextFieldParts(page, async (cdp, fields) => {
     for (const { id, parts } of fields) for (const [part, n] of parts) await read(cdp, `${id}::${part}`, n);
