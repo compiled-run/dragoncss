@@ -17,13 +17,13 @@ export const CONTROL_TAGS: readonly string[] = ['button', 'input', 'select', 'te
 /**
  * The UA dataset key of a control: a button's UA rules do not depend on its type (controls-button-type proves it), but do on
  * :disabled (html.css's disabled colours, captured as button[disabled]); an input's do, and only type=range (ASCII
- * case-insensitive, HTML §4.10.5) is laid out; any other input reads the plain input key and is refused (computed-checks.ts).
+ * case-insensitive, HTML §4.10.5) and type=checkbox (FORM-checkbox) read keys of their own; any other input reads the plain input key.
  */
 export function controlUaKey(tag: string, type: string | undefined, disabled = false): ControlKey | null {
   if (tag === 'button') return disabled ? 'button[disabled]' : 'button';
   // html.css select:disabled gives opacity, border colour and colour, captured on a disabled select.
   if (tag === 'select') return disabled ? 'select[disabled]' : 'select';
-  if (tag === 'input') return isRangeType(type) ? 'input[type=range]' : 'input';
+  if (tag === 'input') return isRangeType(type) ? 'input[type=range]' : isCheckboxType(type) ? 'input[type=checkbox]' : 'input';
   if (tag === 'textarea') return 'textarea';
   return null;
 }
@@ -33,6 +33,11 @@ const asciiLower = (s: string): string => s.replace(/[A-Z]/g, (c) => c.toLowerCa
 /** HTML §4.10.5: the type attribute's keyword, ASCII case-insensitively. */
 export function isRangeType(type: string | undefined): boolean {
   return type !== undefined && asciiLower(type) === 'range';
+}
+
+/** HTML §4.10.5: whether the type attribute's keyword is checkbox, ASCII case-insensitively. */
+export function isCheckboxType(type: string | undefined): boolean {
+  return type !== undefined && asciiLower(type) === 'checkbox';
 }
 
 /** Every input type keyword HTML §4.10.5 defines; any other value, or none, is the Text state. */
