@@ -14,18 +14,19 @@ import { CLAMP_OUT, CLAMP_REASON, INLINE_OUT, INLINE_REASON, MARKER_OUT, MARKER_
 import { shapedCaseIds } from '../src/text-latin-run.ts';
 import { GRID_OUT, GRID_REASON } from './hit-refusals-grid.ts';
 import { CONTROLS_OUT, CONTROLS_REASON } from './hit-refusals-controls.ts';
+import { RADIUS_OUT, RADIUS_REASON } from './hit-refusals-radius.ts';
 import { VISIBILITY_OUT, VISIBILITY_REASON } from './hit-refusals-visibility.ts';
 import { CLIP_PATH_OUT, CLIP_PATH_REASON, CLIP_RECT_OUT, CLIP_RECT_REASON } from './hit-refusals-clip-rect.ts';
 
 const cases = hitCases();
 
 describe('the host hit lane', () => {
-  // The hit lane leaves out the union of eight refusals (hit-refusals.ts, hit-refusals-grid.ts, hit-refusals-controls.ts); taking any alone would bring the others' cases back.
+  // The hit lane leaves out the union of eight refusals (hit-refusals.ts, hit-refusals-radius.ts, hit-refusals-grid.ts, hit-refusals-controls.ts); taking any alone would bring the others' cases back.
   const transformed = (): string[] => nativeCases().filter((n) => n.programs.uikit.nodes.some((x) => x.writes.some((w) => w.kind === 'transform'))).map((n) => n.case.id);
-  it('leaves out exactly the union of the transform cases, the PNT1 stacking cases, the INL1a inline-box and <br> fixtures, the GRID fixtures, the T150a visibility fixtures, the MASK-CLIP clip and clip-path fixtures, the svg fixtures, the TXT2-g line-clamp fixtures, the FORM-a controls fixtures and the TXT1a-2 shaped cases, each with a named reason', () => {
+  it('leaves out exactly the union of the transform cases, the PNT1 stacking cases, the PNT1 radius fixtures, the INL1a inline-box and <br> fixtures, the GRID fixtures, the T150a visibility fixtures, the MASK-CLIP clip and clip-path fixtures, the svg fixtures, the TXT2-g line-clamp fixtures, the FORM-a controls fixtures and the TXT1a-2 shaped cases, each with a named reason', () => {
     const hit = new Set(cases.map((n) => n.case.id));
     const out = nativeCases().filter((n) => !hit.has(n.case.id));
-    const union = new Set([...shapedCaseIds(), ...transformed(), ...STACKING_OUT, ...INLINE_OUT, ...GRID_OUT, ...VISIBILITY_OUT, ...CLIP_RECT_OUT, ...CLIP_PATH_OUT, ...SVG_OUT, ...CLAMP_OUT, ...MARKER_OUT, ...CONTROLS_OUT]);
+    const union = new Set([...shapedCaseIds(), ...transformed(), ...STACKING_OUT, ...RADIUS_OUT, ...INLINE_OUT, ...GRID_OUT, ...VISIBILITY_OUT, ...CLIP_RECT_OUT, ...CLIP_PATH_OUT, ...SVG_OUT, ...CLAMP_OUT, ...MARKER_OUT, ...CONTROLS_OUT]);
     expect(out.map((n) => n.case.id)).toEqual(nativeCases().map((n) => n.case.id).filter((id) => union.has(id)));
     for (const n of out.filter((x) => INLINE_OUT.includes(x.case.id))) expect(() => caseHitTable(n), n.case.id).toThrow(INLINE_REASON);
     for (const n of out.filter((x) => CLAMP_OUT.includes(x.case.id))) expect(() => caseHitTable(n), n.case.id).toThrow(CLAMP_REASON);
@@ -48,10 +49,11 @@ describe('the host hit lane', () => {
     }
   });
 
-  it('refuses by name every case whose program writes a transform (T064 R13; SELD-R2b T146 lifts it), and the PNT1 stacking, INL1a inline, GRID, T150a visibility, MASK-CLIP clip and clip-path, svg (SVG-a2 lifts it), FORM-a controls and shaped cases (TXT1a-2 phase R) with their own reasons', () => {
+  it('refuses by name every case whose program writes a transform (T064 R13; SELD-R2b T146 lifts it), and the PNT1 stacking, PNT1 radius, INL1a inline, GRID, T150a visibility, MASK-CLIP clip and clip-path, svg (SVG-a2 lifts it), FORM-a controls and shaped cases (TXT1a-2 phase R) with their own reasons', () => {
     const refused = hitRefusedCases();
     const moved = new Set(transformed());
     expect(refused.filter((r) => moved.has(r.id)).map((r) => r.id)).toEqual(transformed());
+    expect(refused.filter((r) => RADIUS_OUT.includes(r.id)).map((r) => r.id).sort()).toEqual([...RADIUS_OUT].sort());
     expect(refused.filter((r) => GRID_OUT.includes(r.id)).map((r) => r.id).sort()).toEqual([...GRID_OUT].sort());
     expect(refused.filter((r) => VISIBILITY_OUT.includes(r.id)).map((r) => r.id).sort()).toEqual([...VISIBILITY_OUT].sort());
     expect(refused.filter((r) => CLIP_RECT_OUT.includes(r.id)).map((r) => r.id).sort()).toEqual([...CLIP_RECT_OUT].sort());
@@ -68,6 +70,7 @@ describe('the host hit lane', () => {
       else if (STACKING_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(STACKING_REASON);
       else if (SVG_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(SVG_REASON);
       else if (CLAMP_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(CLAMP_REASON);
+      else if (RADIUS_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(RADIUS_REASON);
       else if (GRID_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(GRID_REASON);
       else if (VISIBILITY_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(VISIBILITY_REASON);
       else if (CLIP_RECT_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(CLIP_RECT_REASON);
@@ -107,7 +110,7 @@ describe('the host hit lane at a fractional device DPR', () => {
     const byId = new Map(cases.map((n) => [n.case.id, n]));
     expect(HIT_DPR_CAPTURES.map((d) => d.dpr)).toEqual([2.625]);
     for (const { dpr, ids } of HIT_DPR_CAPTURES) {
-      expect(ids).toEqual(['interaction-combo', 'interaction-combo-rtl', 'radius-basic', 'radius-clip']);
+      expect(ids).toEqual(['interaction-combo', 'interaction-combo-rtl']);
       const mismatches: string[] = [];
       for (const id of ids) {
         const n = byId.get(id);
@@ -118,7 +121,6 @@ describe('the host hit lane at a fractional device DPR', () => {
         const r = compareHitsAt(n, c, dpr);
         expect(r.stale, id).toBe(false);
         for (const m of r.mismatches.slice(0, 3)) mismatches.push(`${m.case} (${m.x / (dpr * 64)}, ${m.y / (dpr * 64)}): Chrome ${m.chrome}, Dragon ${m.dragon}`);
-        if (!id.startsWith('interaction-combo')) continue;
         // The device-traces step (2, 30) is on c's bottom edge, y 30, over d: c's text rect snapped to device px (53
         // to 79) holds the band from 78.75 to 79 device px at 2.625, so Chrome names c there, where DPR 1 names d.
         const w = n.case.environment.viewport.width;
@@ -188,18 +190,18 @@ describe('the PNT1 stacking and radius hit refusals fire independently (merge of
     return n;
   };
   const flat = (x: Node): Node => ({ ...x, facts: { ...x.facts, stacking: { ...(x.facts['stacking'] as object), createsContext: false } } });
-  it('a stacking case refuses with the stacking reason, with or without a rounded corner, and is in the lane once its contexts go', () => {
+  it('a stacking case refuses with the stacking reason, with or without a rounded corner, and with the radius reason once its contexts go', () => {
     const stacking = caseOf('stacking-basic');
     const radius = stacking.programs.uikit.nodes.find((x) => x.parent !== null && x.kind !== 'text');
     if (radius === undefined) throw new Error('no box');
     const rounded = (x: Node): Node => (x.id === radius.id ? { ...x, writes: [...x.writes, { kind: 'border-radius' } as unknown as Node['writes'][number]] } : x);
     expect(hitRefusal(stacking)).toMatch(STACKING_REASON);
     expect(hitRefusal(edit(stacking, rounded))).toMatch(STACKING_REASON);
-    expect(hitRefusal(edit(stacking, (x) => rounded(flat(x))))).toBeNull();
+    expect(hitRefusal(edit(stacking, (x) => rounded(flat(x))))).toMatch(RADIUS_REASON);
   });
-  it('a radius case is in the hit lane (SELD-R2b), and refuses with the stacking reason once one of its boxes makes a context', () => {
+  it('a radius case refuses with the radius reason, and with the stacking reason once one of its boxes makes a context', () => {
     const radius = caseOf('radius-basic');
-    expect(hitRefusal(radius)).toBeNull();
+    expect(hitRefusal(radius)).toMatch(RADIUS_REASON);
     const box = radius.programs.uikit.nodes.find((x) => x.parent !== null && x.kind !== 'text');
     if (box === undefined) throw new Error('no box');
     expect(hitRefusal(edit(radius, (x) => (x.id === box.id ? { ...x, facts: { ...x.facts, stacking: { ...(x.facts['stacking'] as object), createsContext: true } } } : x)))).toMatch(STACKING_REASON);
