@@ -46,7 +46,7 @@ const EDGE_ROWS: readonly Row[] = [
 ];
 
 /** The page as the web renders it with these rows: each row's nodes named "<id>@<key>", its class its item's, its text its own. */
-function writtenOut(rows: readonly Row[]): MarklessStyleInput {
+function writtenOut(rows: readonly Row[], css = ''): MarklessStyleInput {
   const nodes: MarklessStyleInput['nodes'][number][] = [];
   let placed = false;
   for (const n of input.nodes) {
@@ -74,7 +74,7 @@ function writtenOut(rows: readonly Row[]): MarklessStyleInput {
     }
   }
   const { repeats: _, ...rest } = input;
-  return { ...rest, nodes, states: input.states.filter((s) => s.row === undefined) };
+  return { ...rest, css: `${input.css}${css}`, nodes, states: input.states.filter((s) => s.row === undefined) };
 }
 
 /** Each box of a variant tree (plan JSON) with its parent box, rows spliced in by the device's naming rule. */
@@ -102,8 +102,7 @@ describe('styled @for rows', () => {
   });
 
   /** The device's layout of these rows on a target: its boxes in device px, absolute, by id. */
-  function deviceBoxes(t: 'ios' | 'android', rows: readonly Row[]): { readonly abs: (id: string) => number[]; readonly ids: readonly string[]; readonly names: ReadonlyMap<string, string> } {
-    const x = exported.targets[t]!;
+  function deviceBoxes(t: 'ios' | 'android', rows: readonly Row[], x = exported.targets[t]!): { readonly abs: (id: string) => number[]; readonly ids: readonly string[]; readonly names: ReadonlyMap<string, string> } {
     const shown = rows.length === 0 ? '0' : '1';
     const at = (option: string): number => x.assignments.findIndex((a) => a.values[branch.id] === shown && a.values[rowState.cell] === option);
     const page = at(rowState.initial as string);
@@ -141,12 +140,14 @@ describe('styled @for rows', () => {
     it(`lays 3 rows out on the ${t} device exactly as the build lays out the page with those rows written out`, () => expectAsBuilt(t, ROWS));
     // A title alone in its box: the build drops the white space at its edges, and drops an empty one.
     it(`lays rows whose titles have edge white space, or none, out on the ${t} device exactly as the build does`, () => expectAsBuilt(t, EDGE_ROWS));
+    // A pinned row taller than the others: the list, and the boxes after and around it, move as the build places them.
+    it(`lays a taller pinned row out on the ${t} device exactly as the build does`, () => expectAsBuilt(t, ROWS, '.note.pinned { padding: 18px; }'));
   }
 
-  function expectAsBuilt(t: 'ios' | 'android', rows: readonly Row[]): void {
+  function expectAsBuilt(t: 'ios' | 'android', rows: readonly Row[], css = ''): void {
     {
-      const device = deviceBoxes(t, rows);
-      const built = marklessStyleExport(JSON.stringify(writtenOut(rows)), PATH, undefined, 'system').exported.targets[t]!;
+      const device = deviceBoxes(t, rows, css === '' ? exported.targets[t]! : marklessStyleExport(withCss(css), PATH, undefined, 'system', undefined, true).exported.targets[t]!);
+      const built = marklessStyleExport(JSON.stringify(writtenOut(rows, css === '' ? '' : `\n${css}`)), PATH, undefined, 'system').exported.targets[t]!;
       const a = built.assignments.find((x) => x.values[branch.id] === '1')!;
       const byId = new Map(a.nodes.map((n) => [n.id, n]));
       const absBuilt = (id: string): number[] => {
@@ -176,6 +177,10 @@ describe('styled @for rows', () => {
     expect(() => marklessStyleExport(withCss('.note:first-child { padding: 30px; }'), PATH, undefined, 'system', undefined, true)).toThrow("a style that depends on a row's position");
     expect(() => marklessStyleExport(withCss('.note + .note { margin-top: 30px; }'), PATH, undefined, 'system', undefined, true)).toThrow("a style that depends on a row's position");
     expect(() => marklessStyleExport(withCss('.page:has(.pinned) { padding: 40px; }'), PATH, undefined, 'system', undefined, true)).toThrow("its style follows a row's own state");
+  });
+
+  it('keeps a row state that changes the row\'s size: the boxes after and around the list move, and the rows layout places them', () => {
+    expect(() => marklessStyleExport(withCss('.note.pinned { padding: 18px; }'), PATH, undefined, 'system', undefined, true)).not.toThrow();
   });
 
   it('refuses a position a third row or later first reaches, and a position under a row state other than the initial one', () => {
