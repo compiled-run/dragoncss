@@ -6,7 +6,6 @@ import { specificityOf } from '../css/selectors.ts';
 import type { Rule } from '../css/stylesheet.ts';
 import type { CompilerFaults } from '../faults.ts';
 import type { LinkedElement, LinkedText } from './link.ts';
-import { directionality } from './elements/dir.ts';
 
 /**
  * The interaction state a match runs in (SELD-R2, analysis/interaction.ts): the element addresses that match :hover, :active,
@@ -155,8 +154,6 @@ function pseudoMatches(path: Path, rule: Rule, p: PseudoClass, faults: CompilerF
       return p.state !== 'visited' && isAnyLink(el);
     case 'disabled':
       return CAN_BE_DISABLED.has(el.tag) && isDisabled(path) !== p.enabled;
-    case 'dir':
-      return p.direction !== null && directionality(path, faults) === p.direction;
     case 'interaction': {
       const set = p.pseudo === 'focus-visible' ? 'focusVisible' : p.pseudo;
       ix.probe?.[set].add(el.address);

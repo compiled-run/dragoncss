@@ -2,7 +2,6 @@
 // rendering-neutral attribute compiles without a diagnostic. An attribute is neutral when HTML §15 (Rendering) gives it no
 // presentational hint and no UA style rule on the supported tags, and a parity fixture pair proves it: the same tree with and
 // without the attribute gives identical Chrome captures in both directions (packages/parity/src/fixture-groups/attributes.ts).
-import { dirTagRefusal } from './analysis/elements/dir.ts';
 import { svgAttributeHandled, svgAttributeOwner } from './analysis/elements/svg.ts';
 
 export type NeutralAttribute = {
@@ -79,6 +78,7 @@ const OWNERS: Readonly<Record<string, string>> = {
   height: 'the replaced-element package REPL',
   href: 'the inline and link package INL1 (an href makes the :link UA rules apply)',
   lang: 'the text package TXT1-C (lang feeds locale font fallback)',
+  dir: 'the bidi package (dir sets direction and unicode-bidi)',
   // MEDIA-EL: a video without them shows its first frame and never plays; with them Chrome plays it or draws its own controls.
   controls: 'the media-element package MEDIA-EL (controls and playback)',
   autoplay: 'the media-element package MEDIA-EL (controls and playback)',
@@ -111,9 +111,6 @@ export function attributeRefusal(tag: string, name: string): string | null {
   if (tag === 'dialog' && name === 'open') return null;
   // css-style-attr: its declarations cascade as element-attached author declarations (analysis/style-attribute.ts).
   if (name === 'style') return null;
-  // SEL-dir: the direction hint, html.css's isolate and the directionality :dir() matches (analysis/elements/dir.ts); project.ts
-  // refuses a value other than ltr and rtl in every arm.
-  if (name === 'dir') return dirTagRefusal(tag);
   if (neutralAttribute(tag, name) !== undefined) return null;
   if (Object.hasOwn(HANDLED_ATTRIBUTES, tag) && (HANDLED_ATTRIBUTES[tag] as readonly string[]).includes(name)) return null;
   // SVG-a1: the SVG tags' geometry and presentation attributes (analysis/elements/svg.ts), and the packages of the others.

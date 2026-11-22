@@ -16,11 +16,10 @@ import type { VarScope } from './variables.ts';
 export type Direction = 'ltr' | 'rtl';
 
 /**
- * What an element's direction is when it declares none (its dir hint, else its parent's, or the environment's at the root), what
- * inherit, unset and revert give it (its parent's, or the root's initial-value parent at the root), and its dir hint, to which
- * revert-layer rolls back (presentational hints sit below every author layer).
+ * What an element's direction is when it declares none (its parent's, or the environment's at the root), and what inherit,
+ * unset and revert give it (its parent's, or the root's initial-value parent at the root).
  */
-export type DirectionContext = { readonly undeclared: Direction; readonly inherited: Direction; readonly hint: Direction | null };
+export type DirectionContext = { readonly undeclared: Direction; readonly inherited: Direction };
 
 const directional = new WeakMap<readonly Rule[], boolean>();
 
@@ -62,8 +61,7 @@ export function elementDirection(rules: readonly Rule[], chain: readonly LinkedE
   if (value.kind !== 'keyword') return context.inherited;
   if (value.value === 'ltr' || value.value === 'rtl') return value.value;
   // css-writing-modes-4 §2.1: the initial value is ltr; inherit, unset and revert (direction is inherited) take the parent's.
-  if (value.value === 'initial') return 'ltr';
-  return value.value === 'revert-layer' && context.hint !== null && !faults.revertAsUnset ? context.hint : context.inherited;
+  return value.value === 'initial' ? 'ltr' : context.inherited;
 }
 
 const twins = { ltr: new WeakMap<Declaration, Declaration>(), rtl: new WeakMap<Declaration, Declaration>() };

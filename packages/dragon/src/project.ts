@@ -4,7 +4,6 @@ import type { LayoutBox } from '@dragon/layout';
 import { attributeRefusal } from './attributes.ts';
 import { styleAttributeRules } from './analysis/style-attribute.ts';
 import { dimensionRefusal, iframeSrcRefusal } from './analysis/elements/replaced.ts';
-import { dirValueRefusal } from './analysis/elements/dir.ts';
 import { isSvgShapeTag, svgAttributeRefusal } from './analysis/elements/svg.ts';
 import { compileImages, imageMapProblem } from './images/compile.ts';
 import type { CompiledImages } from './images/compile.ts';
@@ -439,8 +438,6 @@ function checkTemplates(nodes: readonly TreeNode[], diagnostics: Diagnostic[], h
           if (dimension !== null) diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_ATTRIBUTE', { origin: a.origin, message: `attribute ${a.name} on ${n.id} is not supported: ${dimension}`, manual: 'Give the attribute a width or height in CSS px, or set the size in CSS.' }));
           const src = iframeSrcRefusal(n.tag, a.name, c.value);
           if (src !== null) diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_ATTRIBUTE', { origin: a.origin, message: `attribute ${a.name} on ${n.id} is not supported: ${src}`, manual: 'Give the iframe an absolute https URL.' }));
-          const dir = a.name === 'dir' && attributeRefusal(n.tag, a.name) === null ? dirValueRefusal(c.value) : null;
-          if (dir !== null) diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_ATTRIBUTE', { origin: a.origin, message: `attribute dir="${c.value}" on ${n.id} is not supported: ${dir}`, manual: 'Write dir="ltr" or dir="rtl".' }));
           const svg = svgAttributeRefusal(n.tag, a.name, c.value);
           if (svg !== null) diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_ATTRIBUTE', { origin: a.origin, message: `attribute ${a.name}="${c.value}" on ${n.id} is not supported: ${svg}`, manual: 'Write the attribute with plain numbers (or px) and the commands M, L, H, V, C, S, Q, T and Z.' }));
         }

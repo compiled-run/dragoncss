@@ -1,9 +1,0 @@
-{
-  "case": "bidi-dir-attribute",
-  "dpr": 2.625,
-  "texts": [
-    {"id":"lp:text0","lines":[[0,3]]},
-    {"id":"ls:text0","lines":[[0,2]]},
-    {"id":"lp:text1","lines":[[0,3]]}
-  ]
-}
