@@ -24,8 +24,8 @@ const img = (ref: SourceRef, id: string, classes: string[], runtimeSrc: unknown,
   const attributes: AttributeBinding[] = Object.entries(attrs).map(([name, value]) => ({ name, value: [{ when: always, value }], origin }));
   return { kind: 'element', id, tag, classes: classes.map((name) => staticClass({ owner: DOC, sheet: 's', name }, origin)), attributes, children: [], origin, ...(runtimeSrc === undefined ? {} : { runtimeSrc }) } as unknown as ElementNode;
 };
-const compile = (css: string, body: (r: SourceRef) => TreeNode[], runtimeImageLayout: RuntimeImageLayout | null = DEVICES, lanes = true) =>
-  createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' }, web: {} } }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr', foldViewport: { width: 400, height: 300 }, interactionLanes: lanes, ...(runtimeImageLayout === null ? {} : { runtimeImageLayout }) }).compile(inputFor(css, body));
+const compile = (css: string, body: (r: SourceRef) => TreeNode[], runtimeImageLayout: RuntimeImageLayout | null = DEVICES) =>
+  createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' }, web: {} } }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr', foldViewport: { width: 400, height: 300 }, ...(runtimeImageLayout === null ? {} : { runtimeImageLayout }) }).compile(inputFor(css, body));
 const refusals = (c: ReturnType<typeof compile>, code: string): string[] => c.diagnostics.filter((d) => d.code === code).map((d) => d.message);
 const SIZED = 'img { display: block; width: 100px; height: 50px; }';
 
@@ -55,21 +55,6 @@ describe('REPL-r1 input: runtimeSrc', () => {
     expect(one({ title: 'A lamp' })).toEqual(['<img> a has a src set at run time that may be missing, and a missing src shows its title (Chrome lays the text out in place of the image): give it alt=""']);
     // An img whose src is never missing keeps its alt text: Chrome shows it only on a load error, which the fallback note names.
     expect(refusals(compile(SIZED, (r) => [div(r, 'c', [], [img(r, 'a', [], { absent: false }, { alt: 'A lamp' })])]), 'DRAGON_RUNTIME_IMAGE_SIZE')).toEqual([]);
-  });
-});
-
-describe('REPL-r1 native: refused by name until its paint lands, lane-only in the parity lanes', () => {
-  const body = (r: SourceRef): TreeNode[] => [div(r, 'c', [], [img(r, 'a', [], { absent: false }, { alt: '' })])];
-  it('refuses the img on ios outside the lanes, and leaves web its full output', () => {
-    const c = compile(SIZED, body, DEVICES, false);
-    expect(c.diagnostics.filter((d) => d.severity === 'error').map((d) => `${d.code} ${d.target}: ${d.message}`)).toEqual(['DRAGON_UNSUPPORTED_IMAGE ios: <img> a has a src set at run time, which ios does not draw yet (its paint is the next REPL-r1 package)']);
-    expect(c.targets.ios).toBe('blocked');
-    expect(c.targets.web).toBe('checked');
-  });
-  it('keeps it lane-only in a lanes compile, so the layout lane still lays it out', () => {
-    const c = compile(SIZED, body);
-    expect(c.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
-    expect(c.targets.ios).toBe('checked');
   });
 });
 

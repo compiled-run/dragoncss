@@ -7,7 +7,7 @@ import { dimensionRefusal, iframeSrcRefusal } from './analysis/elements/replaced
 import { isSvgShapeTag, svgAttributeRefusal } from './analysis/elements/svg.ts';
 import { compileImages, imageMapProblem } from './images/compile.ts';
 import type { RuntimeImageLayout } from './images/runtime.ts';
-import { runtimeImageNativeRefusals, runtimeImageNotes, runtimeLayoutRefusals, runtimeSrcSelectorRefusals } from './images/runtime.ts';
+import { runtimeImageNotes, runtimeLayoutRefusals, runtimeSrcSelectorRefusals } from './images/runtime.ts';
 import type { CompiledImages } from './images/compile.ts';
 import { compileVideos } from './videos/compile.ts';
 import type { ImageAssetMap } from './images/manifest.ts';
@@ -1686,10 +1686,6 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       diagnostics.splice(valuesAt, 0, ...values);
     }
   }
-  // REPL-r1: native draws no img whose src is set at run time yet; the parity lanes lower it lane-only, so the layout lane proves it.
-  const runtimeNative = runtimeImageNativeRefusals(bandCases.flatMap((b) => b.cases.flatMap((c) => (c.resolved === null ? [] : [c.resolved, ...c.interaction.map((i) => i.resolved)]))), NATIVE_TARGETS.filter((t) => targets.includes(t)), originOfAddress);
-  if (options.interactionLanes) laneOnlyNative = NATIVE_TARGETS.filter((t) => laneOnlyNative.includes(t) || runtimeNative.some((d) => d.target === t));
-  else diagnostics.push(...runtimeNative);
   // SVG-a2: a native row of the svg family is derived from the parity run (chrome-dual computed values, capped at caveat as every
   // native paint row is; device-pixels judges the drawing). In an enforced parity-lanes compile a value with no row yet is lane-only,
   // so the lanes still lower the shapes; a compile outside the lanes refuses it until its row exists.

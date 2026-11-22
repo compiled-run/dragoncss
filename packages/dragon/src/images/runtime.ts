@@ -65,24 +65,6 @@ export function runtimeImageNotes(roots: readonly ResolvedElement[], originOf: O
   }
 }
 
-/**
- * Until the native paint of an img whose src is set at run time lands, each native target refuses every such img by name (the
- * parity lanes keep the refusal lane-only, so the layout lane still proves its box).
- */
-export function runtimeImageNativeRefusals(roots: readonly ResolvedElement[], targets: readonly string[], originOf: OriginOf): Diagnostic[] {
-  const out: Diagnostic[] = [];
-  const seen = new Set<string>();
-  for (const root of roots) {
-    eachElement(root, (el) => {
-      const id = el.element.address;
-      if (!isRuntimeImg(el) || seen.has(id)) return;
-      seen.add(id);
-      for (const t of targets) out.push(diagnostic('DRAGON_UNSUPPORTED_IMAGE', { origin: originOf(root, id), target: t, message: `<img> ${id} has a src set at run time, which ${t} does not draw yet (its paint is the next REPL-r1 package)` }));
-    });
-  }
-  return out;
-}
-
 /** Each selector of a band's rules that reads a runtimeSrc img's src on some case of the band, refused at that img. */
 export function runtimeSrcSelectorRefusals(bands: readonly { readonly rules: readonly Rule[]; readonly roots: readonly ResolvedElement[] }[], faults: CompilerFaults, originOf: OriginOf, diagnostics: Diagnostic[]): void {
   const reported = new Set<string>();

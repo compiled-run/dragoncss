@@ -6,7 +6,7 @@ import { readdirSync, readFileSync } from 'node:fs';
 import type { BorderOp, LayoutBox, LU, ScrollRange, TextMeasurer } from '@dragon/layout';
 import { absoluteRects, borderNeedsSidePainter, borderPaintOps, LU_PER_PX, NO_DASH_FAULTS, NO_ENGINE_FAULTS, pieceGlyphs, resolveBorder, scrollRanges, snapRect } from '@dragon/layout';
 import type { Assignment, NativeProgram, NativeStyles, NativeStyleTarget, Scalar } from 'dragon';
-import { borderDevicePx, isScalar, programAt, programInput } from 'dragon';
+import { borderDevicePx, isScalar, programAt, programInput, replacedContents } from 'dragon';
 import { scrollMetricsWithFaults } from '../../layout/src/overflow.ts';
 import { snapEdge } from '../../layout/src/units.ts';
 import { cssFontSizes } from './ahem-lines.ts';
@@ -263,6 +263,8 @@ export function nativeStyleExport(styles: NativeStyles, component: string, sourc
       const texts = new Map([...cssFontSizes(input.root)].map(([id, f]) => [id, f.text] as const));
       const origins = new Map([...absolute].map(([id, r]) => [id, { x: px(r.x), y: px(r.y) }] as const));
       const lines = textLines(engineTextLines(input, measurer()), texts, origins, measurer());
+      // REPL-r1: a runtime-image write carries the img's content box in absolute LU, from this assignment's layout, for the host's paint.
+      const contents = replacedContents(expectedEngine(), input, laid);
       const nodes = program.nodes.map((n): ExportNode => {
         const box = boxes.get(n.id);
         const s = style.get(n.id);
@@ -284,7 +286,7 @@ export function nativeStyleExport(styles: NativeStyles, component: string, sourc
           id: n.id, parent: n.parent, kind: n.kind, native: n.native, text: n.text,
           frame: box === undefined ? null : { x: px(box.x), y: px(box.y), width: px(box.width), height: px(box.height) },
           borderWidths: s === undefined ? null : Object.fromEntries(Object.entries(resolveBorder(s, d.dpr)).map(([k, v]) => [k, px(v) * d.dpr])),
-          writes: n.writes.map(({ css: _css, detail: _detail, technique: _technique, ...w }) => w),
+          writes: n.writes.map(({ css: _css, detail: _detail, technique: _technique, ...w }) => (w.kind === 'runtime-image' ? { ...w, content: contents.get(n.id)?.content ?? null } : w)),
           ...dashedBorder(n.id, n.writes, absolute.get(n.id), deviceBorders.get(n.id)),
           ...(scrolls && range !== undefined ? { scrollRange: range } : {}),
           ...(own === undefined ? {} : { lines: own }),

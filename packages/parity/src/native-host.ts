@@ -391,6 +391,8 @@ func dragonCase(_ k: Int, run: DragonRun, out: String, stage: UIView, scale: Dou
     t0 = CACurrentMediaTime()
     do {
       try tree.apply(c.input(scale), measurer: bridge.measurer, scale: scale, bridge: bridge)
+      // REPL-r1: a fixture's runtimeSrc imgs have no src in its base capture, so the host tells the tree there is none.
+      for rid in tree.runtimeImageIds { try tree.setRuntimeImage(rid, nil) }
     } catch {
       fatalError("dragon host: \(id): \(error)")
     }
@@ -825,6 +827,8 @@ class DragonActivity : Activity() {
       t0 = SystemClock.elapsedRealtimeNanos()
       tree.safeArea = dragonSafeArea(frame, scale)
       tree.apply(c.input(scale), bridge.measurer, scale, bridge)
+      // REPL-r1: a fixture's runtimeSrc imgs have no src in its base capture, so the host tells the tree there is none.
+      for (rid in tree.runtimeImageIds) tree.setRuntimeImage(rid, null)
       frame.addView(tree.root, FrameLayout.LayoutParams(tree.root.dragonFrame[2], tree.root.dragonFrame[3]))
     }
     // The tree redrawn, then the block once that frame is committed to the display. Only the commit shows the frame holds the
