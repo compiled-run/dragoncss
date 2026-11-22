@@ -114,4 +114,17 @@ describe('interaction states in the Markless style export', () => {
     const other = interactionPaintRows('ios', '0-state0', base, at([...base.nodes[0]!.writes, { kind: 'opacity', value: 0.85 }]), chrome);
     expect(other.map((r) => [r.pass, r.problem])).toEqual([[false, 'the state changes its opacity write, which this comparison does not read from Chrome yet']]);
   });
+
+  it("names a pressed node inside a list row as its row's template, so a phone presses the copy the touch is in", () => {
+    const path = 'examples/markless-styles/input/rows.native-style-input.json';
+    const input = JSON.parse(readFileSync(repoPath(path), 'utf8')) as { css: string; nodes: readonly { readonly id: string; readonly parent: string | null }[]; repeats: readonly { readonly id: string }[] };
+    // The page's buttons sit outside the list; Dragon hit-tests through a form control only with FORM-a, so they are left out.
+    const buttons = new Set(['h7', 'h7:text0', 'h8', 'h8:text0']);
+    const text = JSON.stringify({ ...input, nodes: input.nodes.filter((n) => !buttons.has(n.id)), css: `${input.css}\n.title:active { background: #2a9d8f; }` });
+    const { exported } = marklessStyleExport(text, path, undefined, 'system');
+    const levels = exported.targets.ios!.interaction!.levels;
+    const pressed = levels.flatMap((l) => l.matches.flatMap((m) => m.active.filter((id) => l.rows?.[id] !== undefined).map((id) => l.rows![id])));
+    expect(pressed.length).toBeGreaterThan(0);
+    expect(new Set(pressed)).toEqual(new Set([input.repeats[0]!.id]));
+  });
 });

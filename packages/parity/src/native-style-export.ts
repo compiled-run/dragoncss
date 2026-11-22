@@ -121,6 +121,8 @@ export type ExportInteractionLevel = {
   readonly states: readonly ExportAssignment[];
   /** Per state: the nodes each pseudo-class matches in it, and what CSS.forcePseudoState forces to reach it in Chrome. */
   readonly matches: readonly ExportInteractionMatch[];
+  /** From a Markless input: each address inside a list row, with the list. A phone applies the state to the row copy it is in. */
+  readonly rows?: { readonly [address: string]: string };
   /** With a plan: the plan assignment each state lays out as. */
   readonly planAssignments?: readonly number[];
 };

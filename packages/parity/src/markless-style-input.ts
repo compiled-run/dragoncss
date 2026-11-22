@@ -828,6 +828,7 @@ function exportMarkless(parsed: MarklessStyleInput, inputText: string, inputPath
   const rekey = cellKey(parsed);
   const cellValues = (a: ExportAssignment): Record<string, unknown> => Object.fromEntries(Object.entries(a.values).map(([k, v]) => [rekey(k), v]));
   const dragonIds = dragonNodeIds(parsed);
+  const rowOfNode = new Map(parsed.nodes.flatMap((n) => (n.row === undefined ? [] : [[n.id, n.row] as const])));
   const renameIn = (a: ExportAssignment): ((id: string) => string) => marklessNodeId(parsed, (id) => dragonIds.get(id) as string, cellValues(a));
   const renamed = (a: ExportAssignment): ExportAssignment => {
     const rename = renameIn(a);
@@ -842,9 +843,15 @@ function exportMarkless(parsed: MarklessStyleInput, inputText: string, inputPath
       ...(x.interaction === undefined ? {} : { interaction: { levels: x.interaction.levels.map((l, i) => {
         const rename = renameIn(x.assignments[i] as ExportAssignment);
         const one = (id: string | null): string | null => (id === null ? null : rename(id));
+        const addresses = l.addresses.map(rename);
         return {
           ...l,
-          addresses: l.addresses.map(rename),
+          addresses,
+          // A list row's node is the template a phone copies per row: the state applies to the copy the touch or focus is in.
+          rows: Object.fromEntries(addresses.flatMap((id) => {
+            const row = rowOfNode.get(id);
+            return row === undefined ? [] : [[id, row] as const];
+          })),
           states: l.states.map((st) => ({ ...st, nodes: st.nodes.map((n) => ({ ...n, id: rename(n.id), parent: n.parent === null ? null : rename(n.parent) })) })),
           matches: l.matches.map((m) => ({ hover: m.hover.map(rename), active: m.active.map(rename), focus: one(m.focus), focusVisible: one(m.focusVisible), force: m.force.map((f) => ({ ...f, address: rename(f.address) })) })),
         };
