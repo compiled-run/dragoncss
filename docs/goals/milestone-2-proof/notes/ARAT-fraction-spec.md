@@ -245,3 +245,27 @@ Vectors, captures, emitted CSS, profiles and generated Swift and Kotlin are on t
 - (12) The PR body gives the refusal count of the Markless shop pages / and /categories/[slug] before and after.
 - (13) `reject-sizing-ratio-inexact` is deleted with its reason, and `reject-sizing-ratio-percent-height-fraction` is added.
 - units.ts `layoutRatio` gains the SizeF clamp: a part at or below 2^-20 after the float narrowing (which rounds ties to even) becomes 0.
+
+## After implementation (Judge, 2026-11-22)
+
+**Ruling 6, amended.** `continued-fraction` is the deviation entry's only branch. The whole-64ths and equal-parts paths are its controls (`sizing-ratio-fraction-abspos` k1 `16 / 9` and k2 `1.3 / 1.3`). On those paths Blink's layout ratio is the same rational as the exact quotient (64p / 64q, or 1 / 1), so no node can tell them from the spec reading. The registry requires every branch to have a node that the spec fault makes non-exact, and these paths cannot have one. The over-the-gate node the M2 test requires is d6, `1 / 997.3` at 10px wide: Chrome gives 9970px high, the exact quotient 9973px.
+
+**Departures from ruling 5 (ARAT-0, #653), accepted:**
+1. **No reject fixtures.** The parity reject harness (`pipeline.ts` runFixture) requires the ios and web outputs both to be blocked. A refusal on native only leaves web ready, so the shapes are pinned in `packages/dragon/test/aspect-ratio.test.ts` instead.
+2. **The `aspect-ratio:<ratio>@grid` profile rows are not narrowed.** Their keys come from `analysis/context.ts`, which has no replaced or non-replaced facet. ARAT-1's `sizing-ratio-fraction-grid` adds the non-replaced proof instead.
+
+**Refusals found by the Chrome comparison** (shapes c and d of ARAT-0). The comparison used a `repeat(2, 1fr)` grid 360.5px wide with a 12px gap, in ltr and rtl at DPR 1, 2, 2.625 and 3. Under the standing rule, a silent mislay is refused by name:
+- **(c)** A content-box grid item with a ratio, an auto width, and a non-zero top or bottom padding or border. With 3 / 3.4 and `padding: 3px 0 7px 0`, Chrome sizes the columns 174.234375px and 183.046875px. The engine keeps them equal at 174.25px.
+- **(d)** A non-none `max-height` beside an inline alignment other than stretch. With `justify-self: start` and `max-height: 45px`, Chrome lays the item out at 39.703125 × 44.984375 (79.109375 × 44.984375 for 16 / 9.1). The engine gives 0 × 0.
+
+`sizing-ratio-fraction-grid` proves the shapes that still compile: border-box with horizontal-only padding, `justify-self: stretch` with a height, and `justify-self: start` with a given width.
+
+**Ledger: the grid-fix package** (the real fix behind ARAT-0). When it lifts ARAT-0's refusals, it must compile each of these and prove it against Chrome:
+- `align-self: stretch` in an auto row;
+- `height: 0`;
+- border-box items in wide columns;
+- shape (c), content-box vertical padding and border, including the unequal `1fr` columns it produces;
+- shape (d), `max-height` beside an alignment other than stretch;
+- the block-size transfer (a) and the narrow-column border-box shape (b).
+
+**Backlog (optional).** A native-only reject kind in `packages/parity/src/pipeline.ts`, `fixture-groups/define.ts` and `fixtures.ts`: the ios output is blocked with the named diagnostic, and the web output stays ready. With it, ARAT-0's shapes could become reject fixtures.
