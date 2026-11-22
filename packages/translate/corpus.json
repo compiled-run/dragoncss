@@ -18,16 +18,14 @@
     "fractionalFreeSpace",
     "divInt",
     "cumulativeShareRounded",
-    "distributedOffset",
-    "layoutRatioWidth",
-    "layoutRatioHeight"
+    "distributedOffset"
   ],
   "mutatedVectors": 258,
   "generatedTrees": 20000,
   "libraryPerOperation": 2000,
   "cases": {
     "vectors": 258,
-    "units": 360000,
+    "units": 320000,
     "engine": 20258,
     "library": 22000,
     "rt": 55362,
@@ -47,7 +45,7 @@
   },
   "digests": {
     "vectors": "7c08135de26c84195cb595a7ce7b4e33b02f28bcd7a9b936543073e0e7d87b09",
-    "units": "46fa13a7ba336af11b629e9b3edf102fea86fba7787e1075dbcd4dd50208a96e",
+    "units": "41c7a09c581011303f9896e233dfca4bc1bfc33266b817af269199de755508a7",
     "engine": "d7ec6b6591d1b29d92c5555fb2b6367909813e570f73dc6325538224cf7995c0",
     "library": "52c5b758ed05c0fa96d033bf78fcce8a39604a6711f621ac3ad34f38c8133b5d",
     "rt": "b098611f445b1f770ec88444e7fcbd8a801be09a906550bcd03ad7e390d6c6dc",
@@ -58,5 +56,5 @@
     "pointer": "171598a0f34bbcf9532b89a9ddeb93fc32ab44ffc36dd3255f595dab61a84d2c",
     "select": "0c71e6e0f678811952386f61dffd29b55387956a8475712e347d07dfe2e557c7"
   },
-  "digest": "91d78d32ab54248bf0845b192000fd71d986cbb2efb1aefccdf32819cb833c50"
+  "digest": "be23e78a9ce51a1b3663cd4b2963d0cb540ab528c3da68c5c510cb017e2fe436"
 }
