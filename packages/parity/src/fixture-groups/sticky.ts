@@ -15,5 +15,7 @@ export const STICKY: readonly FixtureSpec[] = [
   both('sticky-shift'),
   // A page that scrolls: a top-0 header, a top-20 box its short section stops, a bottom-10 footer (stickyShift at scroll offsets).
   both('sticky-scroll'),
+  // top, bottom and a box that overflow the viewport together: Blink drops bottom (the horizontal case is in layout/test/sticky.test.ts).
+  both('sticky-overconstrained'),
   reject('reject-sticky-nested', 'DRAGON_UNSUPPORTED_VALUE', 'sticky', 'position: sticky on i inside the sticky o'),
 ];

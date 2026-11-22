@@ -10,7 +10,7 @@ import { FIXTURES } from './fixtures.ts';
 import { repoPath } from './paths.ts';
 
 /** The sticky fixtures the scroll capture covers, and the DPRs it runs at. */
-export const STICKY_SCROLL_FIXTURES: readonly string[] = ['sticky-viewport', 'sticky-shift', 'sticky-scroll'];
+export const STICKY_SCROLL_FIXTURES: readonly string[] = ['sticky-viewport', 'sticky-shift', 'sticky-scroll', 'sticky-overconstrained'];
 export const STICKY_SCROLL_DPRS: readonly number[] = [1, 2];
 /** Vertical scroll offsets in CSS px: inside and past each fixture's sticky ranges; Chrome clamps to its scroll range. */
 export const STICKY_SCROLL_OFFSETS: readonly number[] = [0, 7, 20, 45, 90, 150, 400];

@@ -226,6 +226,16 @@ function stickyConstraintOf(st: StickyIndex, s: Sticky, x: LU, y: LU, width: LU,
   const contentRight = sub(sub(add(r.x, r.width), bor.right), pad.right);
   const contentWidth = sub(contentRight, contentLeft);
   const bs = s.box.style;
+  // Blink drops the inset that cannot also hold when both and the box overflow the viewport: bottom; right, or left in rtl.
+  const top = stickyInset(bs.top, st.height, ctx);
+  let bottom = stickyInset(bs.bottom, st.height, ctx);
+  if (top !== null && bottom !== null && add(add(top, bottom), height) > st.height) bottom = null;
+  let left = stickyInset(bs.left, st.width, ctx);
+  let right = stickyInset(bs.right, st.width, ctx);
+  if (left !== null && right !== null && add(add(left, right), width) > st.width) {
+    if (directionOf(ctx, s.parent) === 'rtl') left = null;
+    else right = null;
+  }
   return {
     id: s.box.id,
     x,
@@ -238,10 +248,10 @@ function stickyConstraintOf(st: StickyIndex, s: Sticky, x: LU, y: LU, width: LU,
     cbBottom: sub(sub(sub(add(r.y, r.height), bor.bottom), pad.bottom), resolveMarginWith(bs.marginBottom, contentWidth, ctx.faults).value),
     viewportWidth: st.width,
     viewportHeight: st.height,
-    top: stickyInset(bs.top, st.height, ctx),
-    right: stickyInset(bs.right, st.width, ctx),
-    bottom: stickyInset(bs.bottom, st.height, ctx),
-    left: stickyInset(bs.left, st.width, ctx),
+    top,
+    right,
+    bottom,
+    left,
   };
 }
 

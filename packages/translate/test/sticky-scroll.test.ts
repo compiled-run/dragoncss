@@ -11,16 +11,16 @@ const lu = (px: number) => fromRaw(Math.round(px * LU_PER_PX));
 const c = (id: string, y: number, h: number, cbTop: number, cbBottom: number, top: number | null, bottom: number | null): StickyConstraint => ({
   id, x: lu(0), y: lu(y), width: lu(400), height: lu(h), cbLeft: lu(0), cbTop: lu(cbTop), cbRight: lu(400), cbBottom: lu(cbBottom), viewportWidth: lu(400), viewportHeight: lu(300), top: top === null ? null : lu(top), right: null, bottom: bottom === null ? null : lu(bottom), left: null,
 });
-const row = (k: StickyConstraint): unknown[] => [k.id, ...[k.x, k.y, k.width, k.height, k.cbLeft, k.cbTop, k.cbRight, k.cbBottom, k.viewportWidth, k.viewportHeight, k.top, k.right, k.bottom, k.left].map((v) => (v === null ? null : v / LU_PER_PX))];
+const row = (k: StickyConstraint): unknown[] => [k.id, ...[k.x, k.y, k.width, k.height, k.cbLeft, k.cbTop, k.cbRight, k.cbBottom, k.viewportWidth, k.viewportHeight, k.top, k.right, k.bottom, k.left].map((v) => (v === null ? null : bitsHex(v / LU_PER_PX)))];
 
 describe('POSX-s scroll: runMarklessSticky', () => {
   const cs = [c('bar', 0, 56, 0, 900, 0, null), c('tab', 96, 30, 96, 276, 20, null), c('foot', 400, 24, 0, 900, null, 10)];
   it('gives stickyShift for every box at every offset', () => {
-    for (const scroll of [0, 7.5, 45, 150, 400]) {
+    for (const scroll of [0, 7.5, 45.3, 150, 400]) {
       const out = JSON.parse(runMarklessSticky(JSON.stringify({ sticky: cs.map(row), scroll: [0, scroll] }))) as unknown[];
       expect(out[0], `${scroll}`).toBe('ok');
       expect(out[1], `${scroll}`).toEqual(cs.map((k) => {
-        const d = stickyShift(k, lu(0), lu(scroll));
+        const d = stickyShift(k, lu(0), fromRaw(Math.floor(scroll * LU_PER_PX)));
         return [k.id, bitsHex(d.dx / LU_PER_PX), bitsHex(d.dy / LU_PER_PX)];
       }));
     }
