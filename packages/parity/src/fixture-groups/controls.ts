@@ -20,6 +20,9 @@ export const CONTROLS: readonly FixtureSpec[] = [
   reject('reject-fieldset-display', 'DRAGON_UNSUPPORTED_VALUE', 'flex', 'display: flex on <fieldset> f is not laid out yet'),
   reject('reject-ua-fieldset-groove', 'DRAGON_UNSUPPORTED_VALUE', '<fieldset data-dragon-id="f"></fieldset>', 'border-top-style, border-right-style, border-bottom-style, border-left-style: groove'),
   both('controls-button-flex'),
+  // GRID-items: block buttons (contents centred in a stretched area) and flex buttons (plain flex boxes) as grid items.
+  both('grid-button-block'),
+  both('grid-button-flex'),
   both('controls-button-demo'),
   both('controls-button-type'),
   both('controls-appearance-display'),
@@ -30,6 +33,8 @@ export const CONTROLS: readonly FixtureSpec[] = [
   reject('reject-controls-button-flex-width', 'DRAGON_UNSUPPORTED_VALUE', '<button data-dragon-id="b">XX</button>', '<button> b is a flex button with an auto width in block flow'),
   both('controls-range-block'),
   both('controls-range-flex'),
+  // GRID-items: a range stays refused as a grid item; a fieldset's refusal is reject-fieldset-grid-item.
+  reject('reject-grid-control-range', 'DRAGON_UNSUPPORTED_VALUE', '<input data-dragon-id="r" type="range">', '<input> r is a grid item, and a form control as a grid item is not supported yet'),
   reject('reject-controls-range-theme', 'DRAGON_UNSUPPORTED_VALUE', '<input data-dragon-id="r" type="range">', '<input type=range> r is painted by the platform theme'),
   reject('reject-controls-range-inline', 'DRAGON_UNSUPPORTED_VALUE', '<input data-dragon-id="r" type="range">', 'display: inline-block on <input> r makes it an inline-level control'),
   reject('reject-controls-input-text', 'DRAGON_UNSUPPORTED_ELEMENT', '<input data-dragon-id="r" type="text">', '<input> r of type text is not supported'),
