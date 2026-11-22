@@ -14,7 +14,7 @@ import type { ProfileRow } from '../src/profiles/types.ts';
 import type { SupportProfiles } from '../src/project.ts';
 import type { ElementNode } from '../src/types.ts';
 import type { LinkedElement } from '../src/analysis/link.ts';
-import { comboIndex, COMMITTED_PROFILES, conditionsExclusive, createProjectWith, gatedConditions, HIT_MODELLED, hitUnmodelledFact, hitUnmodelledGrid, interactionCondition, laneOnlyNative, LONGHANDS, NO_FAULTS, stateMembers } from '../src/internal.ts';
+import { comboIndex, COMMITTED_PROFILES, conditionsExclusive, createProjectWith, gatedConditions, HIT_MODELLED, hitUnmodelledFact, interactionCondition, laneOnlyNative, LONGHANDS, NO_FAULTS, stateMembers } from '../src/internal.ts';
 import type { ResolvedElement } from '../src/analysis/resolve.ts';
 import { resolveTree, valueToString } from '../src/analysis/resolve.ts';
 import { parseStylesheet } from '../src/css/stylesheet.ts';
@@ -354,14 +354,14 @@ describe('interaction states: the native profile gate (SELD-R2 PR 5, gateInterac
     }
   });
 
-  it('runs the hit model (R13) outside the lanes once a profile proves a pointer row, so an accepted :hover is still refused on a grid', () => {
+  it('runs the hit model (R13) outside the lanes once a profile proves a pointer row, so an accepted :hover is still refused beside a float', () => {
     const hover = withRows([row('hover', 'mouse'), row('hover', 'touch')]);
     expect(provesPointerRow(hover.ios)).toBe(true);
-    const grid = inputFor(`${BODY}.g { display: grid; grid-template-columns: 50px 50px; } .i { height: 10px; } .k:hover { background-color: #0c0; }`, (r) => [div(r, 'g', ['g'], [div(r, 'i1', ['i']), div(r, 'i2', ['i'])]), div(r, 'k', ['k'])]);
-    const found = errors(gated(grid, hover).diagnostics);
+    const floated = inputFor(`${BODY}.g { width: 100px; } .f { float: left; width: 20px; height: 10px; } .k:hover { background-color: #0c0; }`, (r) => [div(r, 'k', ['k']), div(r, 'g', ['g'], [div(r, 'f', ['f'])])]);
+    const found = errors(gated(floated, hover).diagnostics);
     expect(found.filter((m) => m.includes('no passing device proof of'))).toEqual([]);
-    expect(found).toEqual(['ios', 'android'].map((t) => `DRAGON_UNSUPPORTED_SELECTOR [${t}] :hover needs Dragon hit testing through the grid container g, which is not built yet (package GRID hit model)`));
-    expect(errors(gated(grid, hover, { faults: { hitUnmodelledNotRefused: true } }).diagnostics)).toEqual([]);
+    expect(found).toEqual(['ios', 'android'].map((t) => `DRAGON_UNSUPPORTED_SELECTOR [${t}] :hover needs Dragon hit testing through the float f, which is not built yet (package FLT hit model)`));
+    expect(errors(gated(floated, hover, { faults: { hitUnmodelledNotRefused: true } }).diagnostics)).toEqual([]);
   });
 
   it('a derive compile reads no profile, so it refuses forced-only focus too; a lanes compile records the gate as lane-only', () => {
@@ -512,20 +512,16 @@ describe('interaction states: hit model (R13)', () => {
     ]);
   });
 
-  // #212 review (Medium): rt-hit.ts refuses grid containers (atomic grid items in order-modified document order are not modelled).
-  it('refuses an interaction rule on native in a case with a grid container, and not on web or without the grid', () => {
+  // GRID G-HIT: rt-hit.ts hit-tests grid items in order-modified document order, which the host hit lane proves against Chrome.
+  it('compiles an interaction rule on native in a case with a block grid container, as on web, and refuses one with an inline-grid', () => {
     const grid = BODY + '.g { display: grid; grid-template-columns: 50px 50px; } .i { height: 10px; } .k:hover { background-color: #0c0; }';
     const gbody = (r: Parameters<Parameters<typeof inputFor>[1]>[0]) => [div(r, 'g', ['g'], [div(r, 'i1', ['i']), div(r, 'i2', ['i'])]), div(r, 'k', ['k'])];
-    expect(otherErrors(compile({}, grid, gbody, TARGETS, 'derive').diagnostics)).toEqual([
-      'DRAGON_UNSUPPORTED_SELECTOR [ios] :hover needs Dragon hit testing through the grid container g, which is not built yet (package GRID hit model)',
-      'DRAGON_UNSUPPORTED_SELECTOR [android] :hover needs Dragon hit testing through the grid container g, which is not built yet (package GRID hit model)',
-    ]);
+    expect(otherErrors(compile({}, grid, gbody, TARGETS, 'derive').diagnostics)).toEqual([]);
     expect(otherErrors(compile({}, grid, gbody, { web: {} }, 'derive').diagnostics)).toEqual([]);
-    expect(otherErrors(compile({}, grid.replace('display: grid; grid-template-columns: 50px 50px;', ''), gbody, TARGETS, 'derive').diagnostics)).toEqual([]);
     const root = internalRecord(compile({}, grid, gbody, TARGETS, 'derive'))?.cases[0]?.resolved as ResolvedElement;
-    expect(hitUnmodelledGrid(root)).toBe('g');
     expect(hitUnmodelledFact(root, referenceDataset())).toBeNull();
-    expect(otherErrors(compile({ hitUnmodelledNotRefused: true }, grid, gbody, TARGETS, 'derive').diagnostics)).toEqual([]);
+    // An inline-grid is still an atomic inline the hit table refuses (rt-hit.ts atomicRefusal), so it stays refused here.
+    expect(otherErrors(compile({}, grid.replace('display: grid;', 'display: inline-grid;'), gbody, TARGETS, 'derive').diagnostics)).toEqual(['ios', 'android'].map((t) => `DRAGON_UNSUPPORTED_SELECTOR [${t}] :hover needs Dragon hit testing through the inline-grid box g, which is not built yet (package G-INL hit model)`));
   });
 
   it('catches the plant hitUnmodelledNotRefused', () => {
