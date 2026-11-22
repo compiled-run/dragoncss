@@ -1,4 +1,4 @@
-// FORM-b select S3 (lower/paint/control.ts): DragonTree.apply stores each select's arrow from the translated paint.ts menuListArrows
+// FORM-b select S3 (lower/paint/control.ts): DragonTree.apply stores each select's arrow from the translated paint-menulist.ts menuListArrows
 // after every layout; the background-layers stage strokes it in device px with the svg module's path and stroke helpers.
 // FORM-checkbox: the same stage draws a themed checkbox from the translated controls.ts checkboxMarks of the view's device px size.
 import type { Rgba8 } from '../../css/color.ts';
