@@ -213,7 +213,7 @@ public func paintBlur_byteAt(_ xs: JsBytes, _ i: Double) throws -> Double {
   let v: Double? = jsBytesAt(xs, i)
   // ts: packages/layout/src/paint-blur.ts:96
   if (v == nil) {
-    throw JsError(message: jsConcat(S.s964, jsNumberToString(i), S.s125, jsNumberToString(jsBytesLength(xs)), S.s30))
+    throw JsError(message: jsConcat(S.s965, jsNumberToString(i), S.s125, jsNumberToString(jsBytesLength(xs)), S.s30))
   }
   return try jsUnwrap(v)
 }
@@ -222,11 +222,11 @@ public func paintBlur_byteAt(_ xs: JsBytes, _ i: Double) throws -> Double {
 public func paintBlur_setByte(_ xs: JsBytes, _ i: Double, _ v: Double) throws -> Void {
   // ts: packages/layout/src/paint-blur.ts:102
   if try (!(((i >= 0.0) && (i < jsBytesLength(xs))) && (rtEasing_floorOf(i) == i))) {
-    throw JsError(message: jsConcat(S.s964, jsNumberToString(i), S.s125, jsNumberToString(jsBytesLength(xs)), S.s30))
+    throw JsError(message: jsConcat(S.s965, jsNumberToString(i), S.s125, jsNumberToString(jsBytesLength(xs)), S.s30))
   }
   // ts: packages/layout/src/paint-blur.ts:103
   if try (!(((v >= 0.0) && (v <= 255.0)) && (rtEasing_floorOf(v) == v))) {
-    throw JsError(message: jsConcat(S.s963, jsNumberToString(v), S.s110))
+    throw JsError(message: jsConcat(S.s964, jsNumberToString(v), S.s110))
   }
   jsBytesSet(xs, i, v)
 }
@@ -430,17 +430,7 @@ public func paintBlur_scanLine(_ plan: PlanGauss, _ src: JsArray<Double>, _ faul
   }
   // ts: packages/layout/src/paint-blur.ts:287
   do {
-    let _a209 = b0.cells
-    var _i209 = 0
-    while _i209 < _a209.items.count {
-      let c: PaintBlur_Cell = _a209.items[_i209]
-      _i209 += 1
-      c.v = 0.0
-    }
-  }
-  // ts: packages/layout/src/paint-blur.ts:288
-  do {
-    let _a210 = b1.cells
+    let _a210 = b0.cells
     var _i210 = 0
     while _i210 < _a210.items.count {
       let c: PaintBlur_Cell = _a210.items[_i210]
@@ -448,13 +438,23 @@ public func paintBlur_scanLine(_ plan: PlanGauss, _ src: JsArray<Double>, _ faul
       c.v = 0.0
     }
   }
-  // ts: packages/layout/src/paint-blur.ts:289
+  // ts: packages/layout/src/paint-blur.ts:288
   do {
-    let _a211 = b2.cells
+    let _a211 = b1.cells
     var _i211 = 0
     while _i211 < _a211.items.count {
       let c: PaintBlur_Cell = _a211.items[_i211]
       _i211 += 1
+      c.v = 0.0
+    }
+  }
+  // ts: packages/layout/src/paint-blur.ts:289
+  do {
+    let _a212 = b2.cells
+    var _i212 = 0
+    while _i212 < _a212.items.count {
+      let c: PaintBlur_Cell = _a212.items[_i212]
+      _i212 += 1
       c.v = 0.0
     }
   }
@@ -620,11 +620,11 @@ public func paintBlur_gaussFactors(_ sigma: Double) throws -> JsArray<Double> {
   let out: JsArray<Double> = JsArray<Double>([])
   // ts: packages/layout/src/paint-blur.ts:407
   do {
-    let _a212 = try paintBlur_gaussFilter(sigma)
-    var _i212 = 0
-    while _i212 < _a212.items.count {
-      let d: Double = _a212.items[_i212]
-      _i212 += 1
+    let _a213 = try paintBlur_gaussFilter(sigma)
+    var _i213 = 0
+    while _i213 < _a213.items.count {
+      let d: Double = _a213.items[_i213]
+      _i213 += 1
       _ = try jsPush(out, paintBlur_wrap16(rtEasing_roundOf((d * paintBlur_TWO_POW_16))))
     }
   }
@@ -980,7 +980,7 @@ public func paintBlur_rectShadowCoverage(_ rect: PaintBlur_FRect, _ sigma: Doubl
   }
   // ts: packages/layout/src/paint-blur.ts:639
   if try paintBlur_hasNoBlur(sigma) {
-    throw JsError(message: jsConcat(S.s1063, jsNumberToString(sigma), S.s51))
+    throw JsError(message: jsConcat(S.s1066, jsNumberToString(sigma), S.s51))
   }
   let out: TaintedMask = try paintBlur_blurred(paintBlur_rectMask(rect, paintBlur_maskBounds(rect, clip, paintBlur_boxBlurMargin(sigma))), sigma, faults)
   return ShadowCoverage(((sigma < 2.0) ? S.s_small_blur : S.s_triple_box), out.mask, out.tainted)

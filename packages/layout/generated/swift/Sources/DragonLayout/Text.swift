@@ -269,11 +269,11 @@ public func text_spacedSums(_ data: FontData, _ text: JsString, _ size: Double, 
   var total: Double = 0.0
   // ts: packages/layout/src/text.ts:167
   do {
-    let _a370 = jsCodePoints(text)
-    var _i370 = 0
-    while _i370 < _a370.items.count {
-      let ch: JsString = _a370.items[_i370]
-      _i370 += 1
+    let _a371 = jsCodePoints(text)
+    var _i371 = 0
+    while _i371 < _a371.items.count {
+      let ch: JsString = _a371.items[_i371]
+      _i371 += 1
       let cp: Double = try jsUnwrap(jsCodePointAt0(ch))
       let em: Double = try text_emAdvance(data, cp)
       // ts: packages/layout/src/text.ts:170
@@ -325,11 +325,11 @@ public func text_smallCapsCodePoint(_ cp: Double) throws -> Double {
 public func text_hasSmallCapsLower(_ text: JsString) throws -> Bool {
   // ts: packages/layout/src/text.ts:204
   do {
-    let _a371 = jsCodePoints(text)
-    var _i371 = 0
-    while _i371 < _a371.items.count {
-      let ch: JsString = _a371.items[_i371]
-      _i371 += 1
+    let _a372 = jsCodePoints(text)
+    var _i372 = 0
+    while _i372 < _a372.items.count {
+      let ch: JsString = _a372.items[_i372]
+      _i372 += 1
       let cp: Double = try jsUnwrap(jsCodePointAt0(ch))
       // ts: packages/layout/src/text.ts:206
       if try (text_smallCapsCodePoint(cp) != cp) {
@@ -351,11 +351,11 @@ public func text_smallCapsSums(_ data: FontData, _ text: JsString, _ size: Doubl
   var lower: Bool = false
   // ts: packages/layout/src/text.ts:227
   do {
-    let _a372 = jsCodePoints(text)
-    var _i372 = 0
-    while _i372 < _a372.items.count {
-      let ch: JsString = _a372.items[_i372]
-      _i372 += 1
+    let _a373 = jsCodePoints(text)
+    var _i373 = 0
+    while _i373 < _a373.items.count {
+      let ch: JsString = _a373.items[_i373]
+      _i373 += 1
       let cp: Double = try jsUnwrap(jsCodePointAt0(ch))
       let drawn: Double = try text_smallCapsCodePoint(cp)
       let em: Double = try ((drawn < 0.0) ? -1.0 : text_emAdvance(data, drawn))
@@ -409,11 +409,11 @@ public func text_codePointCount(_ text: JsString) throws -> Double {
   var n: Double = 0.0
   // ts: packages/layout/src/text.ts:258
   do {
-    let _a373 = jsCodePoints(text)
-    var _i373 = 0
-    while _i373 < _a373.items.count {
-      let ch: JsString = _a373.items[_i373]
-      _i373 += 1
+    let _a374 = jsCodePoints(text)
+    var _i374 = 0
+    while _i374 < _a374.items.count {
+      let ch: JsString = _a374.items[_i374]
+      _i374 += 1
       // ts: packages/layout/src/text.ts:258
       if try (jsUnwrap(jsCodePointAt0(ch)) >= 0.0) {
         n += 1.0
@@ -433,13 +433,13 @@ public func text_fontDataMeasurer(_ data: FontData, _ faults: AhemRuleFaults) th
   return TextMeasurer({ (font: TextFont) throws -> FontMetrics in
     // ts: packages/layout/src/text.ts:272
     if (font.family != text_AHEM_FACE_ID) {
-      throw JsError(message: jsConcat(S.s1148, font.family))
+      throw JsError(message: jsConcat(S.s1151, font.family))
     }
     return try FontMetrics(round(units_fontMetricPx(instanceSize(font.size), data.unitsPerEm, data.ascent)), round(units_fontMetricPx(instanceSize(font.size), data.unitsPerEm, data.descent)), ((data.lineGap == 0.0) ? units_ZERO : round(units_fontMetricPx(instanceSize(font.size), data.unitsPerEm, data.lineGap))), units_ZERO)
 }, { (text: JsString, font: TextFont) throws -> any U_MeasureResult_okFalse_MeasureResult_okTrue in
     // ts: packages/layout/src/text.ts:282
     if (font.family != text_AHEM_FACE_ID) {
-      return MeasureResult_okFalse(false, S.s_text_glyph, jsConcat(S.s1148, font.family))
+      return MeasureResult_okFalse(false, S.s_text_glyph, jsConcat(S.s1151, font.family))
     }
     let spacing16: Double = try units_textRunLayoutUnit(font.letterSpacing)
     let word16: Double = try units_textRunLayoutUnit(font.wordSpacing)
@@ -447,12 +447,12 @@ public func text_fontDataMeasurer(_ data: FontData, _ faults: AhemRuleFaults) th
     if try (font.smallCaps && text_hasSmallCapsLower(text)) {
       // ts: packages/layout/src/text.ts:286
       if ((spacing16 != 0.0) || (word16 != 0.0)) {
-        return MeasureResult_okFalse(false, S.s_text_glyph, S.s1075)
+        return MeasureResult_okFalse(false, S.s_text_glyph, S.s1078)
       }
       let caps: SmallCapsSums = try text_smallCapsSums(data, text, instanceSize(font.size), text_smallCapsFontSize(font.size), 0.0, 0.0)
       // ts: packages/layout/src/text.ts:288
       if (caps.bad >= 0.0) {
-        return try MeasureResult_okFalse(false, S.s_text_glyph, jsConcat(S.s508, jsToUpperCase(jsToStringRadix16(caps.bad)), S.s113))
+        return try MeasureResult_okFalse(false, S.s_text_glyph, jsConcat(S.s509, jsToUpperCase(jsToStringRadix16(caps.bad)), S.s113))
       }
       return try MeasureResult_okTrue(true, TextMeasure(units_fromPxCeil(caps.width)))
     }
@@ -461,23 +461,23 @@ public func text_fontDataMeasurer(_ data: FontData, _ faults: AhemRuleFaults) th
       let sums: SpacedSums = try text_spacedSums(data, text, instanceSize(font.size), spacing16, word16, 0.0, 0.0)
       // ts: packages/layout/src/text.ts:293
       if (sums.bad >= 0.0) {
-        return try MeasureResult_okFalse(false, S.s_text_glyph, jsConcat(S.s508, jsToUpperCase(jsToStringRadix16(sums.bad)), S.s111))
+        return try MeasureResult_okFalse(false, S.s_text_glyph, jsConcat(S.s509, jsToUpperCase(jsToStringRadix16(sums.bad)), S.s111))
       }
       return try MeasureResult_okTrue(true, TextMeasure(units_fromPxCeil(units_inlineToFloat(sums.total))))
     }
     var glyphs: Double = 0.0
     // ts: packages/layout/src/text.ts:297
     do {
-      let _a374 = jsCodePoints(text)
-      var _i374 = 0
-      while _i374 < _a374.items.count {
-        let ch: JsString = _a374.items[_i374]
-        _i374 += 1
+      let _a375 = jsCodePoints(text)
+      var _i375 = 0
+      while _i375 < _a375.items.count {
+        let ch: JsString = _a375.items[_i375]
+        _i375 += 1
         let cp: Double = try jsUnwrap(jsCodePointAt0(ch))
         let advance: Double = try text_emAdvance(data, cp)
         // ts: packages/layout/src/text.ts:300
         if (advance < 0.0) {
-          return try MeasureResult_okFalse(false, S.s_text_glyph, jsConcat(S.s508, jsToUpperCase(jsToStringRadix16(cp)), S.s111))
+          return try MeasureResult_okFalse(false, S.s_text_glyph, jsConcat(S.s509, jsToUpperCase(jsToStringRadix16(cp)), S.s111))
         }
         glyphs += advance
       }
@@ -486,7 +486,7 @@ public func text_fontDataMeasurer(_ data: FontData, _ faults: AhemRuleFaults) th
 }, { (text: JsString, start: Double, end: Double, font: TextFont) throws -> any U_MeasureResult_okFalse_MeasureResult_okTrue in
     // ts: packages/layout/src/text.ts:307
     if (font.family != text_AHEM_FACE_ID) {
-      return MeasureResult_okFalse(false, S.s_text_glyph, jsConcat(S.s1148, font.family))
+      return MeasureResult_okFalse(false, S.s_text_glyph, jsConcat(S.s1151, font.family))
     }
     let spacing16: Double = try units_textRunLayoutUnit(font.letterSpacing)
     let word16: Double = try units_textRunLayoutUnit(font.wordSpacing)
@@ -494,12 +494,12 @@ public func text_fontDataMeasurer(_ data: FontData, _ faults: AhemRuleFaults) th
     if try (font.smallCaps && text_hasSmallCapsLower(text)) {
       // ts: packages/layout/src/text.ts:311
       if ((spacing16 != 0.0) || (word16 != 0.0)) {
-        return MeasureResult_okFalse(false, S.s_text_glyph, S.s1075)
+        return MeasureResult_okFalse(false, S.s_text_glyph, S.s1078)
       }
       let caps: SmallCapsSums = try text_smallCapsSums(data, text, instanceSize(font.size), text_smallCapsFontSize(font.size), start, end)
       // ts: packages/layout/src/text.ts:313
       if (caps.bad >= 0.0) {
-        return try MeasureResult_okFalse(false, S.s_text_glyph, jsConcat(S.s508, jsToUpperCase(jsToStringRadix16(caps.bad)), S.s113))
+        return try MeasureResult_okFalse(false, S.s_text_glyph, jsConcat(S.s509, jsToUpperCase(jsToStringRadix16(caps.bad)), S.s113))
       }
       let n: Double = try text_codePointCount(text)
       // ts: packages/layout/src/text.ts:316
@@ -513,7 +513,7 @@ public func text_fontDataMeasurer(_ data: FontData, _ faults: AhemRuleFaults) th
       let sums: SpacedSums = try text_spacedSums(data, text, instanceSize(font.size), spacing16, word16, start, end)
       // ts: packages/layout/src/text.ts:321
       if (sums.bad >= 0.0) {
-        return try MeasureResult_okFalse(false, S.s_text_glyph, jsConcat(S.s508, jsToUpperCase(jsToStringRadix16(sums.bad)), S.s111))
+        return try MeasureResult_okFalse(false, S.s_text_glyph, jsConcat(S.s509, jsToUpperCase(jsToStringRadix16(sums.bad)), S.s111))
       }
       let n: Double = try text_codePointCount(text)
       return try MeasureResult_okTrue(true, TextMeasure(units_sub(text_spacedPosition(sums.through, (end >= n)), text_spacedPosition(sums.before, (start >= n)))))
@@ -523,16 +523,16 @@ public func text_fontDataMeasurer(_ data: FontData, _ faults: AhemRuleFaults) th
     var through: Double = 0.0
     // ts: packages/layout/src/text.ts:328
     do {
-      let _a375 = jsCodePoints(text)
-      var _i375 = 0
-      while _i375 < _a375.items.count {
-        let ch: JsString = _a375.items[_i375]
-        _i375 += 1
+      let _a376 = jsCodePoints(text)
+      var _i376 = 0
+      while _i376 < _a376.items.count {
+        let ch: JsString = _a376.items[_i376]
+        _i376 += 1
         let cp: Double = try jsUnwrap(jsCodePointAt0(ch))
         let advance: Double = try text_emAdvance(data, cp)
         // ts: packages/layout/src/text.ts:331
         if (advance < 0.0) {
-          return try MeasureResult_okFalse(false, S.s_text_glyph, jsConcat(S.s508, jsToUpperCase(jsToStringRadix16(cp)), S.s111))
+          return try MeasureResult_okFalse(false, S.s_text_glyph, jsConcat(S.s509, jsToUpperCase(jsToStringRadix16(cp)), S.s111))
         }
         // ts: packages/layout/src/text.ts:332
         if (k < start) {
@@ -549,11 +549,11 @@ public func text_fontDataMeasurer(_ data: FontData, _ faults: AhemRuleFaults) th
 }, { (font: TextFont) throws -> FontLengths in
     // ts: packages/layout/src/text.ts:339
     if (font.family != text_AHEM_FACE_ID) {
-      throw JsError(message: jsConcat(S.s1148, font.family))
+      throw JsError(message: jsConcat(S.s1151, font.family))
     }
     return try text_fontMetricLengths(data, instanceSize(font.size))
 }, { (text: JsString, font: TextFont) throws -> any U_ShapedItem_okFalse_ShapedItem_okTrue in
-    return ShapedItem_okFalse(false, S.s_text_glyph, jsConcat(S.s1147, font.family, S.s277))
+    return ShapedItem_okFalse(false, S.s_text_glyph, jsConcat(S.s1150, font.family, S.s277))
 }, { (family: JsString) throws -> Bool in
     return (family == text_AHEM_FACE_ID)
 })

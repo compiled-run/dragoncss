@@ -433,7 +433,7 @@ public func block_layoutOwnContents(_ ctx: Ctx, _ node: any U_ControlBox_LayoutB
   let s: LayoutStyle = box.style
   // ts: packages/layout/src/block.ts:413
   if ((s.containSize == S.s_size) && ((s.display != S.s_block) || (!s.containLayout))) {
-    try unsupported_unsupported(S.s_size_containment, box.id, S.s673, jsConcat(S.s1067, box.id, S.s4, s.display, (s.containLayout ? S.s0 : S.s226), S.s198))
+    try unsupported_unsupported(S.s_size_containment, box.id, S.s674, jsConcat(S.s1070, box.id, S.s4, s.display, (s.containLayout ? S.s0 : S.s226), S.s198))
   }
   try position_checkOutOfFlowSiblings(ctx, box)
   // ts: packages/layout/src/block.ts:418
@@ -671,7 +671,7 @@ public func block_blockLevelInlineSize(_ ctx: Ctx, _ node: any U_ControlBox_Layo
     }
     // ts: packages/layout/src/block.ts:687
     if try ratio_hasAspectRatio(s) {
-      try unsupported_unsupported(S.s_intrinsic_size_keyword, box.id, S.s692, jsConcat(k, S.s179))
+      try unsupported_unsupported(S.s_intrinsic_size_keyword, box.id, S.s693, jsConcat(k, S.s179))
     }
     // ts: packages/layout/src/block.ts:689
     if (k == S.s_stretch) {
@@ -793,7 +793,7 @@ public func block_layoutBlockFlow(_ ctx: Ctx, _ box: LayoutBox, _ a: FlowArgs) t
   let kids: JsArray<any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf> = box.children
   // ts: packages/layout/src/block.ts:858
   if ((box.style.multicol != nil) && (((box.strut == nil) && (jsLength(kids) > 0.0)) || (a.marker != nil))) {
-    try unsupported_unsupported(S.s_multicol, box.id, S.s684, jsConcat(S.s1153, box.id, S.s3, ((a.marker != nil) ? S.s844 : S.s812), S.s216))
+    try unsupported_unsupported(S.s_multicol, box.id, S.s685, jsConcat(S.s1156, box.id, S.s3, ((a.marker != nil) ? S.s845 : S.s813), S.s216))
   }
   // ts: packages/layout/src/block.ts:861
   if (box.strut != nil) {
@@ -815,7 +815,7 @@ public func block_layoutBlockFlow(_ ctx: Ctx, _ box: LayoutBox, _ a: FlowArgs) t
   }
   // ts: packages/layout/src/block.ts:874
   if ((box.style.textBoxTrim != nil) && (jsLength(kids) > 0.0)) {
-    try unsupported_unsupported(S.s_text_box_trim, box.id, S.s683, jsConcat(S.s1119, box.id, S.s214))
+    try unsupported_unsupported(S.s_text_box_trim, box.id, S.s684, jsConcat(S.s1122, box.id, S.s214))
   }
   let direction: JsString = try block_directionOf(ctx, box)
   let placed: JsArray<Box_Placed> = JsArray<Box_Placed>([])
@@ -859,7 +859,7 @@ public func block_layoutBlockFlow(_ ctx: Ctx, _ box: LayoutBox, _ a: FlowArgs) t
         if try float_isFloat(ctx, kid) {
           // ts: packages/layout/src/block.ts:914
           if (kid.kind == S.s_control) {
-            try unsupported_unsupported(S.s_float, (kid as! ControlBox).id, S.s319, jsConcat(S.s542, (kid as! ControlBox).id))
+            try unsupported_unsupported(S.s_float, (kid as! ControlBox).id, S.s319, jsConcat(S.s543, (kid as! ControlBox).id))
           }
           let top: Double = try (((!seen) && a.canCollapseTop) ? units_ZERO : units_add(cursor, block_collapsed(strut)))
           let f: FloatLayout = try float_layoutFloat(ctx, (kid as! any U_LayoutBox_ReplacedLeaf), a.contentWidth, a.childBasis)
@@ -882,7 +882,7 @@ public func block_layoutBlockFlow(_ ctx: Ctx, _ box: LayoutBox, _ a: FlowArgs) t
           try inline = block_blockLevelInlineSize(ctx, (kid as! any U_ControlBox_LayoutBox), a.contentWidth, direction, container)
           // ts: packages/layout/src/block.ts:941
           if ((clampLeft > 0.0) && ((kid as! any U_ControlBox_LayoutBox).kind == S.s_control)) {
-            try unsupported_unsupported(S.s_line_clamp, (kid as! ControlBox).id, S.s687, jsConcat((kid as! ControlBox).id, S.s76, box.id, S.s89))
+            try unsupported_unsupported(S.s_line_clamp, (kid as! ControlBox).id, S.s688, jsConcat((kid as! ControlBox).id, S.s76, box.id, S.s89))
           }
           let clamp: ClampedChild? = try (((clampLeft > 0.0) && ((kid as! any U_ControlBox_LayoutBox).kind == S.s_box)) ? (lineClamp_clampChild(ctx, box, (kid as! LayoutBox), inline.borderBoxWidth, a.contentWidth, clampLeft, jsSlice(kids, (k + 1.0))) as ClampedChild?) : (nil as ClampedChild?))
           // ts: packages/layout/src/block.ts:943
