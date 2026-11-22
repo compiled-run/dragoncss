@@ -24,7 +24,7 @@ export type IRect = { readonly left: number; readonly top: number; readonly righ
 export type FRect = { readonly left: number; readonly top: number; readonly right: number; readonly bottom: number };
 
 /** An A8 mask: one coverage byte per pixel, row-major over bounds. */
-export type A8Mask = { readonly bounds: IRect; readonly data: readonly number[] };
+export type A8Mask = { readonly bounds: IRect; readonly data: Uint8Array };
 
 /** Which Skia path drew a shadow. */
 export type ShadowPath = 'nine-patch-rect' | 'nine-patch-rrect' | 'triple-box' | 'small-blur';
@@ -88,6 +88,20 @@ function height(r: IRect): number {
 
 function at(xs: readonly number[], i: number): number {
   return xs[i] as number;
+}
+
+/** Byte i of xs; an index outside it is an invariant error. */
+export function byteAt(xs: Uint8Array, i: number): number {
+  const v = xs[i];
+  if (v === undefined) throw new Error(`paint-blur: byte ${i} is outside ${xs.length} bytes`);
+  return v;
+}
+
+/** Stores v at byte i of xs; an index outside it, or a value that is not an integer from 0 to 255, is an invariant error. */
+export function setByte(xs: Uint8Array, i: number, v: number): void {
+  if (!(i >= 0 && i < xs.length && floorOf(i) === i)) throw new Error(`paint-blur: byte ${i} is outside ${xs.length} bytes`);
+  if (!(v >= 0 && v <= 255 && floorOf(v) === v)) throw new Error(`paint-blur: ${v} is not a byte`);
+  xs[i] = v;
 }
 
 function cells(n: number): Cell[] {
@@ -182,8 +196,9 @@ export function blurRect(sigma: number, src: FRect): A8Mask {
   const profile = computeBlurProfile(ceilInt(f32(6 * sigma)), sigma);
   const h = computeBlurredScanline(profile, width(bounds), sigma);
   const v = computeBlurredScanline(profile, height(bounds), sigma);
-  const data: number[] = [];
-  for (let y = 0; y < height(bounds); y++) for (let x = 0; x < width(bounds); x++) data.push(mulDiv255Round(at(h, x), at(v, y)));
+  const w = width(bounds);
+  const data = new Uint8Array(w * height(bounds));
+  for (let y = 0; y < height(bounds); y++) for (let x = 0; x < w; x++) setByte(data, y * w + x, mulDiv255Round(at(h, x), at(v, y)));
   return { bounds, data };
 }
 
@@ -430,7 +445,7 @@ export function hasNoBlur(sigma: number): boolean {
 function row(mask: A8Mask, y: number): number[] {
   const w = width(mask.bounds);
   const out: number[] = [];
-  for (let x = 0; x < w; x++) out.push(at(mask.data, y * w + x));
+  for (let x = 0; x < w; x++) out.push(byteAt(mask.data, y * w + x));
   return out;
 }
 
@@ -442,37 +457,38 @@ export function boxBlur(src: A8Mask, sigma: number, faults: BlurFaults): A8Mask 
   const bounds: IRect = { left: src.bounds.left - m, top: src.bounds.top - m, right: src.bounds.right + m, bottom: src.bounds.bottom + m };
   const dstW = srcW + 2 * m;
   const dstH = srcH + 2 * m;
-  const cols: number[][] = [];
+  const data = new Uint8Array(dstW * dstH);
   if (sigma < 2) {
     // small_blur: blur_y over the source columns (into dst columns [m, m + srcW)), then blur_x over those columns.
     const factors = gaussFactors(sigma);
-    const yCols: number[][] = [];
+    const yCols = new Uint8Array(srcW * dstH);
     for (let x = 0; x < srcW; x++) {
       const col: number[] = [];
-      for (let y = 0; y < srcH; y++) col.push(at(src.data, y * srcW + x));
-      yCols.push(smallBlurLine(col, factors, m));
+      for (let y = 0; y < srcH; y++) col.push(byteAt(src.data, y * srcW + x));
+      const blurredCol = smallBlurLine(col, factors, m);
+      for (let y = 0; y < dstH; y++) setByte(yCols, x * dstH + y, at(blurredCol, y));
     }
-    const rows: number[][] = [];
     for (let y = 0; y < dstH; y++) {
       const line: number[] = [];
-      for (let x = 0; x < srcW; x++) line.push(at(yCols[x] as number[], y));
-      rows.push(smallBlurLine(line, factors, m));
+      for (let x = 0; x < srcW; x++) line.push(byteAt(yCols, x * dstH + y));
+      const blurredRow = smallBlurLine(line, factors, m);
+      for (let x = 0; x < dstW; x++) setByte(data, y * dstW + x, at(blurredRow, x));
     }
-    const data: number[] = [];
-    for (let y = 0; y < dstH; y++) for (let x = 0; x < dstW; x++) data.push(at(rows[y] as number[], x));
     return { bounds, data };
   }
   // Triple box: each source row blurred along x (the transposed tmp), then each tmp row (one dst column) along y.
   const plan = planGauss(sigma);
-  const hRows: number[][] = [];
-  for (let y = 0; y < srcH; y++) hRows.push(scanLine(plan, row(src, y), faults));
+  const hRows = new Uint8Array(srcH * dstW);
+  for (let y = 0; y < srcH; y++) {
+    const blurredRow = scanLine(plan, row(src, y), faults);
+    for (let x = 0; x < dstW; x++) setByte(hRows, y * dstW + x, at(blurredRow, x));
+  }
   for (let x = 0; x < dstW; x++) {
     const tmp: number[] = [];
-    for (let y = 0; y < srcH; y++) tmp.push(at(hRows[y] as number[], x));
-    cols.push(scanLine(plan, tmp, faults));
+    for (let y = 0; y < srcH; y++) tmp.push(byteAt(hRows, y * dstW + x));
+    const col = scanLine(plan, tmp, faults);
+    for (let y = 0; y < dstH; y++) setByte(data, y * dstW + x, at(col, y));
   }
-  const data: number[] = [];
-  for (let y = 0; y < dstH; y++) for (let x = 0; x < dstW; x++) data.push(at(cols[x] as number[], y));
   return { bounds, data };
 }
 
@@ -526,13 +542,15 @@ export function maskBounds(pathBounds: FRect, clip: IRect, margin: number): IRec
 
 /** A solid A8 mask of a rect drawn with anti-aliasing over bounds b: whole pixels 255, partially covered pixels tainted. */
 function rectMask(r: FRect, b: IRect): TaintedMask {
-  const data: number[] = [];
+  const data = new Uint8Array(width(b) * height(b));
   const tainted: boolean[] = [];
+  let k = 0;
   for (let y = b.top; y < b.bottom; y++) {
     for (let x = b.left; x < b.right; x++) {
       const whole = x >= r.left && x + 1 <= r.right && y >= r.top && y + 1 <= r.bottom;
       const outside = x + 1 <= r.left || x >= r.right || y + 1 <= r.top || y >= r.bottom;
-      data.push(whole ? 255 : 0);
+      setByte(data, k, whole ? 255 : 0);
+      k++;
       tainted.push(!whole && !outside);
     }
   }
@@ -545,15 +563,17 @@ function rectMask(r: FRect, b: IRect): TaintedMask {
  */
 function rrectMask(r: IRect, radius: number, b: IRect): TaintedMask {
   const c = ceilInt(radius);
-  const data: number[] = [];
+  const data = new Uint8Array(width(b) * height(b));
   const tainted: boolean[] = [];
+  let k = 0;
   for (let y = b.top; y < b.bottom; y++) {
     for (let x = b.left; x < b.right; x++) {
       const inside = x >= r.left && x < r.right && y >= r.top && y < r.bottom;
       const inCornerX = x < r.left + c || x >= r.right - c;
       const inCornerY = y < r.top + c || y >= r.bottom - c;
       const corner = inside && inCornerX && inCornerY;
-      data.push(inside && !corner ? 255 : 0);
+      setByte(data, k, inside && !corner ? 255 : 0);
+      k++;
       tainted.push(corner);
     }
   }
@@ -568,14 +588,16 @@ function drawNine(mask: A8Mask, maskTaint: readonly boolean[], outer: IRect, cx:
   const innerTop = outer.top + cy;
   const innerRight = outer.right + (cx + 1 - mw);
   const innerBottom = outer.bottom + (cy + 1 - mh);
-  const data: number[] = [];
+  const data = new Uint8Array(width(outer) * height(outer));
   const tainted: boolean[] = [];
+  let k = 0;
   for (let y = outer.top; y < outer.bottom; y++) {
     const my = y < innerTop ? y - outer.top : y >= innerBottom ? y - outer.bottom + mh : cy;
     for (let x = outer.left; x < outer.right; x++) {
       const mx = x < innerLeft ? x - outer.left : x >= innerRight ? x - outer.right + mw : cx;
       const center = x >= innerLeft && x < innerRight && y >= innerTop && y < innerBottom;
-      data.push(center ? 255 : at(mask.data, my * mw + mx));
+      setByte(data, k, center ? 255 : byteAt(mask.data, my * mw + mx));
+      k++;
       tainted.push(center ? false : (maskTaint[my * mw + mx] as boolean));
     }
   }
@@ -737,7 +759,7 @@ export function boxShadowOverWhite(spec: BoxShadowSpec, crop: IRect, faults: Blu
       const clipAa = spec.radius > 0 && nearX && nearY;
       const inMask = x >= b.left && x < b.right && y >= b.top && y < b.bottom;
       const i = (y - b.top) * width(b) + (x - b.left);
-      const coverage = inBox || !inMask ? 0 : at(cov.mask.data, i);
+      const coverage = inBox || !inMask ? 0 : byteAt(cov.mask.data, i);
       values.push(255 - coverage);
       exact.push(!clipAa && !(inMask && !inBox && (cov.tainted[i] as boolean)));
     }

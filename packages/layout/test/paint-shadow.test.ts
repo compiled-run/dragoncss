@@ -14,7 +14,7 @@ const SQUARE = [0, 0, 0, 0, 0, 0, 0, 0];
 const shadow = (o: Partial<ShadowInput>): ShadowInput => ({ inset: false, x: 0, y: 0, blur: 0, spread: 0, r: 0, g: 0, b: 0, a: 255, ...o });
 const px = (l: ShadowLayer, x: number, y: number): number[] => {
   const i = 4 * ((y - l.top) * (l.right - l.left) + (x - l.left));
-  return l.rgba.slice(i, i + 4) as number[];
+  return Array.from(l.rgba.slice(i, i + 4));
 };
 
 describe('paint-shadow: shapes', () => {
