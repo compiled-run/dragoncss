@@ -636,7 +636,7 @@ function compileMarkless(parsed: MarklessStyleInput, inputText: string, inputPat
   const map = mode === 'system' ? MARKLESS_SYSTEM_FONT_MAP : FONT_REFERENCE_MAP;
   const input = withFontMapAssets(marklessFrontEnd(parsed, inputText, inputPath, fonts, mode), map);
   const devices = marklessDevices(parsed, at);
-  const config: NativeStylesConfig = { projectId: PROJECT_ID, name: parsed.component, targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 } }, fonts: map, viewport: devices.ios.viewport, support: 'lanes', topLayer: 'host', canvas: 'host', output: 'program', brotliDecompress: NODE_BROTLI, ...(mode === 'system' ? { systemFonts: 'measured' as const } : {}) };
+  const config: NativeStylesConfig = { projectId: PROJECT_ID, name: parsed.component, targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 } }, fonts: map, viewport: devices.ios.viewport, support: 'lanes', topLayer: 'host', canvas: 'host', forms: 'host', output: 'program', brotliDecompress: NODE_BROTLI, ...(mode === 'system' ? { systemFonts: 'measured' as const } : {}) };
   const { styles, compiled } = compileNativeStylesWith(config, input);
   const errors = styles.diagnostics.filter((d) => d.severity === 'error');
   if (errors.length > 0) fail(`${parsed.component} does not compile:\n${errors.map((d) => `  ${d.code} [${d.target ?? 'all'}] ${d.message}`).join('\n')}`);
@@ -845,6 +845,14 @@ function exportMarkless(parsed: MarklessStyleInput, inputText: string, inputPath
   for (const [t, x] of Object.entries(exported.targets)) for (const a of x.assignments) {
     const have = new Set(a.nodes.map((n) => n.id));
     if (have.size !== a.nodes.length) fail(`${t}: the export names ${a.nodes.length - have.size} node(s) by an id another node has`);
+  }
+  // The animator keeps one state for the page, so a row's copies would share one clock and a row added later would never run.
+  const inRows = new Map(parsed.nodes.flatMap((n) => (n.row === undefined ? [] : [[dragonIds.get(n.id) as string, n.id] as const])));
+  for (const [t, x] of Object.entries(exported.targets)) {
+    if (x.anim === undefined) continue;
+    const animated = [...x.anim.slots, ...x.anim.animations, ...x.anim.bases].map((e) => e.node);
+    const row = animated.find((node) => inRows.has(node));
+    if (row !== undefined) fail(`${t}: ${inRows.get(row)} has a transition or animation inside a @for row, which a phone runs only for the page, not per row, yet`);
   }
   // Named with no frame: an element a hidden attribute (fixed or by state) or a style state another assignment shows it in hides here, and its contents.
   const boxless = (a: ExportAssignment, shown: ReadonlySet<string>): ExportAssignment => {
