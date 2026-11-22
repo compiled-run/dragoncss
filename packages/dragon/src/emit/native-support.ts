@@ -1082,6 +1082,7 @@ public final class DragonTree {
     }
     // REPL-a: each replaced box's paint rects from its content box (border box less borders and padding against the parent's
     // content width), through the translated engine; the paint modules read them in their after-layout hooks and stages.
+    runtimeLeaves = [:]
     for (id, leaf) in zLeaves {
       guard let bv = views[id] as? DragonBoxView, let e = edges[id], let a = abs.get(leaf.id), let pId = zParent[id] else { fatalError("dragon: replaced \(id) is not placed") }
       let pad = try box_resolvePadding(leaf.style, try contentWidth(pId))
@@ -2551,6 +2552,7 @@ class DragonTree(val context: Context) {
     }
     // REPL-a: each replaced box's paint rects from its content box (border box less borders and padding against the parent's
     // content width), through the translated engine; the paint modules read them in their after-layout hooks and stages.
+    runtimeLeaves.clear()
     for (leaf in zLeaves) {
       val id = leaf.id
       val bv = views[id] as? DragonBoxView ?: throw IllegalStateException("dragon: replaced " + id + " has no box view")

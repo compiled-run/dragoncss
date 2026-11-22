@@ -1072,6 +1072,10 @@ function naturalSizeValue(v: JsonValue, path: string): NaturalSizeValue {
     const o = obj(v, ['kind', 'width', 'height'], path);
     return { kind: 'image', width: numField(o, 'width', path), height: numField(o, 'height', path) };
   }
+  if (k === 'runtime') {
+    obj(v, ['kind'], path);
+    return { kind: 'runtime' };
+  }
   return fail(`${path}: unknown kind ${k}`);
 }
 
