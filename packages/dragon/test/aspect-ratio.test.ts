@@ -128,6 +128,8 @@ describe('a non-replaced grid item with a ratio and an auto width (grid.ts trans
   const refusals = (c: ReturnType<typeof grid>): string[] => c.diagnostics.filter((d) => d.code === 'DRAGON_UNSUPPORTED_VALUE').map((d) => `${d.target} ${d.message}`);
   const transfer = (block: string, justify: string): string => `ios aspect-ratio: 16 / 9 on i, a grid item with an auto width, ${block} and justify-self: ${justify}, is not laid out yet: the engine does not transfer a grid item's block size through its ratio to its width`;
   const borderBox = (sides: string): string => `ios aspect-ratio: 16 / 9 on i, a border-box grid item with an auto width and a ${sides} border or padding, is not laid out yet: the engine does not widen a grid item past its column when its vertical border and padding exceed the height its ratio gives`;
+  const contentBox = (sides: string): string => `ios aspect-ratio: 16 / 9 on i, a content-box grid item with an auto width and a ${sides} border or padding, is not laid out yet: the engine does not size the grid's columns by the contribution that border and padding add through the ratio`;
+  const maxHeight = (v: string, justify: string): string => `ios aspect-ratio: 16 / 9 on i, a grid item with an auto width, max-height: ${v} and justify-self: ${justify}, is not laid out yet: the engine does not transfer a grid item's max-height through its ratio to its width`;
 
   it('refuses on native a block size beside an inline alignment other than stretch, normal included (Chrome 145 lays these out as start)', () => {
     // Probed in Chrome 145, ltr and rtl: a 16 / 9 item 90px high is 160px wide in each of these, and the engine gives 0 or the column's 300.
@@ -155,6 +157,22 @@ describe('a non-replaced grid item with a ratio and an auto width (grid.ts trans
     expect(refusals(grid('.i { aspect-ratio: 16 / 9; box-sizing: border-box; border-bottom: 2px solid; justify-self: stretch; }'))).toEqual([borderBox('bottom')]);
     expect(refusals(grid('.i { aspect-ratio: 16 / 9; box-sizing: border-box; padding-top: 1px; justify-self: start; height: 90px; }'))).toEqual([transfer('height: 90px', 'start'), borderBox('top')]);
   });
+  it('refuses on native a content-box item with a vertical border or padding, and a max-height beside an alignment other than stretch', () => {
+    // Probed in Chrome 145, ltr and rtl, DPR 1, 2, 2.625 and 3, in a repeat(2, 1fr) grid 360.5px wide with a 12px gap: with 3 / 3.4
+    // and padding 3px 0 7px 0 Chrome makes the columns 174.234375px and 183.046875px, and the engine keeps them equal; with
+    // justify-self: start and max-height: 45px Chrome's item is 39.703125 x 44.984375px, and the engine's 0 x 0.
+    for (const [css, want] of [
+      ['padding: 3px 0 7px 0;', [contentBox('top and bottom')]],
+      ['border-top: 2px solid; justify-self: stretch;', [contentBox('top')]],
+      ['justify-self: start; max-height: 45px;', [maxHeight('45px', 'start')]],
+      ['max-height: 45px;', [maxHeight('45px', 'normal')]],
+      ['justify-self: center; max-height: 0px;', [maxHeight('0px', 'center')]],
+    ] as const) {
+      const c = grid(`.i { aspect-ratio: 16 / 9; ${css} }`);
+      expect(refusals(c), css).toEqual(want);
+      expect(c.outputs.web.kind, css).toBe('ready');
+    }
+  });
   it('compiles the shapes the engine lays out as Chrome does', () => {
     for (const css of [
       'aspect-ratio: 16 / 9; justify-self: stretch; height: 90px;',
@@ -162,9 +180,9 @@ describe('a non-replaced grid item with a ratio and an auto width (grid.ts trans
       'aspect-ratio: 16 / 9; justify-self: start;',
       'aspect-ratio: 16 / 9;',
       'aspect-ratio: 16 / 9; justify-self: start; min-height: 0;',
-      'aspect-ratio: 16 / 9; justify-self: start; max-height: 45px;',
-      'aspect-ratio: 16 / 9; padding: 3px 0 7px 0;',
       'aspect-ratio: 16 / 9; box-sizing: border-box; padding: 0 5px 0 2px;',
+      'aspect-ratio: 16 / 9; padding: 0 5px 0 2px;',
+      'aspect-ratio: 16 / 9; justify-self: stretch; max-height: 45px;',
       'aspect-ratio: 16 / 9; box-sizing: border-box; border-bottom-width: 2px;',
       'aspect-ratio: 16 / 9; box-sizing: border-box; padding: 3px 0; width: 12px;',
       'aspect-ratio: 0 / 1; justify-self: start; height: 90px;',
