@@ -187,7 +187,7 @@ describe('the layout plan of a Markless export', () => {
     const input = JSON.parse(readFileSync(repoPath(path), 'utf8')) as { css: string; nodes: unknown[]; slots: { initial: number }[] };
     const text = JSON.stringify({
       ...input,
-      css: `${input.css}\n.pick { display: block; font: inherit; min-width: 0; width: 100%; padding: 4px 6px; border: 1px solid rgb(90 90 90); background: rgb(250 250 245); }\n`,
+      css: `${input.css}\n.pick { display: block; font: inherit; min-width: 0; width: 100%; padding: 0 6px; border: 1px solid rgb(90 90 90); background: rgb(250 250 245); }\n`,
       nodes: [...input.nodes, { kind: 'element', id: 'h20', element: 'select', parent: 'h0', attributes: { class: 'pick' } }, { kind: 'element', id: 'h21', element: 'option', parent: 'h20', attributes: {} }, { kind: 'text', id: 'h21:text0', parent: 'h21', text: 'One' }],
     });
     const { exported } = marklessStyleExport(text, path, undefined, 'system', undefined, true);
