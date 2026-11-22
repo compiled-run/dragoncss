@@ -22,10 +22,9 @@ export const CORPUS_SPEC = {
 export const UNITS_FUNCTIONS = [
   'fromCssPx', 'fromDouble', 'fromPxRound', 'fromPxCeil', 'snapBorderWidth', 'percentOf', 'roundFontMetricToWholePx', 'platformFontSize',
   'textAdvance', 'lineHeightFromNumber', 'growShare', 'shrinkShare', 'fractionalFreeSpace', 'divInt', 'cumulativeShareRounded', 'distributedOffset',
-  'layoutRatioWidth', 'layoutRatioHeight',
 ] as const;
 
-const TRIVIAL = 2 ** -20;
+export const TRIVIAL = 2 ** -20;
 /**
  * ARAT: authored aspect-ratio parts for units.ts layoutRatio: gfx::SizeF's 2^-20 and the doubles and floats either side of it (the
  * tie halfway to the next float rounds to even, so to 2^-20), the probed fractions, and whole, huge and tiny parts.
@@ -119,11 +118,6 @@ function unitsArgs(name: (typeof UNITS_FUNCTIONS)[number], r: Rng): (number | st
       return [r.chance(0.02) ? -1 : pos(), r.int(12), r.chance(0.02) ? 0 : small()];
     case 'distributedOffset':
       return [r.pick(['space-between', 'space-around', 'space-evenly']), pos(), small(), r.int(12)];
-    case 'layoutRatioWidth':
-    case 'layoutRatioHeight': {
-      const part = (): number => (r.chance(0.6) ? r.pick(RATIO_PARTS) : r.chance(0.5) ? r.next() * 10 : Math.abs(px(r)));
-      return [part(), part()];
-    }
   }
 }
 

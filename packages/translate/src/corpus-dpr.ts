@@ -10,7 +10,7 @@ import { validateLayoutInput } from '../../layout/src/validate.ts';
 import { runEngineCase, runSnapCase, runUnitsCase } from '../harness/harness.ts';
 import { bitsHex } from '../harness/host.ts';
 import type { Corpus, Json, Split, Suite, VectorCase } from './corpus.ts';
-import { digestsOf, faultsFor, lu, m1CaseIds, mutate, px, Rng, split, topLevelVectorFiles, vectorCase, VECTORS_DIR } from './corpus.ts';
+import { digestsOf, faultsFor, lu, m1CaseIds, mutate, px, RATIO_PARTS, Rng, split, topLevelVectorFiles, vectorCase, VECTORS_DIR } from './corpus.ts';
 import { ROOT } from './generate.ts';
 
 export const EXTENDED_LOCK = join(ROOT, 'packages/translate/corpus-dpr.json');
@@ -28,7 +28,7 @@ export const DPR_SETS: readonly number[] = [2, 3, 2.625];
 export const SNAP_DPRS: readonly number[] = [1, 2, 3, 2.625];
 
 /** units-m2: the zoom model (R1 and the length and font zoom), R2 FromFloatRound, the snap rule and the R4 range width. */
-export const UNITS_M2_FUNCTIONS = ['fromFloatRound', 'zoomCssPx', 'zoomFontSize', 'zoomViewportPx', 'snapEdge', 'cachedRangeWidth'] as const;
+export const UNITS_M2_FUNCTIONS = ['fromFloatRound', 'zoomCssPx', 'zoomFontSize', 'zoomViewportPx', 'snapEdge', 'cachedRangeWidth', 'layoutRatioWidth', 'layoutRatioHeight'] as const;
 
 /**
  * The engine faults engine-dpr draws from: every fault up to P2b (initialLineWidthZoomed included), fixed so its inputs do not move
@@ -170,7 +170,15 @@ function unitsM2Args(name: (typeof UNITS_M2_FUNCTIONS)[number], r: Rng): number[
       const end = r.chance(0.05) ? r.int(40) : start + r.int(40);
       return [start, end, fontSize(r)];
     }
+    case 'layoutRatioWidth':
+    case 'layoutRatioHeight':
+      return [ratioPart(r), ratioPart(r)];
   }
+}
+
+/** ARAT: an authored aspect-ratio part, carried bit-exactly: corpus.ts RATIO_PARTS (2^-20 and its neighbours, the probed fractions) or a random one. */
+function ratioPart(r: Rng): number {
+  return r.chance(0.6) ? r.pick(RATIO_PARTS) : r.chance(0.5) ? r.next() * 10 : Math.abs(px(r));
 }
 
 export function unitsM2Cases(): string[] {
