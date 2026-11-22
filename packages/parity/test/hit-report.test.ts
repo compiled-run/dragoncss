@@ -4,7 +4,7 @@
 // nearest ancestor of Chrome's element that has an activation handler.
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { NO_HIT_FAULTS, NO_HIT_TABLE_FAULTS } from '../../layout/src/rt-hit.ts';
+import { hitTransformRefusal, NO_HIT_FAULTS, NO_HIT_TABLE_FAULTS } from '../../layout/src/rt-hit.ts';
 import { capturedIds, caseHitTable, chromeHitPoint, committedHits, committedHitsAt, compareHits, compareHitsAt, gridSha256, HIT_DPR_CAPTURES, HIT_FACTS_PATH, hitCases, hitFactsJson, hitGrid, hitGridAt, hitRefusal, hitRefusedCases, tapTarget } from '../src/hit-capture.ts';
 import type { NativeCase } from '../src/native-host.ts';
 import { deviceCheckCases, nativeCases } from '../src/native-host.ts';
@@ -21,8 +21,8 @@ const cases = hitCases();
 
 describe('the host hit lane', () => {
   // The hit lane leaves out the union of the refusals in hit-refusals*.ts; taking any alone would bring the others' cases back.
-  const transformed = (): string[] => nativeCases().filter((n) => n.programs.uikit.nodes.some((x) => x.writes.some((w) => w.kind === 'transform'))).map((n) => n.case.id);
-  it('leaves out exactly the union of the transform cases, the PNT1 stacking cases, the INL1a inline-box and <br> fixtures, the GRID fixtures, the T150a visibility fixtures, the MASK-CLIP clip and clip-path fixtures, the svg fixtures, the TXT2-g line-clamp fixtures, the FORM-a controls fixtures, the FLT float fixtures and the TXT1a-2 shaped cases, each with a named reason', () => {
+  const transformed = (): string[] => nativeCases().filter((n) => n.programs.uikit.nodes.some((x) => x.writes.some((w) => w.kind === 'transform' && hitTransformRefusal(x.id, w.ops) !== null))).map((n) => n.case.id);
+  it('leaves out exactly the union of the rotated transform cases, the PNT1 stacking cases, the INL1a inline-box and <br> fixtures, the GRID fixtures, the T150a visibility fixtures, the MASK-CLIP clip and clip-path fixtures, the svg fixtures, the TXT2-g line-clamp fixtures, the FORM-a controls fixtures, the FLT float fixtures and the TXT1a-2 shaped cases, each with a named reason', () => {
     const hit = new Set(cases.map((n) => n.case.id));
     const out = nativeCases().filter((n) => !hit.has(n.case.id));
     const union = new Set([...shapedCaseIds(), ...transformed(), ...STACKING_OUT, ...INLINE_OUT, ...GRID_OUT, ...VISIBILITY_OUT, ...CLIP_RECT_OUT, ...CLIP_PATH_OUT, ...SVG_OUT, ...CLAMP_OUT, ...MARKER_OUT, ...CONTROLS_OUT, ...FLOAT_OUT]);
@@ -49,7 +49,7 @@ describe('the host hit lane', () => {
     }
   });
 
-  it('refuses by name every case whose program writes a transform (T064 R13; SELD-R2b T146 lifts it), and the PNT1 stacking, INL1a inline, GRID, T150a visibility, MASK-CLIP clip and clip-path, svg (SVG-a2 lifts it), FORM-a controls, FLT float and shaped cases (TXT1a-2 phase R) with their own reasons', () => {
+  it('refuses by name every case whose program writes a rotated transform (T064 R13; SELD-R2b T146 lifts it), and the PNT1 stacking, INL1a inline, GRID, T150a visibility, MASK-CLIP clip and clip-path, svg (SVG-a2 lifts it), FORM-a controls, FLT float and shaped cases (TXT1a-2 phase R) with their own reasons', () => {
     const refused = hitRefusedCases();
     const moved = new Set(transformed());
     expect(refused.filter((r) => moved.has(r.id)).map((r) => r.id)).toEqual(transformed());
@@ -110,7 +110,7 @@ describe('the host hit lane at a fractional device DPR', () => {
     const byId = new Map(cases.map((n) => [n.case.id, n]));
     expect(HIT_DPR_CAPTURES.map((d) => d.dpr)).toEqual([2.625]);
     for (const { dpr, ids } of HIT_DPR_CAPTURES) {
-      expect(ids).toEqual(['interaction-combo', 'interaction-combo-rtl', 'radius-basic', 'radius-clip']);
+      expect(ids).toEqual(['interaction-combo', 'interaction-combo-rtl', 'radius-basic', 'radius-clip', 'transform-hit-scale', 'transform-hit-subpixel', 'transform-hit-snap', 'opacity-group-transform']);
       const mismatches: string[] = [];
       for (const id of ids) {
         const n = byId.get(id);
@@ -170,11 +170,21 @@ describe('planted hit faults (T047 §3.3 item 12, host half)', () => {
     const f = failing((n) => compareHits(n, committedHits(n.case.id), NO_HIT_FAULTS, { ...NO_HIT_TABLE_FAULTS, pointerEventsNotInherited: true }).mismatches.length);
     expect(f).toEqual(['hit-pointer-events', 'hit-pointer-events-rtl']);
   });
+  // Each table plant is judged by the cases it fails beyond those the clean table fails.
+  const beyondClean = (tableFaults: Partial<typeof NO_HIT_TABLE_FAULTS>): string[] => {
+    const count = (n: (typeof cases)[number], t: typeof NO_HIT_TABLE_FAULTS): number => compareHits(n, committedHits(n.case.id), NO_HIT_FAULTS, t).mismatches.length;
+    return cases.filter((n) => count(n, { ...NO_HIT_TABLE_FAULTS, ...tableFaults }) > count(n, NO_HIT_TABLE_FAULTS)).map((n) => n.case.id);
+  };
+  it('transformIgnored fails exactly the scale and translate transform cases', () => {
+    expect(beyondClean({ transformIgnored: true })).toEqual(['opacity-group-transform', 'opacity-group-transform-rtl', 'opacity-group-button', 'opacity-group-button-rtl', 'shadow-transform', 'shadow-transform-rtl', 'transform-translate', 'transform-hit-scale', 'transform-hit-subpixel', 'transform-hit-snap']);
+  });
+  it('contextNotLayered fails exactly the cases where a stacking context overlaps later flow content', () => {
+    expect(beyondClean({ contextNotLayered: true })).toEqual(['opacity-basic', 'opacity-basic-rtl', 'opacity-cascade', 'opacity-cascade-rtl', 'opacity-web', 'opacity-web-rtl', 'opacity-fold', 'opacity-fold-rtl', 'opacity-group-text', 'opacity-group-text-rtl', 'opacity-group-border', 'opacity-group-border-rtl', 'opacity-group-border-only', 'opacity-group-border-only-rtl', 'opacity-group-over-rects', 'opacity-group-over-rects-rtl', 'opacity-group-over-group', 'opacity-group-over-group-rtl', 'opacity-group-nested', 'opacity-group-nested-rtl', 'opacity-group-translucent', 'opacity-group-translucent-rtl', 'opacity-group-rounded', 'opacity-group-rounded-rtl', 'filter-matrix-text', 'filter-matrix-text-rtl', 'filter-matrix-over-rects', 'filter-matrix-over-rects-rtl', 'transform-hit-scale', 'transform-hit-subpixel']);
+  });
 });
 
 describe('tap dispatch', () => {
-  // No layout fixture holds an activation element yet (a href is DRAGON_UNSUPPORTED_ATTRIBUTE and button belongs to FORM-a), so
-  // every tap here activates nothing; packages/layout/test/rt-hit.test.ts proves the ancestor walk on a table with handlers.
+  // The controls fixtures' buttons are the layout fixtures' activation elements, so these taps walk to them on Chrome's elements.
   it('activates the nearest activation ancestor of Chrome\'s element at every captured point', () => {
     let taps = 0;
     for (const n of cases) {
@@ -189,7 +199,7 @@ describe('tap dispatch', () => {
         if (want !== null) taps++;
       });
     }
-    expect(taps).toBe(0);
+    expect(taps).toBeGreaterThan(0);
   });
 });
 

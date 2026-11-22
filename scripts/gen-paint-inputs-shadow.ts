@@ -82,6 +82,23 @@ out.push(line('outerShadowLayerOver', [4, 4, 16, 12, ...SQUARE, 1, 1, ...one, 2,
 out.push(line('insetShadowLayerOver', [2, 2, 16, 12, 1, 2, 1, 2, ...SQUARE, 2, ...ins, 2, ...NO, 2, ...stage, ...fill(2, 2, 16, 12, SQUARE, 58, 110, 165, 255)]));
 out.push(line('insetShadowLayerOver', [2, 2, 26, 20, 1, 1, 1, 1, 5, 3, 5, 3, 4, 2, 4, 2, 1, ...shadow(true, 1, 1, 3, 0.5, 0, 0, 0, 180), 2.625, ...NO, 1, ...fill(2, 2, 26, 20, [6, 4, 6, 4, 5, 3, 5, 3], 58, 110, 165, 200)]));
 out.push(line('insetShadowLayerOver', [2, 2, 16, 12, 0, 0, 0, 0, ...SQUARE, 2, ...ins, 2, 1, 0, 0, 1, ...stage]));
+// A box under its own scale and translate (the mapped layers): a scale about the centre, layered and not, a non-uniform scale with a
+// translate over a backdrop, the planted faults under a scale, and the shadow transform of scale, translate and origin lists.
+const half = [0.9, 0.9, 1, 1.2];
+out.push(line('outerShadowLayerMapped', [4, 4, 16, 12, ...ROUND, 1, 1, ...one, 2, ...NO, ...half, 1]));
+out.push(line('outerShadowLayerMapped', [4, 4, 16, 12, ...SQUARE, 0, 2, ...two, 2.625, ...NO, 0.98, 0.98, 0.25, 0.125, 0]));
+out.push(line('outerShadowLayerMapped', [4, 4, 16, 12, ...ROUND, 1, 2, ...two, 2, 1, 1, 1, ...half, 1]));
+out.push(line('outerShadowLayerOverMapped', [4, 4, 16, 12, ...ROUND, 1, 2, ...two, 2, ...NO, 2, ...stage, ...tint, 0.9, 0.95, 1.5, 0.5, 0]));
+out.push(line('outerShadowLayerOverMapped', [4, 4, 16, 12, ...ROUND, 1, 1, ...one, 3, ...NO, 1, ...stage, ...half, 1]));
+const px = (v: number): unknown[] => ['px', bits(v), bits(0)];
+const pct = (v: number): unknown[] => ['percent', bits(0), bits(v)];
+const op = (fn: string, x: unknown[], y: unknown[], sx: number, sy: number): unknown[] => [fn, x, y, bits(0), bits(sx), bits(sy)];
+const transformLine = (ops: readonly unknown[], origin: readonly unknown[], args: readonly number[]): string => JSON.stringify(['paint:shadow:shadowTransform', ops, origin, ...args.map(bits), []]);
+const centre = [pct(50), pct(50)];
+out.push(transformLine([op('scale', px(0), px(0), 0.98, 0.98)], centre, [48, 240, 304, 352, 2]));
+out.push(transformLine([op('scale', px(0), px(0), 0.9, 0.95)], centre, [21, 63, 357, 210, 2.625]));
+out.push(transformLine([op('translate', px(4), px(2), 1, 1), op('scale', px(0), px(0), 0.94, 0.94)], [px(0), px(0)], [576, 648, 960, 816, 3]));
+out.push(transformLine([op('translate', pct(10), px(0), 1, 1)], centre, [0, 0, 100, 50, 2]));
 // Text shadows (TXT-FX) on a line of Ahem: X, p (Ahem's descender box), a space and É, at quarter-pixel pens, blurred and not,
 // one and two shadows, over a backdrop, with the half-blur fault, at 2 and 2.625.
 const glyphs = (cps: readonly number[], xs: readonly number[]): number[] => [cps.length, ...cps, ...xs];

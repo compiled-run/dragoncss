@@ -103,9 +103,10 @@ describe('FORM-a controls', () => {
     expect(compile(`${BODY}${BUTTON}`, (r) => [button(r)]).diagnostics.some((d) => d.code === 'DRAGON_CONTROL_STATIC_NATIVE')).toBe(false);
   });
 
-  it('refuses :hover in a document with a form control on native, where the hit table has no control yet', () => {
-    const out = compile(`${BODY}${BUTTON}.a { width: 10px; height: 10px; } .a:hover { width: 20px; }`, (r) => [button(r), div(r, 'a', ['a'])], NATIVE, true);
-    expect(errors(out.diagnostics)).toContainEqual(expect.stringMatching(/:hover needs Dragon hit testing through the form control b/));
+  it('refuses :hover in a document with a range on native, which the hit table does not model, and not beside a button, which it does', () => {
+    const css = `${BODY}${BUTTON}${RANGE}.a { width: 10px; height: 10px; } .a:hover { width: 20px; }`;
+    expect(errors(compile(css, (r) => [range(r), div(r, 'a', ['a'])], NATIVE, true).diagnostics)).toContainEqual(expect.stringMatching(/:hover needs Dragon hit testing through the form control /));
+    expect(errors(compile(css, (r) => [button(r), div(r, 'a', ['a'])], NATIVE, true).diagnostics).filter((m) => m.includes('hit testing through the form control'))).toEqual([]);
   });
 
   it('reads no paint fact of a text field\'s UA shadow parts for the hit model, as Chrome retargets them to the field', () => {

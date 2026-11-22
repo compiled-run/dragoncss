@@ -1,0 +1,11 @@
+{
+  "case": "controls-checkbox",
+  "chrome": "145.0.7632.6",
+  "dpr": 2,
+  "texts": [
+    {"id":"ct:text0","data":"Pin","lines":1,"units":[0,0,0],"blank":[]},
+    {"id":"dt:text0","data":"Pin","lines":1,"units":[0,0,0],"blank":[]},
+    {"id":"n:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"n:text1","data":"X","lines":1,"units":[0],"blank":[]}
+  ]
+}
