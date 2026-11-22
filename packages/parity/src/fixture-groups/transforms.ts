@@ -6,7 +6,8 @@
 // over 2D transforms it changes no pixel, only the stacking context and containing block (transform-perspective). The individual
 // transforms translate, rotate and scale (css-transforms-2 §4) alone and composed before transform about transform-origin
 // (transform-indiv-values, transform-indiv-compose); the rejects name their 3D parts and a composition that skews. transform-hit-scale
-// holds the scale and translate transforms the hit lane proves, with opacity and box-shadow over neighbouring boxes.
+// holds the scale and translate transforms the hit lane proves, with opacity and box-shadow over neighbouring boxes;
+// transform-hit-snap holds scaled pills and scaled boxes inside translated boxes at fractional positions.
 import type { FixtureSpec } from '../fixtures.ts';
 import { both, layout, reject } from './define.ts';
 
@@ -33,6 +34,7 @@ export const TRANSFORMS: readonly FixtureSpec[] = [
   layout('transform-indiv-compose'),
   layout('transform-hit-scale'),
   layout('transform-hit-subpixel'),
+  layout('transform-hit-snap'),
   reject('reject-transform-skew', 'DRAGON_UNSUPPORTED_VALUE', 'skewX(10deg)', `transform: skewX(10deg) is unsupported: ${M}`),
   reject('reject-transform-3d', 'DRAGON_UNSUPPORTED_VALUE', 'rotateY(20deg)', `transform: rotateY(20deg) is unsupported: ${M}`),
   reject('reject-transform-perspective', 'DRAGON_UNSUPPORTED_VALUE', 'perspective(200px)', `transform: perspective(200px) is unsupported: ${M}`),

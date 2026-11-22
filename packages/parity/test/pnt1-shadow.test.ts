@@ -8,7 +8,9 @@
 // allowance (allowances/shadow.ts) is GATE_CHANNEL_DELTA (decisions.md, box-shadow device pixels: no allowance). The plain layers
 // (composited onto transparent, one platform composite) measured 2 here, one floor per shadow short of Chrome's. A box with its own
 // scale and translate (shadow-transform) is modelled where it paints, and its outer layers are drawn under that transform; two
-// planted faults, the shadow drawn untransformed and its blur left unscaled by the transform, must each move a clear pixel.
+// planted faults, the shadow drawn untransformed and its blur left unscaled by the transform, must each move a clear pixel. A
+// transformed box paints after the flow content of its stacking context (shadow-transform-order); the shadow left at its tree place,
+// and drawn over its ancestors' fills alone, must each move a clear pixel.
 import { describe, expect, it } from 'vitest';
 import { IDENTITY_SHADOW_TRANSFORM, insetShadowLayer, insetShadowLayerOver, NO_SHADOW_FAULTS, outerShadowLayerMapped, outerShadowLayerOverMapped } from '@dragon/layout';
 import type { BackdropFill, ShadowInput, ShadowLayer, ShadowTransform } from '@dragon/layout';
@@ -67,14 +69,42 @@ function platformOver(l: ShadowLayer, x: number, y: number, under: Rgba): number
   return [0, 1, 2].map((k) => Math.round((l.rgba[i + k] as number) + ((under[k] as number) * (255 - a)) / 255));
 }
 
-/** The backdrop fills the device gathers for a box's shadows: each ancestor's background, outermost first, then its own for inset. */
-function backdropOf(list: readonly Box[], b: Box, own: boolean): BackdropFill[] {
+/** The host a layer item's paint-order write places it under, or null for a flow box. */
+function layerHost(b: Box): string | null {
+  const w = b.node.writes.find((x) => x.kind === 'paint-order');
+  return w !== undefined && w.kind === 'paint-order' && w.bucket !== 0 ? w.host : null;
+}
+
+/**
+ * The backdrop of a box's shadows, list in paint order: its ancestors' fills, outermost first, then its own for the inset ones; a
+ * layer item's outer shadows also have every box its host painted before it beneath, but what a clipping box below the host holds.
+ */
+function backdropOf(list: readonly Box[], b: Box, own: boolean, ancestorsOnly = false): BackdropFill[] {
   const chain: Box[] = own ? [b] : [];
   for (let p = b.node.parent; p !== null; ) {
     const a = list.find((x) => x.node.id === p);
     if (a === undefined) break;
     chain.unshift(a);
     p = a.node.parent;
+  }
+  const host = own || ancestorsOnly ? null : layerHost(b);
+  if (host !== null) {
+    const at = list.indexOf(b);
+    const byId = new Map(list.map((x) => [x.node.id, x]));
+    for (const x of list.slice(0, at)) {
+      if (chain.includes(x)) continue;
+      let ok = false;
+      for (let h = x.node.host; h !== null; ) {
+        if (h === host) {
+          ok = true;
+          break;
+        }
+        const up = byId.get(h);
+        if (up === undefined || up.node.clips) break;
+        h = up.node.host;
+      }
+      if (ok) chain.push(x);
+    }
   }
   return chain.flatMap((a) => {
     const bg = a.node.writes.find((w) => w.kind === 'background-color');
@@ -97,14 +127,18 @@ function placed(p: import('dragon').NativeProgram, b: Box, dpr: number): { map: 
 }
 
 /** A planted fault of the transformed shadows: drawn untransformed, or under the transform with the blur left at its local sigma. */
-type Plant = 'none' | 'untransformed' | 'blur-unscaled';
+type Plant = 'none' | 'untransformed' | 'blur-unscaled' | 'tree-order' | 'backdrop-ancestors';
 
 /** The measured difference of one case at one DPR over every clear shadow pixel. */
-function measure(caseId: string, boxList: readonly Box[], p: import('dragon').NativeProgram, dpr: number, plant: Plant = 'none'): { over: Measure; plain: Measure } {
+function measure(caseId: string, given: readonly Box[], p: import('dragon').NativeProgram, dpr: number, plant: Plant = 'none'): { over: Measure; plain: Measure } {
   const chrome = committedPixels(caseId, dpr);
   if (chrome === null) throw new Error(`${caseId}@${dpr}: no committed Chrome PNG`);
   const m: Measure = { max: 0, pixels: 0, worst: '' };
   const mp: Measure = { max: 0, pixels: 0, worst: '' };
+  // Chrome's paint order: a layer item (a transformed box) paints after the flow content of its stacking context.
+  const order = (b: Box): number => (b.node.facts['stacking'] as { readonly paintOrder?: number } | undefined)?.paintOrder ?? -1;
+  if (given.some((b) => order(b) < 0)) throw new Error(`${caseId}: a box has no paint order`);
+  const boxList = [...given].sort((a, b) => order(a) - order(b));
   const list = boxList.map((b) => placed(p, b, dpr).at);
   const layers = boxList.map((b) => {
     const own = shadowInputs(p, b.node.id);
@@ -119,15 +153,21 @@ function measure(caseId: string, boxList: readonly Box[], p: import('dragon').Na
       outerShadowLayerMapped(b.l, b.t, b.r, b.b, b.radii === null ? zero : b.radii.slice(0, 8), opaque, list, dpr, NO_SHADOW_FAULTS, map),
       insetShadowLayer(b.l, b.t, b.r, b.b, b.border, b.radii === null ? zero : b.radii.slice(8, 16), list, dpr, NO_SHADOW_FAULTS),
     ];
-    const outer = outerShadowLayerOverMapped(b.l, b.t, b.r, b.b, b.radii === null ? zero : b.radii.slice(0, 8), opaque, shadows, dpr, NO_SHADOW_FAULTS, backdropOf(list, b, false), map);
+    const outer = outerShadowLayerOverMapped(b.l, b.t, b.r, b.b, b.radii === null ? zero : b.radii.slice(0, 8), opaque, shadows, dpr, NO_SHADOW_FAULTS, backdropOf(list, b, false, plant === 'backdrop-ancestors'), map);
     const inset = insetShadowLayerOver(b.l, b.t, b.r, b.b, b.border, b.radii === null ? zero : b.radii.slice(8, 16), shadows, dpr, NO_SHADOW_FAULTS, backdropOf(list, b, true));
     const [plainOuter, plainInset] = layerOf(shadows);
     return { outer, inset, plainOuter, plainInset, coverage: shadows.flatMap((s) => layerOf([{ ...s, r: 0, g: 0, b: 0, a: 255 }])) };
   });
   const painted = (x: number, y: number): number => layers.filter((l) => l !== null && (alphaAt(l.plainOuter, x, y) > 0 || alphaAt(l.plainInset, x, y) > 0)).length;
+  const treeList = given.map((b) => placed(p, b, dpr).at);
+  const treeIndex = new Map(given.map((b, k) => [b.node.id, k]));
+  const paintIndex = new Map(boxList.map((b, k) => [b.node.id, k]));
+  let owner = '';
+  /** The tree-order plant: a box after the shadow's own in tree order but before it in paint order covers the shadow there. */
+  const coveredInTreeOrder = (x: number, y: number): boolean => treeList.some((d) => (treeIndex.get(d.node.id) as number) > (treeIndex.get(owner) as number) && (paintIndex.get(d.node.id) as number) < (paintIndex.get(owner) as number) && inside(d, x, y));
   const record = (into: Measure, l: ShadowLayer, x: number, y: number, under: Rgba): void => {
     const i = (y * chrome.width + x) * 4;
-    const want = platformOver(l, x, y, under);
+    const want = plant === 'tree-order' && coveredInTreeOrder(x, y) ? modelAt(treeList, x, y) : platformOver(l, x, y, under);
     const d = Math.max(...want.map((v, k) => Math.abs(v - (chrome.data[i + k] as number))));
     into.pixels++;
     if (d > into.max) {
@@ -140,9 +180,9 @@ function measure(caseId: string, boxList: readonly Box[], p: import('dragon').Na
     record(mp, plain, x, y, under);
   };
   list.forEach((b, index) => {
-    // Chrome paints a transformed box (a stacking context) after its in-flow siblings; the cases keep its shadow clear of them.
     const l = layers[index];
     if (l === null || l === undefined) return;
+    owner = b.node.id;
     const later = list.slice(index + 1);
     const descendants = later.filter((d) => { for (let a = d.node.parent; a !== null; a = list.find((x) => x.node.id === a)?.node.parent ?? null) if (a === b.node.id) return true; return false; });
     for (let y = l.plainOuter.top; y < l.plainOuter.bottom; y++) for (let x = l.plainOuter.left; x < l.plainOuter.right; x++) {
@@ -171,7 +211,7 @@ function measure(caseId: string, boxList: readonly Box[], p: import('dragon').Na
 
 describe('PNT1 shadow: the TS reference against Chrome at every clear shadow pixel (the measured allowance)', () => {
   it('covers the shadow fixtures and the calibration set in both directions', () => {
-    expect(SHADOW_FIXTURES.map((f) => f.id)).toEqual(['shadow-basic', 'shadow-rounded', 'shadow-inset', 'shadow-cascade', 'shadow-webkit-alias', 'shadow-transform', 'calib-shadow-blur', 'calib-shadow-colors']);
+    expect(SHADOW_FIXTURES.map((f) => f.id)).toEqual(['shadow-basic', 'shadow-rounded', 'shadow-inset', 'shadow-cascade', 'shadow-webkit-alias', 'shadow-transform', 'shadow-transform-order', 'calib-shadow-blur', 'calib-shadow-colors']);
   });
   const all: Measure = { max: 0, pixels: 0, worst: '' };
   const plainAll: Measure = { max: 0, pixels: 0, worst: '' };
@@ -209,6 +249,25 @@ describe('PNT1 shadow: the TS reference against Chrome at every clear shadow pix
       for (const dpr of DPRS) {
         const list = boxes(p, c.environment.viewport, dpr);
         for (const plant of ['untransformed', 'blur-unscaled'] as const) {
+          const { over: m } = measure(c.id, list, p, dpr, plant);
+          console.log(`pnt1-shadow ${c.id}@${dpr} plant ${plant}: ${m.pixels} pixels, max channel difference ${m.max}`);
+          if (!(m.max > SHADOW_MEASURED_MAX)) missed.push(`${plant}@${dpr}`);
+        }
+      }
+      expect(missed).toEqual([]);
+    }, 600_000);
+  }
+  const ordered = SHADOW_FIXTURES.find((f) => f.id === 'shadow-transform-order');
+  if (ordered === undefined) throw new Error('no shadow-transform-order fixture');
+  for (const c of casesOf(ordered, fixtureInput(ordered))) {
+    it(`${c.id}: the shadow left at its box's tree place, and drawn over its ancestors' fills alone, each differ from Chrome at a clear pixel at every DPR`, () => {
+      const programs = nativePrograms(nativeCompile(ordered, c.environment.direction), c.assignment);
+      if (programs.kind !== 'ready') throw new Error(programs.reason);
+      const p = programs.programs.uikit;
+      const missed: string[] = [];
+      for (const dpr of DPRS) {
+        const list = boxes(p, c.environment.viewport, dpr);
+        for (const plant of ['tree-order', 'backdrop-ancestors'] as const) {
           const { over: m } = measure(c.id, list, p, dpr, plant);
           console.log(`pnt1-shadow ${c.id}@${dpr} plant ${plant}: ${m.pixels} pixels, max channel difference ${m.max}`);
           if (!(m.max > SHADOW_MEASURED_MAX)) missed.push(`${plant}@${dpr}`);
