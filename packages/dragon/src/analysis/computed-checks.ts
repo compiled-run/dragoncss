@@ -1168,7 +1168,7 @@ function checkAspectRatio(el: ResolvedElement, layoutParent: ResolvedElement | n
   }
 }
 
-/** Native: grid.ts never transfers a size through a non-replaced item's ratio, so these two auto-width shapes differ from Chrome 145. */
+/** Native: grid.ts never transfers a size through a non-replaced item's ratio, so these auto-width shapes differ from Chrome 145. */
 function refuseGridRatioItem(el: ResolvedElement, parent: ResolvedElement, parentDisplay: string | null, shown: string, refuse: (v: ResolvedValue, what: string, message: string, manual: string) => void): void {
   if (parentDisplay !== 'grid' && parentDisplay !== 'inline-grid') return;
   const v = (p: Longhand): ResolvedValue => el.props.get(p) as ResolvedValue;
@@ -1184,7 +1184,11 @@ function refuseGridRatioItem(el: ResolvedElement, parent: ResolvedElement, paren
   const block = keywordOf(v('height')) !== 'auto' ? `height: ${valueToString(v('height').value)}` : keywordOf(minHeight) !== 'auto' && !isZeroLength(minHeight.value) ? `min-height: ${valueToString(minHeight.value)}` : self('align-self', 'align-items') === 'stretch' ? 'align-self: stretch' : null;
   if (justify !== 'stretch' && block !== null) refuse(ratio, 'grid-transfer', `aspect-ratio: ${shown} on ${address}, a grid item with an auto width, ${block} and justify-self: ${justify}, is not laid out yet: the engine does not transfer a grid item's block size through its ratio to its width`, `Give ${address} a width, or justify-self: stretch.`);
   const sides = (['top', 'bottom'] as const).filter((side) => !isZeroLength(v(`padding-${side}`).value) || (!isZeroLength(v(`border-${side}-width`).value) && !['none', 'hidden'].includes(keywordOf(v(`border-${side}-style`)))));
-  if (keywordOf(v('box-sizing')) === 'border-box' && sides.length > 0) refuse(ratio, 'grid-border-box', `aspect-ratio: ${shown} on ${address}, a border-box grid item with an auto width and a ${sides.join(' and ')} border or padding, is not laid out yet: the engine does not widen a grid item past its column when its vertical border and padding exceed the height its ratio gives`, `Give ${address} a width, or box-sizing: content-box.`);
+  const wrap = `Give ${address} a width, or put the vertical border and padding on a box inside it.`;
+  if (keywordOf(v('box-sizing')) === 'border-box' && sides.length > 0) refuse(ratio, 'grid-border-box', `aspect-ratio: ${shown} on ${address}, a border-box grid item with an auto width and a ${sides.join(' and ')} border or padding, is not laid out yet: the engine does not widen a grid item past its column when its vertical border and padding exceed the height its ratio gives`, wrap);
+  else if (sides.length > 0) refuse(ratio, 'grid-content-box', `aspect-ratio: ${shown} on ${address}, a content-box grid item with an auto width and a ${sides.join(' and ')} border or padding, is not laid out yet: the engine does not size the grid's columns by the contribution that border and padding add through the ratio`, wrap);
+  const maxHeight = v('max-height');
+  if (justify !== 'stretch' && keywordOf(maxHeight) !== 'none') refuse(ratio, 'grid-max-height', `aspect-ratio: ${shown} on ${address}, a grid item with an auto width, max-height: ${valueToString(maxHeight.value)} and justify-self: ${justify}, is not laid out yet: the engine does not transfer a grid item's max-height through its ratio to its width`, `Give ${address} a width, or justify-self: stretch.`);
 }
 
 const BORDER_STYLES: readonly Longhand[] = ['border-top-style', 'border-right-style', 'border-bottom-style', 'border-left-style'];
