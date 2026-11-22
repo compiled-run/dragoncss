@@ -28,6 +28,18 @@ describe('editable search fields in a Markless export', () => {
     }
   });
 
+  it('writes on each editor box the font and colour of the text the host draws in it, as the editor\'s own text has them', () => {
+    const style = (n: { writes: readonly Record<string, unknown>[] } | undefined): unknown[] => (n?.writes ?? []).filter((w) => w['kind'] === 'font' || w['kind'] === 'text-color').map((w) => w['kind'] === 'font' ? w['font'] : w['color']);
+    for (const t of ['ios', 'android'] as const) {
+      for (const a of exported.targets[t]!.assignments) {
+        const node = (id: string) => a.nodes.find((n) => n.id === id) as { writes: readonly Record<string, unknown>[] } | undefined;
+        expect(style(node('h2::editor')), `${t} fixed value`).toEqual(style(node('h2::editor:text0')));
+        expect(style(node('h1::editor')), `${t} empty field`).toEqual(style(node('h2::editor:text0')));
+        expect(style(node('h1::editor')).length, t).toBe(2);
+      }
+    }
+  });
+
   it('places every box of both assignments where Chrome does, within 1 device px', async () => {
     const report = await compareMarklessExport(input, exported);
     expect(report.compared).toBeGreaterThan(40);
