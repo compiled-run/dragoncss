@@ -315,14 +315,14 @@ describe('TREE: ids, every attribute name, HTML case-insensitive attribute value
     // FORM-a A4 handles the range's thumb and track pseudo-elements at the end of a top-level selector; elsewhere they stay refused.
     expect(msg('.a::-webkit-slider-thumb { width: 1px; }')).toEqual([]);
     expect(msg('.a::-webkit-slider-runnable-track { width: 1px; }')).toEqual([]);
-    expect(parse('input.a::-webkit-slider-thumb { width: 1px; }').selectors.map((x) => [x.pseudoElement?.kind, x.pseudoElement?.name, x.specificity])).toEqual([['range', 'thumb', [0, 1, 2]]]);
+    expect(parse('input.a::-webkit-slider-thumb { width: 1px; }').selectors.map((x) => [x.pseudoElement?.kind, x.pseudoElement?.name, x.specificity])).toEqual([['part', 'thumb', [0, 1, 2]]]);
     expect(parse('.a::-webkit-slider-runnable-track, .a { width: 1px; }').selectors.map((x) => x.pseudoElement?.name ?? null)).toEqual(['track', null]);
     expect(msg(':not(.a::-webkit-slider-thumb) { width: 1px; }')).toEqual([expect.stringMatching(/^DRAGON_UNSUPPORTED_SELECTOR .*inside a selector argument/)]);
     expect(msg('.a::-webkit-slider-thumb .b { width: 1px; }')).toEqual([expect.stringMatching(/^DRAGON_UNSUPPORTED_SELECTOR .*after the pseudo-element ::-webkit-slider-thumb of .* is not supported/)]);
     expect(msg('.a::-webkit-slider-container { width: 1px; }')).toEqual([expect.stringMatching(/^DRAGON_UNSUPPORTED_SELECTOR /)]);
     // Object prototype names are no range part: Chrome drops the whole list, so .a is not styled.
     for (const n of ['constructor', '__proto__', 'toString']) {
-      expect(parse(`.a, .b::${n} { width: 1px; }`).selectors.some((x) => x.pseudoElement?.kind === 'range'), n).toBe(false);
+      expect(parse(`.a, .b::${n} { width: 1px; }`).selectors.some((x) => x.pseudoElement?.kind === 'part'), n).toBe(false);
       expect(msg(`.a, .b::${n} { width: 1px; }`).length, n).toBeGreaterThan(0);
     }
     expect(msg('.a::-webkit-resizer { width: 1px; }')).toEqual([expect.stringMatching(/^DRAGON_UNSUPPORTED_SELECTOR .*OVFL-s/)]);

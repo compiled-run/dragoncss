@@ -329,24 +329,36 @@ export function sizeReplacedFlexItem(ctx: Ctx, leaf: ReplacedLeaf, bp: BorderPad
 }
 
 /**
- * Blink ComputeMinAndMaxContentContributionForReplaced: the leaf's min-content and max-content contribution (border box, no
- * margins), sized with no available or percentage size; a percentage width or max-width makes the min-content size min-width.
+ * The space a replaced box's inline contribution is measured in: no available or percentage inline size, and the block size the
+ * parent gives (a grid item's row area, Blink CreateConstraintSpaceForMeasure), stretching an auto height into it when asked.
  */
-export function replacedContribution(ctx: Ctx, leaf: ReplacedLeaf, kind: 'min' | 'max'): LU {
-  const s = leaf.style;
-  const bp = replacedBorderPadding(ctx, leaf, ZERO);
-  const space: ReplacedSpace = {
+export function replacedMeasureSpace(block: LU | null, blockAutoStretch: boolean): ReplacedSpace {
+  return {
     availableInline: null,
-    availableBlock: null,
+    availableBlock: block,
     percentInline: null,
-    percentBlock: null,
+    percentBlock: block,
     fixedInline: null,
     fixedBlock: null,
     inlineAuto: 'fit-content',
-    blockAutoStretch: false,
+    blockAutoStretch,
     inlineMargins: ZERO,
     blockMargins: ZERO,
   };
+}
+
+/** replacedContributionIn with no block size: the contribution to a block container or flex container. */
+export function replacedContribution(ctx: Ctx, leaf: ReplacedLeaf, kind: 'min' | 'max'): LU {
+  return replacedContributionIn(ctx, leaf, kind, replacedMeasureSpace(null, false));
+}
+
+/**
+ * Blink ComputeMinAndMaxContentContributionForReplaced: the leaf's min-content and max-content contribution (border box, no
+ * margins), sized in the measure space; a percentage width or max-width makes the min-content size min-width.
+ */
+export function replacedContributionIn(ctx: Ctx, leaf: ReplacedLeaf, kind: 'min' | 'max', space: ReplacedSpace): LU {
+  const s = leaf.style;
+  const bp = replacedBorderPadding(ctx, leaf, ZERO);
   const size = sizeReplaced(ctx, leaf, bp, space, 'normal').inline;
   const width = lengthWidth(leaf.id, s.width);
   const minWidth = lengthMinWidth(leaf.id, s.minWidth);

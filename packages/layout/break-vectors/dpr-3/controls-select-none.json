@@ -1,0 +1,24 @@
+{
+  "case": "controls-select-none",
+  "dpr": 3,
+  "texts": [
+    {"id":"s1::inner:text0","lines":[[0,2]]},
+    {"id":"s2::inner:text0","lines":[[0,3]]},
+    {"id":"s3::inner:text0","lines":[[0,3]]},
+    {"id":"s4::inner:text0","lines":[[0,4]]},
+    {"id":"s6::inner:text0","lines":[[0,5]]},
+    {"id":"s10::inner:text0","lines":[[0,12]]},
+    {"id":"s11::inner:text0","lines":[[0,2]]},
+    {"id":"s12::inner:text0","lines":[[0,2]]},
+    {"id":"s13::inner:text0","lines":[[0,2]]},
+    {"id":"s14::inner:text0","lines":[[0,2]]},
+    {"id":"s15::inner:text0","lines":[[0,4]]},
+    {"id":"s16::inner:text0","lines":[[0,2]]},
+    {"id":"s17::inner:text0","lines":[[0,2]]},
+    {"id":"s18::inner:text0","lines":[[0,3]]},
+    {"id":"s19::inner:text0","lines":[[0,3]]},
+    {"id":"s20::inner:text0","lines":[[0,2]]},
+    {"id":"f1::inner:text0","lines":[[0,12]]},
+    {"id":"f2::inner:text0","lines":[[0,2]]}
+  ]
+}

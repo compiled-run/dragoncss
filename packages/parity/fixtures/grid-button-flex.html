@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+button { display: flex; font-family: inherit; font-size: inherit; appearance: none; background-color: #cdf; border: 2px solid #036; padding: 1px 6px; color: #000; }
+.g { display: grid; grid-template-columns: 300px; grid-template-rows: 40px; width: 300px; margin-bottom: 4px; background-color: #eee; }
+.tall { grid-template-rows: 60px; }
+.cols { grid-template-columns: auto 1fr; grid-template-rows: auto; }
+.jn { justify-self: normal; align-self: normal; }
+.js { justify-self: stretch; align-self: stretch; }
+.st { justify-self: start; }
+.ce { justify-self: center; align-self: center; }
+.ic { align-items: center; justify-content: center; }
+.gap { column-gap: 6px; }
+.w120 { width: 120px; }
+.icon { width: 12px; height: 12px; background-color: #f80; }
+.inl { display: inline-flex; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="g1" class="g"><button data-dragon-id="b1" class="jn">XX</button></div>
+<div data-dragon-id="g2" class="g"><button data-dragon-id="b2" class="js">XX</button></div>
+<div data-dragon-id="g3" class="g"><button data-dragon-id="b3" class="st">XX</button></div>
+<div data-dragon-id="g4" class="g"><button data-dragon-id="b4" class="ce">XX</button></div>
+<div data-dragon-id="g5" class="g tall"><button data-dragon-id="b5"><span data-dragon-id="b5-t">XX</span></button></div>
+<div data-dragon-id="g6" class="g tall"><button data-dragon-id="b6" class="ic gap"><span data-dragon-id="b6-i" class="icon"></span><span data-dragon-id="b6-t">XX</span></button></div>
+<div data-dragon-id="g7" class="g cols"><button data-dragon-id="b7">XXX</button><button data-dragon-id="b8" class="ic">XX</button></div>
+<div data-dragon-id="g8" class="g"><button data-dragon-id="b9" class="w120 ic">XX</button></div>
+<div data-dragon-id="g9" class="g"><button data-dragon-id="b10" class="inl">XX</button></div>
+</body>
+</html>

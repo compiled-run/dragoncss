@@ -78,6 +78,8 @@ export type StackingFacts = {
   readonly clipChain: readonly string[];
   /** Whether the node stays under a clip its layer would take it out of (see the header). */
   readonly underClip: boolean;
+  /** The node whose paint layer paints this node's outline: itself when it is a layer item or the root, else its parent's. */
+  readonly paintLayer: string;
 };
 
 /** A node's placement among its host's children: bucket -1 (z < 0), 0 (flow), 1 (auto or 0), 2 (z > 0, then the top layer), then rank. */
@@ -318,6 +320,7 @@ export function stackingOf(root: StackNode): Stacking {
 
   const facts = new Map<string, StackingFacts>();
   const at = new Map(order.map((id, k) => [id, k]));
+  const paintLayerOf = (i: Info): Info => (i.parent === null || i.item ? i : paintLayerOf(i.parent));
   for (const i of all) {
     const clipChain = chainOf(i);
     facts.set(i.node.id, {
@@ -328,6 +331,7 @@ export function stackingOf(root: StackNode): Stacking {
       host: i.parent === null ? null : (writes.get(i.node.id)?.host ?? i.parent.node.id),
       clipChain,
       underClip: underClip.has(i.node.id),
+      paintLayer: paintLayerOf(i).node.id,
     });
   }
   return { facts, writes, order, native, clipped };

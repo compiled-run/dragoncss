@@ -1,0 +1,10 @@
+{
+  "case": "opacity-group-transform",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"ot-b:text0","lines":[[0,1]]},
+    {"id":"ot-f:text0","lines":[[0,1]]},
+    {"id":"ot-word:text0","lines":[[0,2]]},
+    {"id":"ot-word2:text0","lines":[[0,2]]}
+  ]
+}

@@ -62,6 +62,8 @@ export type MarklessPlan = {
   readonly assignments: readonly PlanAssignment[];
   /** Only for an input with slots: each slot's id and type, in the order the line gives their values; the phone refuses a fraction for an integer slot. */
   readonly slots?: readonly (readonly [id: string, type: 'number' | 'integer'])[];
+  /** The text leaves the build lays out with a text-transform; the phone refuses a page text for one (harness.ts withPageTexts). */
+  readonly transformed?: readonly string[];
 };
 
 type Write = { readonly kind: string } & Readonly<Record<string, unknown>>;
