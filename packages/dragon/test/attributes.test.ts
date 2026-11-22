@@ -47,6 +47,20 @@ describe('the rendering-neutral attribute table', () => {
     }
   });
 
+  it('each form attribute also leaves a form, a button and a text field carrying it exactly as the form pair without it', () => {
+    const none = read('packages/parity/fixtures/attr-neutral-form-none.html');
+    for (const [name, attr] of [['name', ' name="f"'], ['autocomplete', ' autocomplete="off"'], ['required', ' required=""'], ['minlength', ' minlength="2"'], ['maxlength', ' maxlength="80"']] as const) {
+      const id = `attr-neutral-form-${name}`;
+      const html = read(`packages/parity/fixtures/${id}.html`);
+      expect(html.split(attr).length - 1, id).toBe(3);
+      expect(html.replaceAll(attr, ''), id).toBe(none);
+      for (const suffix of ['', '-rtl']) {
+        const capture = (c: string): string => read(`packages/parity/expected/darwin-arm64/${c}${suffix}.web.json`).replaceAll(c, '<fixture>');
+        expect(capture(id), `${id}${suffix}: Chrome must render it exactly as attr-neutral-form-none`).toBe(capture('attr-neutral-form-none'));
+      }
+    }
+  });
+
   it('admits families and exact names, except rel and target on hyperlink tags', () => {
     expect(neutralAttribute('div', 'data-video-id')?.name).toBe('data-');
     expect(neutralAttribute('div', 'data-')).toBeUndefined();
