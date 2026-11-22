@@ -32,7 +32,7 @@ import { inDomain, validateInput, type ValidInput } from './analysis/input.ts';
 import type { InteractionPartition, InteractionValue } from './analysis/interaction.ts';
 import { checkGeneratedIdentity, generatedRuleRefusals, markerRuleRefusals } from './analysis/generated.ts';
 import { checkStaticEmptyHosts } from './analysis/pseudo-hosts.ts';
-import { emptyPartition, firstInteractionPseudo, stateMembers, hitUnmodelledBox, hitUnmodelledControl, hitUnmodelledFact, interactionCapRefusal, interactionPartition, interactionRefusals, interactionRuleOrigin, focusReachable, gateInteractionFeatures, provesPointerRow, ruleIsInteractive, selectFocusRefusals } from './analysis/interaction.ts';
+import { emptyPartition, firstInteractionPseudo, stateMembers, hitUnmodelledBox, hitUnmodelledControl, hitUnmodelledFact, interactionCapRefusal, interactionPartition, interactionRefusals, interactionRuleOrigin, focusReachable, gateInteractionFeatures, provesPointerRow, ruleIsInteractive } from './analysis/interaction.ts';
 import type { Linked, LinkedElement } from './analysis/link.ts';
 import type { InteractionState } from './analysis/match.ts';
 import { assignmentKey, linkDocument } from './analysis/link.ts';
@@ -1542,7 +1542,6 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       diagnostics.push(...preLinkDiagnostics);
     }
     focusable = focusReachable(interactionRules, linked?.cases ?? null);
-    diagnostics.push(...selectFocusRefusals(interactionRules, linked?.cases ?? null, options.faults));
     const nativeRefusals = gateInteractionFeatures(interactionRules, linked?.cases ?? null, NATIVE_TARGETS.filter((t) => targets.includes(t)), options.profiles === 'enforce' ? (t) => profileFor(profiles, t) : null, options.faults);
     if (options.interactionLanes) laneOnlyNative = NATIVE_TARGETS.filter((t) => nativeRefusals.some((d) => d.target === t));
     else {

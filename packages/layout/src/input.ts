@@ -606,7 +606,9 @@ export type ReplacedLeaf = {
  * - select-menulist (FORM-b): a single select, a flex row container of its inner element. font and lineHeight are the select's
  *   own: while its line height is normal, the inner element's is the primary font's ascent + descent (environment.ts).
  *   arrowWidth is the platform's menulist arrow width in DIP when the select has an effective appearance (menulist-button), which
- *   gives its inner element the internal margins and paddings and its drop-down arrow (controls.ts), and 0 for appearance: none;
+ *   gives its inner element the internal margins and paddings and its drop-down arrow (controls.ts), and 0 for appearance: none.
+ *   options holds every option's label in tree order as a text leaf in the inner element's text style: the widest decides the
+ *   select's min- and max-content inline size (intrinsic.ts menuListNaturalInlineSize), measured on the device as the shown label is;
  * - select-inner: the inner element, a block container holding the shown option's label; empty, it still holds one line.
  */
 export type ControlKind =
@@ -619,7 +621,7 @@ export type ControlKind =
   | { readonly kind: 'text-placeholder' }
   | { readonly kind: 'fieldset' }
   | { readonly kind: 'legend' }
-  | { readonly kind: 'select-menulist'; readonly font: FontSpec; readonly lineHeight: LineHeightValue; readonly arrowWidth: number }
+  | { readonly kind: 'select-menulist'; readonly font: FontSpec; readonly lineHeight: LineHeightValue; readonly arrowWidth: number; readonly options: readonly TextLeaf[] }
   | { readonly kind: 'select-inner' };
 
 /** A form control's box: a box with the same fields as LayoutBox plus its control facts. */

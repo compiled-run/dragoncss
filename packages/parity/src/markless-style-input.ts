@@ -6,7 +6,7 @@ import { createHash } from 'node:crypto';
 import { posix } from 'node:path';
 import { brotliDecompressSync } from 'node:zlib';
 import type { BrotliDecompress, ClassSymbol, Condition, FontMap, FrontEndResult, NativeStyles, NativeStylesConfig, NativeStyleTarget, Rgba8, SourceFile, TreeNode } from 'dragon';
-import { BAND_KEY, compiledCases, compileNativeStylesWith, decodeFontFile, isTreeNodeId, nativeBands, parseStylesheet, resolvedTextTransforms, TREE_SCHEMA_REVISION } from 'dragon';
+import { BAND_KEY, compiledCases, compileNativeStylesWith, decodeFontFile, isTreeNodeId, LISTED_OPTIONS_ATTRIBUTE, nativeBands, parseStylesheet, resolvedTextTransforms, TREE_SCHEMA_REVISION } from 'dragon';
 import type { rtBand } from '@dragon/layout';
 import { textDecoration } from '@dragon/layout';
 import { FONT_REFERENCE_MAP } from './font-reference.ts';
@@ -289,6 +289,7 @@ export function parseMarklessStyleInput(text: string): MarklessStyleInput {
       if (!isRecord(node['attributes']) || !Object.values(node['attributes']).every(isString)) fail(`${id}: attributes are not strings`);
       if (node['boxless'] !== undefined && node['boxless'] !== true) fail(`${id}: boxless is true or absent`);
       if (MARKLESS_BOXLESS_ATTRIBUTE in (node['attributes'] as Record<string, unknown>)) fail(`${id}: ${MARKLESS_BOXLESS_ATTRIBUTE} is Dragon's own attribute`);
+      if (LISTED_OPTIONS_ATTRIBUTE in (node['attributes'] as Record<string, unknown>)) fail(`${id}: ${LISTED_OPTIONS_ATTRIBUTE} is Dragon's own attribute`);
       if (node['classByState'] !== undefined) {
         if ('class' in (node['attributes'] as Record<string, unknown>)) fail(`${id}: class is both a fixed attribute and a class by state`);
         checkByState('classByState', node['classByState']);
@@ -299,7 +300,7 @@ export function parseMarklessStyleInput(text: string): MarklessStyleInput {
         for (const [name, byState] of Object.entries(attributesByState as Record<string, unknown>)) {
           if (name === 'class' || !/^[a-z][a-z0-9-]*$/.test(name)) fail(`${id}: attributesByState names ${JSON.stringify(name)}, which is not a non-class attribute name`);
           if (name in (node['attributes'] as Record<string, unknown>)) fail(`${id}: ${name} is both a fixed attribute and an attribute by state`);
-          if (name === MARKLESS_BOXLESS_ATTRIBUTE) fail(`${id}: ${MARKLESS_BOXLESS_ATTRIBUTE} is Dragon's own attribute`);
+          if (name === MARKLESS_BOXLESS_ATTRIBUTE || name === LISTED_OPTIONS_ATTRIBUTE) fail(`${id}: ${name} is Dragon's own attribute`);
           checkByState(`attributesByState.${name}`, byState);
         }
       }
@@ -554,6 +555,8 @@ export function marklessFrontEnd(slotted: MarklessStyleInput, inputText: string,
         ...Object.entries(n.attributes).filter(([name]) => name !== 'class').map(([name, value]) => ({ name, value: [{ when: { kind: 'true' }, value }], origin })),
         ...(marklessShownModal(n) && !('open' in n.attributes) ? [{ name: 'open', value: [{ when: { kind: 'true' }, value: '' }], origin }] : []),
         ...(n.boxless === true ? [{ name: MARKLESS_BOXLESS_ATTRIBUTE, value: [{ when: { kind: 'true' }, value: '' }], origin }] : []),
+        // FORM-b S4: a select holding a list's rows has only the template option here, so Dragon keeps its widest-option refusals.
+        ...(n.kind === 'element' && n.element === 'select' && input.nodes.some((k) => k.parent === n.id && k.row !== undefined) ? [{ name: LISTED_OPTIONS_ATTRIBUTE, value: [{ when: { kind: 'true' }, value: '' }], origin }] : []),
         // An attribute that follows state: each distinct value (null: absent) holds in exactly the combinations that give it.
         ...Object.entries(n.attributesByState ?? {}).map(([name, byState]) => {
           const entryOf = entriesOf(n.id, `attributesByState.${name}`, byState);

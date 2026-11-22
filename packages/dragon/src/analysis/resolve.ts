@@ -558,6 +558,8 @@ function resolveTreeWith(root: LinkedElement, rules: readonly Rule[], faults: Co
       const shown = shownOptionIndex(options.map(selectOptionOf));
       if (shown !== null) shownOptions.set(el, resolved[shown] as ResolvedElement);
       kids.push(visit(textPartElement(el, 'inner', shown === null ? '' : shownLabel(selectOptionOf(options[shown] as LinkedElement))), here, self, null, 'inner'));
+      // FORM-b S4: every option's label in the inner element's text style, beside the tree, for the select's natural width.
+      selectOptionLabels.set(self, options.map((o, k) => visit(optionLabelElement(el, k, shownLabel(selectOptionOf(o))), here, self, null, 'inner')));
     }
     // css-position-4 §3.2: a <dialog> shown modal (the host presents the top layer: project.ts refuses <dialog> otherwise) has a
     // ::backdrop box, which inherits from it; it is the dialog's last child here and lowerTree moves both into the top layer.
@@ -770,6 +772,20 @@ const selectParts = new WeakMap<ResolvedElement, SelectPartInfo>();
 /** The resolved option a select shows, beside the tree (it has no box). */
 const shownOptions = new WeakMap<LinkedElement, ResolvedElement>();
 const selectOptions = new WeakMap<ResolvedElement, readonly ResolvedElement[]>();
+
+const selectOptionLabels = new WeakMap<ResolvedElement, readonly ResolvedElement[]>();
+
+/** FORM-b S4: each option's label as an inner element "<select address>::option<k>", resolved beside the tree; empty for any other element. */
+export function selectOptionLabelsOf(el: ResolvedElement): readonly ResolvedElement[] {
+  return selectOptionLabels.get(el) ?? [];
+}
+
+/** An option's label as an inner element of its select, at "<select address>::option<k>" with one text child (none for an empty label). */
+function optionLabelElement(host: LinkedElement, k: number, text: string): LinkedElement {
+  const address = `${host.address}::option${k}`;
+  const children: LinkedText[] = text === '' ? [] : [{ kind: 'text', address: `${address}:text0`, node: { kind: 'text', id: `${host.node.id}::option${k}:text0`, text, origin: host.node.origin }, instance: host.instance, owner: host.owner, text }];
+  return { kind: 'element', address, node: host.node, instance: host.instance, owner: host.owner, tag: 'div', classes: [], attributes: new Map(), children };
+}
 
 /** A select's resolved options in tree order, beside the tree; empty for every other element. */
 export function selectOptionsOf(el: ResolvedElement): readonly ResolvedElement[] {

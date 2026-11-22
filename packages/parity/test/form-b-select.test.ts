@@ -1,7 +1,7 @@
 // FORM-b select: a single select with appearance: none (S1), or auto devolved to menulist-button by an author background, border
 // or box-shadow (S2), compiles as Chrome 145's menulist, a flex row container of its inner element holding the shown option's
 // label; S2 adds the theme's internal paddings and the drop-down arrow, proven here against Chrome's committed pixels. A list box,
-// optgroup, themed menulist, an inline-level, shrink-to-fit or flex-item-minimum select, option styles and focus rules are refused.
+// optgroup, themed menulist, an inline-level, shrink-to-fit or flex-item-minimum select and option styles are refused.
 import { describe, expect, it } from 'vitest';
 import type { Compiled, Diagnostic } from 'dragon';
 import * as dragon from 'dragon';
@@ -93,14 +93,15 @@ describe('FORM-b select S1', () => {
     expect(b.get('c::inner')?.y).toBe(1);
   });
 
-  it('refuses a list box, an optgroup, another appearance, option styles and focus rules by name', () => {
+  it('refuses a list box, an optgroup, another appearance and option styles by name, and compiles a focus rule', () => {
     expect(errors(compile('sel-multiple', '', sel('s', '<option>A</option>', ' multiple=""')))).toEqual([expect.stringMatching(/^all DRAGON_UNSUPPORTED_ELEMENT <select multiple> s is a list box, which waits for the FORM-b listbox package/)]);
     expect(errors(compile('sel-size', '', sel('s', '<option>A</option>', ' size="3"')))).toEqual([expect.stringMatching(/^all DRAGON_UNSUPPORTED_ELEMENT <select size=3> s is a list box/)]);
     expect(errors(compile('sel-size-1', '', sel('s', '<option>A</option>', ' size="1"')))).toEqual([]);
     expect(errors(compile('sel-optgroup', '', sel('s', '<optgroup data-dragon-id="g" label="G"><option>A</option></optgroup>')))).toContainEqual(expect.stringMatching(/^all DRAGON_UNSUPPORTED_ELEMENT <optgroup> g is not supported: an option group waits for FORM-b select/));
     expect(errors(compile('sel-menulist', 'select { appearance: menulist; }', sel('s', '<option>A</option>')))).toContainEqual(expect.stringMatching(/<select> s with appearance: menulist is not supported; only appearance: none or auto is laid out/));
     expect(errors(compile('sel-option-style', 'option { direction: rtl; }', sel('s', '<option data-dragon-id="o">A</option>')))).toContainEqual(expect.stringMatching(/direction on <option> o is not supported/));
-    expect(errors(compile('sel-focus', 'select:focus-visible { outline: 2px solid red; }', sel('s', '<option>A</option>')))).toContainEqual(expect.stringMatching(/a :focus or :focus-visible rule on <select> s is not supported/));
+    // No select-specific refusal is left; the device proofs and the hit model gate it as any focus rule (form-b-select-focus.test.ts).
+    expect(errors(compile('sel-focus', 'select:focus-visible { outline: 2px solid red; }', sel('s', '<option>A</option>')))).not.toContainEqual(expect.stringMatching(/rule on <select> s/));
   });
 
   it('refuses an inline-level, floated, positioned, shrink-to-fit or flex-minimum select, a UA font and an author flex layout', () => {
