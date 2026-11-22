@@ -3,7 +3,7 @@
 // compile, an unblocked android output for every proving case, and the Android Views emitter generating every proving case.
 import { describe, expect, it } from 'vitest';
 import type { Diagnostic } from 'dragon';
-import { androidProfile, compiledFeatures, createProjectWith, emitAndroidViewsCases, interactionPartitionOf, iosProfile, MEDIA_CONTEXT, nativePrograms, NO_FAULTS, PROFILE_NOTES, profileNoteFor } from 'dragon';
+import { androidProfile, compiledFeatures, createProjectWith, emitAndroidViewsCases, interactionPartitionOf, iosProfile, MEDIA_CONTEXT, nativePrograms, NO_FAULTS, PROFILE_NOTES, profileNoteFor, VIDEO_CONTEXT } from 'dragon';
 import { fixtureInput } from '../src/cases.ts';
 import { fontMapOf, withFontMapAssets } from '../src/fixture-groups/fonts.ts';
 import { PROJECT_ID } from '../src/fixture-reader.ts';
@@ -22,7 +22,7 @@ const byId = new Map(cases.map((n) => [n.case.id, n]));
 // SELD-R2 PR 5: interaction rows are proved by forced device cases on each target's own device record (deriveInteractionRows), whose
 // fixtures keep other interaction rules the gate refuses; the interaction test below checks them.
 const isInteraction = (context: string): boolean => context.startsWith('interaction/');
-const promoted = androidProfile.rows.filter((r) => r.status !== 'unsupported' && r.context !== MEDIA_CONTEXT && r.context !== ANIMATION_CONTEXT && !isInteraction(r.context));
+const promoted = androidProfile.rows.filter((r) => r.status !== 'unsupported' && r.context !== MEDIA_CONTEXT && r.context !== VIDEO_CONTEXT && r.context !== ANIMATION_CONTEXT && !isInteraction(r.context));
 const promotedInteraction = androidProfile.rows.filter((r) => r.status !== 'unsupported' && isInteraction(r.context));
 const promotedMedia = androidProfile.rows.filter((r) => r.status !== 'unsupported' && r.context === MEDIA_CONTEXT);
 
@@ -63,7 +63,7 @@ describe('the android profile follows the iOS rule', () => {
     };
     const exactOnAndroid = (r: (typeof iosProfile.rows)[number]) => r.context === MEDIA_CONTEXT && MEDIA_CAVEATS.ios.includes(r.feature) && !MEDIA_CAVEATS.android.includes(r.feature);
     // Interaction rows follow each target's own device record too (deriveInteractionRows), and are checked on their own below.
-    const layout = (rows: typeof iosProfile.rows) => rows.filter((r) => r.context !== ANIMATION_CONTEXT && !isInteraction(r.context));
+    const layout = (rows: typeof iosProfile.rows) => rows.filter((r) => r.context !== ANIMATION_CONTEXT && r.context !== VIDEO_CONTEXT && !isInteraction(r.context));
     const claims = (rows: typeof iosProfile.rows) => rows.filter((r) => r.context === ANIMATION_CONTEXT).map((r) => `${r.feature} ${r.status}`);
     expect(layout(androidProfile.rows)).toEqual(layout(iosProfile.rows).map((r) => androidNote(exactOnAndroid(r) ? { ...r, status: 'exact' } : r)));
     expect(iosProfile.rows.filter(exactOnAndroid).map((r) => r.status)).toEqual(MEDIA_CAVEATS.ios.map(() => 'caveat'));

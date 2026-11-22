@@ -3,7 +3,7 @@ import type { Browser } from 'playwright';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { chromeDeviations, NO_ENGINE_FAULTS, platformRules } from '@dragon/layout';
 import type { Assignment, ProfileRow } from 'dragon';
-import { CATALOGUE, iosLayoutProjection, iosProfile, MEDIA_CONTEXT, nativeOutlinePending, NO_FAULTS, PROPERTY_ASPECTS, PROPERTY_ROLE, webProfile } from 'dragon';
+import { CATALOGUE, iosLayoutProjection, iosProfile, MEDIA_CONTEXT, nativeOutlinePending, NO_FAULTS, PROPERTY_ASPECTS, PROPERTY_ROLE, VIDEO_CONTEXT, webProfile } from 'dragon';
 import type { Longhand } from 'dragon';
 import type { WebCapture } from '../src/capture.ts';
 import { captureFixture, captureJson } from '../src/capture.ts';
@@ -30,7 +30,7 @@ import { DETERMINISM_CHUNKS, determinismChunk, shuffled } from './determinism.ts
 // MQ-R1: media rows (context media) are proven by resize cases against resize captures, and media-runtime-resize.test.ts does the same.
 // SELD-R2 PR 5: the interaction rows (context interaction/<input>) are proved by forced device cases on the device records
 // (deriveInteractionRows, interaction-rows.test.ts and android-profile.test.ts), not by layout cases' used keys.
-const layoutRows = <R extends { readonly context: string }>(rows: readonly R[]): R[] => rows.filter((r) => r.context !== ANIMATION_CONTEXT && r.context !== MEDIA_CONTEXT && !r.context.startsWith('interaction/'));
+const layoutRows = <R extends { readonly context: string }>(rows: readonly R[]): R[] => rows.filter((r) => r.context !== ANIMATION_CONTEXT && r.context !== MEDIA_CONTEXT && r.context !== VIDEO_CONTEXT && !r.context.startsWith('interaction/'));
 import { buildReport, renderSummary, writeReport } from '../src/report.ts';
 import { hostPlatform, REFERENCE_PLATFORM, requireReferencePlatform } from '../src/platform.ts';
 import { FONT_FIXTURES } from '../src/fixture-groups/fonts.ts';
@@ -450,8 +450,8 @@ describe.sequential('S5 parity: Chrome 145 vs Dragon, every case of every fixtur
         const key = `${row.feature}@${row.context}`;
         for (const proof of row.proofs) {
           const lane = proof.lane;
-          // device-anim proves animation rows only (anim-frames.test.ts), never a layout case's row.
-          if (lane === 'device-anim') throw new Error(`${target} ${key}: a layout row with a device-anim proof`);
+          // device-anim proves animation rows only (anim-frames.test.ts), and device-pixels the video row (deriveVideoRows), never a layout case's row.
+          if (lane === 'device-anim' || lane === 'device-pixels') throw new Error(`${target} ${key}: a layout row with a ${lane} proof`);
           const expected = cases.filter((c) => c.lanes[lane] === 'pass' && c.features[target].includes(key)).map((c) => c.id);
           expect(proof.cases, `${target} ${key} ${proof.lane}`).toEqual(expected);
           expect(proof.cases.length, `${target} ${key}`).toBeGreaterThan(0);

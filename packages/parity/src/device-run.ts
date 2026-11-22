@@ -105,6 +105,8 @@ export const PLANT_CASES: { readonly [P in PaintPlant]: readonly string[] } = {
   // Dormant (DORMANT_PLANTS): gradient-backdrop's stacks are the ones a translucent raster would come from once R6(b) or R6(c) returns.
   'gradient-unpremultiplied-upload': ['gradient-backdrop'],
   'image-offset-1': ['replaced-block', 'replaced-fit'],
+  // MEDIA-EL slice 2: replaced-video-frame's frame points show the box's background, not the stream, when no player opens it.
+  'video-unloaded': ['replaced-video-frame'],
   // BG2-u: bg-image-web's tile edges (rule edge:<id>:tile-*) move with the tiles, shifted 2 device px (past GATE_DEVICE_PX; the name is the registry's).
   'bg-image-offset-1': ['bg-image-web'],
   // replaced-pixelated's upscaled imgs show nearest-neighbour texels (image-flat:<id>:nearest-<n>) that a filtered draw blends.
@@ -160,6 +162,8 @@ export const PLANT_RULES: { readonly [P in PaintPlant]: RegExp } = {
   'gradient-offset-1': /^gradient:/,
   'gradient-unpremultiplied-upload': /^gradient:/,
   'image-offset-1': /^(image-flat:|edge:)/,
+  // An unopened stream leaves the drawn rect transparent: its frame points show the box's background, not black or white.
+  'video-unloaded': /^image-flat:f\d+:/,
   'bg-image-offset-1': /^(image-flat|edge):[^:]+:tile-/,
   'image-smooth': /^image-flat:[^:]+:nearest-/,
   'svg-stroke-first': /^svg:/,
