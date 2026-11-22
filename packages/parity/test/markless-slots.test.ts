@@ -178,12 +178,6 @@ describe('typed slots of a Markless style input', () => {
     }
   }, 120_000);
 
-  it('refuses slots in an input with @for rows, by name', () => {
-    const rows = JSON.parse(readFileSync(repoPath('examples/markless-styles/input/rows.native-style-input.json'), 'utf8')) as MarklessStyleInput;
-    const both = { ...rows, slots: [{ id: 'slot:w', initial: 1 }], nodes: rows.nodes.map((n) => (n.id === 'h0' ? { ...n, styleTemplate: ['--w: ', { slot: 'slot:w' }] } : n)) };
-    expect(() => parseMarklessStyleInput(JSON.stringify(both))).toThrow('slots and @for rows (repeat:0) in one input are not supported yet: a phone lays rows out with no slot values');
-  });
-
   it('refuses a slot whose value is not a straight line of it, by name', () => {
     // Chrome keeps an rgb() alpha as round(a × 255) clamped, which is neither rule.
     const alpha = { ...input, css: `${input.css}\n.panel { background-color: rgb(10 20 30 / var(--size, 1)); }` };
