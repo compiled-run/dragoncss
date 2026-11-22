@@ -997,6 +997,8 @@
     "opacity-group-nested-rtl": "stacking context on on-a, on-a-in, on-b, on-b-in, on-c, on-c-mid, on-c-deep, on-d, on-d-in, on-e, on-e-in, on-f, on-f-in: hit testing through z-index and opacity layers is not modelled yet (rt-hit.ts orders positioned boxes as z-index auto)",
     "opacity-group-translucent": "stacking context on ot-a, ot-b, ot-c, ot-d, ot-e, ot-f: hit testing through z-index and opacity layers is not modelled yet (rt-hit.ts orders positioned boxes as z-index auto)",
     "opacity-group-translucent-rtl": "stacking context on ot-a, ot-b, ot-c, ot-d, ot-e, ot-f: hit testing through z-index and opacity layers is not modelled yet (rt-hit.ts orders positioned boxes as z-index auto)",
+    "opacity-group-rounded": "stacking context on or-a, or-b, or-d, or-e, or-f, or-g: hit testing through z-index and opacity layers is not modelled yet (rt-hit.ts orders positioned boxes as z-index auto)",
+    "opacity-group-rounded-rtl": "stacking context on or-a, or-b, or-d, or-e, or-f, or-g: hit testing through z-index and opacity layers is not modelled yet (rt-hit.ts orders positioned boxes as z-index auto)",
     "stacking-basic": "stacking context on s-i1, s-a, s-b, s-n, s-n2: hit testing through z-index and opacity layers is not modelled yet (rt-hit.ts orders positioned boxes as z-index auto)",
     "stacking-basic-rtl": "stacking context on s-i1, s-a, s-b, s-n, s-n2: hit testing through z-index and opacity layers is not modelled yet (rt-hit.ts orders positioned boxes as z-index auto)",
     "stacking-context": "stacking context on x-g, x-z, x-w, x-p0, x-neg: hit testing through z-index and opacity layers is not modelled yet (rt-hit.ts orders positioned boxes as z-index auto)",
