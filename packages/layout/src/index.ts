@@ -80,6 +80,7 @@ export * as rtInteraction from './rt-interaction.ts';
 export type { InteractionFaults, InteractionPointer, InteractionTables } from './rt-interaction.ts';
 export type { OriginPoint, TransformOrigin } from './paint-transform.ts';
 export { mapPoint, paintTransformMatrix, resolveTransformOrigin, transformAboutPoint, transformFunctionsMatrix } from './paint-transform.ts';
+export { hitTransformRefusal } from './rt-hit.ts';
 export type { LengthValue as TransformLength, Matrix2D, TransformFn, TransformOp, Trig } from './rt-interpolate.ts';
 export { serializeTransform } from './rt-interpolate.ts';
 // Form controls (FORM-a): the range thumb offset and default track length, and the button's block centring shift.
