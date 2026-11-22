@@ -25,6 +25,7 @@ export const TRANSFORMS: readonly FixtureSpec[] = [
   both('transform-perspective'),
   layout('transform-flex'),
   both('transform-grid'),
+  both('transform-inline-flex'),
   both('transform-direction'),
   layout('transform-individual'),
   both('transform-indiv-values'),

@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.line { margin: 30px; width: 300px; background-color: #ddf4ff; }
+.button { display: inline-flex; align-items: center; justify-content: center; gap: 4px; min-height: 30px; padding: 4px 10px; border: 1px solid #22223b; background-color: #ffd166; }
+.chip { display: inline-block; width: 40px; height: 20px; background-color: #8250df; }
+.press { transform: scale(0.9); }
+.tilt { transform: rotate(-6deg); }
+.nudge { transform: translate(4px, -3px); }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="l1" class="line">XX <span data-dragon-id="b1" class="button press">XX XX</span> XX <span data-dragon-id="b2" class="button tilt">XXX</span> XX</div>
+<div data-dragon-id="l2" class="line">X <span data-dragon-id="c1" class="chip nudge"></span> XX <span data-dragon-id="c2" class="chip press"></span> X</div>
+</body>
+</html>
