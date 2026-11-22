@@ -50,7 +50,15 @@ export const INLINE_OUT: readonly string[] = [
   'text-box-ahem', 'text-box-ahem-rtl',
   // INL2a: every atomic-inline case holds an inline-block, inline-flex or inline-grid on a line (rt-hit.ts refuses an atomic inline by name).
   ...['block', 'flex', 'grid', 'breaks', 'shrink', 'north-star'].flatMap((n) => [`atomic-inline-${n}`, `atomic-inline-${n}-rtl`]), 'atomic-inline-links', 'atomic-inline-disclosure',
+  // Atomic inlines: center-block (s6), container-inline-size (line-a) and inline-replaced-img (alone-img).
+  'center-block', 'center-block-rtl', 'container-inline-size', 'container-inline-size-rtl', 'inline-replaced-img', 'inline-replaced-img-rtl',
+  // Inline boxes: unicode-bidi-* (s1, sp), casc-all (u1), text-break-all-* (h1, b1), text-shadow-composite (l1s) and zoom-scaled (t1).
+  'unicode-bidi-ltr', 'unicode-bidi-blocks', 'unicode-bidi-blocks-rtl', 'casc-all', 'casc-all-rtl', 'text-break-all-ahem', 'text-break-all-letters', 'text-break-all-letters-rtl',
+  'text-shadow-composite', 'text-shadow-composite-rtl', 'zoom-scaled', 'zoom-scaled-rtl',
 ];
+// FLT: the float cases, each holding a float (rt-hit.ts refuses a float by name).
+export const FLOAT_OUT: readonly string[] = ['float-left', 'float-left-rtl', 'float-right', 'float-right-rtl', 'float-row', 'float-row-rtl', 'float-zero-width', 'float-zero-width-rtl'];
+export const FLOAT_REASON = /^(?:hit test: )?\S+ is a float, which the hit table does not model yet \(FLT; no Chrome hit capture\)$/;
 // GEN-c: the cases with an outside text ::marker (decimal and string markers), through whose box Chrome hits the list item
 // (hit-capture.ts hitRefusal); list-markers-text holds an inline box (p1s) as well, and the marker reason comes first.
 export const MARKER_OUT: readonly string[] = ['list-markers-text', 'list-markers-pseudo'];
@@ -60,8 +68,9 @@ export const MARKER_REASON = /^outside text marker on .+: Chrome hits a list ite
 export const CLAMP_OUT: readonly string[] = ['line-clamp-lines', 'line-clamp-nested'];
 export const CLAMP_REASON = /^.+ clamps its lines \(-webkit-line-clamp\), and Chrome hit tests the content past the clamp point by rules the hit table does not model yet \(TXT2-g\)$/;
 export const INLINE_REASON = /is (an inline box|a <br>|an atomic inline), which the hit table does not model yet/;
-// ALIAS-2's alias-paint writes -webkit-transform, so the hit lane refuses it with the transform reason though its name is not transform-.
-export const TRANSFORM_NAMED: readonly string[] = ['alias-paint'];
+// ALIAS-2's alias-paint writes -webkit-transform and backface-values transforms its boxes, so the hit lane refuses them with the transform
+// reason though their names are not transform-.
+export const TRANSFORM_NAMED: readonly string[] = ['alias-paint', 'backface-values', 'backface-values-rtl'];
 export const TRANSFORM_REASON = /^transform on .+: hit testing through transforms is SELD-R2b \(T146\)$/;
 export const STACKING_OUT: readonly string[] = [
   'opacity-basic', 'opacity-basic-rtl', 'opacity-cascade', 'opacity-cascade-rtl', 'opacity-web', 'opacity-web-rtl', 'opacity-fold', 'opacity-fold-rtl', 'opacity-group-text', 'opacity-group-text-rtl', 'opacity-group-border', 'opacity-group-border-rtl', 'opacity-group-border-only', 'opacity-group-border-only-rtl', 'opacity-group-over-rects', 'opacity-group-over-rects-rtl', 'opacity-group-over-group', 'opacity-group-over-group-rtl', 'opacity-group-clipped', 'opacity-group-clipped-rtl', 'opacity-group-nested', 'opacity-group-nested-rtl', 'opacity-group-translucent', 'opacity-group-translucent-rtl', 'stacking-basic',
@@ -72,11 +81,13 @@ export const STACKING_OUT: readonly string[] = [
   // fx-backdrop-* and fx-blend-*: a backdrop-filter or a mix-blend-mode makes a stacking context below the root.
   'fx-backdrop-canvas', 'fx-backdrop-canvas-rtl', 'fx-backdrop-white', 'fx-backdrop-white-rtl', 'fx-blend-multiply', 'fx-blend-multiply-rtl',
   'fx-blend-darken', 'fx-blend-darken-rtl',
+  // Positioned boxes with a z-index, fixed or sticky boxes, containment and masks make stacking contexts below the root.
+  ...['contain-intrinsic-ahem', 'fixed-probe', 'fixed-viewport', 'fixed-in-grid', 'mask-gradient', 'containment-layout', 'scroll-contain-layout', 'anchor-containing-blocks', 'sticky-probe', 'sticky-viewport'].flatMap((n) => [n, `${n}-rtl`]),
 ];
 export const STACKING_REASON = /^stacking context on .+: hit testing through z-index and opacity layers is not modelled yet/;
 // Chrome hits an svg's painted shapes (pointer-events: visiblePainted), which the hit table models with SVG-a2. svg-hidden is in
 // VISIBILITY_OUT instead: its <svg> s3 is visibility hidden, and hitRefusal names visibility before an svg.
-export const SVG_OUT: readonly string[] = ['svg-basic', 'svg-basic-rtl', 'svg-viewbox', 'svg-viewbox-rtl', 'svg-paint', 'svg-paint-rtl', 'svg-flex', 'svg-flex-rtl', 'svg-colors', 'svg-colors-rtl', 'svg-opacity', 'svg-opacity-rtl', 'svg-stroke', 'svg-stroke-rtl', 'svg-dash', 'svg-dash-rtl', 'svg-geometry', 'svg-geometry-rtl', 'svg-paint-order', 'svg-paint-order-rtl', 'svg-rrect', 'svg-rrect-rtl', 'svg-vector-effect', 'svg-vector-effect-rtl', 'svg-inert', 'svg-inert-rtl'];
+export const SVG_OUT: readonly string[] = ['svg-basic', 'svg-basic-rtl', 'svg-viewbox', 'svg-viewbox-rtl', 'svg-paint', 'svg-paint-rtl', 'svg-flex', 'svg-flex-rtl', 'svg-colors', 'svg-colors-rtl', 'svg-opacity', 'svg-opacity-rtl', 'svg-stroke', 'svg-stroke-rtl', 'svg-dash', 'svg-dash-rtl', 'svg-geometry', 'svg-geometry-rtl', 'svg-paint-order', 'svg-paint-order-rtl', 'svg-rrect', 'svg-rrect-rtl', 'svg-vector-effect', 'svg-vector-effect-rtl', 'svg-inert', 'svg-inert-rtl', 'inline-replaced-svg', 'inline-replaced-svg-rtl'];
 export const SVG_REASON = /^<svg> .+: hit testing an svg's shapes comes with SVG-a2$/;
 
 // TXT1a-2 phase R: the device lanes run the shaped cases (targets.ts deviceCaseIds), but the hit lane keeps them out until real-face hit

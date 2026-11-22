@@ -13,10 +13,9 @@ import { checkLaneParity, DEVICE_NOT_RUN, judgeHost, LANE_FAULTS, LANE_FILES, la
 import { ANIM_LANE, HIT_LANE, scriptCases, STATE_LANE, TRACE_LANE } from '../src/device-lanes.ts';
 import { traceScriptIds } from '../src/trace-lane.ts';
 import { hitCases, hitRefusedCases } from '../src/hit-capture.ts';
-import { CLAMP_OUT, CLAMP_REASON, INLINE_OUT, INLINE_REASON, MARKER_OUT, MARKER_REASON, SHAPED_REASON, STACKING_OUT, STACKING_REASON, SVG_OUT, SVG_REASON, TRANSFORM_NAMED, TRANSFORM_REASON } from './hit-refusals.ts';
+import { CLAMP_OUT, CLAMP_REASON, FLOAT_OUT, FLOAT_REASON, INLINE_OUT, INLINE_REASON, MARKER_OUT, MARKER_REASON, SHAPED_REASON, STACKING_OUT, STACKING_REASON, SVG_OUT, SVG_REASON, TRANSFORM_NAMED, TRANSFORM_REASON } from './hit-refusals.ts';
 import { GRID_OUT, GRID_REASON } from './hit-refusals-grid.ts';
 import { CONTROLS_OUT, CONTROLS_REASON } from './hit-refusals-controls.ts';
-import { RADIUS_OUT, RADIUS_REASON } from './hit-refusals-radius.ts';
 import { VISIBILITY_OUT, VISIBILITY_REASON } from './hit-refusals-visibility.ts';
 import { CLIP_PATH_OUT, CLIP_PATH_REASON, CLIP_RECT_OUT, CLIP_RECT_REASON } from './hit-refusals-clip-rect.ts';
 import { DUMP_FAULTS } from '../src/native-compare.ts';
@@ -251,13 +250,12 @@ describe('committed out/lanes.json', () => {
     for (const t of unrun.targets) for (const l of t.lanes.filter((x) => x.where === 'device')) expect(l.state).toBe('not run');
     expect(notPassed(unrun).length).toBe(2 * (LANES.length - 1));
   });
-  it('device-hit runs exactly the hit cases: every device layout case but those the hit lane refuses by name, the PNT2 transform cases (T146), the PNT1 stacking cases, the radius cases (PNT1), the INL1a inline cases, the GRID cases, the visibility cases (T150a), the clip cases (MASK-CLIP), the svg cases (SVG-a2), the line-clamp cases (TXT2-g), the FORM-a controls cases and the shaped cases (TXT1a-2 phase R)', () => {
+  it('device-hit runs exactly the hit cases: every device layout case but those the hit lane refuses by name, the PNT2 transform cases (T146), the PNT1 stacking cases, the INL1a inline cases, the GRID cases, the visibility cases (T150a), the clip cases (MASK-CLIP), the svg cases (SVG-a2), the line-clamp cases (TXT2-g), the FORM-a controls cases, the FLT float cases and the shaped cases (TXT1a-2 phase R)', () => {
     const refusals = hitRefusedCases();
     const refused = refusals.map((r) => r.id);
     expect(refused.length).toBeGreaterThan(0);
-    // Exactly the union: every INL1a inline, PNT1 stacking, radius, GRID, visibility, svg, line-clamp and FORM-a controls case is refused with its reason, and every other refusal is a
+    // Exactly the union: every INL1a inline, PNT1 stacking, GRID, visibility, svg, line-clamp and FORM-a controls case is refused with its reason, and every other refusal is a
     // transform- case (PNT2) or PNT1's stacking-transform with the transform reason.
-    expect(refused.filter((id) => RADIUS_OUT.includes(id)).sort()).toEqual([...RADIUS_OUT].sort());
     expect(refused.filter((id) => INLINE_OUT.includes(id)).sort()).toEqual([...INLINE_OUT].sort());
     expect(refused.filter((id) => CLAMP_OUT.includes(id)).sort()).toEqual([...CLAMP_OUT].sort());
     expect(refused.filter((id) => STACKING_OUT.includes(id)).sort()).toEqual([...STACKING_OUT].sort());
@@ -269,9 +267,9 @@ describe('committed out/lanes.json', () => {
     expect(refused.filter((id) => MARKER_OUT.includes(id)).sort()).toEqual([...MARKER_OUT].sort());
     expect(refused.filter((id) => shapedCaseIds().has(id)).sort()).toEqual([...shapedCaseIds()].sort());
     expect(refused.filter((id) => CONTROLS_OUT.includes(id)).sort()).toEqual([...CONTROLS_OUT].sort());
+    expect(refused.filter((id) => FLOAT_OUT.includes(id)).sort()).toEqual([...FLOAT_OUT].sort());
     for (const r of refusals) {
       if (shapedCaseIds().has(r.id)) expect(r.reason, r.id).toMatch(SHAPED_REASON);
-      else if (RADIUS_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(RADIUS_REASON);
       else if (INLINE_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(INLINE_REASON);
       else if (STACKING_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(STACKING_REASON);
       else if (GRID_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(GRID_REASON);
@@ -282,6 +280,7 @@ describe('committed out/lanes.json', () => {
       else if (CLAMP_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(CLAMP_REASON);
       else if (MARKER_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(MARKER_REASON);
       else if (CONTROLS_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(CONTROLS_REASON);
+      else if (FLOAT_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(FLOAT_REASON);
       else if (TRANSFORM_NAMED.includes(r.id)) expect(r.reason, r.id).toMatch(TRANSFORM_REASON);
       else expect([r.id, r.reason], r.id).toEqual([expect.stringMatching(/^(transform-|stacking-transform)/), expect.stringMatching(TRANSFORM_REASON)]);
     }

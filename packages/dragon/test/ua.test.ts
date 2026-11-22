@@ -71,6 +71,7 @@ describe('UA versus initial origin, per tag and longhand', () => {
       dl: ['display', 'margin-bottom', 'margin-top', 'unicode-bidi'],
       dt: ['display', 'unicode-bidi'],
       dd: ['display', 'margin-left', 'unicode-bidi'],
+      form: ['display', 'unicode-bidi'],
       center: ['display', 'text-align', 'unicode-bidi'],
       fieldset: ['border-bottom-color', 'border-bottom-style', 'border-bottom-width', 'border-left-color', 'border-left-style', 'border-left-width', 'border-right-color', 'border-right-style', 'border-right-width', 'border-top-color', 'border-top-style', 'border-top-width', 'display', 'margin-left', 'margin-right', 'min-width', 'padding-bottom', 'padding-left', 'padding-right', 'padding-top'],
       // legend's display: block is Chrome's StyleAdjuster blockifying every legend, not a UA rule (analysis/blockify.ts).

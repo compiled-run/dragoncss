@@ -28,8 +28,10 @@ import { compileFixture } from '../src/pipeline.ts';
 
 const controlIds = new Set(CONTROLS.map((f) => f.id));
 // Later fixtures that hold buttons by design are not earlier cases: OVFL's overflow-controls (buttons in scroll boxes), the
-// anchor group's anchor-control (a button as an anchor) and the Markless ladder's ms-button-disabled (:disabled on a button).
-const LATER_WITH_CONTROLS: readonly string[] = ['overflow-controls', 'anchor-control', 'ms-button-disabled', 'grid-controls', 'grid-controls-fields'];
+// anchor group's anchor-control (a button as an anchor), the Markless ladder's ms-button-disabled (:disabled on a button), the grid
+// controls cases and FORM-attrs' attr-neutral-form-* pairs (each form attribute on a form, a button and a range).
+const FORM_ATTRIBUTE_PAIRS: readonly string[] = ['none', 'name', 'autocomplete', 'required', 'minlength', 'maxlength'].map((a) => `attr-neutral-form-${a}`);
+const LATER_WITH_CONTROLS: readonly string[] = ['overflow-controls', 'anchor-control', 'ms-button-disabled', 'grid-controls', 'grid-controls-fields', ...FORM_ATTRIBUTE_PAIRS];
 const notEarlier = new Set([...controlIds, ...LATER_WITH_CONTROLS]);
 const earlier = FIXTURES.filter((f) => f.kind === 'layout' && !notEarlier.has(f.id));
 
@@ -122,7 +124,7 @@ describe('FORM-a A3 identity: every case that predates the button package is unc
 // input or part, each lowers to its committed vector input with no range or thumb control box, and emits its committed web body
 // (the committed vectors and emitted CSS of these cases are byte-identical to A3, git diff form-a3 in the receipt).
 describe('FORM-a A4 identity: every case that predates the range package is unchanged', () => {
-  const beforeA4 = FIXTURES.filter((f) => f.kind === 'layout' && !f.id.startsWith('controls-range-'));
+  const beforeA4 = FIXTURES.filter((f) => f.kind === 'layout' && !f.id.startsWith('controls-range-') && !FORM_ATTRIBUTE_PAIRS.includes(f.id));
   const rangeBoxes = (b: LayoutBox | ControlBox): number => b.children.reduce((n, c) => n + (c.kind === 'control' && (c.control.kind === 'range' || c.control.kind === 'slider-thumb') ? 1 : 0) + (c.kind === 'box' || c.kind === 'control' ? rangeBoxes(c) : 0), 0);
   it('covers every earlier layout fixture, the A3 controls cases included', () => {
     // 15: the 5 A3 cases, then fieldset-legend, fieldset-positioned, controls-text-field, controls-textarea, the three FORM-b selects,
