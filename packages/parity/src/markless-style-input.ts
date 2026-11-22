@@ -1193,7 +1193,8 @@ export function checkMarklessExport(exported: NativeStyleExport): MarklessStyleE
   const o = exported as unknown as Record<string, unknown>;
   if (o['fontMode'] !== 'system' && o['fontMode'] !== 'pinned') throw new Error(`the export's fontMode ${JSON.stringify(o['fontMode'] ?? null)} is neither system nor pinned`);
   for (const [t, x] of Object.entries(exported.targets)) {
-    for (const [i, a] of (x?.assignments ?? []).entries()) {
+    const states = (x?.interaction?.levels ?? []).flatMap((l, i) => l.states.map((a, k) => [`${i} interaction state ${k}`, a] as const));
+    for (const [i, a] of [...(x?.assignments ?? []).entries(), ...states]) {
       const p = a as unknown as Record<string, unknown>;
       if (!isRgba8(p['canvas'])) throw new Error(`${t} assignment ${i}: canvas ${JSON.stringify(p['canvas'] ?? null)} is not a colour`);
       if (p['bodyBackground'] !== null && !isRgba8(p['bodyBackground'])) throw new Error(`${t} assignment ${i}: bodyBackground ${JSON.stringify(p['bodyBackground'])} is not a colour or null`);
