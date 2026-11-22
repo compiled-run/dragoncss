@@ -44,7 +44,8 @@ Every number below was measured in the pinned Chrome 145.0.7632.6 headless shell
 ## Proof
 
 - Fixture `controls-search` (ltr; rtl text fields stay refused, fact 5). It covers a default search field, the notes pill at 16px with a placeholder, with a value, and with a long value, a field at 40px (the button clamped at 21), a field at 5px (clamped at 5), a search beside a text field of the same styles (equal boxes), and a centred-placeholder case that catches `searchCancelIgnored`. They are captured against Chrome at DPR 1, 2, 2.625 and 3 with the shadow part boxes, and the engine boxes, including `::search-cancel`, match within the gate in both directions.
-- A Chrome pixel test of the notes pill: search equals text in the four states of fact 8. Dragon's lowering of a search field equals its lowering of a text field apart from the editor width. A Dragon-vs-Chrome pixel comparison covers the focused, empty pill: the app's 3px `:focus-visible` outline at a 2px offset around the 999px radius.
+- A Chrome pixel test of the notes pill: search equals text in the four states of fact 8. Dragon's lowering of a search field equals its lowering of a text field apart from the editor width.
+- **Not built in this PR (Judge amendment 5, open):** a Dragon-vs-Chrome pixel comparison of the focused, empty pill, meaning the app's 3px `:focus-visible` outline at a 2px offset around the 999px radius. Dragon compares pixels on the device lanes against committed Chrome screenshots, and a focused state needs an interaction-state fixture there. The outline itself is #625's (outline around a radius) and is unchanged by this slice. The search field's own box under it equals a text field's (fact 8), which `form-search.test.ts` checks in Chrome.
 - Refusal tests:
   - `checkRange` no longer names search.
   - An editable search field is refused by the editing refusal.

@@ -50,7 +50,7 @@ export const CONTROLS: readonly FixtureSpec[] = [
   layout('controls-search'),
   reject('reject-controls-search-align', 'DRAGON_UNSUPPORTED_VALUE', 'center', 'text-align: center on the search field s is not supported'),
   reject('reject-controls-search-placeholder-margin', 'DRAGON_UNSUPPORTED_VALUE', '4px', 'margin-left: 4px on the placeholder of the search field s is not supported'),
-  reject('reject-controls-search-editable', 'DRAGON_UNSUPPORTED_VALUE', null, '<input> s is an editable text field'),
+  reject('reject-controls-search-editable', 'DRAGON_UNSUPPORTED_VALUE', null, '<input> s is an editable text control'),
   both('controls-select-none'),
   both('controls-select-button'),
   layout('controls-select-label'),

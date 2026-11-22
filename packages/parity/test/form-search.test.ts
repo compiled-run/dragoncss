@@ -44,7 +44,7 @@ describe('a search field (FORM-search)', () => {
 
   it('compiles readonly as a text field does, and refuses what the spec keeps refused', () => {
     expect(errors(page('<input data-dragon-id="s" readonly="" type="search" placeholder="PP">'))).toEqual([]);
-    expect(errors(page('<input data-dragon-id="s" type="search" value="XX">'))).toEqual([expect.stringMatching(/^<input> s is an editable text field/)]);
+    expect(errors(page('<input data-dragon-id="s" type="search" value="XX">'))).toEqual([expect.stringMatching(/^<input> s is an editable text control/)]);
     expect(errors(page('<input data-dragon-id="s" readonly="" type="search" value="XX">', 'input { text-align: center; }'))).toEqual([expect.stringMatching(/^text-align: center on the search field s is not supported/)]);
     expect(errors(page('<input data-dragon-id="s" readonly="" type="search" value="XX">', 'input { text-align: right; }'))).toEqual([expect.stringMatching(/^text-align: right on the search field s is not supported/)]);
     expect(errors(page('<input data-dragon-id="s" readonly="" type="search" value="XX">', 'input { text-align: left; }'))).toEqual([]);
@@ -75,7 +75,7 @@ describe('a search field (FORM-search)', () => {
     };
     expect(refusal(true)).toBeNull();
     const editable = refusal(false);
-    expect(editable).toMatch(/is an editable text field/);
+    expect(editable).toMatch(/is an editable text control/);
     expect(editable).not.toMatch(/of type search is not supported/);
   });
 });

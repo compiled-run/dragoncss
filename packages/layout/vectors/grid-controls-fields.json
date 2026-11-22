@@ -1293,7 +1293,8 @@
           },
           "lineHeight": {
            "kind": "normal"
-          }
+          },
+          "searchCancel": false
          },
          "strut": null,
          "children": [
@@ -1656,7 +1657,8 @@
           },
           "lineHeight": {
            "kind": "normal"
-          }
+          },
+          "searchCancel": false
          },
          "strut": null,
          "children": [
@@ -2589,7 +2591,8 @@
           },
           "lineHeight": {
            "kind": "normal"
-          }
+          },
+          "searchCancel": false
          },
          "strut": null,
          "children": [
@@ -4310,7 +4313,8 @@
           },
           "lineHeight": {
            "kind": "normal"
-          }
+          },
+          "searchCancel": false
          },
          "strut": null,
          "children": [
@@ -5975,7 +5979,8 @@
             },
             "lineHeight": {
              "kind": "normal"
-            }
+            },
+            "searchCancel": false
            },
            "strut": null,
            "children": [
