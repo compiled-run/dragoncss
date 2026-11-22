@@ -176,7 +176,8 @@ export const TRANSFORM_SAMPLES: PaintSamples = {
       const rings = boxRings(ctx, b);
       if (rings.length === 0) return [];
       if (boxOutlineOps(ctx, b) !== null) throw new Error(`${b.id}: a side painter outline in a transformed subtree has no sample points`);
-      return ringPoints(ctx, b, rings, null);
+      const m = i.matrices.get(b.id) as Matrix2D;
+      return ringPoints(ctx, b, rings, null, { x: Math.hypot(m.a, m.b), y: Math.hypot(m.c, m.d) });
     });
     for (const p of [...ctx.base, ...outlinePoints]) {
       if (ruleKind(p.rule) === 'edge') continue;
