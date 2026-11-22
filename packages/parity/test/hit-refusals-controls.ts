@@ -6,5 +6,7 @@ export const CONTROLS_OUT: readonly string[] = [
   'controls-range-block', 'controls-range-block-rtl', 'controls-range-flex', 'controls-range-flex-rtl',
   'fieldset-legend', 'fieldset-legend-rtl', 'fieldset-positioned', 'fieldset-positioned-rtl', 'ms-button-disabled#0', 'ms-button-disabled#1', 'ms-button-disabled#0-rtl', 'ms-button-disabled#1-rtl',
   'overflow-controls', 'overflow-controls-rtl', 'anchor-control', 'anchor-control-rtl',
+  // FORM-attrs: each form attribute's pair holds a button and a range.
+  ...['none', 'name', 'autocomplete', 'required', 'minlength', 'maxlength'].flatMap((a) => [`attr-neutral-form-${a}`, `attr-neutral-form-${a}-rtl`]),
 ];
 export const CONTROLS_REASON = /^(?:hit test: )?\S+ is a form control, which the hit table does not model yet \(FORM-a; Chrome retargets its parts to the control, no Chrome hit capture\)$/;
