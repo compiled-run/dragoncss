@@ -508,16 +508,18 @@ function decodePng(png: Uint8Array): { width: number; height: number; rgb: Uint3
   return { width, height, rgb };
 }
 
-const DEVOLVE_SETS: readonly { set: DevolveSet; css: string; thumbCss: string; controls: readonly ('button' | 'range')[] }[] = [
-  { set: 'none', css: '', thumbCss: '', controls: ['button', 'range'] },
-  { set: 'background-color', css: 'background-color:rgb(0,128,0)', thumbCss: '', controls: ['button', 'range'] },
-  { set: 'border', css: 'border:4px solid rgb(0,0,255)', thumbCss: '', controls: ['button', 'range'] },
-  { set: 'appearance-none', css: 'appearance:none', thumbCss: 'appearance:none', controls: ['button', 'range'] },
+type DevolveControl = 'button' | 'range' | 'textfield';
+const DEVOLVE_SETS: readonly { set: DevolveSet; css: string; thumbCss: string; controls: readonly DevolveControl[] }[] = [
+  { set: 'none', css: '', thumbCss: '', controls: ['button', 'range', 'textfield'] },
+  { set: 'background-color', css: 'background-color:rgb(0,128,0)', thumbCss: '', controls: ['button', 'range', 'textfield'] },
+  { set: 'border', css: 'border:4px solid rgb(0,0,255)', thumbCss: '', controls: ['button', 'range', 'textfield'] },
+  { set: 'appearance-none', css: 'appearance:none', thumbCss: 'appearance:none', controls: ['button', 'range', 'textfield'] },
   { set: 'input-none-thumb-auto', css: 'appearance:none', thumbCss: '', controls: ['range'] },
 ];
 const DEVOLVE_BASE = {
   button: 'width:80px;height:40px;padding:0;margin:0;font:inherit',
   range: 'width:120px;height:20px;margin:0',
+  textfield: 'width:80px;height:20px;padding:0;margin:0;font:inherit',
 } as const;
 const COPIED = [
   'background-color',
@@ -528,14 +530,14 @@ const COPIED = [
 
 async function captureDevolve(chrome: string): Promise<DevolveCapture> {
   const dpr = 2;
-  const specs = (['button', 'range'] as const).flatMap((control) =>
+  const specs = (['button', 'range', 'textfield'] as const).flatMap((control) =>
     DEVOLVE_SETS.filter((s) => s.controls.includes(control)).map((s) => ({ control, set: s.set, css: s.css, thumbCss: control === 'range' ? s.thumbCss : '' })),
   );
   const rowTop = (k: number): number => 20 + k * 60;
-  const tag = (control: 'button' | 'range', css: string, k: number): string =>
+  const tag = (control: DevolveControl, css: string, k: number): string =>
     control === 'button'
       ? `<button id="d${k}" style="position:absolute;left:20px;top:${rowTop(k)}px;${DEVOLVE_BASE.button};${css}"></button>`
-      : `<input type="range" id="d${k}" style="position:absolute;left:20px;top:${rowTop(k)}px;${DEVOLVE_BASE.range};${css}">`;
+      : `<input type="${control === 'range' ? 'range' : 'text'}" id="d${k}" style="position:absolute;left:20px;top:${rowTop(k)}px;${DEVOLVE_BASE[control]};${css}">`;
   const body = specs.map((s, k) => `${tag(s.control, s.css, k)}<div id="t${k}" style="position:absolute;left:240px;top:${rowTop(k)}px;box-sizing:border-box"></div>`).join('\n');
   const thumbRules = specs.map((s, k) => (s.thumbCss === '' ? '' : `#d${k}::-webkit-slider-thumb{${s.thumbCss}}`)).join('');
   const html = `<!DOCTYPE html><html><head><style>html,body{margin:0;background:#fff}${thumbRules}</style></head><body>\n${body}\n</body></html>`;
@@ -608,7 +610,7 @@ function appearanceModule(d: DevolveCapture): string {
 // The devolve probe (R11): at DPR ${d.devicePixelRatio}, each control's pixels at its centre, border and corner points against a div twin
 // that has the control's computed background and border. 'css' means every point matched (the control is painted as CSS boxes);
 // 'theme' means the platform theme painted it. Blink rule: layout_theme.cc LayoutTheme::AdjustAppearanceWithAuthorStyle and
-// IsControlStyled (push button: author background or border devolves; slider: never), at Chrome 145.0.7632.6.
+// IsControlStyled (push button and text field: author background or border devolves; slider: never), at Chrome 145.0.7632.6.
 export const APPEARANCE_PROBE = ${JSON.stringify(table, null, 2)} as const;
 `;
 }

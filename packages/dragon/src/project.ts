@@ -33,7 +33,7 @@ import { inDomain, validateInput, type ValidInput } from './analysis/input.ts';
 import type { InteractionPartition, InteractionValue } from './analysis/interaction.ts';
 import { checkGeneratedIdentity, generatedRuleRefusals, markerRuleRefusals } from './analysis/generated.ts';
 import { checkStaticEmptyHosts } from './analysis/pseudo-hosts.ts';
-import { emptyPartition, firstInteractionPseudo, stateMembers, hitUnmodelledBox, hitUnmodelledControl, hitUnmodelledFact, hitUnmodelledGrid, interactionCapRefusal, interactionPartition, interactionRefusals, interactionRuleOrigin, focusReachable, gateInteractionFeatures, provesPointerRow, ruleIsInteractive } from './analysis/interaction.ts';
+import { emptyPartition, firstInteractionPseudo, stateMembers, hitUnmodelledBox, hitUnmodelledControl, hitUnmodelledFact, interactionCapRefusal, interactionPartition, interactionRefusals, interactionRuleOrigin, focusReachable, gateInteractionFeatures, provesPointerRow, ruleIsInteractive, selectFocusRefusals } from './analysis/interaction.ts';
 import type { Linked, LinkedElement } from './analysis/link.ts';
 import type { InteractionState } from './analysis/match.ts';
 import { assignmentKey, linkDocument } from './analysis/link.ts';
@@ -426,7 +426,9 @@ function checkTemplates(nodes: readonly TreeNode[], diagnostics: Diagnostic[], h
       if (n.tag === 'dialog' && !hostTopLayer) {
         diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_ELEMENT', { origin: n.origin, message: `<dialog> ${n.id} is not supported: it renders in the top layer with a ::backdrop, which Dragon lays out only when the host presents the top layer itself (compileNativeStyles topLayer: 'host')` }));
       } else if (n.tag !== 'dialog' && !SUPPORTED_TAGS.has(n.tag)) {
-        diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_ELEMENT', { origin: n.origin, message: `<${n.tag}> ${n.id} is not supported (supported: ${[...SUPPORTED_TAGS].join(', ')})` }));
+        // FORM-b: Chrome indents a grouped option's label in the closed select (select_type.cc:1025 TextIndentedToRespectGroupLabel).
+        const why = n.tag === 'optgroup' ? ': an option group waits for FORM-b select, as Chrome indents a grouped option\'s label' : '';
+        diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_ELEMENT', { origin: n.origin, message: `<${n.tag}> ${n.id} is not supported${why} (supported: ${[...SUPPORTED_TAGS].join(', ')})` }));
       }
       for (const a of n.attributes) {
         const refusal = attributeRefusal(n.tag, a.name);
@@ -1124,31 +1126,26 @@ function hitModelRefusals(cases: readonly CaseResult[], rules: readonly Rule[], 
       if (c.resolved === null || reachable.length === 0) continue;
       const trees = [c.resolved, ...reachable.map((i) => i.resolved)];
       const fact = trees.map((r) => hitUnmodelledFact(r, options.ua, compiles)).find((f) => f !== null) ?? null;
-      const grid = fact === null ? (trees.map((r) => hitUnmodelledGrid(r, compiles)).find((g) => g !== null) ?? null) : null;
-      const control = fact === null && grid === null ? (trees.map(hitUnmodelledControl).find((g) => g !== null) ?? null) : null;
-      const unmodelled = fact === null && grid === null && control === null ? (trees.map((r) => hitUnmodelledBox(r, compiles)).find((g) => g !== null) ?? null) : null;
-      if (fact === null && grid === null && control === null && unmodelled === null) continue;
+      const control = fact === null ? (trees.map(hitUnmodelledControl).find((g) => g !== null) ?? null) : null;
+      const unmodelled = fact === null && control === null ? (trees.map((r) => hitUnmodelledBox(r, compiles)).find((g) => g !== null) ?? null) : null;
+      if (fact === null && control === null && unmodelled === null) continue;
       for (const r of rules) {
         const pseudo = firstInteractionPseudo(r);
         if (pseudo === null) continue;
         const origin = interactionRuleOrigin(r, c.resolved.element.node.origin);
         const message = fact !== null
           ? `:${pseudo} needs Dragon hit testing through ${fact.property} on ${fact.address}, which is not built yet (package SELD-R2b)`
-          : grid !== null
-            ? `:${pseudo} needs Dragon hit testing through the grid container ${grid}, which is not built yet (package GRID hit model)`
-            : control !== null
-              ? `:${pseudo} needs Dragon hit testing through the form control ${control}, which is not built yet (FORM-a)`
-              : `:${pseudo} needs Dragon hit testing through the ${unmodelled?.kind} ${unmodelled?.address}, which is not built yet (package ${unmodelled?.pkg} hit model)`;
+          : control !== null
+            ? `:${pseudo} needs Dragon hit testing through the form control ${control}, which is not built yet (FORM-a)`
+            : `:${pseudo} needs Dragon hit testing through the ${unmodelled?.kind} ${unmodelled?.address}, which is not built yet (package ${unmodelled?.pkg} hit model)`;
         const id = `${t}|${JSON.stringify(origin)}|${message}`;
         if (seen.has(id)) continue;
         seen.add(id);
         const manual = fact !== null
           ? `Keep ${fact.property} at its initial value in a document with :${pseudo} rules, or style the state with a component state until SELD-R2b.`
-          : grid !== null
-            ? `Use flex or block layout in a document with :${pseudo} rules, or style the state with a component state until grid hit testing is built.`
-            : control !== null
-              ? `Style the state with a component state in a document with a form control until control hit testing is built.`
-              : `Keep ${unmodelled?.address} in flow in a document with :${pseudo} rules, or style the state with a component state until its hit testing is built.`;
+          : control !== null
+            ? `Style the state with a component state in a document with a form control until control hit testing is built.`
+            : `Keep ${unmodelled?.address} in flow in a document with :${pseudo} rules, or style the state with a component state until its hit testing is built.`;
         diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_SELECTOR', { origin, target: t, message, manual }));
       }
     }
@@ -1507,6 +1504,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       diagnostics.push(...preLinkDiagnostics);
     }
     focusable = focusReachable(interactionRules, linked?.cases ?? null);
+    diagnostics.push(...selectFocusRefusals(interactionRules, linked?.cases ?? null, options.faults));
     const nativeRefusals = gateInteractionFeatures(interactionRules, linked?.cases ?? null, NATIVE_TARGETS.filter((t) => targets.includes(t)), options.profiles === 'enforce' ? (t) => profileFor(profiles, t) : null, options.faults);
     if (options.interactionLanes) laneOnlyNative = NATIVE_TARGETS.filter((t) => nativeRefusals.some((d) => d.target === t));
     else {

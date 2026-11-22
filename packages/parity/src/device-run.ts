@@ -91,11 +91,18 @@ export const PLANT_CASES: { readonly [P in PaintPlant]: readonly string[] } = {
   // pre-composited groups (the overlay composites at byte 255, PNT1-opacity-b); stacking-basic samples the interiors of
   // overlapping boxes, whose colours swap when the layer items sort beneath the flow.
   'alpha-ignored': ['opacity-basic', 'opacity-group-text'],
+  // The capture keeps the group drawn: its own paint lands in its backdrop, so its interiors show the opaque content.
+  'group-backdrop-unhidden': ['opacity-group-border'],
   'order-swap': ['stacking-basic'],
   // PNT1: outline-solid's ring points and scanlines (rules border:<id>:outline-* and edge:<id>:outline-*) see a 1 device px shift.
   'outline-offset-1': ['outline-solid'],
   // outline-dashed's dashes and round dots move along each side when the gap is not fitted; outline-3d's ring points swap colours.
   'outline-dash-unfitted': ['outline-dashed'],
+  // PNT1-opacity-c C1: a ring alone in a tile folds there; left out of the fold, the tile composites as a layer, a channel off.
+  'outline-fold-ignored': ['opacity-group-outline'],
+  // PNT1-outline-layer: an outline a later layer covers, or one inside a layer under another layer, paints over them from the root;
+  // one inside a transformed layer paints untransformed.
+  'outline-root-hosted': ['outline-layers', 'outline-transform'],
   'outline-tones-swapped': ['outline-3d'],
   // PNT2: each transform plant runs on the case its paint moves.
   'transform-origin-ignored': ['transform-origin'],
@@ -148,11 +155,16 @@ export const PLANT_RULES: { readonly [P in PaintPlant]: RegExp } = {
   // A shadow drawn 1 device px off moves the sampled shadow pixels: the shadow rule catches it.
   'shadow-offset-1': /^shadow:/,
   'alpha-ignored': /^interior:/,
+  'group-backdrop-unhidden': /^interior:og-/,
   'order-swap': /^interior:/,
   // A shifted ring moves its band and its outer edge: the outline points catch it.
   'outline-offset-1': /^(border|edge):[^:]+:outline-/,
   // An unfitted gap moves the dashes and dots the outline points sit on; swapped tones change a 3D ring point's colour.
   'outline-dash-unfitted': /^(border|edge):[^:]+:outline-/,
+  // The unfolded ring points move one level in a channel.
+  'outline-fold-ignored': /^border:[^:]+:outline-/,
+  // Root-hosted outlines paint over the layer boxes that cover them in Chrome: those boxes' interior and border points catch it.
+  'outline-root-hosted': /^(interior|border):/,
   'outline-tones-swapped': /^border:[^:]+:outline-/,
   // A transform moves every pixel of the box, so any colour rule may catch it.
   'transform-origin-ignored': /^(interior|border|outside|radius|clip|glyph|shadow|gradient):/,

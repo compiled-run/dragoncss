@@ -69,7 +69,7 @@ import type { MathFonts } from '../css/math.ts';
 import { fontUnitsIn, lowerLengthCalc, lowerMathNode, mathContextFor, mathHasViewport, parseMath } from '../css/math.ts';
 import type { UaDataset } from '../ua/datasets.ts';
 import { isControlTag } from '../analysis/elements/controls.ts';
-import { rangePartOf } from '../analysis/resolve.ts';
+import { rangePartOf, selectPartOf, textFieldPartOf } from '../analysis/resolve.ts';
 import { rangeRatio } from '../forms/range-value.ts';
 import { RANGE_NONE_THUMB } from '../forms/ua-shadow.generated.ts';
 import { DEFAULT_OBJECT_SIZE, isReplacedTag } from '../analysis/elements/replaced.ts';
@@ -1011,6 +1011,29 @@ function lowerBox(given: ResolvedElement, l: Lowerer, gridParent: GridContainer 
   if (el.element.tag === 'fieldset' && style.display === 'block') return { kind: 'control', id, boxType: 'element', style, control: { kind: 'fieldset' }, strut, children: withRenderedLegend(kids, children) };
   // FORM-a: a block button centres its contents (Blink AlignBlockContent); a flex button is the plain flex container it is.
   if (el.element.tag === 'button' && style.display === 'block') return { kind: 'control', id, boxType: 'element', style, control: { kind: 'button-block' }, strut, children };
+  const field = textFieldPartOf(el);
+  if (field !== undefined && field.part === null) {
+    // FORM-b: a text field's size attribute (HTML §4.10.5.3.2: a valid non-negative integer above zero, else 20) and its own font
+    // and line height, which decide its default width and its editor's line height (the engine's controls.ts).
+    const own = lowerFont(id, zoomedGet(id, (p: TextLonghand) => (el.props.get(p) as ResolvedValue).value, zoom), l.mode);
+    return { kind: 'control', id, boxType: 'element', style, control: { kind: 'text-field', size: textFieldSize(el.element.attributes.get('size')), font: own.font, lineHeight: own.lineHeight }, strut, children };
+  }
+  if (field !== undefined) {
+    // The inner editor scrolls in Chrome (overflow: scroll, scrollbar-width: none) from offset 0 until the user edits; at rest it
+    // clips its text as overflow: clip does. The placeholder clips (overflow: hidden) as it computes.
+    const clipped: LayoutStyle = field.part === 'editor' ? { ...style, overflowX: 'clip', overflowY: 'clip' } : style;
+    // An empty editor still lays out one line of its own font (the engine's block.ts), so it always carries its strut.
+    const own = field.part === 'editor' ? (strut ?? strutOf(el, true, l.mode, zoom)) : strut;
+    return { kind: 'control', id, boxType: 'element', style: clipped, control: { kind: field.part === 'editor' ? 'text-editor' : 'text-placeholder' }, strut: own, children };
+  }
+  const select = selectPartOf(el);
+  if (select !== undefined && select.part === null) {
+    // FORM-b: a single select is a flex row container whatever its display; its font and line height decide its inner element's.
+    const own = lowerFont(id, zoomedGet(id, (p: TextLonghand) => (el.props.get(p) as ResolvedValue).value, zoom), l.mode);
+    return { kind: 'control', id, boxType: 'element', style: { ...style, display: 'flex' }, control: { kind: 'select-menulist', font: own.font, lineHeight: own.lineHeight }, strut, children };
+  }
+  // An empty inner element still lays out one line of its own font, so it always carries its strut.
+  if (select !== undefined) return { kind: 'control', id, boxType: 'element', style, control: { kind: 'select-inner' }, strut: strut ?? strutOf(el, true, l.mode, zoom), children };
   const range = rangePartOf(el);
   if (range !== undefined && range.part === null) {
     // A range is a flex container whatever its display (range_input_type.cc CreateLayoutObject); its default track length is
@@ -1023,6 +1046,13 @@ function lowerBox(given: ResolvedElement, l: Lowerer, gridParent: GridContainer 
     return { kind: 'control', id, boxType: 'element', style, control: { kind: 'slider-thumb', ratio }, strut, children };
   }
   return { kind: 'box', id, boxType: isBlockInInline(el) ? 'block-in-inline' : 'element', style, strut, marker: display === 'list-item' ? markerOf(el, l, zoom) : null, children };
+}
+
+/** HTML §2.3.4.2 rules for parsing non-negative integers, for an input's size: a result above zero, or 20. */
+export function textFieldSize(attr: string | undefined): number {
+  const m = attr === undefined ? null : /^[\t\n\f\r ]*\+?([0-9]+)/.exec(attr);
+  const n = m === null ? 0 : Number(m[1]);
+  return n > 0 && Number.isSafeInteger(n) ? n : 20;
 }
 
 const SYMBOLS: readonly string[] = ['disc', 'circle', 'square'];

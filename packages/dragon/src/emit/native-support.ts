@@ -310,6 +310,11 @@ public final class DragonGlyphLayer: CALayer {
     actions = ["bounds": NSNull(), "position": NSNull(), "frame": NSNull(), "contents": NSNull()]
   }
   public override init(layer: Any) { super.init(layer: layer) }
+  /// PNT1-opacity-d: a group's backdrop capture draws text painted before it, so a text redraw marks every overlay stale.
+  public override func setNeedsDisplay() {
+    super.setNeedsDisplay()
+    dragonGroupsChanged()
+  }
   required init?(coder: NSCoder) { fatalError("DragonGlyphLayer is built in code") }
   public override func draw(in ctx: CGContext) {
     ctx.translateBy(x: -frame.minX, y: -frame.minY)
@@ -1280,6 +1285,7 @@ public final class DragonTree {
       if offsets.count != idx.count { fatalError("dragon: \(bId): the engine's lines give \(offsets.count) fragments, its layout \(idx.count)") }
       inlineLines[bId] = zip(idx, offsets).map { (i, o) in (edges: [snapped[i].left - be[0], snapped[i].top - be[1], snapped[i].right - be[0], snapped[i].bottom - be[1]], baseline: o / lu) }
     }
+    dragonAfterTree(root)
   }
 
   /// The dump read back from the live tree: frames via dragonLayoutRect (transforms ignored), applied values from the live objects.
@@ -1570,6 +1576,10 @@ open class DragonGroup(ctx: Context) : ViewGroup(ctx) {
     clipToPadding = false
     setWillNotDraw(false)
   }
+  override fun drawChild(canvas: Canvas, child: View, drawingTime: Long): Boolean {
+    if (DragonGroups.backdropSkip.contains(child)) return false
+    return super.drawChild(canvas, child, drawingTime)
+  }
   override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
     for (i in 0 until childCount) {
       val c = getChildAt(i)
@@ -1666,6 +1676,11 @@ const val DRAGON_SINGLE_RUN_BASELINE_PLANT = 0.0
  */
 class DragonTextView(ctx: Context, override val dragonId: String, override val dragonKind: String, override val dragonParent: String?) : View(ctx), DragonNodeView {
   val dragonFrame = IntArray(4)
+  /** PNT1-opacity-d: a group's backdrop capture draws text painted before it, so a text change marks every overlay stale. */
+  override fun invalidate() {
+    super.invalidate()
+    dragonGroupsChanged()
+  }
   val paint = TextPaint(Paint.ANTI_ALIAS_FLAG or Paint.LINEAR_TEXT_FLAG or Paint.SUBPIXEL_TEXT_FLAG)
   var dragonText = ""
     private set
@@ -2768,6 +2783,7 @@ class DragonTree(val context: Context) {
       if (offsets.size != idx.size) throw IllegalStateException("dragon: " + bId + ": the engine's lines give " + offsets.size + " fragments, its layout " + idx.size)
       inlineLines[bId] = idx.indices.map { j -> val e = snapped[idx[j]]; doubleArrayOf(e.left - be[0], e.top - be[1], e.right - be[0], e.bottom - be[1], offsets[j] / lu) }
     }
+    dragonAfterTree(root)
   }
 
   /** The dump read back from the live tree: frames from the layout positions up to the root (dragonLayoutOffset), divided by density. */
@@ -2934,6 +2950,7 @@ function paintStagesSource(backend: NativeBackend): string {
   const after = calls(paints.flatMap((m) => (m.native.afterLayout === null ? [] : [m.native.afterLayout])), 'v, shape, scale');
   const applied = paints.flatMap((m) => (m.native.applied === null ? [] : [m.native.applied]));
   const afterText = calls(paints.flatMap((m) => (m.native.afterText === undefined ? [] : [m.native.afterText])), 'v, tv, g');
+  const afterTree = calls(paints.flatMap((m) => (m.native.afterTree === undefined ? [] : [m.native.afterTree])), 'root');
   const rounded = soleHook(backend, 'roundedPath');
   const container = soleHook(backend, 'container');
   if (ios) {
@@ -2968,6 +2985,10 @@ public struct DragonTextGeometry {
 /// Registration point (TDEC-b): after the text pass configures a text view, each paint module's after-text hook in registry order.
 public func dragonAfterText(_ v: DragonBoxView, _ tv: DragonTextView, _ g: DragonTextGeometry) {
 ${afterText}}
+
+/// Registration point: once a layout has placed every view of the tree, each paint module's after-tree hook in registry order.
+public func dragonAfterTree(_ root: DragonRootView) {
+${afterTree}}
 
 /// Registration point (EMS): a box's applied values, each paint module's readback in registry order.
 public func dragonPaintApplied(_ v: DragonBoxView) -> DumpJsonObject {
@@ -3017,6 +3038,10 @@ class DragonTextGeometry(val id: String, val lines: List<DoubleArray>, val cps: 
 /** Registration point (TDEC-b): after the text pass configures a text view, each paint module's after-text hook in registry order. */
 fun dragonAfterText(v: DragonBoxView, tv: DragonTextView, g: DragonTextGeometry) {
 ${afterText}}
+
+/** Registration point: once a layout has placed every view of the tree, each paint module's after-tree hook in registry order. */
+fun dragonAfterTree(root: DragonRootView) {
+${afterTree}}
 
 /** Registration point (EMS): a box's applied values, each paint module's readback in registry order. */
 fun dragonPaintApplied(v: DragonBoxView): List<Pair<String, DumpJson>> {
@@ -3383,9 +3408,19 @@ export function inputFunctions(lang: Lang, root: import('@dragon/layout').Layout
         ? `ControlKind_sliderThumb(${str('slider-thumb')}, ${doubleLit(c.ratio)})`
         : c.kind === 'button-block'
           ? `ControlKind_buttonBlock(${str('button-block')})`
-          : c.kind === 'fieldset'
-            ? `ControlKind_fieldset(${str('fieldset')})`
-            : `ControlKind_legend(${str('legend')})`;
+          : c.kind === 'text-field'
+            ? `ControlKind_textField(${str('text-field')}, ${doubleLit(c.size)}, ${fontSpecValue(lang, c.font)}, ${lineHeightValue(lang, c.lineHeight)})`
+            : c.kind === 'text-editor'
+              ? `ControlKind_textEditor(${str('text-editor')})`
+              : c.kind === 'text-placeholder'
+                ? `ControlKind_textPlaceholder(${str('text-placeholder')})`
+                : c.kind === 'fieldset'
+                  ? `ControlKind_fieldset(${str('fieldset')})`
+                  : c.kind === 'legend'
+                    ? `ControlKind_legend(${str('legend')})`
+                    : c.kind === 'select-menulist'
+                      ? `ControlKind_selectMenulist(${str('select-menulist')}, ${fontSpecValue(lang, c.font)}, ${lineHeightValue(lang, c.lineHeight)})`
+                      : `ControlKind_selectInner(${str('select-inner')})`;
   const visit = (b: import('@dragon/layout').LayoutBox | import('@dragon/layout').ControlBox): string => {
     const name = `${prefix}Box${n++}`;
     const kids = b.children.map((c) => (c.kind === 'box' || c.kind === 'control' ? `${visit(c)}()` : c.kind === 'replaced' ? replaced(c) : inline(c)));

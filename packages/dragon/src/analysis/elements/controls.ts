@@ -2,13 +2,16 @@
 // its contents (or the flex container its display says) and Dragon paints as CSS boxes once its used appearance is none
 // (Blink layout_theme.cc AdjustAppearanceWithAuthorStyle and IsControlStyled; FORM-0 ruling F1 and the R11 probe). A4 adds
 // input[type=range], laid out as Chrome's UA shadow tree (container, track, thumb; analysis/resolve.ts resolves the parts).
+// FORM-c adds the single-line text fields (text, email, url, tel, password and an unknown type), laid out as Chrome's inner editor
+// and placeholder (resolve.ts) and painted as CSS boxes once devolved, as a button is (layout_theme.cc IsControlStyled).
+// FORM-b adds the single select, laid out as Chrome's menulist (a flex row container of the inner element, resolve.ts).
 import type { Longhand } from '../../css/properties.ts';
 import { usedAppearance } from '../../forms/appearance.ts';
 import type { UsedAppearance } from '../../forms/appearance.ts';
 import type { ControlKey } from '../../ua/datasets.ts';
 import type { ResolvedValue } from '../computed.ts';
 
-export const CONTROL_TAGS: readonly string[] = ['button', 'input'];
+export const CONTROL_TAGS: readonly string[] = ['button', 'input', 'select'];
 
 /**
  * The UA dataset key of a control: a button's UA rules do not depend on its type (controls-button-type proves it), but do on
@@ -17,13 +20,34 @@ export const CONTROL_TAGS: readonly string[] = ['button', 'input'];
  */
 export function controlUaKey(tag: string, type: string | undefined, disabled = false): ControlKey | null {
   if (tag === 'button') return disabled ? 'button[disabled]' : 'button';
+  // html.css select:disabled gives opacity, border colour and colour, captured on a disabled select.
+  if (tag === 'select') return disabled ? 'select[disabled]' : 'select';
   if (tag === 'input') return isRangeType(type) ? 'input[type=range]' : 'input';
   return null;
 }
 
+const asciiLower = (s: string): string => s.replace(/[A-Z]/g, (c) => c.toLowerCase());
+
 /** HTML §4.10.5: the type attribute's keyword, ASCII case-insensitively. */
 export function isRangeType(type: string | undefined): boolean {
-  return type !== undefined && type.replace(/[A-Z]/g, (c) => c.toLowerCase()) === 'range';
+  return type !== undefined && asciiLower(type) === 'range';
+}
+
+/** Every input type keyword HTML §4.10.5 defines; any other value, or none, is the Text state. */
+const INPUT_TYPES: ReadonlySet<string> = new Set(['hidden', 'text', 'search', 'tel', 'url', 'email', 'password', 'date', 'month', 'week', 'time', 'datetime-local', 'number', 'range', 'color', 'checkbox', 'radio', 'file', 'submit', 'image', 'reset', 'button']);
+
+/** The single-line text field states FORM-c lays out: their UA shadow tree is the inner editor alone (no decoration container). */
+const TEXT_FIELD_TYPES: ReadonlySet<string> = new Set(['text', 'tel', 'url', 'email', 'password']);
+
+/** HTML §4.10.5: an input's type state, the keyword ASCII-lowercased; a missing or unknown type is text. */
+export function inputTypeState(type: string | undefined): string {
+  const t = type === undefined ? 'text' : asciiLower(type);
+  return INPUT_TYPES.has(t) ? t : 'text';
+}
+
+/** Whether an input of this type attribute is a single-line text field FORM-c lays out. */
+export function isTextFieldType(type: string | undefined): boolean {
+  return TEXT_FIELD_TYPES.has(inputTypeState(type));
 }
 
 /** Whether a tag is a form control. */
@@ -46,6 +70,15 @@ const keyword = (v: ResolvedValue): string | null => (v.value.kind === 'keyword'
  * and auto count as theme, so Dragon never claims a themed button.
  */
 export function buttonAppearance(props: ReadonlyMap<Longhand, ResolvedValue>): UsedAppearance {
+  return devolvableAppearance('button', props);
+}
+
+/** A text field's used appearance, by the same author-style rule as a button's (FORM-c devolve probe, appearance.generated.ts). */
+export function textFieldAppearance(props: ReadonlyMap<Longhand, ResolvedValue>): UsedAppearance {
+  return devolvableAppearance('textfield', props);
+}
+
+function devolvableAppearance(control: 'button' | 'textfield', props: ReadonlyMap<Longhand, ResolvedValue>): UsedAppearance {
   const appearance = keyword(props.get('appearance') as ResolvedValue);
   if (appearance !== 'none' && appearance !== 'auto') return 'theme';
   let background = false;
@@ -56,5 +89,5 @@ export function buttonAppearance(props: ReadonlyMap<Longhand, ResolvedValue>): U
     if (DEVOLVING_BACKGROUND.test(p)) background = true;
     if (DEVOLVING_BORDER.test(p)) border = true;
   }
-  return usedAppearance('button', { appearance, background, border, thumbAppearance: 'auto' });
+  return usedAppearance(control, { appearance, background, border, thumbAppearance: 'auto' });
 }

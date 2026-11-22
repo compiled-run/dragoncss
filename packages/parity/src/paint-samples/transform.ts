@@ -5,6 +5,7 @@
 // those edges, pnt2-quads.test.ts), and so are base points of other nodes that a transformed edge now crosses or comes near.
 import type { Matrix2D, TransformOp, TransformOrigin, Trig } from '@dragon/layout';
 import { mapPoint, paintTransformMatrix } from '@dragon/layout';
+import { boxOutlineOps, boxRings, ringPoints } from './outline.ts';
 import type { NativeProgram } from 'dragon';
 import { glyphLines } from '../pixel-reference.ts';
 import type { SampleBox, SamplePoint } from '../samples.ts';
@@ -57,7 +58,7 @@ function distanceToSegment(p: Point, [a, b]: Segment): number {
 export const TRANSFORM_CLEARANCE_DEVICE_PX = SAMPLE_INSET_DEVICE_PX + Math.SQRT1_2;
 
 /** An edge or border rule after its kind: the owner, a box side or a line's glyph side, and the suffix of a rescued pixel. */
-const SIDED_RULE = new RegExp(`^(.+):(?:top|right|bottom|left|glyph-(?:left|right|top|bottom))(?:${CLEAR_SUFFIX})?$`);
+const SIDED_RULE = new RegExp(`^(.+):(?:top|right|bottom|left|glyph-(?:left|right|top|bottom)|outline-\\d+-(?:top|right|bottom|left))(?:${CLEAR_SUFFIX})?$`);
 
 /**
  * Where a base point belongs: the box, text or line id of its rule, without the rule kind, the side, corner or index, and the
@@ -132,6 +133,8 @@ function info(ctx: PaintSampleContext): Info {
     if (m === undefined) continue;
     edges.push(...quadSides(m, b.left, b.top, b.right, b.bottom));
     if (b.border.top + b.border.right + b.border.bottom + b.border.left > 0) edges.push(...quadSides(m, b.left + b.border.left, b.top + b.border.top, b.right - b.border.right, b.bottom - b.border.bottom));
+    // An outline inside a transformed subtree is drawn in its layer's view, under the same matrices.
+    for (const r of boxRings(ctx, b)) edges.push(...quadSides(m, ...r.outer), ...quadSides(m, ...r.inner));
   }
   if (ctx.program.nodes.some((n) => n.kind === 'text' && matrices.has(n.id))) {
     for (const line of glyphLines(ctx.program, ctx.viewport, ctx.dpr)) {
@@ -166,7 +169,17 @@ export const TRANSFORM_SAMPLES: PaintSamples = {
     const i = info(ctx);
     if (i.matrices.size === 0) return [];
     const out: SamplePoint[] = [];
-    for (const p of ctx.base) {
+    // A ring style's colour points of an outline in a transformed subtree, mapped like the base points (outline.ts leaves them here);
+    // the native targets refuse a dotted, dashed or 3D outline there.
+    const outlinePoints = ctx.boxes.flatMap((b) => {
+      if (!i.matrices.has(b.id)) return [];
+      const rings = boxRings(ctx, b);
+      if (rings.length === 0) return [];
+      if (boxOutlineOps(ctx, b) !== null) throw new Error(`${b.id}: a side painter outline in a transformed subtree has no sample points`);
+      const m = i.matrices.get(b.id) as Matrix2D;
+      return ringPoints(ctx, b, rings, null, { x: Math.hypot(m.a, m.b), y: Math.hypot(m.c, m.d) });
+    });
+    for (const p of [...ctx.base, ...outlinePoints]) {
       if (ruleKind(p.rule) === 'edge') continue;
       const m = i.matrices.get(ruleOwner(p.rule));
       if (m === undefined) continue;

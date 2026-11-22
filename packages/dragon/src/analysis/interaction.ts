@@ -22,7 +22,7 @@ import type { ResolvedValue } from './computed.ts';
 import { initialValue } from './computed.ts';
 import type { LinkedElement } from './link.ts';
 import type { InteractionProbe, InteractionState } from './match.ts';
-import { NO_INTERACTION } from './match.ts';
+import { NO_INTERACTION, selectorMatches } from './match.ts';
 import type { ResolvedElement } from './resolve.ts';
 import { propagatedFrom } from './computed-checks.ts';
 
@@ -445,6 +445,32 @@ export function interactionRefusals(rules: readonly Rule[]): Diagnostic[] {
   return out;
 }
 
+/** FORM-b: a :focus or :focus-visible rule matching a select, focused or not, is refused until FORM-c's focus states land. */
+export function selectFocusRefusals(rules: readonly Rule[], cases: readonly { readonly root: LinkedElement }[] | null, faults: CompilerFaults): Diagnostic[] {
+  const focusRules = rules.filter((r) => r.declarations.length > 0 && interactionPseudosOf(r).some((p) => p === 'focus' || p === 'focus-visible'));
+  if (cases === null || focusRules.length === 0) return [];
+  const out: Diagnostic[] = [];
+  const seen = new Set<string>();
+  const walk = (el: LinkedElement, chain: readonly LinkedElement[]): void => {
+    const here = [...chain, el];
+    if (el.tag === 'select' && !seen.has(el.address)) {
+      const ix: InteractionState = { hover: new Set(), active: new Set(), focus: new Set([el.address]), focusVisible: new Set([el.address]) };
+      const rule = focusRules.find((r) => r.selectors.some((sel) => selectorMatches(r, sel, here, here.length - 1, 0, faults, ix) || selectorMatches(r, sel, here, here.length - 1, 0, faults, NO_INTERACTION)));
+      if (rule !== undefined) {
+        seen.add(el.address);
+        out.push(diagnostic('DRAGON_UNSUPPORTED_SELECTOR', {
+          origin: authored((rule.declarations[0] as Rule['declarations'][number]).span),
+          message: `a :focus or :focus-visible rule on <select> ${el.address} is not supported: a focused select's style and Chrome's focus ring wait for FORM-c's focus states`,
+          manual: `Remove the :focus and :focus-visible rules that match <select> ${el.address}.`,
+        }));
+      }
+    }
+    for (const c of el.children) if (c.kind === 'element') walk(c, here);
+  };
+  for (const c of cases) walk(c.root, []);
+  return out;
+}
+
 /** SELD-R2 PR 5: the inputs an interaction row is proven for, each its own profile context interaction/<input>. */
 export const INTERACTION_INPUTS = ['forced-only', 'keyboard', 'mouse', 'touch'] as const;
 export type InteractionInput = (typeof INTERACTION_INPUTS)[number];
@@ -593,21 +619,6 @@ export const HIT_MODELLED: ReadonlyMap<Longhand, (v: CssValue) => boolean> = new
   ['outline-offset', zeroLength],
 ]);
 
-/**
- * R13: the first grid container of a resolved tree whose display compiles, in preorder, or null. rt-hit.ts refuses grid containers
- * (Blink paints grid items atomically in order-modified document order, which the hit table does not model yet).
- */
-export function hitUnmodelledGrid(root: ResolvedElement, compiles: (v: ResolvedValue) => boolean = () => true): string | null {
-  const d = root.props.get('display');
-  if (d !== undefined && d.value.kind === 'keyword' && (d.value.value === 'grid' || d.value.value === 'inline-grid') && compiles(d)) return root.element.address;
-  for (const c of root.children) {
-    if (c.kind !== 'element') continue;
-    const found = hitUnmodelledGrid(c, compiles);
-    if (found !== null) return found;
-  }
-  return null;
-}
-
 /** FORM-a: the first form control of a resolved tree in preorder, or null; the hit table does not model a control's box (rt-hit.ts). */
 export function hitUnmodelledControl(root: ResolvedElement): string | null {
   if (isControlTag(root.element.tag)) return root.element.address;
@@ -624,17 +635,20 @@ export function hitUnmodelledControl(root: ResolvedElement): string | null {
  * (FLT), which rt-hit.ts refuses in a block or inline-block container, a fixed box (POSX-f) and a sticky box (POSX-s). No Chrome hit
  * capture has them yet.
  */
-export function hitUnmodelledBox(root: ResolvedElement, compiles: (v: ResolvedValue) => boolean = () => true): { readonly address: string; readonly kind: 'float' | 'fixed box' | 'sticky box'; readonly pkg: 'FLT' | 'POSX-f' | 'POSX-s' } | null {
+export function hitUnmodelledBox(root: ResolvedElement, compiles: (v: ResolvedValue) => boolean = () => true): { readonly address: string; readonly kind: 'float' | 'fixed box' | 'sticky box' | 'inline-grid box'; readonly pkg: 'FLT' | 'POSX-f' | 'POSX-s' | 'G-INL' } | null {
   const key = (el: ResolvedElement, p: 'display' | 'float' | 'position'): string => {
     const v = el.props.get(p);
     return v !== undefined && v.value.kind === 'keyword' ? v.value.value : '';
   };
-  const visit = (el: ResolvedElement): { address: string; kind: 'float' | 'fixed box' | 'sticky box'; pkg: 'FLT' | 'POSX-f' | 'POSX-s' } | null => {
+  const visit = (el: ResolvedElement): { address: string; kind: 'float' | 'fixed box' | 'sticky box' | 'inline-grid box'; pkg: 'FLT' | 'POSX-f' | 'POSX-s' | 'G-INL' } | null => {
     const block = key(el, 'display') === 'block' || key(el, 'display') === 'inline-block';
     for (const c of el.children) {
       if (c.kind !== 'element') continue;
       const f = c.props.get('float');
       const p = c.props.get('position');
+      // rt-hit.ts refuses an inline-grid as an atomic inline (G-INL); a block-level grid is hit in order-modified document order.
+      const d = c.props.get('display');
+      if (d !== undefined && key(c, 'display') === 'inline-grid' && compiles(d)) return { address: c.element.address, kind: 'inline-grid box', pkg: 'G-INL' };
       if (p !== undefined && key(c, 'position') === 'fixed' && compiles(p)) return { address: c.element.address, kind: 'fixed box', pkg: 'POSX-f' };
       if (p !== undefined && key(c, 'position') === 'sticky' && compiles(p)) return { address: c.element.address, kind: 'sticky box', pkg: 'POSX-s' };
       if (block && f !== undefined && key(c, 'float') !== 'none' && key(c, 'position') !== 'absolute' && key(c, 'position') !== 'fixed' && compiles(f)) return { address: c.element.address, kind: 'float', pkg: 'FLT' };
