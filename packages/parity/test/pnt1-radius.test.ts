@@ -16,12 +16,18 @@ import { ruleKind } from '../src/samples.ts';
 import { boxes, modelAt } from './paint-model.ts';
 
 const RADIUS_FIXTURES = (FIXTURE_GROUPS.find((g) => g.id === 'radius')?.fixtures ?? []).filter((f) => f.kind === 'layout');
+// OVFL-B with PNT1: the rounded scroll containers (and the notes form's rounded textarea), whose content Chrome clips to the rounded
+// padding box at scroll offset 0, as the model's rounded overflow clip of an ancestor does.
+const ROUNDED_SCROLL_FIXTURES = (FIXTURE_GROUPS.find((g) => g.id === 'overflow')?.fixtures ?? []).filter((f) => f.kind === 'layout' && f.id.startsWith('overflow-rounded'));
 
 describe('PNT1 radius: the paint model at every sample point equals the committed Chrome pixels', () => {
   it('covers the ten radius fixtures in both directions', () => {
     expect(RADIUS_FIXTURES.map((f) => f.id)).toEqual(['radius-basic', 'radius-borders', 'radius-clip', 'radius-clamp', 'radius-cascade', 'radius-longhands', 'radius-logical', 'radius-replaced', 'radius-double', 'radius-double-web']);
   });
-  for (const spec of RADIUS_FIXTURES) {
+  it('covers the three rounded scroll fixtures', () => {
+    expect(ROUNDED_SCROLL_FIXTURES.map((f) => f.id)).toEqual(['overflow-rounded', 'overflow-rounded-background', 'overflow-rounded-textarea']);
+  });
+  for (const spec of [...RADIUS_FIXTURES, ...ROUNDED_SCROLL_FIXTURES]) {
     for (const c of casesOf(spec, fixtureInput(spec))) {
       it(`${c.id} at ${DPRS.join(', ')}`, () => {
         const programs = nativePrograms(nativeCompile(spec, c.environment.direction), c.assignment);

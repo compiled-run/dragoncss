@@ -11,6 +11,7 @@ import { parseStylesheet } from '../src/css/stylesheet.ts';
 import { BORDER_EMITTER } from '../src/emit/paint/border.ts';
 import { IMAGE_EMITTER } from '../src/emit/paint/image.ts';
 import { RADIUS_EMITTER } from '../src/emit/paint/radius.ts';
+import { SCROLL_EMITTER } from '../src/emit/paint/scroll.ts';
 import type { DraftTree, FrontEndResult } from '../src/index.ts';
 import { div, DOC, eq, expectCatalogued, explainOne, inputFor, not, spanTextOf } from './helpers.ts';
 
@@ -510,5 +511,25 @@ describe('border-radius: lowering and emission', () => {
     // API 33 and up keeps the outline clip for every box, and UIKit is unchanged.
     expect(hook).toContain('if (Build.VERSION.SDK_INT >= 33) {');
     expect(RADIUS_EMITTER.native.uikit.file).not.toContain('dragonHostsNoChildren');
+  });
+});
+
+// OVFL-B with PNT1: a scroll view moves its own coordinates with the scroll offset, so the rounded clip is kept over the padding box.
+describe('border-radius on a scroll container: the rounded clip stays put while the content scrolls', () => {
+  it('UIKit re-frames the clip view mask over the visible bounds at every offset change and every layout', () => {
+    const swift = SCROLL_EMITTER.native.uikit.file ?? '';
+    const pin = swift.slice(swift.indexOf('func dragonPinMask()'), swift.indexOf('\n  }\n', swift.indexOf('func dragonPinMask()')));
+    expect(pin).toContain('m.frame = bounds');
+    expect(swift).toMatch(/override var contentOffset: CGPoint \{\n {4}didSet \{ dragonPinMask\(\) \}/);
+    expect(swift.slice(swift.indexOf('override func layoutSubviews()'), swift.indexOf('override var contentOffset'))).toContain('dragonPinMask()');
+    // The radius hook frames the mask over the bounds too (their origin is the offset), so the two writers agree.
+    expect(RADIUS_EMITTER.native.uikit.file ?? '').toContain('m.frame = c.bounds');
+  });
+
+  it('Android API 31 and 32 move the overlay mask by the host clip view\'s scroll offset; the API 33 outline needs no move', () => {
+    const kotlin = RADIUS_EMITTER.native['android-views'].file ?? '';
+    expect(kotlin).toContain('class DragonRoundedClipMask(private val path: Path, private val host: View)');
+    expect(kotlin).toContain('canvas.translate(host.scrollX.toFloat(), host.scrollY.toFloat())');
+    expect(kotlin).toContain('DragonRoundedClipMask(inner, c)');
   });
 });
