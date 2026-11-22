@@ -250,3 +250,43 @@ So Chrome's layout of these shapes never reads the natural size, except in the r
 6. **Order:** GRID-replaced first, then REPL-r1 with every fixture (proposed)? Or REPL-r1's block, inline and flex parts now, with the grid fixtures after? On its own, REPL-r1 unblocks none of the Markless images, because all three accepted shapes are grid items.
 7. **A static img with no src:** should `<img alt="">` with no src and no `runtimeSrc` compile as the `absent` state, retargeting `reject-replaced-no-src` (still refused: it is unsized, so it reads the natural size)? Or keep it refused until an app needs it?
 8. **Reads that cannot change the result:** the products/[id] photo reads the natural ratio only into an `auto` track's growth limit, which stretch overrides. Should a later slice prove such reads harmless (for example by laying out with the ratio at both extremes and requiring a monotone path)? Or should the refusal stand, with the CSS fix named in the message?
+
+## Judge verdict (2026-11-22)
+
+Approved, with the rulings and amendments below. Where they differ from the sections above, they win.
+
+### Rulings
+
+1. **Load error, `src=""` and a removed src (Q1): a named divergence, not a refusal.** The host keeps the laid-out box and
+   paints the no-image outline. The build emits a note per img naming the box Chrome would draw instead: 400x300 for
+   ProductCard, the alt text for the product photo. A checkin row whose photo goes from set to empty falls under this note.
+2. **Formats (Q2):** pixels are claimed only for 8-bit sRGB PNG. Other decodable formats get layout parity with no pixel
+   claim. An image the host cannot decode paints the outline.
+3. **Viewports the build never laid out (Q3):** keep the device stop, and also sweep each band's minimum and maximum width at
+   build time, using the largest export viewport for a band with no maximum.
+4. **Diagnostic (Q4):** a new `DRAGON_RUNTIME_IMAGE_SIZE`, raised through the engine's existing `unsupported()` channel with a
+   new code, `runtime-image-size` (unsupported.ts). No new exception class, so the Swift and Kotlin translations and the
+   device stop path are reused.
+5. **Placeholder (Q5):** no placeholder colour.
+6. **Order (Q6):** REPL-r1 is one PR with every fixture, grid included, on top of GRID-items (#638), which is the replaced
+   grid item slice §5 calls GRID-replaced.
+7. **A static img with no src (Q7):** stays refused (`reject-replaced-no-src`).
+8. **Reads that cannot change the result (Q8):** keep the refusal, and name the CSS fix in the message. For the products/[id]
+   photo that is `.photo { aspect-ratio: 4 / 3 }`, which changes nothing on the web because both sizes are definite.
+
+### Amendments
+
+- **§5:** Blink has no replaced path in CalculateIntrinsicMinimumContribution. The two replaced differences are
+  AxisEdgeFromItemPosition's `is_replaced` fit-content behaviour (normal alignment is fit-content, not stretch) and
+  ComputeMinAndMaxContentContributionForReplaced's `depends_on_block_constraints`.
+- **§2, refactors:** replacedAspectRatio already returns a plain `<ratio>` first (replaced.ts:51-57). The only real
+  refactors are normalizedNaturalSize, computed eagerly at replaced.ts:112, and the size computed before
+  replacedContribution's compressible return. Both must keep every existing output identical, at 0 LU.
+- **§2, paint at build time:** the paint path (objectFitRect, replacedObjectRect) is never evaluated with the throwing natural
+  size at build time. The destination rect of a `runtimeSrc` img is computed only on the device, or per sample in the lanes'
+  test host.
+- **§2, the read channel:** sizing reads raise `unsupported()` with code `runtime-image-size`, which the project maps to
+  `DRAGON_RUNTIME_IMAGE_SIZE`.
+- **Proof scope:** adds Q3's band-edge sweep. The device's rows layout (runMarklessRowsLayout) keeps the stop, and the stop
+  reason names the row.
+- **The Q1 note:** added as ruled, including the checkin row whose photo goes from set to empty.
