@@ -108,4 +108,12 @@ describe('FORM-a controls', () => {
     expect(errors(compile(css, (r) => [range(r), div(r, 'a', ['a'])], NATIVE, true).diagnostics)).toContainEqual(expect.stringMatching(/:hover needs Dragon hit testing through the form control /));
     expect(errors(compile(css, (r) => [button(r), div(r, 'a', ['a'])], NATIVE, true).diagnostics).filter((m) => m.includes('hit testing through the form control'))).toEqual([]);
   });
+
+  it('reads no overflow of a textarea for the hit model, which holds it as one box, and still refuses a scrolling div', () => {
+    const area = (r: SourceRef) => ({ ...div(r, 't', ['t'], [text(r, 'tt', 'XX')]), tag: 'textarea', attributes: [attr('readonly', '')] });
+    const hover = '.a { width: 10px; height: 10px; } .a:hover { width: 20px; }';
+    const through = (css: string, kid: (r: SourceRef) => ReturnType<typeof div>): string[] => errors(compile(`${BODY}${css}${hover}`, (r) => [kid(r), div(r, 'a', ['a'])], NATIVE, true).diagnostics).filter((m) => m.includes('hit testing through overflow'));
+    expect(through('.t { display: block; font-family: Ahem; appearance: none; resize: none; scrollbar-width: none; }', area)).toEqual([]);
+    expect(through('.s { overflow: auto; width: 10px; height: 10px; }', (r) => div(r, 's', ['s']))).toContainEqual(expect.stringMatching(/:hover needs Dragon hit testing through overflow-[xy] on s/));
+  });
 });
