@@ -639,6 +639,10 @@ function checkNode(value: unknown, path: string, errors: ValidationError[], ids:
     let placeholders = 0;
     children.forEach((child: unknown, i: number) => {
       const part = fieldPart(child);
+      // An input's empty editor lays out one empty line in its strut; a textarea's empty editor has no line (Chrome 145: 0 tall).
+      if (part === 'text-editor' && controlKind === 'text-field' && isRecord(child) && Array.isArray(child['children']) && child['children'].length === 0 && child['strut'] === null) {
+        errors.push({ path: `${path}.children[${i}].strut`, code: 'strut', message: 'an empty text-editor control has a strut, whose one empty line it lays out' });
+      }
       if (part === 'text-editor') editors++;
       else if (part === 'text-placeholder') placeholders++;
       else errors.push({ path: `${path}.children[${i}]`, code: 'bad-value', message: 'a text field control holds only its text-editor control and at most one text-placeholder control' });
@@ -931,14 +935,15 @@ function checkStrut(box: Record<string, unknown>, children: readonly unknown[], 
   const inline = children.some(isInlineLevel);
   // FORM-b: an empty inner editor or select inner element keeps its strut, whose one empty line it lays out (block.ts).
   const emptyKind = isRecord(box['control']) && children.length === 0 ? box['control']['kind'] : null;
-  const emptyEditor = emptyKind === 'text-editor' || emptyKind === 'select-inner';
+  const emptyEditor = emptyKind === 'select-inner';
+  const editorLine = emptyKind === 'text-editor';
   if (strut === null) {
     if (inline) errors.push({ path: `${path}.strut`, code: 'strut', message: 'a box with inline content has a strut' });
     else if (emptyEditor) errors.push({ path: `${path}.strut`, code: 'strut', message: `an empty ${String(emptyKind)} control has a strut, whose one empty line it lays out` });
     return;
   }
   checkRule(strut, strutSchema, `${path}.strut`, errors);
-  if (!inline && !emptyEditor) errors.push({ path: `${path}.strut`, code: 'strut', message: 'a box without inline content has a null strut' });
+  if (!inline && !emptyEditor && !editorLine) errors.push({ path: `${path}.strut`, code: 'strut', message: 'a box without inline content has a null strut' });
   else if (isRecord(strut)) checkLeafFonts(children, strut['font'], strut['lineHeight'], path, errors);
 }
 
