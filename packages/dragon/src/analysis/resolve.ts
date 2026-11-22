@@ -444,7 +444,7 @@ function resolveTreeWith(root: LinkedElement, rules: readonly Rule[], faults: Co
     props.set('display', appearanceDisplay(props.get('display') as ResolvedValue, props.get('appearance') as ResolvedValue));
     if (parent === null) props.set('display', blockifyRoot(props.get('display') as ResolvedValue));
     if (pseudo === 'backdrop' || (pseudo === null && part === null && el.tag === 'dialog')) placeInTopLayer(props);
-    blockify(props, parent === null ? null : parent.props, faults);
+    blockify(props, parent === null ? null : parent.props, faults, pseudo === null && part === null && el.tag === 'legend');
     adjustLineClampDisplay(props);
     computeOverflowPair(props);
     // NA-NATIVE: a scroll container whose ::-webkit-scrollbar rules hide its scrollbars takes scrollbar-width: none.

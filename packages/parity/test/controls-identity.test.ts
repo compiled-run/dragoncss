@@ -45,8 +45,9 @@ const body = (css: string): string => css.split('\n').slice(1).join('\n');
 describe('FORM-a A3 identity: every case that predates the button package is unchanged', () => {
   it('covers every earlier layout fixture, and the controls group adds only its own', () => {
     expect(earlier.length).toBeGreaterThan(200);
-    expect(FIXTURES.filter((f) => f.kind === 'layout' && controlIds.has(f.id)).length).toBe(7);
-    expect(FIXTURES.filter((f) => f.kind === 'layout' && notEarlier.has(f.id)).length).toBe(7 + LATER_WITH_CONTROLS.length);
+    // 9: the A3 buttons and A4 ranges, then fieldset-legend and fieldset-positioned.
+    expect(FIXTURES.filter((f) => f.kind === 'layout' && controlIds.has(f.id)).length).toBe(9);
+    expect(FIXTURES.filter((f) => f.kind === 'layout' && notEarlier.has(f.id)).length).toBe(9 + LATER_WITH_CONTROLS.length);
   });
 
   it('no earlier element is a control, and the display adjustment leaves every one alone (appearance-values sets appearance only on displays Chrome keeps)', () => {
@@ -117,9 +118,10 @@ describe('FORM-a A3 identity: every case that predates the button package is unc
 // (the committed vectors and emitted CSS of these cases are byte-identical to A3, git diff form-a3 in the receipt).
 describe('FORM-a A4 identity: every case that predates the range package is unchanged', () => {
   const beforeA4 = FIXTURES.filter((f) => f.kind === 'layout' && !f.id.startsWith('controls-range-'));
-  const rangeBoxes = (b: LayoutBox | ControlBox): number => b.children.reduce((n, c) => n + (c.kind === 'control' && c.control.kind !== 'button-block' ? 1 : 0) + (c.kind === 'box' || c.kind === 'control' ? rangeBoxes(c) : 0), 0);
+  const rangeBoxes = (b: LayoutBox | ControlBox): number => b.children.reduce((n, c) => n + (c.kind === 'control' && (c.control.kind === 'range' || c.control.kind === 'slider-thumb') ? 1 : 0) + (c.kind === 'box' || c.kind === 'control' ? rangeBoxes(c) : 0), 0);
   it('covers every earlier layout fixture, the A3 controls cases included', () => {
-    expect(beforeA4.filter((f) => controlIds.has(f.id)).length).toBe(5);
+    // 7: the 5 A3 cases, then fieldset-legend and fieldset-positioned, which hold no range.
+    expect(beforeA4.filter((f) => controlIds.has(f.id)).length).toBe(7);
     expect(FIXTURES.filter((f) => f.id.startsWith('controls-range-')).length).toBe(2);
   });
   it('no earlier case resolves a range, lowers a range or thumb box, or changes its vector input or web body', () => {

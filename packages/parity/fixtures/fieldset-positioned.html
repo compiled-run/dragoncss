@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { width: 300px; }
+fieldset { border-width: 0; border-style: solid; margin: 0; padding: 6px 10px; }
+.rel { position: relative; }
+.hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; }
+.badge { position: absolute; top: 0; right: 0; width: 20px; height: 10px; }
+.static { position: absolute; width: 30px; height: 8px; }
+.row { height: 20px; }
+</style>
+</head>
+<body data-dragon-id="body">
+<fieldset data-dragon-id="f1" class="rel"><legend data-dragon-id="f1l">XX</legend><div data-dragon-id="f1r" class="row"><div data-dragon-id="f1h" class="hidden">X</div></div></fieldset>
+<fieldset data-dragon-id="f2" class="rel"><div data-dragon-id="f2b" class="badge"></div><div data-dragon-id="f2r" class="row">X</div></fieldset>
+<div data-dragon-id="w" class="rel"><fieldset data-dragon-id="f3"><div data-dragon-id="f3s" class="static"></div><legend data-dragon-id="f3l">XXX</legend><div data-dragon-id="f3r" class="row">X</div></fieldset></div>
+</body>
+</html>
