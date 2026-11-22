@@ -5,6 +5,7 @@ import type { StateEmit } from './emit/runtime/state.ts';
 import { emitStatePrograms, StateEmitError } from './emit/runtime/state.ts';
 import { BAND_STATE, compiledCases, ENV_INSTANCE, interactionPartitionIn, nativeBandProgramFor, nativeBands, usedSchemeOf } from './internal.ts';
 import type { rtBand } from '@dragon/layout';
+import type { RuntimeImageLayout } from './images/runtime.ts';
 import { BandProgramError, bandStateProgram } from './lower/band-program.ts';
 import type { NativeBackend } from './lower/native-program.ts';
 import type { StateProgram } from './lower/state-program.ts';
@@ -58,6 +59,8 @@ export type NativeStylesConfig = {
    * caller's export; nothing is bundled. Only with support 'lanes'. Absent: native refuses them.
    */
   readonly systemFonts?: 'measured';
+  /** REPL-r1: the export devices an img whose src is set at run time is proven at, with their measurers; without it such an img is refused. */
+  readonly runtimeImageLayout?: RuntimeImageLayout;
 };
 
 /** One backend's output: the program is the data the generated code is written from, so the two cannot disagree. */
@@ -120,6 +123,7 @@ export function compileNativeStylesWith(config: NativeStylesConfig, input: Front
       ...(config.canvas === 'host' ? { hostCanvas: true } : {}),
       ...(config.brotliDecompress === undefined ? {} : { brotliDecompress: config.brotliDecompress }),
       ...(config.systemFonts === 'measured' ? { systemFonts: true } : {}),
+      ...(config.runtimeImageLayout === undefined ? {} : { runtimeImageLayout: config.runtimeImageLayout }),
     },
   );
   if (config.systemFonts !== undefined && (config.systemFonts !== 'measured' || support !== 'lanes')) throw new Error(`compileNativeStyles: systemFonts ${JSON.stringify(config.systemFonts)} is 'measured', with support 'lanes'`);

@@ -5,10 +5,13 @@
 import { createHash } from 'node:crypto';
 import { posix } from 'node:path';
 import { brotliDecompressSync } from 'node:zlib';
-import type { BrotliDecompress, ClassSymbol, Condition, FontMap, FrontEndResult, NativeStyles, NativeStylesConfig, NativeStyleTarget, Rgba8, SourceFile, TreeNode } from 'dragon';
+import type { BrotliDecompress, ClassSymbol, Condition, FontMap, FrontEndResult, NativeStyles, NativeStylesConfig, NativeStyleTarget, Rgba8, RuntimeImageLayout, SourceFile, TreeNode } from 'dragon';
 import { BAND_KEY, compiledCases, compileNativeStylesWith, decodeFontFile, isTreeNodeId, nativeBands, parseStylesheet, resolvedTextTransforms, TREE_SCHEMA_REVISION } from 'dragon';
-import type { rtBand } from '@dragon/layout';
-import { textDecoration } from '@dragon/layout';
+import type { LayoutInput, rtBand } from '@dragon/layout';
+import { layout, textDecoration } from '@dragon/layout';
+import { referenceMeasurer } from './native-host.ts';
+import { systemMeasurer } from './system-fonts/measurer.ts';
+import { registerFace } from './text-shaper-host.ts';
 import { FONT_REFERENCE_MAP } from './font-reference.ts';
 import { checkPlan, hexBits, PLAN_HEIGHTS, slottedLayout } from './markless-plan.ts';
 import { withFontMapAssets } from './fixture-groups/fonts.ts';
@@ -34,7 +37,7 @@ export type MarklessStyleInput = {
   readonly version: typeof MARKLESS_STYLE_INPUT_VERSION;
   readonly component: string;
   readonly nodes: readonly (
-    | { readonly kind: 'element'; readonly id: string; readonly element: string; readonly parent: string | null; readonly attributes: Readonly<Record<string, string>>; readonly classByState?: readonly { readonly when: When; readonly value: string | null }[]; readonly attributesByState?: Readonly<Record<string, readonly { readonly when: When; readonly value: string | null }[]>>; readonly boxless?: true; readonly arm?: MarklessArm; readonly row?: string; readonly styleTemplate?: StyleTemplate; readonly styleByState?: readonly { readonly when: When; readonly template: StyleTemplate }[] }
+    | { readonly kind: 'element'; readonly id: string; readonly element: string; readonly parent: string | null; readonly attributes: Readonly<Record<string, string>>; readonly classByState?: readonly { readonly when: When; readonly value: string | null }[]; readonly attributesByState?: Readonly<Record<string, readonly { readonly when: When; readonly value: string | null }[]>>; readonly boxless?: true; readonly runtimeSrc?: { readonly absent: boolean }; readonly arm?: MarklessArm; readonly row?: string; readonly styleTemplate?: StyleTemplate; readonly styleByState?: readonly { readonly when: When; readonly template: StyleTemplate }[] }
     | { readonly kind: 'text'; readonly id: string; readonly parent: string; readonly text: string; readonly textByState?: readonly { readonly when: When; readonly value: string }[]; readonly arm?: MarklessArm; readonly row?: string }
   )[];
   readonly css: string;
@@ -283,7 +286,10 @@ export function parseMarklessStyleInput(text: string): MarklessStyleInput {
         if (!(node['textByState'] as unknown[]).every((e) => isString((e as Record<string, unknown>)['value']))) fail(`${id}: textByState gives a text that is not a string`);
       }
     } else if (node['kind'] === 'element') {
-      onlyKeys(id, node, ['kind', 'id', 'element', 'parent', 'attributes', 'classByState', 'attributesByState', 'boxless', 'arm', 'row', 'styleTemplate', 'styleByState']);
+      onlyKeys(id, node, ['kind', 'id', 'element', 'parent', 'attributes', 'classByState', 'attributesByState', 'boxless', 'runtimeSrc', 'arm', 'row', 'styleTemplate', 'styleByState']);
+      // REPL-r1: an img whose src the app sets at run time; absent says the src may also be missing.
+      const runtimeSrc = node['runtimeSrc'];
+      if (runtimeSrc !== undefined && !(isRecord(runtimeSrc) && Object.keys(runtimeSrc).join() === 'absent' && typeof runtimeSrc['absent'] === 'boolean')) fail(`${id}: runtimeSrc is not { absent: boolean }`);
       if (!isString(node['element']) || !/^[a-z][a-z0-9-]*$/.test(node['element'])) fail(`${id}: bad element name ${JSON.stringify(node['element'])}`);
       if (node['parent'] !== null && !(isString(node['parent']) && ids.has(node['parent']))) fail(`${id}: parent ${String(node['parent'])} is not an earlier element`);
       if (!isRecord(node['attributes']) || !Object.values(node['attributes']).every(isString)) fail(`${id}: attributes are not strings`);
@@ -572,6 +578,7 @@ export function marklessFrontEnd(slotted: MarklessStyleInput, inputText: string,
       ],
       children: (children.get(n.id) ?? []).map((c) => placed(c, n.arm)),
       origin,
+      ...(n.runtimeSrc === undefined ? {} : { runtimeSrc: n.runtimeSrc }),
     } as TreeNode;
   };
   // A node in an arm its parent is not in is laid out only where its branch, and each branch around it, shows that arm.
@@ -628,12 +635,31 @@ export type MarklessAtSize = { readonly [T in NativeStyleTarget]: ExportDevice }
 export const marklessDevices = (parsed: MarklessStyleInput, at?: MarklessAtSize): { readonly [T in NativeStyleTarget]: ExportDevice } =>
   at !== undefined ? at : parsed.viewports === undefined ? EXPORT_DEVICES : { ios: { ...EXPORT_DEVICES.ios, viewport: parsed.viewports.ios }, android: { ...EXPORT_DEVICES.android, viewport: parsed.viewports.android } };
 
+/**
+ * REPL-r1: each target's export device, laid out with the measurer its export measures with (its system fonts, or the reference
+ * faces and the input's own), so an img whose src is set at run time is proven where the export lays it out.
+ */
+function marklessRuntimeLayout(devices: { readonly [T in NativeStyleTarget]: ExportDevice }, fonts: readonly MarklessFontFile[], mode: MarklessFonts): RuntimeImageLayout {
+  const faces = new Map(fonts.map((f) => [registerFace(f.sfnt), f.sfnt] as const));
+  return {
+    devices: (['ios', 'android'] as const).map((t) => ({
+      ...devices[t].viewport,
+      dpr: devices[t].dpr,
+      layout: (input: LayoutInput) => {
+        const m = mode === 'system' ? systemMeasurer(systemFontsFor(t, devices[t].dpr), input, [...faces.keys()], devices[t].dpr, faces) : referenceMeasurer([...faces.keys()]);
+        const r = layout(input, m);
+        return r.kind === 'ok' ? null : r.unsupported;
+      },
+    })),
+  };
+}
+
 /** The input compiled as the device lanes compile (support 'lanes'), with the font map of its font mode; a compile error is refused. */
 function compileMarkless(parsed: MarklessStyleInput, inputText: string, inputPath: string, fonts: readonly MarklessFontFile[], mode: MarklessFonts, at?: MarklessAtSize): { readonly input: FrontEndResult; readonly styles: NativeStyles; readonly compiled: object; readonly devices: { readonly [T in NativeStyleTarget]: ExportDevice } } {
   const map = mode === 'system' ? MARKLESS_SYSTEM_FONT_MAP : FONT_REFERENCE_MAP;
   const input = withFontMapAssets(marklessFrontEnd(parsed, inputText, inputPath, fonts, mode), map);
   const devices = marklessDevices(parsed, at);
-  const config: NativeStylesConfig = { projectId: PROJECT_ID, name: parsed.component, targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 } }, fonts: map, viewport: devices.ios.viewport, support: 'lanes', topLayer: 'host', canvas: 'host', output: 'program', brotliDecompress: NODE_BROTLI, ...(mode === 'system' ? { systemFonts: 'measured' as const } : {}) };
+  const config: NativeStylesConfig = { projectId: PROJECT_ID, name: parsed.component, targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 } }, fonts: map, viewport: devices.ios.viewport, support: 'lanes', topLayer: 'host', canvas: 'host', output: 'program', brotliDecompress: NODE_BROTLI, ...(mode === 'system' ? { systemFonts: 'measured' as const } : {}), runtimeImageLayout: marklessRuntimeLayout(devices, fonts, mode) };
   const { styles, compiled } = compileNativeStylesWith(config, input);
   const errors = styles.diagnostics.filter((d) => d.severity === 'error');
   if (errors.length > 0) fail(`${parsed.component} does not compile:\n${errors.map((d) => `  ${d.code} [${d.target ?? 'all'}] ${d.message}`).join('\n')}`);

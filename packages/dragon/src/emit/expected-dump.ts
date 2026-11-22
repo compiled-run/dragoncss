@@ -40,6 +40,8 @@ export type ExpectedEngine = {
   /** REPL-a: padding against a containing block's content width, and a replaced box's paint rects (layout paint.ts). */
   readonly resolvePadding: (style: LayoutStyle, cbInline: number) => Edges;
   readonly replacedPaint: (leaf: ReplacedLeaf, content: ObjectRect) => ReplacedPaint;
+  /** REPL-r1: the paint rects of an img whose src is set at run time, for an image of a pixel size (paint.ts runtimeImagePaint). */
+  readonly runtimeImagePaint: (leaf: ReplacedLeaf, content: ObjectRect, width: number, height: number, zoom: number) => ReplacedPaint;
   /** PNT1: Skia's paint alpha byte of an opacity (layout paint.ts), which the device's opacity writer sets. */
   readonly opacityAlpha8: (opacity: number) => number;
   readonly luPerPx: number;
@@ -147,13 +149,18 @@ const isLine = (r: LayoutRect): boolean => r.parent !== null && r.id.startsWith(
  * borders and its padding against the parent's content width (the viewport's for the root), as the device computes them.
  */
 export function replacedGeometries(engine: ExpectedEngine, input: LayoutInput, boxes: readonly LayoutRect[]): Map<string, ReplacedPaint> {
+  return new Map([...replacedContents(engine, input, boxes)].map(([id, { leaf, content }]) => [id, leaf.natural.kind === 'runtime' ? engine.runtimeImagePaint(leaf, content, 0, 0, input.devicePixelRatio) : engine.replacedPaint(leaf, content)]));
+}
+
+/** Each replaced leaf of the zoomed input with its content box in absolute LU, as the device computes it after layout. */
+export function replacedContents(engine: Pick<ExpectedEngine, 'zoomInput' | 'noFaults' | 'resolveBorder' | 'resolvePadding' | 'luPerPx'>, input: LayoutInput, boxes: readonly LayoutRect[]): Map<string, { readonly leaf: ReplacedLeaf; readonly content: ObjectRect }> {
   const zoomed = engine.zoomInput(input, engine.noFaults);
   const abs = new Map<string, { x: number; y: number; width: number; height: number }>();
   for (const b of boxes) {
     const p = b.parent === null ? undefined : abs.get(b.parent);
     abs.set(b.id, { x: (p === undefined ? 0 : p.x) + b.x, y: (p === undefined ? 0 : p.y) + b.y, width: b.width, height: b.height });
   }
-  const out = new Map<string, ReplacedPaint>();
+  const out = new Map<string, { leaf: ReplacedLeaf; content: ObjectRect }>();
   const contentWidth = (id: string, style: LayoutStyle, cb: number): number => {
     const r = abs.get(id);
     if (r === undefined) throw new Error(`no laid-out box ${id}`);
@@ -173,7 +180,7 @@ export function replacedGeometries(engine: ExpectedEngine, input: LayoutInput, b
         const left = bor.left + pad.left;
         const top = bor.top + pad.top;
         const content = { x: r.x + left, y: r.y + top, width: Math.max(0, r.width - left - bor.right - pad.right), height: Math.max(0, r.height - top - bor.bottom - pad.bottom) } as ObjectRect;
-        out.set(c.id, engine.replacedPaint(c, content));
+        out.set(c.id, { leaf: c, content });
       }
     }
   };

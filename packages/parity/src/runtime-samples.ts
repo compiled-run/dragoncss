@@ -132,13 +132,11 @@ export function samplePrepare(sample: RuntimeSample): (page: Page) => Promise<vo
  * reference shaped measurer the lanes lay out with. plant rewrites each layout input first (a planted fault).
  */
 export function fixtureRuntimeLayout(viewport: { readonly width: number; readonly height: number }, plant: ((input: LayoutInput) => LayoutInput) | null = null): RuntimeImageLayout {
-  return {
-    devices: RUNTIME_DPRS.map((dpr) => ({ ...viewport, dpr })),
-    layout: (input) => {
-      const r = layoutWithFaults(plant === null ? input : plant(input), referenceShapedMeasurer(), NO_ENGINE_FAULTS);
-      return r.kind === 'ok' ? null : r.unsupported;
-    },
+  const layout = (input: LayoutInput) => {
+    const r = layoutWithFaults(plant === null ? input : plant(input), referenceShapedMeasurer(), NO_ENGINE_FAULTS);
+    return r.kind === 'ok' ? null : r.unsupported;
   };
+  return { devices: RUNTIME_DPRS.map((dpr) => ({ ...viewport, dpr, layout })) };
 }
 
 export const runtimeCaptureDir = (platform: string = REFERENCE_PLATFORM): string => repoPath(`packages/parity/expected-runtime/${platform}`);

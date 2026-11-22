@@ -13,17 +13,19 @@ import type { Band } from '../media/band.ts';
 import { contains } from '../media/band.ts';
 import type { Diagnostic, Origin } from '../types.ts';
 
-/** A device the build lays every case out at: its viewport in CSS px and its DPR. */
-export type LayoutDevice = { readonly width: number; readonly height: number; readonly dpr: number };
-
 /**
- * The build-time layout a compile with a runtimeSrc img needs (InternalOptions.runtimeImageLayout): the export devices, and the
- * engine's layout with the build's text measurer, which gives the engine's refusal or null.
+ * A device the build lays every case out at: its viewport in CSS px, its DPR, and the engine's layout with the device's text
+ * measurer, which gives the engine's refusal or null.
  */
-export type RuntimeImageLayout = {
-  readonly devices: readonly LayoutDevice[];
+export type LayoutDevice = {
+  readonly width: number;
+  readonly height: number;
+  readonly dpr: number;
   readonly layout: (input: LayoutInput) => { readonly code: string; readonly nodeId: string; readonly detail: string } | null;
 };
+
+/** The build-time layout a compile with a runtimeSrc img needs (InternalOptions.runtimeImageLayout): the export devices. */
+export type RuntimeImageLayout = { readonly devices: readonly LayoutDevice[] };
 
 type OriginOf = (root: ResolvedElement, address: string) => Origin;
 
@@ -127,8 +129,11 @@ export function runtimeLayoutRefusals(trees: readonly { readonly tree: LayoutBox
     const edges = t.band === null ? [] : layout.devices.flatMap((d) => bandEdgeWidths(t.band as Band, layout.devices).map((width) => ({ ...d, width })));
     for (const d of [...layout.devices, ...edges]) {
       const viewport = { width: d.width, height: d.height };
-      const r = layout.layout({ viewport, devicePixelRatio: d.dpr, viewportUnits: { small: viewport, large: viewport, dynamic: viewport }, safeArea: { top: 0, right: 0, bottom: 0, left: 0 }, rootFontSize: t.rootFontSize, root: t.tree });
-      if (r !== null && r.code === 'runtime-image-size') refuse(t.resolved, r.nodeId, `<img> ${r.nodeId} has a src set at run time, and ${r.detail}`);
+      const r = d.layout({ viewport, devicePixelRatio: d.dpr, viewportUnits: { small: viewport, large: viewport, dynamic: viewport }, safeArea: { top: 0, right: 0, bottom: 0, left: 0 }, rootFontSize: t.rootFontSize, root: t.tree });
+      if (r === null) continue;
+      if (r.code === 'runtime-image-size') refuse(t.resolved, r.nodeId, `<img> ${r.nodeId} has a src set at run time, and ${r.detail}`);
+      // A layout stopped before the img proves nothing about it.
+      else for (const id of leaves) refuse(t.resolved, id, `<img> ${id} has a src set at run time, and the build could not lay the page out at ${d.width}x${d.height} (${r.code} at ${r.nodeId}), so nothing proves its box does not follow its image`);
     }
   }
 }

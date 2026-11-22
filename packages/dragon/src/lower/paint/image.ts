@@ -152,7 +152,7 @@ export const IMAGE_LOWERING: PaintLowering<ImageWrite | SvgShapesWrite | Runtime
       'runtime-image': { key: 'dragonRuntimeImage', technique: 'dragon-owned-paint', detail: `DragonBoxView Bitmap drawn with Canvas.drawBitmap(src, dst, Paint(FILTER_BITMAP_FLAG)): ${RUNTIME_PAINT}; the destination rect in device px` },
     },
   },
-  css: { 'replaced-image': ['object-fit', 'object-position', 'image-rendering'], 'runtime-image': ['object-fit', 'object-position', 'image-rendering'], 'svg-shapes': ['fill', 'stroke', 'stroke-width', 'fill-opacity', 'stroke-opacity', 'stroke-linecap', 'stroke-linejoin', 'stroke-miterlimit', 'fill-rule', 'stroke-dasharray', 'stroke-dashoffset', 'cx', 'cy', 'r', 'x', 'y', 'paint-order', 'rx', 'ry', 'vector-effect', 'd'] },
+  css: { 'replaced-image': ['object-fit', 'object-position', 'image-rendering'], 'svg-shapes': ['fill', 'stroke', 'stroke-width', 'fill-opacity', 'stroke-opacity', 'stroke-linecap', 'stroke-linejoin', 'stroke-miterlimit', 'fill-rule', 'stroke-dasharray', 'stroke-dashoffset', 'cx', 'cy', 'r', 'x', 'y', 'paint-order', 'rx', 'ry', 'vector-effect', 'd'], 'runtime-image': ['object-fit', 'object-position', 'image-rendering'] },
   lower: ({ box, el, images, transformMoves }) => {
     if (box.kind === 'replaced' && el !== null && el.element.tag === 'svg') {
       const scene = svgSceneOf(el);

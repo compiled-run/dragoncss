@@ -6,7 +6,7 @@ import { NO_ENGINE_FAULTS } from './block.ts';
 import type { NaturalSizing, ObjectRect, PixelRect } from './replaced.ts';
 import { drawnObjectRect, naturalSizingOf, objectFitRect, pixelSnappedRect } from './replaced.ts';
 import { floorOf, froundOf } from './rt-easing.ts';
-import { fromCssPx } from './units.ts';
+import { fromCssPx, zoomCssPx } from './units.ts';
 
 /** A box's paint shape in device px: the snapped border-box edges, the border widths and the eight corner radii (horizontal then vertical, top-left first). */
 export type BoxShape = {
@@ -31,11 +31,12 @@ export function replacedPaint(leaf: ReplacedLeaf, content: ObjectRect): Replaced
 
 /**
  * REPL-r1: replacedPaint for an img whose src is set at run time, from the decoded image's size in CSS px (its pixel size; a plain
- * src has density 1; the compiler refuses replaced content under a zoom). Only the device, and the lanes' host per sample, call it.
+ * src has density 1), zoomed as the zoomed leaf's natural size is (environment.ts: by the device pixel ratio, since the compiler
+ * refuses replaced content under a CSS zoom). Only the device, and the lanes' host per sample, call it.
  */
-export function runtimeImagePaint(leaf: ReplacedLeaf, content: ObjectRect, width: number, height: number): ReplacedPaint {
-  const w = fromCssPx(width);
-  const h = fromCssPx(height);
+export function runtimeImagePaint(leaf: ReplacedLeaf, content: ObjectRect, width: number, height: number, zoom: number): ReplacedPaint {
+  const w = fromCssPx(zoomCssPx(width, zoom));
+  const h = fromCssPx(zoomCssPx(height, zoom));
   return paintOf(leaf, { width: w, height: h, ratio: w > 0 && h > 0 ? { width: w, height: h } : null }, content);
 }
 
