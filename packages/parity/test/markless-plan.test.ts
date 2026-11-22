@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import type { ControlBox, LayoutBox } from '@dragon/layout';
 import { checkboxMarks, fromRaw, LU_PER_PX, menuListArrow, menuListArrowBox, snapRect } from '@dragon/layout';
 import { describe, expect, it } from 'vitest';
-import { checkMarklessExport, marklessStyleExport } from '../src/markless-style-input.ts';
+import { checkMarklessExport, marklessStyleExport, marklessTextHeightProof } from '../src/markless-style-input.ts';
 import { paintRows } from '../src/markless-style-compare.ts';
 import type { MarklessPlan } from '../src/markless-plan.ts';
 import { PLAN_DENSITIES, planWidths } from '../src/markless-plan.ts';
@@ -172,6 +172,42 @@ describe('the layout plan of a Markless export', () => {
         if (before[i] === undefined) delete process.env[k];
         else process.env[k] = before[i];
       });
+    }
+  });
+
+  it('proves a page\'s text independent of the viewport height only from its own program, and names what it cannot prove', () => {
+    const proof = (css: string) => marklessTextHeightProof(withCss(css), FLUID, undefined, 'system');
+    expect(proof('')).toEqual({ ios: null, android: null });
+    // A block size in vh reaches no inline size, so the text cannot change.
+    expect(proof('.bar { min-height: 100vh; padding-top: 2vh; }')).toEqual({ ios: null, android: null });
+    expect(proof('.page { font-size: 4vh; }').ios).toMatch(/has a font size or line height in vh, vmin or vmax$/);
+    expect(proof('.page { width: 50vmin; }').ios).toMatch(/has an inline-axis length in vh, vmin or vmax$/);
+    expect(proof('.bar { height: 40vh; aspect-ratio: 2; }').ios).toMatch(/has an aspect-ratio$/);
+    expect(proof('.bar { display: flex; flex-direction: column; flex-wrap: wrap; height: 50vh; }').ios).toMatch(/is a multi-line column flex container$/);
+    expect(proof('@media (orientation: landscape) { .bar { color: red; } }').ios).toBe('a media query on orientation');
+  });
+
+  it('still checks the text at other heights on a page it cannot prove, and refuses one whose text follows the height', () => {
+    const path = 'examples/markless-styles/input/width-media.native-style-input.json';
+    const input = JSON.parse(readFileSync(repoPath(path), 'utf8')) as { css: string };
+    const tall = JSON.stringify({ ...input, css: `${input.css}\n.note { font-size: 4vh; }` });
+    expect(marklessTextHeightProof(tall, path).ios).not.toBeNull();
+    expect(() => marklessStyleExport(tall, path, undefined, 'system', undefined, true)).toThrow(/^ios: variant 0 at 320 x 320 css px and 2x (shapes|reads the metrics of) .*, which it does not at height 778; the plan records text at one viewport height/);
+  });
+
+  it('exports a proven page byte for byte as it does with the height check', () => {
+    const text = withCss('.bar { min-height: 100vh; }');
+    expect(marklessTextHeightProof(text, FLUID)).toEqual({ ios: null, android: null });
+    const before = process.env['DRAGON_PLAN_HEIGHT_CHECK'];
+    try {
+      process.env['DRAGON_PLAN_HEIGHT_CHECK'] = 'always';
+      const checked = marklessStyleExport(text, FLUID, undefined, 'system', undefined, true).exported;
+      delete process.env['DRAGON_PLAN_HEIGHT_CHECK'];
+      const proven = marklessStyleExport(text, FLUID, undefined, 'system', undefined, true).exported;
+      expect(JSON.stringify(proven, null, 1)).toBe(JSON.stringify(checked, null, 1));
+    } finally {
+      if (before === undefined) delete process.env['DRAGON_PLAN_HEIGHT_CHECK'];
+      else process.env['DRAGON_PLAN_HEIGHT_CHECK'] = before;
     }
   });
 

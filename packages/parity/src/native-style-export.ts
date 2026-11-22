@@ -256,7 +256,8 @@ export function nativeStyleExport(styles: NativeStyles, component: string, sourc
   const undecided = new Set<string>();
   const targets: { [T in NativeStyleTarget]?: ExportTarget } = {};
   // The plan checks its text at other heights unless Dragon's analysis proves the page's text cannot depend on the height.
-  const checksHeights = (o: Extract<NativeStyles['targets'][NativeStyleTarget], { readonly kind: 'emitted' }>): boolean => heightDependence(o.program, (o.bands?.table.atoms ?? []).map((a) => a.feature)) !== null;
+  // DRAGON_PLAN_HEIGHT_CHECK=always runs the check on every page, to compare a proven page's export with the check's.
+  const checksHeights = (o: Extract<NativeStyles['targets'][NativeStyleTarget], { readonly kind: 'emitted' }>): boolean => process.env['DRAGON_PLAN_HEIGHT_CHECK'] === 'always' || heightDependence(o.program, (o.bands?.table.atoms ?? []).map((a) => a.feature)) !== null;
   // The plan's recordings with systemFontsFor's fonts run in worker threads first, every target's ratios at once; each is used,
   // or its error thrown, where the target's plan is made.
   const recorded = new Map<NativeStyleTarget, readonly DensityResult[]>();
