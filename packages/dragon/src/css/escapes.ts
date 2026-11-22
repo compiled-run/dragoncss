@@ -202,7 +202,7 @@ const needsCanonical = (raw: string): boolean => /[\\\u0000]/.test(raw);
 type Mutable = { [key: string]: unknown };
 
 /** The functional pseudo-classes css-tree parses by name; with an escaped name it keeps their argument as Raw text. */
-const PSEUDO_ARGUMENTS: ReadonlySet<string> = new Set(['is', 'where', 'not', 'has', 'matches', 'nth-child', 'nth-last-child', 'nth-of-type', 'nth-last-of-type']);
+const PSEUDO_ARGUMENTS: ReadonlySet<string> = new Set(['is', 'where', 'not', 'has', 'matches', 'nth-child', 'nth-last-child', 'nth-of-type', 'nth-last-of-type', 'dir']);
 
 /**
  * Parses the Raw argument of a functional pseudo-class whose name was escaped, as css-tree would have under the decoded name, at the

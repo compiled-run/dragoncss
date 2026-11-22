@@ -30,6 +30,7 @@ import { MQ_R0_FAULTS } from './faults/mq-r0.ts';
 import { MULTICOL_FAULTS } from './faults/multicol.ts';
 import { OVFL_FAULTS } from './faults/ovfl.ts';
 import { SCROLL_CONTAINMENT_FAULTS } from './faults/scroll-containment.ts';
+import { SEL_DIR_FAULTS } from './faults/sel-dir.ts';
 import { SELD_FAULTS } from './faults/seld.ts';
 import { SELD_R2_FAULTS } from './faults/seld-r2.ts';
 import { SELECTORS_FAULTS } from './faults/selectors.ts';
@@ -83,6 +84,7 @@ export const FAULT_GROUPS = {
   multicol: MULTICOL_FAULTS,
   ovfl: OVFL_FAULTS,
   'scroll-containment': SCROLL_CONTAINMENT_FAULTS,
+  'sel-dir': SEL_DIR_FAULTS,
   seld: SELD_FAULTS,
   'seld-r2': SELD_R2_FAULTS,
   selectors: SELECTORS_FAULTS,

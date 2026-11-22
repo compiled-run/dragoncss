@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; }
+.page { height: 20px; }
+.open { --offset: 0%; --offset-mirror: 0%; }
+.part { --offset: -37%; --offset-mirror: 37%; }
+[ui-content][ui-orientation=horizontal] { position: fixed; inset-inline-start: 0; width: 61.7%; height: 7px; translate: var(--offset, 0%) 0; background-color: rgb(30, 90, 200); }
+[ui-content][ui-orientation=horizontal][ui-start] { inset-inline-start: auto; inset-inline-end: 0; translate: var(--offset-mirror, 0%) 0; background-color: rgb(200, 40, 40); }
+[ui-content][ui-orientation=horizontal]:dir(rtl) { translate: var(--offset-mirror, 0%) 0; }
+[ui-content][ui-orientation=horizontal][ui-start]:dir(rtl) { translate: var(--offset, 0%) 0; }
+.t0 { top: 0; }
+.t1 { top: 9px; }
+.t2 { top: 18px; }
+.t3 { top: 27px; }
+.t4 { top: 36px; }
+.t5 { top: 45px; }
+.t6 { top: 54px; }
+.t7 { top: 63px; }
+.t8 { top: 72px; }
+.t9 { top: 81px; }
+.t10 { top: 90px; }
+.t11 { top: 99px; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="top" class="page"><div data-dragon-id="d0" class="open t0" ui-content="" ui-orientation="horizontal"></div><div data-dragon-id="d1" class="part t1" ui-content="" ui-orientation="horizontal"></div><div data-dragon-id="d2" class="open t2" ui-content="" ui-orientation="horizontal" ui-start=""></div><div data-dragon-id="d3" class="part t3" ui-content="" ui-orientation="horizontal" ui-start=""></div></div>
+<div data-dragon-id="rtl" class="page" dir="rtl"><div data-dragon-id="r0" class="open t4" ui-content="" ui-orientation="horizontal"></div><div data-dragon-id="r1" class="part t5" ui-content="" ui-orientation="horizontal"></div><div data-dragon-id="r2" class="open t6" ui-content="" ui-orientation="horizontal" ui-start=""></div><div data-dragon-id="r3" class="part t7" ui-content="" ui-orientation="horizontal" ui-start=""></div></div>
+<div data-dragon-id="ltr" class="page" dir="ltr"><div data-dragon-id="l0" class="open t8" ui-content="" ui-orientation="horizontal"></div><div data-dragon-id="l1" class="part t9" ui-content="" ui-orientation="horizontal"></div><div data-dragon-id="l2" class="open t10" ui-content="" ui-orientation="horizontal" ui-start=""></div><div data-dragon-id="l3" class="part t11" ui-content="" ui-orientation="horizontal" ui-start=""></div></div>
+</body>
+</html>
