@@ -181,10 +181,11 @@ FW2 covers bundled faces and author `@font-face` files (sfnt, WOFF, WOFF2). It i
 
 ## Refused, by name (DRAGON_UNSUPPORTED_FONT or _VALUE, ios and android)
 
-- **After FW1:**
-  - a non-Ahem field whose used width may read its intrinsic width: `width: auto` or a keyword, an intrinsic min-width or max-width, or a flex or grid item with `min-width: auto`;
-  - a percentage width under a content-sized ancestor;
-  - a percentage-width grid item.
+- **After FW1** (iOS and Android only; web is not refused):
+  - a non-Ahem field whose used width may read its intrinsic width: `width: auto` or a keyword (`stretch` included), an intrinsic min-width or max-width, a flex or grid item with `min-width: auto`, or a row item with an intrinsic `flex-basis`;
+  - except a row flex item whose `flex-basis` is a definite length, with `min-width` set and `max-width` none, a length or a percentage, under no content-sized ancestor: its width is never used;
+  - a percentage `width` or row `flex-basis` under a content-sized ancestor (a length width with a percentage min-width or max-width is accepted);
+  - a grid item, by the existing grid-item refusal.
   - Each refusal names the box and its cause, through contentSizedFix.
 - **After FW2:**
   - system faces and variable instances;
@@ -197,12 +198,8 @@ FW2 covers bundled faces and author `@font-face` files (sfnt, WOFF, WOFF2). It i
 
 FW1:
 
-- **`controls-text-field-font-definite`:** Lato fields with `display:block` at `width:100%`, `120px` and `calc(50% + 10px)`; in a stretched column flex item; as a row flex item with `flex:1 1 0; min-width:0` and with `width:100%; min-width:0`; under `max-width:50px`; with `box-sizing: border-box` and padding. Run at DPR 1, 2, 2.625 and 3, with fractional containing-block widths.
-- **Reject fixtures:**
-  - `reject-controls-text-field-font-auto`: `width:auto`, `margin:0 auto` and `fit-content`;
-  - `reject-controls-text-field-font-flex-min`: `flex:1` with `min-width:auto`;
-  - `reject-controls-text-field-font-shrink`: `width:100%` in an inline-block, a float and an abspos;
-  - `reject-controls-text-field-font-grid`.
+- **`controls-text-field-font-definite`** (ltr only; see the verdict): Lato fields with `display:block` at `width:100%`, `120px` and `calc(50% + 10px)`; under `max-width:50px`; with `box-sizing: border-box` and padding; in a stretched column flex item with a length or percentage width; as a row flex item with `flex:1 1 0; min-width:0` and with `width:100%; min-width:0`; a 120px field with `max-width:100%` in a float and in an inline-block, and with `min-width:50%` in a float, each in a 100px block; and an Ahem field with `width: fit-content`. Run at DPR 1, 2, 2.625 and 3, with fractional containing-block widths.
+- **No reject fixtures.** The refusals are native-only, which the reject fixture judge cannot express, so packages/parity/test/form-b-text-field.test.ts proves each refused shape: refused on iOS and Android, no web error, and under `fieldWidthAnyContext` the engine layout of the iOS projection throws `text-field-avg-char` (or the engine's own `flex-basis-content` for `flex-basis: content`).
 
 FW2b:
 
@@ -269,3 +266,59 @@ The probe was a style input of the notes `/` search field and the NoteForm title
 7. **Primary face vs. family name.** The name test reads the first *listed* family, while A and M come from the primary *face*. When the first family has no face (`"No Such Face", Arial` measured as Arial, valid), the name test still reads "No Such Face". Refuse fields whose first family resolves to no face (proposed), or model it?
 8. **Fixture faces.** Vendored Lato and Inter carry the proofs. Que Grotesque was measured only as evidence, because its licence for vendoring is unknown. Is that enough for Markless, given that the model reads only the `x` advance and the ascent from the face's own file?
 9. **System faces.** SF and PingFang take A from Core Text's untracked `x` advance, which differs from the shaped `x`. This needs its own slice through the system-fonts provider. Leave them refused after FW2 (proposed)?
+
+## Judge verdict (2026-11-22)
+
+Approved, with these rulings and amendments.
+
+### Rulings
+
+1. **LGPL.** The formula and the 1.7 heuristic are class A Chrome observations, so no clean room is needed. The 34-name list may be used under class A only as the generated output of a capture script that probes every candidate name. FW2b waits for the PM's T118J-style note and for ports.json entries for layout_text_control.cc and the TextFieldIntrinsicInlineSize range in layout_box.cc.
+2. **Platform.** darwin-arm64 only.
+3. **Compressible contributions.** FW3 is a separate, engine-wide slice.
+4. **`width: stretch`** is refused.
+5. **The Linux Chrome lane** stays refused.
+6. **A face with no `x`** is refused.
+7. **Primary face.** A field is refused when its primary face is not the first listed family's face, including a unicode-range without U+0020 and split segments.
+8. **Fixture faces.** Test with Lato and Inter static, and add Lato-Regular.hmtx.woff2.
+9. **System faces** stay refused.
+
+### Amendments
+
+- The percentage grid-item branch cannot be reached today, because refuseGridItem refuses every text field that is a grid item, so FW1 writes no such branch.
+- The accept fixture's stretched column flex item has a length or percentage width.
+- One case-preserving family helper reads the parsed font-family list and replaces the split and regex. The check and the lowering both use it.
+- The ControlKind field is `avgChar: 'ahem' | 'unmeasured'`, which replaces the `'proven'` of slice FW1 step 2.
+- The FW2b `1.7 ×` fixture tests both sides of the threshold.
+- FW2b carries the Q7 refusals.
+- Board note: FW1 and FW2 together build neither notes field. They still need FORM-b editing, SELD-R2b hit testing, the `search` input type and RF-INL (or `display: block`), grid-control, and FW3.
+
+### Rulings during the FW1 build
+
+- **D1, native-only refusals.** The reject fixture judge requires the web output blocked, and FW1's refusals are iOS and Android only. So FW1 has no reject fixtures: each refused shape is proven in form-b-text-field.test.ts, as bidi.ts, visibility.ts and clip-path.ts prove theirs. It is refused on iOS and Android, web has no error, and with `fieldWidthAnyContext` the engine layout of the iOS projection throws `text-field-avg-char`. `flex-basis: content` throws the engine's own `flex-basis-content` first, which is its proof.
+- **D2, the percentage min-width and max-width amendment is reversed.** Measured in Chrome 145 (Lato 16px, 8px of border and padding): a 120px field with `max-width: 100%` in a 100px-wide float or inline-block is 128px, and with `min-width: 50%` in a float 128px; only a percentage `width` is compressed (a `width: 100%` field in a 100px float leaves the float 100px wide). So contentSizedAncestor runs only for a percentage `width` or row `flex-basis`, and those three shapes are accept cases in controls-text-field-font-definite.
+- **Flex exemption.** A row flex item with `width: auto` or a keyword is accepted when its `flex-basis` is a definite length (0 included, not a percentage), `min-width` is not auto, `max-width` is none, a length or a percentage, and contentSizedAncestor(chain) is null. A percentage basis and a column flex item with an auto width stay refused.
+- **Refused by ruling, not by a read.** `width: stretch` (Q4) and a percentage flex basis read no intrinsic width in the engine, so no fault can make them throw; their tests prove the refusal only.
+- **RTL.** Every rtl text field, Ahem included, is refused on every target by its editor's preserved white space (DRAGON_UNSUPPORTED_BIDI), so controls-text-field-font-definite is ltr only, as controls-text-field is, and a unit test pins that refusal for a Lato field.
+- **Fix found during the build.** blockLevelInlineSize resolved a text field's keyword sizes (`fit-content`, `min-content`, `max-content` in width, min-width and max-width) on the field as a plain box, which reads the editor's text instead of the field's default size. That is wrong against Chrome even for Ahem, and it skipped the tripwire. It now resolves them on the control; the accept fixture's Ahem `width: fit-content` field matches Chrome at the four DPRs.
+- **Vectors.** The committed controls-text-field vectors gain `"avgChar": "ahem"` in their input; no output byte changes.
+
+### FW1 file list
+
+- packages/dragon/src/analysis/computed-checks.ts, packages/dragon/src/faults.ts, packages/dragon/src/lower/ios-layout.ts
+- packages/layout/src/input.ts, intrinsic.ts, unsupported.ts
+- packages/translate/harness/harness.ts
+- packages/dragon/test/forms/forms.test.ts, packages/layout/test/controls.test.ts, packages/parity/test/form-b-text-field.test.ts
+- the fixture controls-text-field-font-definite (the four reject-controls-text-field-font-* fixtures were written and then deleted under D1)
+- this spec, and the regenerated outputs of controls-text-field and controls-text-field-font-definite
+
+These were added during the build, because the pass-through, the schema, the fault-group layout and fixture registration need them:
+
+- packages/layout/src/environment.ts (resolveControl passes avgChar through);
+- packages/layout/src/validate.ts (controlKindSchema gets avgChar);
+- packages/dragon/src/faults/field-font-width.ts, a new file for fieldWidthAnyContext, with its line in faults.ts FAULT_GROUPS;
+- packages/parity/src/fixture-groups/controls.ts (registers the fixture);
+- packages/parity/test/controls-identity.test.ts (the controls fixture counts).
+- packages/layout/src/block.ts (blockLevelInlineSize reads a fitting control's intrinsic width only when its width is auto; it read it eagerly and threw the result away whenever a width was set, which fired the tripwire on every block-level field. It also resolves a text field's keyword sizes on the control: the fix above).
+
+The FW2a and FW2b file lists are set when those slices are dispatched.
