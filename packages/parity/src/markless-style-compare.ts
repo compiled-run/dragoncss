@@ -14,7 +14,9 @@ import { FONT_REFERENCE_MAP, fontReferencePrepare } from './font-reference.ts';
 import type { CapturedNode } from './capture.ts';
 import type { MarklessCompiledTarget, MarklessExportAssignment, MarklessFontFile, MarklessFonts, MarklessStyleExport, MarklessStyleInput } from './markless-style-input.ts';
 import { armShown, assignmentCombinations, checkMarklessExport, filledAtInitial, MARKLESS_BOXLESS_ATTRIBUTE, marklessCompiledTargets, marklessDocumentCss, marklessNodeId, marklessShownModal, schemeOf, shownText, valueUnder } from './markless-style-input.ts';
-import type { ExportAssignment, ExportTarget, NativeStyleExport } from './native-style-export.ts';
+import type { ExportAssignment, ExportInteractionMatch, ExportNode, ExportTarget, NativeStyleExport } from './native-style-export.ts';
+import type { ForcedPseudo } from './cases.ts';
+import { forcePseudo } from './forced-pseudo.ts';
 import { decodePng } from './pixel-reference.ts';
 import type { SystemFonts } from './system-fonts/provider.ts';
 import { systemFontsFor, systemRequestOf } from './system-fonts/provider.ts';
@@ -533,7 +535,42 @@ export function pairBoxes(input: MarklessStyleInput, assignment: ExportAssignmen
 }
 
 /** A measured box, or (maxDeltaDevicePx null, never passing) a box only one side has, with the problem named. */
-export type CompareRow = { readonly target: string; readonly values: Values; readonly id: string; readonly maxDeltaDevicePx: number | null; readonly pass: boolean; readonly problem?: string };
+export type CompareRow = { readonly target: string; readonly values: Values; readonly state?: string; readonly id: string; readonly maxDeltaDevicePx: number | null; readonly pass: boolean; readonly problem?: string };
+
+/** Chrome's computed background-color as 8-bit RGBA, or null when it is not an rgb() or rgba() colour. */
+function computedRgba(text: string | undefined): Rgba8 | null {
+  const m = text === undefined ? null : /^rgba?\(([\d.]+), ([\d.]+), ([\d.]+)(?:, ([\d.]+))?\)$/.exec(text);
+  if (m === null) return null;
+  return { r: Number(m[1]), g: Number(m[2]), b: Number(m[3]), alpha: Math.round(255 * (m[4] === undefined ? 1 : Number(m[4]))) };
+}
+
+/**
+ * An interaction state's pressed paint against Chrome forced into the state: each node whose background colour the state changes
+ * from its assignment, the export's colour against Chrome's computed one. A changed write of another kind is a failing row naming it.
+ */
+export function interactionPaintRows(target: string, state: string, base: ExportAssignment, a: ExportAssignment, captured: readonly CapturedNode[]): CompareRow[] {
+  const rows: CompareRow[] = [];
+  const before = new Map(base.nodes.map((n) => [n.id, n]));
+  const chrome = new Map(captured.filter((c) => c.kind === 'element').map((c) => [c.id, c]));
+  for (const n of a.nodes) {
+    const was = before.get(n.id);
+    if (was === undefined || JSON.stringify(was.writes) === JSON.stringify(n.writes)) continue;
+    const byKind = (writes: ExportNode['writes']): Map<string, string> => new Map(writes.map((w) => [String(w['kind']), JSON.stringify(w)]));
+    const now = byKind(n.writes);
+    const then = byKind(was.writes);
+    const kinds = [...new Set([...now.keys(), ...then.keys()])].filter((k) => now.get(k) !== then.get(k));
+    for (const kind of kinds) {
+      if (kind !== 'background-color') {
+        rows.push({ target, values: a.values, state, id: n.id, maxDeltaDevicePx: null, pass: false, problem: `the state changes its ${kind} write, which this comparison does not read from Chrome yet` });
+        continue;
+      }
+      const exported = n.writes.find((w) => w['kind'] === 'background-color')?.['color'];
+      const got = computedRgba(chrome.get(n.id)?.computed?.['background-color']);
+      rows.push({ target, values: a.values, state, id: n.id, maxDeltaDevicePx: null, pass: got !== null && JSON.stringify(got) === JSON.stringify(exported), ...(got !== null && JSON.stringify(got) === JSON.stringify(exported) ? {} : { problem: `background-color ${JSON.stringify(exported ?? null)} in the export, ${JSON.stringify(got)} in Chrome` }) });
+    }
+  }
+  return rows;
+}
 
 /**
  * With `screenshots`, Chrome's rendering of each assignment is saved there as `<target>-<assignment>.png`, the reference a device
@@ -562,7 +599,12 @@ export async function compareMarklessExport(input: MarklessStyleInput, given: Na
     await withCleanup(async (undo) => {
       const browser: Browser = await launchChrome(t.dpr);
       undo('close Chrome', () => browser.close());
-      for (const [index, assignment] of t.assignments.entries()) {
+      // Each assignment, then each of its interaction states with Chrome forced into it (CSS.forcePseudoState, as DevTools does).
+      const views = [
+        ...t.assignments.map((assignment, index) => ({ label: `${index}`, assignment, forced: [] as readonly { readonly address: string; readonly pseudo: string }[], base: null as MarklessExportAssignment | null })),
+        ...(t.interaction?.levels ?? []).flatMap((l, i) => l.states.map((st, k) => ({ label: `${i}-state${k}`, assignment: st as MarklessExportAssignment, forced: (l.matches[k] as ExportInteractionMatch).force, base: t.assignments[i] as MarklessExportAssignment }))),
+      ];
+      for (const { label, assignment, forced, base } of views) {
         const band = assignment.values[BAND_KEY];
         const scheme = typeof band === 'number' ? schemeOf(t.bands, band) : unbanded;
         const byId = new Map(assignment.nodes.map((n) => [n.id, n]));
@@ -572,16 +614,22 @@ export async function compareMarklessExport(input: MarklessStyleInput, given: Na
           const p = n.parent === null ? { x: 0, y: 0 } : absolute(n.parent);
           return { x: p.x + n.frame.x, y: p.y + n.frame.y, width: n.frame.width, height: n.frame.height };
         };
-        const prepare = fontMode === 'system' ? systemFontReference(target as 'ios' | 'android', exported.systemFonts ?? []) : fontReferencePrepare(FONT_REFERENCE_MAP);
-        const capture = await captureMarklessAssignment(browser, input, t, assignment.values, scheme, { mode: fontMode, files, prepare }, screenshots === undefined ? undefined : join(screenshots, `${target}-${index}.png`));
-        paint.push(...paintRows(target, assignment, await chromePagePaint(browser, authoredFontHtml(marklessDocumentHtml(input, assignment.values, fontMode), files), input, t, assignment.values, scheme)));
+        const fontPrepare = fontMode === 'system' ? systemFontReference(target as 'ios' | 'android', exported.systemFonts ?? []) : fontReferencePrepare(FONT_REFERENCE_MAP);
+        const force = forcePseudo(forced as readonly ForcedPseudo[]);
+        const prepare = forced.length === 0 ? fontPrepare : async (page: Page): Promise<void> => {
+          await fontPrepare(page);
+          await force(page);
+        };
+        const capture = await captureMarklessAssignment(browser, input, t, assignment.values, scheme, { mode: fontMode, files, prepare }, screenshots === undefined ? undefined : join(screenshots, `${target}-${label}.png`));
+        if (base === null) paint.push(...paintRows(target, assignment, await chromePagePaint(browser, authoredFontHtml(marklessDocumentHtml(input, assignment.values, fontMode), files), input, t, assignment.values, scheme)));
+        else rows.push(...interactionPaintRows(target, label, base, assignment, capture.nodes));
         const paired = pairBoxes(input, assignment, capture.nodes);
-        for (const { id, kind } of paired.problems) rows.push({ target, values: assignment.values, id, maxDeltaDevicePx: null, pass: false, problem: CHROME_PROBLEM[kind] });
+        for (const { id, kind } of paired.problems) rows.push({ target, values: assignment.values, ...(base === null ? {} : { state: label }), id, maxDeltaDevicePx: null, pass: false, problem: CHROME_PROBLEM[kind] });
         for (const { id, c } of paired.pairs) {
           const d = absolute(id);
           const chrome = { x: c.x * t.dpr, y: c.y * t.dpr, width: c.width * t.dpr, height: c.height * t.dpr };
           const delta = Math.max(...(['x', 'y', 'width', 'height'] as const).map((k) => Math.abs(chrome[k] - d[k])));
-          rows.push({ target, values: assignment.values, id, maxDeltaDevicePx: Number(delta.toFixed(4)), pass: delta <= GATE_DEVICE_PX });
+          rows.push({ target, values: assignment.values, ...(base === null ? {} : { state: label }), id, maxDeltaDevicePx: Number(delta.toFixed(4)), pass: delta <= GATE_DEVICE_PX });
         }
       }
     });
