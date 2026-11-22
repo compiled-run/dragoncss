@@ -163,11 +163,11 @@ fun scriptData_isExtendedPictographic(cp: Double): Boolean {
 fun scriptData_isLatinText(text: String): Boolean {
   // ts: packages/layout/src/script-data.ts:552
   run {
-    val _a335 = jsCodePoints(text)
-    var _i335 = 0
-    while (_i335 < _a335.size) {
-      val ch: String = _a335[_i335]
-      _i335++
+    val _a337 = jsCodePoints(text)
+    var _i337 = 0
+    while (_i337 < _a337.size) {
+      val ch: String = _a337[_i337]
+      _i337++
       val s: Double = scriptData_scriptCode(jsUnwrap(jsCodePointAt0(ch)))
       // ts: packages/layout/src/script-data.ts:554
       if ((((s != scriptData_USCRIPT_LATIN) && (s != scriptData_USCRIPT_COMMON)) && (s != scriptData_USCRIPT_INHERITED))) {
