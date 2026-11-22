@@ -32,7 +32,7 @@ describe('EMS: engine paint seams', () => {
   it('index.ts exports the paint seam with one line, and each filled seam with its own lines', () => {
     const lines = readFileSync(join(layout, 'src/index.ts'), 'utf8').split('\n').filter((l) => l.includes("'./paint"));
     // REPL-a adds the replacedPaint root and its result type beside the seam's BoxShape; PNT1 adds opacityAlpha8 to its line, and
-    // the outline styles add outlineNeedsSidePainter and outlinePaintOps to paint-dash's; PNT1-opacity-b adds paint-group's line, and FORM-b paint-menulist's two. TXT-FX adds textShadowLayerOver and
+    // the outline styles add outlineNeedsSidePainter and outlinePaintOps to paint-dash's; PNT1-opacity-b adds paint-group's line (with PNT1-opacity-d's groupCompositeLayered), and FORM-b paint-menulist's two. TXT-FX adds textShadowLayerOver and
     // textShadowLayerOverTexts (with its TextLinePaint) to paint-shadow's, and the blur margin helpers its text-shadow sample points read;
     // the shadows of a scaled or translated box add the mapped layers and their ShadowTransform.
     expect(lines).toEqual([
@@ -40,7 +40,7 @@ describe('EMS: engine paint seams', () => {
       "export { opacityAlpha8, replacedPaint } from './paint.ts';",
       "export type { MenuListArrowPaint } from './paint-menulist.ts';",
       "export { menuListArrows } from './paint-menulist.ts';",
-      "export { groupComposite, groupFill, groupFilterComposite, groupFilterMatrices, groupFilterMatrix, groupFoldAlpha, groupPack, groupTileFoldIndex, groupTileFolds, groupTileIndex, groupTileSize, groupTileSpan } from './paint-group.ts';",
+      "export { groupComposite, groupCompositeLayered, groupFill, groupFilterComposite, groupFilterMatrices, groupFilterMatrix, groupFoldAlpha, groupPack, groupTileFoldIndex, groupTileFolds, groupTileIndex, groupTileSize, groupTileSpan } from './paint-group.ts';",
       "export type { BoxShape } from './paint.ts';",
       "export type { RadiusFaults, RadiusLength } from './paint-radius.ts';",
       "export { borderDoubleRings, hasRoundedCorner, NO_RADIUS_FAULTS, outlineOffsetPx, outlineRings, outlineWidthPx, roundedShape } from './paint-radius.ts';",
