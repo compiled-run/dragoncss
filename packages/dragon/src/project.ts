@@ -311,6 +311,8 @@ export type InternalOptions = {
   readonly hostCanvas?: boolean;
   /** The host app runs a form's submission and reset (a Markless host), so a submit or reset button inside a <form> compiles. */
   readonly hostForms?: boolean;
+  /** The host draws and edits every text field natively (a Markless host), so an editable field is laid out; else native refuses it. */
+  readonly hostTextEditing?: boolean;
   /** The host's Brotli decoder, which a WOFF2 @font-face src needs; without one a WOFF2 is DRAGON_FONT_UNREADABLE (no-brotli). */
   readonly brotliDecompress?: BrotliDecompress;
   /**
@@ -336,6 +338,7 @@ type Resolved = {
   readonly hostTopLayer: boolean;
   readonly hostCanvas: boolean;
   readonly hostForms: boolean;
+  readonly hostTextEditing: boolean;
   readonly systemFonts: boolean;
   readonly nativeLanes: NativeLanes | null;
   readonly brotliDecompress: BrotliDecompress | null;
@@ -1005,7 +1008,7 @@ function checkCases(linked: Linked, rules: readonly Rule[], targets: readonly Kn
   const { contextual: reported, refused, fonts, fenced, fontDeferrals } = seen;
   const keys = projectFonts === null ? NO_FONTS : projectFonts.keys;
   const out: CaseResult[] = [];
-  const env = { direction: options.direction, rootFont: options.rootFont, ua: options.ua, registered, colorScheme, hostCanvas: options.hostCanvas };
+  const env = { direction: options.direction, rootFont: options.rootFont, ua: options.ua, registered, colorScheme, hostCanvas: options.hostCanvas, hostTextEditing: options.hostTextEditing };
   // Every check of a case runs on each of its interaction states too, so a refusal inside a hover rule is reported (SELD-R2a).
   const check = (resolved: ResolvedElement): UsedKey[] => {
     const computedAt = diagnostics.length;
@@ -2018,6 +2021,7 @@ export function createProjectWith<const T extends Targets>(config: ProjectConfig
     hostTopLayer: options.hostTopLayer === true,
     hostCanvas: options.hostCanvas === true,
     hostForms: options.hostForms === true,
+    hostTextEditing: options.hostTextEditing === true,
     systemFonts: options.systemFonts === true,
     nativeLanes: options.nativeLanes === undefined ? null : options.nativeLanes,
     brotliDecompress: options.brotliDecompress ?? null,

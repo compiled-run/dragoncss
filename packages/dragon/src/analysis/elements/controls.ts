@@ -15,14 +15,14 @@ export const CONTROL_TAGS: readonly string[] = ['button', 'input', 'select'];
 
 /**
  * The UA dataset key of a control: a button's UA rules do not depend on its type (controls-button-type proves it), but do on
- * :disabled (html.css's disabled colours, captured as button[disabled]); an input's do, and only type=range (ASCII
- * case-insensitive, HTML §4.10.5) is laid out; any other input reads the plain input key and is refused (computed-checks.ts).
+ * :disabled (html.css's disabled colours, captured as button[disabled]); an input's do, and only type=range and type=search
+ * (ASCII case-insensitive, HTML §4.10.5) read keys of their own; any other input reads the plain input key.
  */
 export function controlUaKey(tag: string, type: string | undefined, disabled = false): ControlKey | null {
   if (tag === 'button') return disabled ? 'button[disabled]' : 'button';
   // html.css select:disabled gives opacity, border colour and colour, captured on a disabled select.
   if (tag === 'select') return disabled ? 'select[disabled]' : 'select';
-  if (tag === 'input') return isRangeType(type) ? 'input[type=range]' : 'input';
+  if (tag === 'input') return isRangeType(type) ? 'input[type=range]' : inputTypeState(type) === 'search' ? 'input[type=search]' : 'input';
   return null;
 }
 
@@ -36,8 +36,11 @@ export function isRangeType(type: string | undefined): boolean {
 /** Every input type keyword HTML §4.10.5 defines; any other value, or none, is the Text state. */
 const INPUT_TYPES: ReadonlySet<string> = new Set(['hidden', 'text', 'search', 'tel', 'url', 'email', 'password', 'date', 'month', 'week', 'time', 'datetime-local', 'number', 'range', 'color', 'checkbox', 'radio', 'file', 'submit', 'image', 'reset', 'button']);
 
-/** The single-line text field states FORM-c lays out: their UA shadow tree is the inner editor alone (no decoration container). */
-const TEXT_FIELD_TYPES: ReadonlySet<string> = new Set(['text', 'tel', 'url', 'email', 'password']);
+/**
+ * The single-line text field states FORM-c lays out: their UA shadow tree is the inner editor alone, except search's, whose
+ * decoration container also holds the cancel button (the engine's controls.ts searchCancelButtonSize).
+ */
+const TEXT_FIELD_TYPES: ReadonlySet<string> = new Set(['text', 'search', 'tel', 'url', 'email', 'password']);
 
 /** HTML §4.10.5: an input's type state, the keyword ASCII-lowercased; a missing or unknown type is text. */
 export function inputTypeState(type: string | undefined): string {

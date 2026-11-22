@@ -36,6 +36,7 @@ export const CONTROLS: readonly FixtureSpec[] = [
   both('controls-range-block'),
   both('controls-range-flex'),
   layout('controls-text-field'),
+  layout('controls-text-field-search'),
   both('controls-select-none'),
   both('controls-select-button'),
   layout('controls-select-label'),

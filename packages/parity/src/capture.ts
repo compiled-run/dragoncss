@@ -240,8 +240,11 @@ async function captureRangeParts(page: Page, props: readonly string[]): Promise<
   return out;
 }
 
-/** The input types whose UA shadow tree is a placeholder and an inner editor alone (dragon's isTextFieldType, HTML §4.10.5). */
-const TEXT_FIELD_TYPES = ['text', 'tel', 'url', 'email', 'password'];
+/**
+ * The input types whose UA shadow tree is a placeholder and an inner editor (dragon's isTextFieldType, HTML §4.10.5); a search
+ * field's editor sits in its decoration container's editing view port, beside the cancel button.
+ */
+const TEXT_FIELD_TYPES = ['text', 'search', 'tel', 'url', 'email', 'password'];
 const INPUT_TYPES = ['hidden', 'text', 'search', 'tel', 'url', 'email', 'password', 'date', 'month', 'week', 'time', 'datetime-local', 'number', 'range', 'color', 'checkbox', 'radio', 'file', 'submit', 'image', 'reset', 'button'];
 const isTextFieldInput = (type: string | undefined): boolean => {
   const t = type === undefined || !INPUT_TYPES.includes(type.toLowerCase()) ? 'text' : type.toLowerCase();
@@ -292,7 +295,10 @@ async function withTextFieldParts(page: Page, f: (cdp: CDPSession, fields: reado
     const fields = inputs.map(({ id, node }) => {
       const kids = (node.shadowRoots?.[0]?.children ?? []).filter((k) => k.nodeName === 'DIV');
       const placeholder = kids.find((k) => (k.attributes ?? []).includes('placeholder'));
-      const editor = kids.find((k) => k !== placeholder);
+      const container = kids.find((k) => (k.attributes ?? []).includes('text-field-container'));
+      const viewPort = container?.children?.find((k) => (k.attributes ?? []).includes('editing-view-port'));
+      if (container !== undefined && viewPort === undefined) throw new Error(`${id}: CDP exposed a decoration container without an editing view port`);
+      const editor = viewPort !== undefined ? viewPort.children?.find((k) => k.nodeName === 'DIV') : kids.find((k) => k !== placeholder);
       if (editor === undefined) throw new Error(`${id}: CDP exposed no user-agent shadow inner editor`);
       return { id, parts: [...(placeholder === undefined ? [] : [['placeholder', placeholder] as const]), ['editor', editor] as const] };
     });
