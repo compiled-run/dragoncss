@@ -45,7 +45,7 @@ export const CONTROLS: readonly FixtureSpec[] = [
   reject('reject-checkbox-padding', 'DRAGON_UNSUPPORTED_VALUE', '3px', 'padding-top: 3px on <input type=checkbox> c is not supported'),
   reject('reject-checkbox-accent-alpha', 'DRAGON_UNSUPPORTED_VALUE', 'rgb(0 0 0 / 0.5)', 'a translucent accent-color on <input type=checkbox> c'),
   reject('reject-checkbox-disabled', 'DRAGON_UNSUPPORTED_ATTRIBUTE', '<input data-dragon-id="c" type="checkbox" disabled="">', 'attribute disabled on c is not supported'),
-  reject('reject-checkbox-stretch', 'DRAGON_UNSUPPORTED_VALUE', 'auto', '<input type=checkbox> c with width: auto is stretched by its flex container'),
+  reject('reject-checkbox-stretch', 'DRAGON_UNSUPPORTED_VALUE', '<input data-dragon-id="c" type="checkbox">', '<input type=checkbox> c with width: auto is stretched by its flex container'),
   reject('reject-checkbox-radio', 'DRAGON_UNSUPPORTED_ELEMENT', '<input data-dragon-id="c" type="radio">', '<input> c of type radio is not supported'),
   layout('controls-search'),
   reject('reject-controls-search-align', 'DRAGON_UNSUPPORTED_VALUE', 'center', 'text-align: center on the search field s is not supported'),
@@ -58,7 +58,7 @@ export const CONTROLS: readonly FixtureSpec[] = [
   both('controls-select-natural-width'),
   reject('reject-controls-select-multiple', 'DRAGON_UNSUPPORTED_ELEMENT', '<select data-dragon-id="s" multiple=""><option data-dragon-id="o">A</option></select>', '<select multiple> s is a list box, which waits for the FORM-b listbox package'),
   reject('reject-controls-select-appearance', 'DRAGON_UNSUPPORTED_VALUE', '<select data-dragon-id="s"><option data-dragon-id="o">A</option></select>', '<select> s with appearance: auto and no author background, border or box-shadow is Chrome\'s themed menulist'),
-  reject('reject-controls-select-width', 'DRAGON_UNSUPPORTED_VALUE', '<select data-dragon-id="s"><option data-dragon-id="o">A</option></select>', 'width: auto on <select> s is not supported: Chrome sizes a select to its widest option'),
+  reject('reject-controls-select-width', 'DRAGON_UNSUPPORTED_VALUE', '<select data-dragon-id="s" data-dragon-listed-options=""><option data-dragon-id="o">A</option></select>', 'width: auto on <select> s is not supported: Chrome sizes a select to its widest option'),
   reject('reject-controls-select-optgroup', 'DRAGON_UNSUPPORTED_ELEMENT', '<optgroup data-dragon-id="g"><option data-dragon-id="o">A</option></optgroup>', '<optgroup> g is not supported: an option group waits for FORM-b select'),
   // GRID-items: a range stays refused as a grid item; a fieldset's refusal is reject-fieldset-grid-item.
   reject('reject-grid-control-range', 'DRAGON_UNSUPPORTED_VALUE', '<input data-dragon-id="r" type="range">', '<input> r is a grid item, and a form control as a grid item is not supported yet'),
