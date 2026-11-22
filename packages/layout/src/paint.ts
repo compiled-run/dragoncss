@@ -3,9 +3,10 @@
 // device, so it lives in the paint-*.ts roots (translate/src/generate.ts), never in the compiler.
 import type { ReplacedLeaf } from './input.ts';
 import { NO_ENGINE_FAULTS } from './block.ts';
-import type { ObjectRect, PixelRect } from './replaced.ts';
+import type { NaturalSizing, ObjectRect, PixelRect } from './replaced.ts';
 import { drawnObjectRect, naturalSizingOf, objectFitRect, pixelSnappedRect } from './replaced.ts';
 import { floorOf, froundOf } from './rt-easing.ts';
+import { fromCssPx } from './units.ts';
 
 /** A box's paint shape in device px: the snapped border-box edges, the border widths and the eight corner radii (horizontal then vertical, top-left first). */
 export type BoxShape = {
@@ -23,7 +24,23 @@ export type BoxShape = {
  * (ImagePainter::PaintIntoRect). The device calls this through the translated engine after layout; the host lanes call it too.
  */
 export function replacedPaint(leaf: ReplacedLeaf, content: ObjectRect): ReplacedPaint {
-  const dest = objectFitRect(content, naturalSizingOf(leaf), leaf.objectFit, { x: leaf.objectPositionX, y: leaf.objectPositionY }, NO_ENGINE_FAULTS);
+  const natural = naturalSizingOf(leaf);
+  if (natural === null) throw new Error(`${leaf.id}: an img whose src is set at run time is painted with runtimeImagePaint`);
+  return paintOf(leaf, natural, content);
+}
+
+/**
+ * REPL-r1: replacedPaint for an img whose src is set at run time, from the decoded image's size in CSS px (its pixel size; a plain
+ * src has density 1; the compiler refuses replaced content under a zoom). Only the device, and the lanes' host per sample, call it.
+ */
+export function runtimeImagePaint(leaf: ReplacedLeaf, content: ObjectRect, width: number, height: number): ReplacedPaint {
+  const w = fromCssPx(width);
+  const h = fromCssPx(height);
+  return paintOf(leaf, { width: w, height: h, ratio: w > 0 && h > 0 ? { width: w, height: h } : null }, content);
+}
+
+function paintOf(leaf: ReplacedLeaf, natural: NaturalSizing, content: ObjectRect): ReplacedPaint {
+  const dest = objectFitRect(content, natural, leaf.objectFit, { x: leaf.objectPositionX, y: leaf.objectPositionY }, NO_ENGINE_FAULTS);
   return { dest: pixelSnappedRect(dest), content: pixelSnappedRect(content), drawn: drawnObjectRect(dest, content) };
 }
 

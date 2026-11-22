@@ -1836,7 +1836,7 @@ function layoutReplacedItem(ctx: Ctx, grid: GridState, item: GridItemData, leaf:
     inlineMargins: add(margins.inlineStart, margins.inlineEnd),
     blockMargins: add(margins.blockStart, margins.blockEnd),
   };
-  const size = sizeReplaced(ctx, leaf, replacedBorderPadding(ctx, leaf, areaInline), space, 'normal');
+  const size = sizeReplaced(ctx, leaf, replacedBorderPadding(ctx, leaf, areaInline), space, 'normal', 'used-size');
   return { frag: replacedFrag(leaf, size), margins, lastBaseline: null, lastBaselineFlex: '' };
 }
 

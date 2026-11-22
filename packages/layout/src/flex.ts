@@ -185,7 +185,7 @@ export function layoutFlexContainer(ctx: Ctx, box: LayoutBox, a: FlexArgs): Flex
       if (isRow) {
         const base = item.leafSpace as FlexItemSpace;
         const bp: BorderPadding = { inline: item.mainBp, block: item.crossBp };
-        const size = sizeReplacedFlexItem(ctx, leaf, bp, { ...base, stretchCross: false, fixedInline: add(item.target, item.mainBp) }, 'normal');
+        const size = sizeReplacedFlexItem(ctx, leaf, bp, { ...base, stretchCross: false, fixedInline: add(item.target, item.mainBp) }, 'normal', 'used-size');
         hypoFrag.set(item, replacedFrag(leaf, size));
         hypoCross.set(item, size.block);
       } else {
@@ -489,7 +489,7 @@ function buildItem(
   // Column items need their width before their height: definite stretch (§9.8 rule 1), a specified width, or fit-content.
   let columnCross = ZERO;
   if (!isRow && box.kind === 'replaced') {
-    columnCross = sizeReplacedFlexItem(ctx, box, leafBp, leafSpace as FlexItemSpace, 'normal').inline;
+    columnCross = sizeReplacedFlexItem(ctx, box, leafBp, leafSpace as FlexItemSpace, 'normal', 'used-size').inline;
   } else if (!isRow && box.kind !== 'replaced') {
     const minWidth = lengthMinWidth(box.id, s.minWidth);
     const maxWidth = lengthMaxWidth(box.id, s.maxWidth);
@@ -520,7 +520,7 @@ function buildItem(
     if (box.kind === 'replaced') {
       // Blink MinMaxSizesFunc (row: IntrinsicFragmentGeometry ignores the inline lengths) and BlockSizeFunc (column: ignores the
       // block lengths) of a replaced item.
-      const size = sizeReplacedFlexItem(ctx, box, leafBp, leafSpace as FlexItemSpace, isRow ? 'ignore-inline-lengths' : 'ignore-block-lengths');
+      const size = sizeReplacedFlexItem(ctx, box, leafBp, leafSpace as FlexItemSpace, isRow ? 'ignore-inline-lengths' : 'ignore-block-lengths', 'flex-content');
       contentSized = isRow ? contentBox(size.inline, hbp) : contentBox(size.block, vbp);
     } else if (isRow) contentSized = intrinsicContentInlineSize(ctx, box, 'max');
     else {

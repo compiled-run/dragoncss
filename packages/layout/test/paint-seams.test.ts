@@ -23,9 +23,10 @@ describe('EMS: engine paint seams', () => {
       const text = readFileSync(join(layout, 'src', f), 'utf8');
       expect(text, f).not.toMatch(/export (async )?function/);
     }
-    // REPL-a fills the seam with one engine root: the replaced image's paint rects, which the device runs after layout; PNT1 adds
-    // Skia's paint alpha byte of an opacity, which the device and the host share.
-    expect([...readFileSync(join(layout, 'src/paint.ts'), 'utf8').matchAll(/export (?:async )?function (\w+)/g)].map((m) => m[1])).toEqual(['replacedPaint', 'opacityAlpha8']);
+    // REPL-a fills the seam with one engine root: the replaced image's paint rects, which the device runs after layout; REPL-r1 adds
+    // the same rects for an img whose image the device decodes at run time; PNT1 adds Skia's paint alpha byte of an opacity, which
+    // the device and the host share.
+    expect([...readFileSync(join(layout, 'src/paint.ts'), 'utf8').matchAll(/export (?:async )?function (\w+)/g)].map((m) => m[1])).toEqual(['replacedPaint', 'runtimeImagePaint', 'opacityAlpha8']);
     const shape: BoxShape = { left: 0, top: 0, right: 10, bottom: 10, borders: [0, 0, 0, 0], radii: [0, 0, 0, 0, 0, 0, 0, 0] };
     expect(shape.radii).toHaveLength(8);
   });
@@ -36,7 +37,7 @@ describe('EMS: engine paint seams', () => {
     // textShadowLayerOverTexts (with its TextLinePaint) to paint-shadow's, and the blur margin helpers its text-shadow sample points read.
     expect(lines).toEqual([
       "export type { ReplacedPaint } from './paint.ts';",
-      "export { opacityAlpha8, replacedPaint } from './paint.ts';",
+      "export { opacityAlpha8, replacedPaint, runtimeImagePaint } from './paint.ts';",
       "export { groupComposite, groupFill, groupFilterComposite, groupFilterMatrices, groupFilterMatrix, groupFoldAlpha, groupPack, groupTileFoldIndex, groupTileFolds, groupTileIndex, groupTileSize, groupTileSpan } from './paint-group.ts';",
       "export type { BoxShape } from './paint.ts';",
       "export type { RadiusFaults, RadiusLength } from './paint-radius.ts';",
