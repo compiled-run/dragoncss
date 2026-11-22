@@ -58,7 +58,8 @@ export const HANDLED_ATTRIBUTES: { readonly [tag: string]: readonly string[] } =
   // and step give the range's value, which places its thumb (forms/range-value.ts, the controls-range fixtures). FORM-b: a text
   // field's value is its editor's text and placeholder its placeholder's (forms/text-field.ts), size its default width
   // (lower/ios-layout.ts textFieldSize), and readonly only stops editing (no html.css rule reads it; controls-text-field).
-  input: ['type', 'min', 'max', 'value', 'step', 'size', 'placeholder', 'readonly'],
+  // FORM-checkbox: a checkbox's checked attribute is its initial checkedness, which its drawing shows (lower/paint/control.ts).
+  input: ['type', 'min', 'max', 'value', 'step', 'size', 'placeholder', 'readonly', 'checked'],
   // FORM-b: a textarea's rows and cols give its default size (lower/ios-layout.ts textAreaRows, textAreaCols), placeholder its
   // placeholder's text and readonly only stops editing, as on an input.
   textarea: ['rows', 'cols', 'placeholder', 'readonly'],
