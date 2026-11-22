@@ -1042,6 +1042,7 @@ class DragonGroupView(ctx: Context, val dragonTree: DragonTree, val dragonGroupB
       DragonGroups.backdropSkip = if (DRAGON_BACKDROP_PLANT_UNHIDDEN) emptySet() else skip
       try { root.draw(canvas) } finally { DragonGroups.backdropSkip = emptySet() }
       backdropBitmap.copyPixelsToBuffer(ByteBuffer.wrap(bb))
+      backdropBitmap.recycle()
     }
     // B in the group's local device px: the pixel under each local pixel centre once the platform maps the overlay.
     val bp: ByteArray

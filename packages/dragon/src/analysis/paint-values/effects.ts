@@ -399,6 +399,17 @@ export function opacityGroupPlans(root: ResolvedElement): ReadonlyMap<string, Gr
         const k = keywordAt(el, p);
         if (k !== null && !(ok as readonly string[]).includes(k)) return refused(`${id} paints before it with a ${p}, which the backdrop capture is not proven to draw as the screen does`);
       }
+      if (up.includes(el)) continue;
+      // Paint Chrome may composite in a layer of its own (so the group over it is composited for overlap, with its own tiles), or
+      // that changes without a box invalidation (a scroller's offset, a video frame, a control's own drawing).
+      const tag = el.element.tag;
+      if (tag !== 'html' && tag !== 'body' && (FOLD_TAGS_OUT.has(tag) || isReplacedTag(tag) || SVG_SHAPE_TAGS.includes(tag))) return refused(`${id} paints before it and is a <${tag}>, a control, replaced or svg box, which the backdrop capture is not proven to draw as the screen does`);
+      if (el !== propagated) for (const p of ['overflow-x', 'overflow-y']) if (['auto', 'scroll'].includes(keywordAt(el, p) ?? 'visible')) return refused(`${id} paints before it and scrolls (${p}: ${keywordAt(el, p)}), which the backdrop capture does not follow`);
+      if (elementWillChange(el).length > 0) return refused(`${id} paints before it with will-change, a compositor layer`);
+      for (const [p, ok] of [['transform-style', ['flat']], ['backface-visibility', ['visible']], ['perspective', ['none']]] as const) {
+        const k = keywordAt(el, p);
+        if (k !== null && !(ok as readonly string[]).includes(k)) return refused(`${id} paints before it with ${p}: ${k}, a compositor layer`);
+      }
     }
     return { kind: 'group', filter, backdrop: null, painters, before };
   };
