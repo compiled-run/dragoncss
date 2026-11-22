@@ -228,6 +228,26 @@ fun <U> jsCastArray(a: JsArray<*>): JsArray<U> {
   return out
 }
 
+// Uint8Array: one unboxed byte per element.
+
+typealias JsBytes = ByteArray
+
+/** new Uint8Array(length): the length truncated (NaN is 0), a negative or unallocatable one a RangeError; zero-filled. */
+fun jsBytesNew(n: Double): JsBytes {
+  val len = if (n.isNaN()) 0.0 else kotlin.math.truncate(n)
+  if (len < 0.0 || len > Int.MAX_VALUE.toDouble()) throw JsError("Invalid typed array length")
+  return ByteArray(len.toInt())
+}
+fun jsBytesLength(a: JsBytes): Double = a.size.toDouble()
+/** An element: an integer index in range, else absent, as jsAt. */
+fun jsBytesAt(a: JsBytes, i: Double): Double? = if (i >= 0.0 && i < a.size.toDouble() && kotlin.math.truncate(i) == i) (a[i.toInt()].toInt() and 0xFF).toDouble() else null
+/** a[i] = v: ToUint8(v) (truncated, modulo 256; NaN and infinities are 0) at an integer index in range, else nothing. */
+fun jsBytesSet(a: JsBytes, i: Double, v: Double) {
+  if (!(i >= 0.0 && i < a.size.toDouble() && kotlin.math.truncate(i) == i)) return
+  val r = if (v.isFinite()) kotlin.math.truncate(v) % 256.0 else 0.0
+  a[i.toInt()] = (if (r < 0.0) r + 256.0 else r).toInt().toByte()
+}
+
 ${sort}
 
 // Maps (section 1.6): JS Map iterates in insertion order.

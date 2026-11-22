@@ -1,0 +1,9 @@
+{
+  "case": "grid-replaced-tracks-rtl",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"x2:text0","lines":[[0,2]]},
+    {"id":"x3:text0","lines":[[0,2]]},
+    {"id":"x7:text0","lines":[[0,2]]}
+  ]
+}

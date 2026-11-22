@@ -92,6 +92,8 @@ public func dragonApplyTransform(_ v: DragonBoxView, _ shape: DragonBoxShape, _ 
   } catch {
     fatalError("dragon: \(v.dragonId): the transform did not resolve: \(error)")
   }
+  // A group's backdrop capture and its overlay's mapping read transforms.
+  dragonGroupsChanged()
 }
 
 /// After every layout: the transform at the new box size.
@@ -177,6 +179,8 @@ fun dragonApplyTransform(v: DragonBoxView, shape: DragonBoxShape, scale: Double)
   v.rotation = degrees.toFloat()
   v.scaleX = sx.toFloat()
   v.scaleY = sy.toFloat()
+  // A group's backdrop capture and its overlay's mapping read transforms.
+  dragonGroupsChanged()
 }
 
 /** After every layout: the transform at the new box size. */

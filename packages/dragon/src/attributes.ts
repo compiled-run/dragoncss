@@ -2,6 +2,7 @@
 // rendering-neutral attribute compiles without a diagnostic. An attribute is neutral when HTML §15 (Rendering) gives it no
 // presentational hint and no UA style rule on the supported tags, and a parity fixture pair proves it: the same tree with and
 // without the attribute gives identical Chrome captures in both directions (packages/parity/src/fixture-groups/attributes.ts).
+import { dirTagRefusal } from './analysis/elements/dir.ts';
 import { svgAttributeHandled, svgAttributeOwner } from './analysis/elements/svg.ts';
 
 export type NeutralAttribute = {
@@ -22,8 +23,16 @@ export const NEUTRAL_ATTRIBUTES: readonly NeutralAttribute[] = [
   { name: 'role', exceptOn: [], html: 'role (HTML §3.2.8) is accessibility semantics; HTML §15 has no rule keyed on it.', proof: 'attr-neutral-role' },
   { name: 'title', exceptOn: [], html: 'title (HTML §3.2.6.1) is advisory information shown as a tooltip; HTML §15 has no rule keyed on it.', proof: 'attr-neutral-title' },
   { name: 'ui-', exceptOn: [], html: 'ui-* is Dragon\'s state-attribute convention; HTML defines no such attribute, so HTML §15 has no rule keyed on it.', proof: 'attr-neutral-ui' },
-  { name: 'rel', exceptOn: ['a', 'area', 'link'], html: 'rel is defined only on a, area, link and form (HTML §4.6.6); HTML §15 styles only hyperlinks, so elsewhere it has no rendering.', proof: 'attr-neutral-rel' },
-  { name: 'target', exceptOn: ['a', 'area', 'link'], html: 'target is defined only on a, area and form (HTML §4.6.5); HTML §15 styles only hyperlinks, so elsewhere it has no rendering.', proof: 'attr-neutral-target' },
+  { name: 'overlay', exceptOn: [], html: 'HTML defines no overlay attribute (HTML §16 Index lists none), so HTML §15 has no rule keyed on it; @markless/ui families set it on an open overlay for their own selectors.', proof: 'attr-neutral-overlay' },
+  { name: 'rel', exceptOn: ['a', 'area', 'link', 'form'], html: 'rel is defined only on a, area, link and form (HTML §4.6.6); HTML §15 styles only hyperlinks, so elsewhere it has no rendering, and on a form it governs submission.', proof: 'attr-neutral-rel' },
+  // The form attributes: submission names, autofill hints and constraints, read by form submission, autofill and constraint
+  // validation, and matched by :required, :optional, :valid and :invalid (refused on their own), never by an HTML §15 rule.
+  { name: 'name', exceptOn: [], html: 'name names a form control or form for submission (HTML §4.10.19.1, §4.10.3); HTML §15 has no rule keyed on it.', proof: 'attr-neutral-name' },
+  { name: 'autocomplete', exceptOn: [], html: 'autocomplete is an autofill hint (HTML §4.10.19.7); HTML §15 has no rule keyed on it.', proof: 'attr-neutral-autocomplete' },
+  { name: 'required', exceptOn: [], html: 'required is a constraint for validation (HTML §4.10.5.3.4); HTML §15 has no rule keyed on it.', proof: 'attr-neutral-required' },
+  { name: 'minlength', exceptOn: [], html: 'minlength is a constraint for validation (HTML §4.10.19.4); HTML §15 has no rule keyed on it.', proof: 'attr-neutral-minlength' },
+  { name: 'maxlength', exceptOn: [], html: 'maxlength is a constraint for editing and validation (HTML §4.10.19.3); HTML §15 has no rule keyed on it.', proof: 'attr-neutral-maxlength' },
+  { name: 'target', exceptOn: ['a', 'area', 'link', 'form'], html: 'target is defined only on a, area and form (HTML §4.6.5); HTML §15 styles only hyperlinks, so elsewhere it has no rendering, and on a form it governs submission.', proof: 'attr-neutral-target' },
 ];
 
 /**
@@ -51,6 +60,9 @@ export const HANDLED_ATTRIBUTES: { readonly [tag: string]: readonly string[] } =
   // field's value is its editor's text and placeholder its placeholder's (forms/text-field.ts), size its default width
   // (lower/ios-layout.ts textFieldSize), and readonly only stops editing (no html.css rule reads it; controls-text-field).
   input: ['type', 'min', 'max', 'value', 'step', 'size', 'placeholder', 'readonly'],
+  // FORM-b: a textarea's rows and cols give its default size (lower/ios-layout.ts textAreaRows, textAreaCols), placeholder its
+  // placeholder's text and readonly only stops editing, as on an input.
+  textarea: ['rows', 'cols', 'placeholder', 'readonly'],
   // FORM-b: multiple and a size above 1 (a list box) are refused in computed-checks.ts; an option's value is never drawn.
   select: ['disabled', 'multiple', 'size'],
   option: ['selected', 'disabled', 'label', 'value'],
@@ -59,6 +71,8 @@ export const HANDLED_ATTRIBUTES: { readonly [tag: string]: readonly string[] } =
 /** The package that owns the rendering effect of a refused attribute. */
 const OWNERS: Readonly<Record<string, string>> = {
   type: 'the form-control package FORM-a',
+  // A label's for makes a click on the label activate its control (HTML §4.10.4), behaviour the native outputs do not model yet.
+  for: 'the form-control package FORM-b (a label\'s for makes a click on it activate its control)',
   min: 'the form-control package FORM-a',
   max: 'the form-control package FORM-a',
   value: 'the form-control package FORM-a',
@@ -68,7 +82,6 @@ const OWNERS: Readonly<Record<string, string>> = {
   height: 'the replaced-element package REPL',
   href: 'the inline and link package INL1 (an href makes the :link UA rules apply)',
   lang: 'the text package TXT1-C (lang feeds locale font fallback)',
-  dir: 'the bidi package (dir sets direction and unicode-bidi)',
   // MEDIA-EL: a video without them shows its first frame and never plays; with them Chrome plays it or draws its own controls.
   controls: 'the media-element package MEDIA-EL (controls and playback)',
   autoplay: 'the media-element package MEDIA-EL (controls and playback)',
@@ -76,9 +89,10 @@ const OWNERS: Readonly<Record<string, string>> = {
   loop: 'the media-element package MEDIA-EL (controls and playback)',
   playsinline: 'the media-element package MEDIA-EL (controls and playback)',
   poster: 'the media-element package MEDIA-EL (the poster frame)',
-  // rel and target are neutral off hyperlinks (NEUTRAL_ATTRIBUTES); on a, area and link they change link behaviour.
-  rel: 'the link package LINK-RT (on a hyperlink it changes link behaviour)',
-  target: 'the link package LINK-RT (on a hyperlink it changes link behaviour)',
+  // rel and target are neutral off hyperlinks and forms (NEUTRAL_ATTRIBUTES); on a, area, link and form they change link or
+  // submission behaviour.
+  rel: 'the link package LINK-RT (on a hyperlink or a form it changes link or submission behaviour)',
+  target: 'the link package LINK-RT (on a hyperlink or a form it changes link or submission behaviour)',
 };
 
 // HTML lowercases attribute names, so a name with ASCII uppercase would not match its lowercased selector as it does in Chrome.
@@ -100,6 +114,9 @@ export function attributeRefusal(tag: string, name: string): string | null {
   if (tag === 'dialog' && name === 'open') return null;
   // css-style-attr: its declarations cascade as element-attached author declarations (analysis/style-attribute.ts).
   if (name === 'style') return null;
+  // SEL-dir: the direction hint, html.css's isolate and the directionality :dir() matches (analysis/elements/dir.ts); project.ts
+  // refuses a value other than ltr and rtl in every arm.
+  if (name === 'dir') return dirTagRefusal(tag);
   if (neutralAttribute(tag, name) !== undefined) return null;
   if (Object.hasOwn(HANDLED_ATTRIBUTES, tag) && (HANDLED_ATTRIBUTES[tag] as readonly string[]).includes(name)) return null;
   // SVG-a1: the SVG tags' geometry and presentation attributes (analysis/elements/svg.ts), and the packages of the others.

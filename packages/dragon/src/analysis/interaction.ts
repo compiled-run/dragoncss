@@ -97,7 +97,7 @@ export const validTabindex = (v: string): boolean => /^[\t\n\f\r ]*[-+]?[0-9]/.t
  */
 const NEVER_FOCUSABLE: ReadonlySet<string> = new Set([
   'html', 'body', 'div', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'section', 'article', 'header', 'footer', 'nav', 'main', 'aside',
-  'ul', 'ol', 'li', 'blockquote', 'figure', 'figcaption', 'address', 'hr', 'dl', 'dt', 'dd', 'center', 'fieldset', 'legend', 'span', 'a', 'label', 'br', 'img',
+  'ul', 'ol', 'li', 'blockquote', 'figure', 'figcaption', 'address', 'hr', 'dl', 'dt', 'dd', 'center', 'fieldset', 'legend', 'form', 'span', 'a', 'label', 'br', 'img',
   'svg', 'path', 'rect', 'circle', 'b', 'strong', 'em', 'i',
 ]);
 
@@ -536,7 +536,6 @@ export function interactionCapRefusal(caseLabel: string, over: NonNullable<Inter
 }
 
 const all = (): boolean => true;
-const zeroLength = (v: CssValue): boolean => v.kind === 'length' && v.value === 0;
 // OVFL: rt-hit clips hidden and clip at the padding box. auto and scroll are native scroll views (OVFL-B) the user scrolls, and the
 // hit test does not read scroll offsets yet (OVFL-B2), so they are unmodelled facts.
 const OVERFLOW_AT_REST = new Set(['visible', 'hidden', 'clip']);
@@ -562,6 +561,11 @@ export const HIT_MODELLED: ReadonlyMap<Longhand, (v: CssValue) => boolean> = new
   ['overflow-x', overflowAtRest],
   ['overflow-y', overflowAtRest],
   ['transform-origin', all],
+  // SELD-R2b: rt-hit.ts clips a hit to the rounded border box, and a clipping box's in-flow content to its rounded padding edge.
+  ['border-top-left-radius', all],
+  ['border-top-right-radius', all],
+  ['border-bottom-right-radius', all],
+  ['border-bottom-left-radius', all],
   // css-view-transitions-2: a name only captures its box once a transition starts, and the only one that compiles is the UA
   // sheet's :root { view-transition-name: root } (scroll-containment.ts VIEW_TRANSITION), so it changes no hit.
   ['view-transition-name', all],
@@ -601,41 +605,27 @@ export const HIT_MODELLED: ReadonlyMap<Longhand, (v: CssValue) => boolean> = new
   ['dominant-baseline', all],
   ['alignment-baseline', all],
   ['d', all],
-  // PNT1: the outline longhands at their computed initial values (the webref initial auto and medium compute to currentcolor and 0px).
-  ['outline-color', (v) => v.kind === 'keyword' && v.value === 'currentcolor'],
-  ['outline-style', (v) => v.kind === 'keyword' && v.value === 'none'],
-  ['outline-width', zeroLength],
-  ['outline-offset', zeroLength],
+  // SELD-R2b: Blink hit-tests a box by its border box and never by its outline, so no outline value moves a hit; the outline-*
+  // fixtures in the hit lane (parity hit-report.test) match Chrome with rt-hit.ts reading no outline.
+  ['outline-color', all],
+  ['outline-style', all],
+  ['outline-width', all],
+  ['outline-offset', all],
 ]);
 
-/**
- * R13: the first grid container of a resolved tree whose display compiles, in preorder, or null. rt-hit.ts refuses grid containers
- * (Blink paints grid items atomically in order-modified document order, which the hit table does not model yet).
- */
-export function hitUnmodelledGrid(root: ResolvedElement, compiles: (v: ResolvedValue) => boolean = () => true): string | null {
-  const d = root.props.get('display');
-  if (d !== undefined && d.value.kind === 'keyword' && (d.value.value === 'grid' || d.value.value === 'inline-grid') && compiles(d)) return root.element.address;
-  for (const c of root.children) {
-    if (c.kind !== 'element') continue;
-    const found = hitUnmodelledGrid(c, compiles);
-    if (found !== null) return found;
-  }
-  return null;
-}
-
-/** A select or text field, whose UA shadow parts Chrome retargets to it, so the hit table holds it as one box (rt-hit.ts hitControlBox). */
+/** A select, text field or textarea (textFieldPartOf holds both), whose UA shadow parts Chrome retargets to it, so the hit table holds it as one box (rt-hit.ts hitControlBox). */
 export function hitRetargetsParts(el: ResolvedElement): boolean {
   return selectPartOf(el)?.part === null || textFieldPartOf(el)?.part === null;
 }
 
 /**
  * FORM-a: the first form control of a resolved tree in preorder whose box the hit table does not model (rt-hit.ts hitModelsControl),
- * or null. A button, a select and a text field are modelled; a range is not (its touch, T064 P7), nor a block fieldset or any other
- * control tag.
+ * or null. A button, a select, a text field and a textarea are modelled; a range is not (its touch, T064 P7), nor a block fieldset or
+ * any other control tag.
  */
 export function hitUnmodelledControl(root: ResolvedElement): string | null {
   const tag = root.element.tag;
-  if (isControlTag(tag) && tag !== 'button' && tag !== 'select' && !(tag === 'input' && isTextFieldType(root.element.attributes.get('type')))) return root.element.address;
+  if (isControlTag(tag) && tag !== 'button' && tag !== 'select' && tag !== 'textarea' && !(tag === 'input' && isTextFieldType(root.element.attributes.get('type')))) return root.element.address;
   // A block fieldset lays out as the fieldset control with its rendered legend (ios-layout.ts), which the table refuses too.
   const display = root.props.get('display');
   if (tag === 'fieldset' && display !== undefined && display.value.kind === 'keyword' && display.value.value === 'block') return root.element.address;
@@ -650,8 +640,8 @@ export function hitUnmodelledControl(root: ResolvedElement): string | null {
 /** The kinds of box hitUnmodelledBox names, with the package each waits for. */
 export type HitUnmodelledBox = {
   readonly address: string;
-  readonly kind: 'float' | 'fixed box' | 'sticky box' | 'block with percentage padding around atomic inlines';
-  readonly pkg: 'FLT' | 'POSX-f' | 'POSX-s' | 'INL2a';
+  readonly kind: 'float' | 'fixed box' | 'sticky box' | 'inline-grid box' | 'block with percentage padding around atomic inlines';
+  readonly pkg: 'FLT' | 'POSX-f' | 'POSX-s' | 'G-INL' | 'INL2a';
 };
 
 /**
@@ -678,6 +668,9 @@ export function hitUnmodelledBox(root: ResolvedElement, compiles: (v: ResolvedVa
       if (c.kind !== 'element') continue;
       const f = c.props.get('float');
       const p = c.props.get('position');
+      // rt-hit.ts refuses an inline-grid as an atomic inline (G-INL); a block-level grid is hit in order-modified document order.
+      const d = c.props.get('display');
+      if (d !== undefined && key(c, 'display') === 'inline-grid' && compiles(d)) return { address: c.element.address, kind: 'inline-grid box', pkg: 'G-INL' };
       if (p !== undefined && key(c, 'position') === 'fixed' && compiles(p)) return { address: c.element.address, kind: 'fixed box', pkg: 'POSX-f' };
       if (p !== undefined && key(c, 'position') === 'sticky' && compiles(p)) return { address: c.element.address, kind: 'sticky box', pkg: 'POSX-s' };
       if (block && f !== undefined && key(c, 'float') !== 'none' && key(c, 'position') !== 'absolute' && key(c, 'position') !== 'fixed' && compiles(f)) return { address: c.element.address, kind: 'float', pkg: 'FLT' };

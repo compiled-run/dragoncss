@@ -309,7 +309,6 @@ export function parseMarklessStyleInput(text: string): MarklessStyleInput {
     ids.add(id);
   }
   checkSlots(o['slots'], o['nodes'] as Record<string, unknown>[]);
-  if (o['slots'] !== undefined && repeats.size > 0) fail(`slots and @for rows (${[...repeats.keys()].join(', ')}) in one input are not supported yet: a phone lays rows out with no slot values`);
   return v as MarklessStyleInput;
 }
 
@@ -383,7 +382,7 @@ export function marklessWithRows(input: MarklessStyleInput, rows: ReadonlyMap<st
           const v = valueUnder(entries, row.states, t.id);
           if (v !== null) attributes[name] = v;
         }
-        nodes.push({ kind: 'element', id: `${t.id}@${row.key}`, element: t.element, parent, attributes, ...(t.boxless === true ? { boxless: true as const } : {}), ...place });
+        nodes.push({ kind: 'element', id: `${t.id}@${row.key}`, element: t.element, parent, attributes, ...(t.boxless === true ? { boxless: true as const } : {}), ...(t.styleTemplate === undefined ? {} : { styleTemplate: t.styleTemplate }), ...place });
       }
     }
   }
@@ -636,7 +635,7 @@ function compileMarkless(parsed: MarklessStyleInput, inputText: string, inputPat
   const map = mode === 'system' ? MARKLESS_SYSTEM_FONT_MAP : FONT_REFERENCE_MAP;
   const input = withFontMapAssets(marklessFrontEnd(parsed, inputText, inputPath, fonts, mode), map);
   const devices = marklessDevices(parsed, at);
-  const config: NativeStylesConfig = { projectId: PROJECT_ID, name: parsed.component, targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 } }, fonts: map, viewport: devices.ios.viewport, support: 'lanes', topLayer: 'host', canvas: 'host', output: 'program', brotliDecompress: NODE_BROTLI, ...(mode === 'system' ? { systemFonts: 'measured' as const } : {}) };
+  const config: NativeStylesConfig = { projectId: PROJECT_ID, name: parsed.component, targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 } }, fonts: map, viewport: devices.ios.viewport, support: 'lanes', topLayer: 'host', canvas: 'host', forms: 'host', output: 'program', brotliDecompress: NODE_BROTLI, ...(mode === 'system' ? { systemFonts: 'measured' as const } : {}) };
   const { styles, compiled } = compileNativeStylesWith(config, input);
   const errors = styles.diagnostics.filter((d) => d.severity === 'error');
   if (errors.length > 0) fail(`${parsed.component} does not compile:\n${errors.map((d) => `  ${d.code} [${d.target ?? 'all'}] ${d.message}`).join('\n')}`);
@@ -1038,23 +1037,6 @@ function checkRows(parsed: MarklessStyleInput, inputPath: string, exported: Nati
     }
   }
   const rowStates = new Set(parsed.states.filter((st) => st.row !== undefined).map((st) => st.cell));
-  for (const [t, x] of Object.entries(exported.targets)) {
-    const byKey = new Map<string, ExportAssignment>();
-    // The export's values are still keyed by Dragon's state names here; the input names them by cell.
-    const rekey = cellKey(parsed);
-    const pageKey = (values: Readonly<Record<string, unknown>>): string => JSON.stringify(Object.entries(values).map(([k, v]) => [rekey(k), v] as const).filter(([k]) => !rowStates.has(k)).sort());
-    for (const a of x.assignments) {
-      const key = pageKey(a.values);
-      const first = byKey.get(key);
-      if (first === undefined) {
-        byKey.set(key, a);
-        continue;
-      }
-      const before = new Map(first.nodes.map((n) => [n.id, JSON.stringify([n.frame, n.writes])]));
-      const own = new Set(parsed.nodes.filter((n) => n.row !== undefined).map((n) => n.id));
-      for (const n of a.nodes) if (!own.has(n.id) && before.has(n.id) && before.get(n.id) !== JSON.stringify([n.frame, n.writes])) fail(`${t}: ${n.id} is outside the rows, and its style follows a row's own state; a phone styles each row by itself`);
-    }
-  }
   const rowsOf = new Map((parsed.repeats ?? []).map((r) => {
     const combos = rowStateCombinations(parsed, r.id);
     return [r.id, [...combos, ...combos].map((states, k): MarklessRow => ({ key: `r${k}`, states, texts: new Map() }))] as const;
@@ -1089,6 +1071,25 @@ function checkRows(parsed: MarklessStyleInput, inputPath: string, exported: Nati
     for (const n of programAt(sp, i).nodes) out.set(n.id, `${out.get(n.id) ?? ''}${JSON.stringify(n.writes)}`);
     return out;
   };
+  // A box outside the rows keeps its own style and writes at every row state; its frame may move as rows change size, and the rows layout places it again on the phone.
+  const outside = parsed.nodes.filter((n) => n.row === undefined && n.kind === 'element').map((n) => mainIds.get(n.id) as string);
+  for (const t of Object.keys(exported.targets) as NativeStyleTarget[]) {
+    const o = mainStyles.targets[t];
+    if (o === undefined || o.kind !== 'emitted') continue;
+    const byPage = new Map<string, Map<string, string>>();
+    for (const a of o.program.assignments) {
+      const values = Object.fromEntries(Object.entries(valuesOf(a.assignment)).map(([k, v]) => [mainKey(k), v]));
+      const look = lookOf(mainStyles, t, mainKey, values);
+      if (look === null) continue;
+      const page = JSON.stringify(Object.entries(values).filter(([k]) => !rowStates.has(k)).sort());
+      const first = byPage.get(page);
+      if (first === undefined) {
+        byPage.set(page, look);
+        continue;
+      }
+      for (const id of ['html', 'body', ...outside]) if (first.has(id) && look.has(id) && first.get(id) !== look.get(id)) fail(`${t}: ${id} is outside the rows, and its style follows a row's own state; a phone styles each row by itself`);
+    }
+  }
   for (const t of Object.keys(exported.targets) as NativeStyleTarget[]) {
     const o = mainStyles.targets[t];
     if (o === undefined || o.kind !== 'emitted') continue;

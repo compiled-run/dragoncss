@@ -428,7 +428,8 @@ export function hitFacts(compiled: object, assignment: Assignment, state: string
   const walk = (el: ResolvedElement): void => {
     const v = el.props.get('pointer-events');
     if (v === undefined || v.value.kind !== 'keyword' || (v.value.value !== 'auto' && v.value.value !== 'none')) throw new Error(`${el.element.address}: pointer-events did not resolve to auto or none`);
-    out.set(el.element.address, { pointerEvents: v.value.value, inherited: v.origin === 'inherited', activation: activates(el.element.tag, el.element.attributes) });
+    const lengths = radiusLengths(el.props, el.element.address);
+    out.set(el.element.address, { pointerEvents: v.value.value, inherited: v.origin === 'inherited', activation: activates(el.element.tag, el.element.attributes), radii: roundsAnyCorner(lengths) ? lengths : [] });
     for (const ch of el.children) if (ch.kind === 'element') walk(ch);
   };
   walk(c.resolved);
@@ -439,6 +440,7 @@ export function hitFacts(compiled: object, assignment: Assignment, state: string
 export type { ListItemMarker, MarkerType } from './analysis/markers.ts';
 import { listItemMarkers } from './analysis/markers.ts';
 import { markerTextId } from './lower/paint/list-marker.ts';
+import { radiusLengths, roundsAnyCorner } from './lower/paint/radius.ts';
 import type { GenCFaults } from './faults/gen-c.ts';
 
 /** The list items of one case in tree order, with their ordinals and marker text; null without a resolved case. */
@@ -609,7 +611,7 @@ export function nativeBandProgram(compiled: object, backend: NativeBackend, faul
 
 // SELD-R2 (notes/T064-seld-r2-spec.md): interaction states, their partition and the generated web conditions.
 export type { ChainValue, FocusValue, ForcedPseudo, InteractionElement, InteractionKind, InteractionPartition, InteractionValue, StateMatch } from './analysis/interaction.ts';
-export { chainStateOf, comboIndex, focusTargetOf, HIT_MODELLED, hitUnmodelledBox, hitUnmodelledFact, hitUnmodelledGrid, isFocusable, MAX_INTERACTION_COMBINATIONS, MAX_INTERACTION_STATES, ruleIsInteractive, selectorIsInteractive, stateMembers } from './analysis/interaction.ts';
+export { chainStateOf, comboIndex, focusTargetOf, HIT_MODELLED, hitUnmodelledBox, hitUnmodelledFact, isFocusable, MAX_INTERACTION_COMBINATIONS, MAX_INTERACTION_STATES, ruleIsInteractive, selectorIsInteractive, stateMembers } from './analysis/interaction.ts';
 // SELD-R2 PR 5: the native interaction gate's profile row keys (profile-rows.ts deriveInteractionRows).
 export { interactionContext, interactionRowFeature } from './analysis/interaction.ts';
 export type { InteractionState } from './analysis/match.ts';

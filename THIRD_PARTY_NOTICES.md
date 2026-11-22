@@ -10,6 +10,7 @@ Those files are under the licences below, with the copyright lines from their he
 ## Chromium: BSD 3-Clause (the Chromium LICENSE file) (chromium-bsd)
 
 - `cc/layers/tile_size_calculator.cc`: Copyright 2019 The Chromium Authors
+- `cc/paint/display_item_list.cc`: Copyright 2014 The Chromium Authors
 - `cc/paint/draw_looper.cc`: Copyright 2024 The Chromium Authors
 - `cc/paint/paint_op_buffer_iterator.cc`: Copyright 2017 The Chromium Authors
 - `cc/paint/render_surface_filters.cc`: Copyright 2012 The Chromium Authors
@@ -91,6 +92,7 @@ Those files are under the licences below, with the copyright lines from their he
 - `third_party/blink/renderer/core/layout/text_decoration_offset.cc`: Copyright 2017 The Chromium Authors
 - `third_party/blink/renderer/core/paint/background_image_geometry.cc`: Copyright 2014 The Chromium Authors
 - `third_party/blink/renderer/core/paint/box_border_painter.cc`: Copyright 2015 The Chromium Authors
+- `third_party/blink/renderer/core/paint/box_decoration_data.cc`: Copyright 2014 The Chromium Authors
 - `third_party/blink/renderer/core/paint/box_fragment_painter.cc`: Copyright 2017 The Chromium Authors
 - `third_party/blink/renderer/core/paint/box_painter_base.cc`: Copyright 2014 The Chromium Authors
 - `third_party/blink/renderer/core/paint/contoured_border_geometry.cc`: Copyright 2020 The Chromium Authors
@@ -136,6 +138,7 @@ Those files are under the licences below, with the copyright lines from their he
 - `ui/gfx/geometry/rect_f.cc`: Copyright 2012 The Chromium Authors
 - `ui/gfx/geometry/sin_cos_degrees.h`: Copyright 2023 The Chromium Authors
 - `ui/gfx/geometry/transform.cc`: Copyright 2012 The Chromium Authors
+- `ui/gfx/geometry/triangle_f.cc`: Copyright 2021 The Chromium Authors
 - `ui/native_theme/native_theme_base.cc`: Copyright 2012 The Chromium Authors
 
 ```
@@ -180,6 +183,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 - `third_party/skia/src/core/SkBlitter_ARGB32.cpp`: Copyright 2006 The Android Open Source Project
 - `third_party/skia/src/core/SkBlurMask.cpp`: Copyright 2006 The Android Open Source Project
 - `third_party/skia/src/core/SkBlurMaskFilterImpl.cpp`: Copyright 2006 The Android Open Source Project
+- `third_party/skia/src/core/SkCanvas.cpp`: Copyright 2008 The Android Open Source Project
 - `third_party/skia/src/core/SkColor.cpp`: Copyright 2006 The Android Open Source Project
 - `third_party/skia/src/core/SkColorData.h`: Copyright 2006 The Android Open Source Project
 - `third_party/skia/src/core/SkDraw.cpp`: Copyright 2006 The Android Open Source Project

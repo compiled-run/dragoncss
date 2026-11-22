@@ -25,7 +25,7 @@
 //
 // textShadowLayerOver draws text-shadow on a line of Ahem text the same way, glyph by glyph (see its comment).
 import type { A8Mask, BlurFaults, IRect } from './paint-blur.ts';
-import { boxBlur, boxBlurMargin, hasNoBlur, maskBounds, mulDiv255Round, rectShadowCoverage, shadowSigma } from './paint-blur.ts';
+import { boxBlur, boxBlurMargin, byteAt, hasNoBlur, maskBounds, mulDiv255Round, rectShadowCoverage, setByte, shadowSigma } from './paint-blur.ts';
 import type { AaPath, Device, IRect as AaIRect, Radius, SkRRect } from './paint-aa.ts';
 import { a8Device, aaRoute, antiFillPath, devicePixels, drrectPath, NO_AA_FAULTS, ovalPath, rrectPath, setRectRadii, translatePath, whiteDevice } from './paint-aa.ts';
 import { ccTileEnd, ccTileIndex, ccTileStart } from './paint-dither.ts';
@@ -76,12 +76,10 @@ export type BackdropFill = {
 };
 
 /** A premultiplied RGBA8 layer over a page device-px rect (row-major, 4 values per pixel); empty when the rect is empty. */
-export type ShadowLayer = { readonly left: number; readonly top: number; readonly right: number; readonly bottom: number; readonly rgba: readonly number[] };
+export type ShadowLayer = { readonly left: number; readonly top: number; readonly right: number; readonly bottom: number; readonly rgba: Uint8Array };
 
 /** A shape in page device px: a rect with eight radii (horizontal then vertical, top-left first; all 0 for a rect). */
 export type ShadowShape = { readonly left: number; readonly top: number; readonly right: number; readonly bottom: number; readonly radii: readonly number[] };
-
-type Cell = { v: number };
 
 const NO_BLUR: BlurFaults = { blurSigmaFormula: false, ninePatchAlways: false, tripleBoxRoundingOff: false };
 /** cc's raster tile on Mac at a device scale factor of 2 or more (paint-dither.ts ccTileSize); the capture host is macOS. */
@@ -119,21 +117,9 @@ function height(r: IRect): number {
   return r.bottom - r.top;
 }
 
-function zeroCells(n: number): Cell[] {
-  const out: Cell[] = [];
-  for (let i = 0; i < n; i++) out.push({ v: 0 });
-  return out;
-}
-
-function cellAt(xs: readonly Cell[], i: number): Cell {
-  const c = xs[i];
-  if (c === undefined) throw new Error(`paint-shadow: cell ${i} is outside ${xs.length} cells`);
-  return c;
-}
-
-function values(cells: readonly Cell[]): number[] {
-  const out: number[] = [];
-  for (const c of cells) out.push(c.v);
+function bytesOf(xs: readonly number[]): Uint8Array {
+  const out = new Uint8Array(xs.length);
+  for (let i = 0; i < xs.length; i++) setByte(out, i, at(xs, i));
   return out;
 }
 
@@ -321,7 +307,7 @@ function rasterMask(path: AaPath, s: ShadowShape, hole: ShadowShape | null, b: I
     const maskRect: AaIRect = { left: 0, top: 0, right: width(b), bottom: height(b) };
     const dev: Device = a8Device(maskRect);
     antiFillPath(dev, translatePath(path, -b.left, -b.top), maskRect, NO_AA_FAULTS);
-    return { bounds: b, data: devicePixels(dev) };
+    return { bounds: b, data: bytesOf(devicePixels(dev)) };
   }
   if (analytic && !masked && width(b) > 0 && height(b) > 0) {
     // Drawn straight onto the tile, in its coordinates, clipped to clip.
@@ -329,15 +315,18 @@ function rasterMask(path: AaPath, s: ShadowShape, hole: ShadowShape | null, b: I
     const aaClip: AaIRect = { left: clip.left, top: clip.top, right: clip.right, bottom: clip.bottom };
     const dev: Device = whiteDevice(devBounds);
     antiFillPath(dev, path, aaClip, NO_AA_FAULTS);
-    const data: number[] = [];
-    for (const v of devicePixels(dev)) data.push(255 - v);
+    const px = devicePixels(dev);
+    const data = new Uint8Array(px.length);
+    for (let i = 0; i < px.length; i++) setByte(data, i, 255 - at(px, i));
     return { bounds: b, data };
   }
-  const data: number[] = [];
+  const data = new Uint8Array(width(b) * height(b));
+  let k = 0;
   for (let y = b.top; y < b.bottom; y++) {
     for (let x = b.left; x < b.right; x++) {
       const c = shapeCoverage(s, x, y);
-      data.push(hole === null ? c : maxNum(0, c - shapeCoverage(hole, x, y)));
+      setByte(data, k, hole === null ? c : maxNum(0, c - shapeCoverage(hole, x, y)));
+      k++;
     }
   }
   return { bounds: b, data };
@@ -372,13 +361,15 @@ function drawNine(mask: A8Mask, outer: IRect, cx: number, cy: number): A8Mask {
   const innerTop = outer.top + cy;
   const innerRight = outer.right + (cx + 1 - mw);
   const innerBottom = outer.bottom + (cy + 1 - mh);
-  const data: number[] = [];
+  const data = new Uint8Array(width(outer) * height(outer));
+  let k = 0;
   for (let y = outer.top; y < outer.bottom; y++) {
     const my = y < innerTop ? y - outer.top : y >= innerBottom ? y - outer.bottom + mh : cy;
     for (let x = outer.left; x < outer.right; x++) {
       const mx = x < innerLeft ? x - outer.left : x >= innerRight ? x - outer.right + mw : cx;
       const centre = x >= innerLeft && x < innerRight && y >= innerTop && y < innerBottom;
-      data.push(centre ? 255 : at(mask.data, my * mw + mx));
+      setByte(data, k, centre ? 255 : byteAt(mask.data, my * mw + mx));
+      k++;
     }
   }
   return { bounds: outer, data };
@@ -426,7 +417,7 @@ export function blurredCoverage(s: ShadowShape, sigma: number, clip: IRect): A8M
  */
 function coverageOf(s: ShadowShape, dx: number, dy: number, sigma: number, clip: IRect): A8Mask {
   const type = shapeType(s);
-  if (type === 'empty') return { bounds: { left: 0, top: 0, right: 0, bottom: 0 }, data: [] };
+  if (type === 'empty') return { bounds: { left: 0, top: 0, right: 0, bottom: 0 }, data: new Uint8Array(0) };
   const ds = offsetShape(s, dx, dy);
   if (!(sigma > 0) || hasNoBlur(sigma)) {
     // Drawn with no blur: its antialiased coverage over its rounded-out bounds.
@@ -464,7 +455,7 @@ function tileClip(i: number, j: number): IRect {
 function maskAt(m: A8Mask, x: number, y: number): number {
   const b = m.bounds;
   if (x < b.left || x >= b.right || y < b.top || y >= b.bottom) return 0;
-  return at(m.data, (y - b.top) * width(b) + (x - b.left));
+  return byteAt(m.data, (y - b.top) * width(b) + (x - b.left));
 }
 
 /** Sk4px::approxMulDiv255: (a * (b + 1)) >> 8, the multiply Skia's NEON mask blit uses. */
@@ -478,7 +469,7 @@ function approxMulDiv255(a: number, b: number): number {
  * left + ((layer * (256 - left alpha)) >> 8). The colour is premultiplied with SkMulDiv255Round (SkPreMultiplyColor). The same
  * blit goes onto over (the opaque backdrop, as Chrome's tile holds it) unless over is empty. Only the pixels of region are blitted.
  */
-function compositeOnto(layer: readonly Cell[], over: readonly Cell[], bounds: IRect, region: IRect, sh: ShadowInput, coverageAt: (x: number, y: number) => number): void {
+function compositeOnto(layer: Uint8Array, over: Uint8Array, bounds: IRect, region: IRect, sh: ShadowInput, coverageAt: (x: number, y: number) => number): void {
   const pr = mulDiv255Round(sh.r, sh.a);
   const pg = mulDiv255Round(sh.g, sh.a);
   const pb = mulDiv255Round(sh.b, sh.a);
@@ -493,21 +484,14 @@ function compositeOnto(layer: readonly Cell[], over: readonly Cell[], bounds: IR
       const i = 4 * ((y - bounds.top) * width(bounds) + (x - bounds.left));
       const la = approxMulDiv255(sh.a, c);
       const keep = 256 - la;
-      const cr = cellAt(layer, i);
-      const cg = cellAt(layer, i + 1);
-      const cb = cellAt(layer, i + 2);
-      const ca = cellAt(layer, i + 3);
-      cr.v = approxMulDiv255(pr, c) + floorOf((cr.v * keep) / 256);
-      cg.v = approxMulDiv255(pg, c) + floorOf((cg.v * keep) / 256);
-      cb.v = approxMulDiv255(pb, c) + floorOf((cb.v * keep) / 256);
-      ca.v = la + floorOf((ca.v * keep) / 256);
+      setByte(layer, i, approxMulDiv255(pr, c) + floorOf((byteAt(layer, i) * keep) / 256));
+      setByte(layer, i + 1, approxMulDiv255(pg, c) + floorOf((byteAt(layer, i + 1) * keep) / 256));
+      setByte(layer, i + 2, approxMulDiv255(pb, c) + floorOf((byteAt(layer, i + 2) * keep) / 256));
+      setByte(layer, i + 3, la + floorOf((byteAt(layer, i + 3) * keep) / 256));
       if (over.length === 0) continue;
-      const dr = cellAt(over, i);
-      const dg = cellAt(over, i + 1);
-      const db = cellAt(over, i + 2);
-      dr.v = approxMulDiv255(pr, c) + floorOf((dr.v * keep) / 256);
-      dg.v = approxMulDiv255(pg, c) + floorOf((dg.v * keep) / 256);
-      db.v = approxMulDiv255(pb, c) + floorOf((db.v * keep) / 256);
+      setByte(over, i, approxMulDiv255(pr, c) + floorOf((byteAt(over, i) * keep) / 256));
+      setByte(over, i + 1, approxMulDiv255(pg, c) + floorOf((byteAt(over, i + 1) * keep) / 256));
+      setByte(over, i + 2, approxMulDiv255(pb, c) + floorOf((byteAt(over, i + 2) * keep) / 256));
     }
   }
 }
@@ -545,17 +529,19 @@ export function backdropAt(fills: readonly BackdropFill[], x: number, y: number)
   return [r, g, b];
 }
 
-/** The backdrop over bounds as an opaque layer, or no cells without fills. */
-function backdropCells(fills: readonly BackdropFill[] | null, bounds: IRect): Cell[] {
-  const out: Cell[] = [];
-  if (fills === null) return out;
+/** The backdrop over bounds as an opaque layer, or no bytes without fills. */
+function backdropBytes(fills: readonly BackdropFill[] | null, bounds: IRect): Uint8Array {
+  if (fills === null) return new Uint8Array(0);
+  const out = new Uint8Array(4 * width(bounds) * height(bounds));
+  let i = 0;
   for (let y = bounds.top; y < bounds.bottom; y++) {
     for (let x = bounds.left; x < bounds.right; x++) {
       const c = backdropAt(fills, x, y);
-      out.push({ v: at(c, 0) });
-      out.push({ v: at(c, 1) });
-      out.push({ v: at(c, 2) });
-      out.push({ v: 255 });
+      setByte(out, i, at(c, 0));
+      setByte(out, i + 1, at(c, 1));
+      setByte(out, i + 2, at(c, 2));
+      setByte(out, i + 3, 255);
+      i += 4;
     }
   }
   return out;
@@ -586,15 +572,14 @@ export function encodeOver(cr: number, cg: number, cb: number, br: number, bg: n
   throw new Error(`paint-shadow: no layer pixel composites to ${cr},${cg},${cb} over ${br},${bg},${bb}`);
 }
 
-/** A composited layer's values; with a backdrop (back not empty), each pixel encoded over it from Chrome's colour in over. */
-function layerValues(layer: readonly Cell[], over: readonly Cell[], back: readonly Cell[]): number[] {
-  if (back.length === 0) return values(layer);
-  const out: number[] = [];
+/** A composited layer's values, in place; with a backdrop (back not empty), each pixel encoded over it from Chrome's colour in over. */
+function layerValues(layer: Uint8Array, over: Uint8Array, back: Uint8Array): Uint8Array {
+  if (back.length === 0) return layer;
   for (let i = 0; i < layer.length; i += 4) {
-    const px = encodeOver(cellAt(over, i).v, cellAt(over, i + 1).v, cellAt(over, i + 2).v, cellAt(back, i).v, cellAt(back, i + 1).v, cellAt(back, i + 2).v, cellAt(layer, i + 3).v);
-    for (const v of px) out.push(v);
+    const px = encodeOver(byteAt(over, i), byteAt(over, i + 1), byteAt(over, i + 2), byteAt(back, i), byteAt(back, i + 1), byteAt(back, i + 2), byteAt(layer, i + 3));
+    for (let k = 0; k < 4; k++) setByte(layer, i + k, at(px, k));
   }
-  return out;
+  return layer;
 }
 
 /** The page device-px extent a shadow can reach: its shape bounds outset by 3 sigma, rounded out, plus one pixel. */
@@ -617,6 +602,31 @@ function moveMask(m: A8Mask, dx: number, dy: number): A8Mask {
   return { bounds: { left: m.bounds.left + dx, top: m.bounds.top + dy, right: m.bounds.right + dx, bottom: m.bounds.bottom + dy }, data: m.data };
 }
 
+/** The part of tile (i, j)'s mask its own pixels read (those ccTileIndex places in it), so the masks a layer caches are no larger than it. */
+function tileCrop(m: A8Mask, i: number, j: number): A8Mask {
+  const b = m.bounds;
+  let left = b.right;
+  let right = b.left;
+  let top = b.bottom;
+  let bottom = b.top;
+  for (let x = b.left; x < b.right; x++) {
+    if (ccTileIndex(x, TILE) !== i) continue;
+    left = minNum(left, x);
+    right = x + 1;
+  }
+  for (let y = b.top; y < b.bottom; y++) {
+    if (ccTileIndex(y, TILE) !== j) continue;
+    top = minNum(top, y);
+    bottom = y + 1;
+  }
+  if (left >= right || top >= bottom) return { bounds: { left: b.left, top: b.top, right: b.left, bottom: b.top }, data: new Uint8Array(0) };
+  if (left === b.left && right === b.right && top === b.top && bottom === b.bottom) return m;
+  const w = right - left;
+  const data = new Uint8Array(w * (bottom - top));
+  for (let y = top; y < bottom; y++) for (let x = left; x < right; x++) setByte(data, (y - top) * w + (x - left), maskAt(m, x, y));
+  return { bounds: { left, top, right, bottom }, data };
+}
+
 /** Tile (i, j)'s clip in its own bitmap's coordinates. */
 function localClip(i: number, j: number): IRect {
   const c = tileClip(i, j);
@@ -636,7 +646,7 @@ function tileMaskAt(cache: TileMask[], spread: ShadowShape, ox: number, oy: numb
   for (const t of cache) if (t.i === i && t.j === j) return t.mask;
   const x0 = ccTileStart(i, TILE);
   const y0 = ccTileStart(j, TILE);
-  const mask = moveMask(coverageOf(spread, f32(ox - x0), f32(oy - y0), sigma, localClip(i, j)), x0, y0);
+  const mask = tileCrop(moveMask(coverageOf(spread, f32(ox - x0), f32(oy - y0), sigma, localClip(i, j)), x0, y0), i, j);
   cache.push({ i, j, mask });
   return mask;
 }
@@ -675,11 +685,11 @@ function outerLayer(left: number, top: number, right: number, bottom: number, ra
     const obscured = sh.x === 0 && sh.y === 0 && sh.blur === 0 && sh.spread === 0;
     if (!sh.inset && !obscured && shapeType(shape) !== 'empty') bounds = union(bounds, reach(shape, at(z, 4)));
   }
-  if (bounds === null) return { left: 0, top: 0, right: 0, bottom: 0, rgba: [] };
+  if (bounds === null) return { left: 0, top: 0, right: 0, bottom: 0, rgba: new Uint8Array(0) };
   const b = bounds;
-  const layer = zeroCells(4 * width(b) * height(b));
-  const back = backdropCells(backdrop, b);
-  const over = backdropCells(backdrop, b);
+  const layer = new Uint8Array(4 * width(b) * height(b));
+  const back = backdropBytes(backdrop, b);
+  const over = backdropBytes(backdrop, b);
   // ClipToBorderEdge: the border box, inset by one device px when the background is opaque, clipped out.
   const inset = opaqueBackground ? 1 : 0;
   const clipOut = spreadShape(left, top, right, bottom, border.radii, -inset, NO_SHADOW_FAULTS);
@@ -727,10 +737,10 @@ function insetLayer(left: number, top: number, right: number, bottom: number, bo
   const b: IRect = { left: pl, top: pt, right: pr, bottom: pb };
   const rounded = hasRoundedCorner(innerRadii);
   const bounds: ShadowShape = { left: pl, top: pt, right: pr, bottom: pb, radii: rounded ? innerRadii : [0, 0, 0, 0, 0, 0, 0, 0] };
-  if (width(b) === 0 || height(b) === 0) return { left: pl, top: pt, right: pl, bottom: pt, rgba: [] };
-  const layer = zeroCells(4 * width(b) * height(b));
-  const back = backdropCells(backdrop, b);
-  const over = backdropCells(backdrop, b);
+  if (width(b) === 0 || height(b) === 0) return { left: pl, top: pt, right: pl, bottom: pt, rgba: new Uint8Array(0) };
+  const layer = new Uint8Array(4 * width(b) * height(b));
+  const back = backdropBytes(backdrop, b);
+  const over = backdropBytes(backdrop, b);
   const clipAt = (x: number, y: number): number => (rounded ? shapeCoverage(bounds, x, y) : 255);
   for (let k = shadows.length - 1; k >= 0; k--) {
     const sh = shadows[k] as ShadowInput;
@@ -772,7 +782,7 @@ function insetLayer(left: number, top: number, right: number, bottom: number, bo
         const lc = localClip(i, j);
         const clip: IRect = { left: maxNum(lb.left, lc.left), top: maxNum(lb.top, lc.top), right: minNum(lb.right, lc.right), bottom: minNum(lb.bottom, lc.bottom) };
         const local = !(sigma > 0) || hasNoBlur(sigma) ? rasterMask(devicePath(outer, hole, dx, dy), shape, offsetShape(hole, dx, dy), lb, clip, false) : pathBlur(outer, hole, dx, dy, sigma, clip);
-        m = moveMask(local, x0, y0);
+        m = tileCrop(moveMask(local, x0, y0), i, j);
         cache.push({ i, j, mask: m });
       }
       return mulDiv255Round(maskAt(m, x, y), clipAt(x, y));
@@ -787,12 +797,14 @@ function insetLayer(left: number, top: number, right: number, bottom: number, bo
 /** An Ahem glyph's source A8 mask: each pixel's area coverage of the ink box (Core Text's fringe is not modelled; see textShadowLayerOver). */
 function glyphMask(left: number, top: number, right: number, bottom: number): A8Mask {
   const b = roundOut(left, top, right, bottom);
-  const data: number[] = [];
+  const data = new Uint8Array(width(b) * height(b));
+  let k = 0;
   for (let y = b.top; y < b.bottom; y++) {
     const cy = minNum(y + 1, bottom) - maxNum(y, top);
     for (let x = b.left; x < b.right; x++) {
       const cx = minNum(x + 1, right) - maxNum(x, left);
-      data.push(cx > 0 && cy > 0 ? floorOf(cx * cy * 255 + 0.5) : 0);
+      setByte(data, k, cx > 0 && cy > 0 ? floorOf(cx * cy * 255 + 0.5) : 0);
+      k++;
     }
   }
   return { bounds: b, data };
@@ -866,11 +878,11 @@ export function textShadowLayerOverTexts(cps: readonly number[], xs: readonly nu
       if (width(m.bounds) > 0 && height(m.bounds) > 0) bounds = union(bounds, m.bounds);
     }
   }
-  if (bounds === null) return { left: 0, top: 0, right: 0, bottom: 0, rgba: [] };
+  if (bounds === null) return { left: 0, top: 0, right: 0, bottom: 0, rgba: new Uint8Array(0) };
   const b = bounds;
-  const layer = zeroCells(4 * width(b) * height(b));
-  const back = backdropCells(backdrop, b);
-  const glyphInk = under.length === 0 ? [] : zeroCells(width(b) * height(b));
+  const layer = new Uint8Array(4 * width(b) * height(b));
+  const back = backdropBytes(backdrop, b);
+  const glyphInk = new Uint8Array(under.length === 0 ? 0 : width(b) * height(b));
   for (const u of under) {
     if (!isByte(u.r) || !isByte(u.g) || !isByte(u.b)) throw new Error(`paint-shadow: a text colour ${u.r},${u.g},${u.b} is not RGB8`);
     const uInk = ahemLineInk(u.cps, u.xs, u.size, u.baseline);
@@ -881,18 +893,18 @@ export function textShadowLayerOverTexts(cps: readonly number[], xs: readonly nu
       const shMasks = lineShadowMasks(uInk, u.baseline, sh, dpr, faults);
       for (let n = 0; n < shMasks.length; n++) {
         const m = shMasks[n] as A8Mask;
-        compositeOnto(back, [], b, m.bounds, sh, (x, y) => maskAt(m, x, y));
+        compositeOnto(back, new Uint8Array(0), b, m.bounds, sh, (x, y) => maskAt(m, x, y));
       }
     }
     const glyph: ShadowInput = { inset: false, x: 0, y: 0, blur: 0, spread: 0, r: u.r, g: u.g, b: u.b, a: 255 };
     const glyphMasks = lineShadowMasks(uInk, u.baseline, glyph, dpr, faults);
     for (let n = 0; n < glyphMasks.length; n++) {
       const m = glyphMasks[n] as A8Mask;
-      compositeOnto(back, [], b, m.bounds, glyph, (x, y) => maskAt(m, x, y));
+      compositeOnto(back, new Uint8Array(0), b, m.bounds, glyph, (x, y) => maskAt(m, x, y));
       markInk(glyphInk, b, m);
     }
   }
-  const over = copyCells(back);
+  const over = copyBytes(back);
   let i = 0;
   for (let k = shadows.length - 1; k >= 0; k--) {
     const sh = shadows[k] as ShadowInput;
@@ -905,26 +917,23 @@ export function textShadowLayerOverTexts(cps: readonly number[], xs: readonly nu
   }
   if (under.length === 0) return { left: b.left, top: b.top, right: b.right, bottom: b.bottom, rgba: layerValues(layer, over, back) };
   // Where an earlier glyph has ink, the layer pixel is opaque wherever it paints at all.
-  for (let p = 0; p < glyphInk.length; p++) {
-    const a = cellAt(layer, 4 * p + 3);
-    if (cellAt(glyphInk, p).v !== 0 && a.v !== 0) a.v = 255;
-  }
+  for (let p = 0; p < glyphInk.length; p++) if (byteAt(glyphInk, p) !== 0 && byteAt(layer, 4 * p + 3) !== 0) setByte(layer, 4 * p + 3, 255);
   return { left: b.left, top: b.top, right: b.right, bottom: b.bottom, rgba: layerValues(layer, over, back) };
 }
 
 /** Marks every pixel of bounds where a mask has coverage. */
-function markInk(marks: readonly Cell[], bounds: IRect, m: A8Mask): void {
+function markInk(marks: Uint8Array, bounds: IRect, m: A8Mask): void {
   const y0 = maxNum(bounds.top, m.bounds.top);
   const y1 = minNum(bounds.bottom, m.bounds.bottom);
   const x0 = maxNum(bounds.left, m.bounds.left);
   const x1 = minNum(bounds.right, m.bounds.right);
   for (let y = y0; y < y1; y++) {
-    for (let x = x0; x < x1; x++) if (maskAt(m, x, y) !== 0) cellAt(marks, (y - bounds.top) * width(bounds) + (x - bounds.left)).v = 1;
+    for (let x = x0; x < x1; x++) if (maskAt(m, x, y) !== 0) setByte(marks, (y - bounds.top) * width(bounds) + (x - bounds.left), 1);
   }
 }
 
-function copyCells(xs: readonly Cell[]): Cell[] {
-  const out: Cell[] = [];
-  for (const c of xs) out.push({ v: c.v });
+function copyBytes(xs: Uint8Array): Uint8Array {
+  const out = new Uint8Array(xs.length);
+  for (let i = 0; i < xs.length; i++) setByte(out, i, byteAt(xs, i));
   return out;
 }

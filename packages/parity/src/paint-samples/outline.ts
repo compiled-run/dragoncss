@@ -142,10 +142,21 @@ export function boxRings(ctx: PaintSampleContext, b: SampleBox, shift = 0): Ring
 type Outlined = { readonly box: SampleBox; readonly rings: readonly Ring[]; readonly ops: readonly BorderOp[] | null };
 const cache = new WeakMap<PaintSampleContext, readonly Outlined[]>();
 
+/** Whether a node or an ancestor has transform functions (the lowering's transform facts): transform.ts maps its outline's points. */
+export function inTransformedSubtree(ctx: PaintSampleContext, id: string): boolean {
+  const byId = new Map(ctx.program.nodes.map((n) => [n.id, n]));
+  for (let n = byId.get(id); n !== undefined; n = n.parent === null ? undefined : byId.get(n.parent)) {
+    const f = n.facts['transform'] as { readonly ops: readonly unknown[] } | undefined;
+    if (f !== undefined && f.ops.length > 0) return true;
+  }
+  return false;
+}
+
+/** The outlines this module samples where they lie: every outline outside a transformed subtree. */
 function outlined(ctx: PaintSampleContext): readonly Outlined[] {
   const hit = cache.get(ctx);
   if (hit !== undefined) return hit;
-  const out = ctx.boxes.map((box) => ({ box, rings: boxRings(ctx, box), ops: boxOutlineOps(ctx, box) })).filter((o) => o.rings.length > 0);
+  const out = ctx.boxes.filter((box) => !inTransformedSubtree(ctx, box.id)).map((box) => ({ box, rings: boxRings(ctx, box), ops: boxOutlineOps(ctx, box) })).filter((o) => o.rings.length > 0);
   cache.set(ctx, out);
   return out;
 }
@@ -175,48 +186,49 @@ function scanlinesNearRings(ctx: PaintSampleContext): ReadonlySet<string> {
   return out;
 }
 
+/** The colour points and edge scanlines of one box's outline rings, on its untransformed geometry. */
+export function ringPoints(ctx: PaintSampleContext, box: SampleBox, rings: readonly Ring[], ops: readonly BorderOp[] | null): SamplePoint[] {
+  const inset = SAMPLE_INSET_DEVICE_PX;
+  const inImage = (x: number, y: number): boolean => x >= 0 && y >= 0 && x < ctx.size.width && y < ctx.size.height;
+  const out: SamplePoint[] = [];
+  rings.forEach((r, k) => {
+    const [ol, ot, or, ob] = r.outer;
+    const [il, it, ir, ib] = r.inner;
+    for (const side of SIDES) {
+      const horizontal = side === 'top' || side === 'bottom';
+      const band = side === 'top' ? it - ot : side === 'bottom' ? ob - ib : side === 'left' ? il - ol : or - ir;
+      const middle = horizontal ? Math.floor((il + ir) / 2) : Math.floor((it + ib) / 2);
+      // A ring style takes the middle of the side; the side painter's styles try every position of the side's straight part
+      // (between the inner corners, clear of them by the inset), nearest the middle first.
+      const [lo, hi] = horizontal ? [il + inset, ir - inset - 1] : [it + inset, ib - inset - 1];
+      const alongs = ops === null ? [middle] : Array.from({ length: Math.max(0, hi - lo + 1) }, (_, i) => lo + i).sort((a, b) => Math.abs(a - middle) - Math.abs(b - middle) || a - b);
+      const crisp = (pts: readonly (readonly [number, number])[]): boolean => ops === null || pts.every(([x, y]) => crispUnder(ops, x, y, horizontal ? inset : 0, horizontal ? 0 : inset));
+      const outerEdge = side === 'top' ? ot : side === 'bottom' ? ob : side === 'left' ? ol : or;
+      const inward = side === 'top' || side === 'left' ? 1 : -1;
+      if (band >= 2 * inset + 1) {
+        const across = inward > 0 ? outerEdge + Math.floor((band - 1) / 2) : outerEdge - 1 - Math.floor((band - 1) / 2);
+        const along = alongs.find((a) => {
+          const [x, y] = horizontal ? [a, across] : [across, a];
+          return inImage(x, y) && crisp([[x, y]]);
+        });
+        if (along !== undefined) {
+          const [x, y] = horizontal ? [along, across] : [across, along];
+          out.push({ x, y, rule: `border:${box.id}:outline-${k}-${side}` });
+        }
+      }
+      if (band >= inset + 1) {
+        const first = inward > 0 ? outerEdge - inset - 1 : outerEdge + inset;
+        const lineAt = (along: number): (readonly [number, number])[] => Array.from({ length: 2 * inset + 2 }, (_, j) => (horizontal ? [along, first + inward * j] : [first + inward * j, along]) as [number, number]);
+        const along = alongs.find((a) => lineAt(a).every(([x, y]) => inImage(x, y)) && crisp(lineAt(a)));
+        if (along !== undefined) for (const [x, y] of lineAt(along)) out.push({ x, y, rule: `edge:${box.id}:outline-${k}-${side}` });
+      }
+    }
+  });
+  return out;
+}
+
 export const OUTLINE_SAMPLES: PaintSamples = {
   name: 'outline',
   keep: (p: SamplePoint, ctx: PaintSampleContext) => (ruleKind(p.rule) === 'edge' ? !scanlinesNearRings(ctx).has(p.rule) : !nearRing(ctx, p.x, p.y)),
-  points: (ctx: PaintSampleContext) => {
-    const inset = SAMPLE_INSET_DEVICE_PX;
-    const inImage = (x: number, y: number): boolean => x >= 0 && y >= 0 && x < ctx.size.width && y < ctx.size.height;
-    const out: SamplePoint[] = [];
-    for (const { box, rings, ops } of outlined(ctx)) {
-      rings.forEach((r, k) => {
-        const [ol, ot, or, ob] = r.outer;
-        const [il, it, ir, ib] = r.inner;
-        for (const side of SIDES) {
-          const horizontal = side === 'top' || side === 'bottom';
-          const band = side === 'top' ? it - ot : side === 'bottom' ? ob - ib : side === 'left' ? il - ol : or - ir;
-          const middle = horizontal ? Math.floor((il + ir) / 2) : Math.floor((it + ib) / 2);
-          // A ring style takes the middle of the side; the side painter's styles try every position of the side's straight part
-          // (between the inner corners, clear of them by the inset), nearest the middle first.
-          const [lo, hi] = horizontal ? [il + inset, ir - inset - 1] : [it + inset, ib - inset - 1];
-          const alongs = ops === null ? [middle] : Array.from({ length: Math.max(0, hi - lo + 1) }, (_, i) => lo + i).sort((a, b) => Math.abs(a - middle) - Math.abs(b - middle) || a - b);
-          const crisp = (pts: readonly (readonly [number, number])[]): boolean => ops === null || pts.every(([x, y]) => crispUnder(ops, x, y, horizontal ? inset : 0, horizontal ? 0 : inset));
-          const outerEdge = side === 'top' ? ot : side === 'bottom' ? ob : side === 'left' ? ol : or;
-          const inward = side === 'top' || side === 'left' ? 1 : -1;
-          if (band >= 2 * inset + 1) {
-            const across = inward > 0 ? outerEdge + Math.floor((band - 1) / 2) : outerEdge - 1 - Math.floor((band - 1) / 2);
-            const along = alongs.find((a) => {
-              const [x, y] = horizontal ? [a, across] : [across, a];
-              return inImage(x, y) && crisp([[x, y]]);
-            });
-            if (along !== undefined) {
-              const [x, y] = horizontal ? [along, across] : [across, along];
-              out.push({ x, y, rule: `border:${box.id}:outline-${k}-${side}` });
-            }
-          }
-          if (band >= inset + 1) {
-            const first = inward > 0 ? outerEdge - inset - 1 : outerEdge + inset;
-            const lineAt = (along: number): (readonly [number, number])[] => Array.from({ length: 2 * inset + 2 }, (_, j) => (horizontal ? [along, first + inward * j] : [first + inward * j, along]) as [number, number]);
-            const along = alongs.find((a) => lineAt(a).every(([x, y]) => inImage(x, y)) && crisp(lineAt(a)));
-            if (along !== undefined) for (const [x, y] of lineAt(along)) out.push({ x, y, rule: `edge:${box.id}:outline-${k}-${side}` });
-          }
-        }
-      });
-    }
-    return out;
-  },
+  points: (ctx: PaintSampleContext) => outlined(ctx).flatMap((o) => ringPoints(ctx, o.box, o.rings, o.ops)),
 };

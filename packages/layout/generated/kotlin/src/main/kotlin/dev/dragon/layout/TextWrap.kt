@@ -66,12 +66,12 @@ fun textWrap_scoreBreakPoints(candidates: JsArray<WrapCandidate>, availableToFit
       // ts: packages/layout/src/text-wrap.ts:62
       run {
         var start: Double = active
-        loop49@ while ((start < end)) {
-          loop49_body@ do {
+        loop50@ while ((start < end)) {
+          loop50_body@ do {
             val startScore: Double = jsUnwrap(jsAt(scores, start))
             // ts: packages/layout/src/text-wrap.ts:64
             if ((jsFround((startScore + bestHope)) >= best)) {
-              break@loop49_body
+              break@loop50_body
             }
             val delta: Double = jsFround((jsFround(jsUnwrap(jsAt(candidates, start)).posNoBreak) - startEdge))
             var widthScore: Double = 0.0

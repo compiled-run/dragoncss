@@ -1,0 +1,33 @@
+{
+  "sources": ["view.dg", "doc.css"],
+  "modules": [{ "id": "view", "source": "view.dg" }],
+  "styles": [{ "id": "doc", "file": "doc.css", "scope": "document" }],
+  "document": { "root": "App", "documentElement": "html", "styles": ["doc"] },
+  "components": [
+    {
+      "id": "App", "module": "view", "at": "component App",
+      "states": [{ "id": "side", "domain": ["rtl", "ltr", "none"], "initial": "rtl", "at": "side: \"rtl\" | \"ltr\" | \"none\" = \"rtl\"" }],
+      "root": [
+        { "el": "html", "id": "html", "at": "<html>", "children": [
+          { "el": "body", "id": "body", "at": "<body>", "children": [
+            { "el": "div", "id": "frame", "at": "<div frame", "class": ["doc.frame"], "attr": [
+              { "name": "dir", "choice": [{ "when": ["side", "rtl"], "value": "rtl" }, { "when": ["side", "ltr"], "value": "ltr" }, { "when": ["side", "none"], "value": null }], "at": "dir={side" }
+            ], "children": [
+              { "el": "div", "id": "kid", "at": "<div kid", "class": ["doc.kid"] },
+              { "el": "div", "id": "own", "at": "<div own", "class": ["doc.own"], "attr": [{ "name": "dir", "value": "ltr", "at": "dir=\"ltr\"" }], "children": [
+                { "el": "div", "id": "deep", "at": "<div deep", "class": ["doc.kid"] }
+              ] }
+            ] },
+            { "el": "div", "id": "after", "at": "<div after", "class": ["doc.kid"] }
+          ] }
+        ] }
+      ]
+    }
+  ],
+  "expected": {
+    "freeStates": [{ "instance": "doc", "state": "side", "domain": ["rtl", "ltr", "none"] }],
+    "cases": 3,
+    "initial": [{ "instance": "doc", "state": "side", "value": "rtl" }],
+    "textTopology": []
+  }
+}

@@ -4,14 +4,14 @@ import { createHash } from 'node:crypto';
 import { basename, relative } from 'node:path';
 import ts from 'typescript';
 import type { BinOp, Builtin, ClassDecl, ConstDecl, Decl, Expr, Field, FuncDecl, Loc, Param, Program, Stmt, Ty, UnionDecl } from './ir.ts';
-import { BOOL, NEVER, NULL, NUM, STR, tyEq, tyKey, VOID } from './ir.ts';
+import { BOOL, BYTES, NEVER, NULL, NUM, STR, tyEq, tyKey, VOID } from './ir.ts';
 
 export type Violation = { readonly file: string; readonly line: number; readonly message: string };
 
 class Bail extends Error {}
 
 /** Type names that would shadow a target-language type; they get their file prefix. */
-const RESERVED_TYPE_NAMES = new Set(['Char', 'String', 'Array', 'Map', 'Set', 'Error', 'Result', 'Pair', 'Any', 'Unit', 'Nothing', 'Int', 'Double', 'Float', 'Bool', 'Boolean', 'Character', 'Optional', 'Never', 'Void', 'Type', 'Protocol', 'Self', 'JsString', 'JsArray', 'JsError', 'S']);
+const RESERVED_TYPE_NAMES = new Set(['Char', 'String', 'Array', 'Map', 'Set', 'Error', 'Result', 'Pair', 'Any', 'Unit', 'Nothing', 'Int', 'Double', 'Float', 'Bool', 'Boolean', 'Character', 'Optional', 'Never', 'Void', 'Type', 'Protocol', 'Self', 'JsString', 'JsArray', 'JsBytes', 'JsError', 'S']);
 
 /** The host module of the translated harness: its functions map to prelude builtins and it is never translated. */
 const HOST_FUNCS: Readonly<Record<string, Builtin>> = {
@@ -310,6 +310,7 @@ export class Lowerer {
       }
       if (sym !== undefined && this.isLib(sym)) {
         if (sym.name === 'Error') return { k: 'class', name: 'JsError' };
+        if (sym.name === 'Uint8Array') return BYTES;
         this.fail(at, `library type ${sym.name} is outside the subset`);
       }
       const calls = t.getCallSignatures();
@@ -652,6 +653,7 @@ export class Lowerer {
     const loc = this.loc(e);
     if (ts.isBinaryExpression(e)) {
       const op = e.operatorToken.kind;
+      if (op === ts.SyntaxKind.EqualsToken && ts.isElementAccessExpression(e.left)) return { s: 'expr', e: this.byteStore(e.left, e.right), loc };
       if (op === ts.SyntaxKind.EqualsToken || op === ts.SyntaxKind.PlusEqualsToken || op === ts.SyntaxKind.MinusEqualsToken) {
         const target = this.lvalue(e.left);
         const opStr = op === ts.SyntaxKind.EqualsToken ? '=' : op === ts.SyntaxKind.PlusEqualsToken ? '+=' : '-=';
@@ -669,6 +671,15 @@ export class Lowerer {
       return { s: 'expr', e: x, loc };
     }
     this.fail(e, `expression statement ${ts.SyntaxKind[e.kind]} is outside the subset`);
+  }
+
+  /** bytes[i] = v: the one element store in the subset (a store outside the buffer or at a non-integer index does nothing, as in JS). */
+  private byteStore(target: ts.ElementAccessExpression, value: ts.Expression): Expr {
+    if (target.questionDotToken !== undefined) this.fail(target, '?. is outside the subset');
+    const obj = this.expr(target.expression, null);
+    if (obj.ty.k !== 'bytes') this.fail(target, 'element assignment on Uint8Array only (arrays are never stored into by index)');
+    const idx = this.expr(target.argumentExpression, NUM);
+    return { ty: VOID, e: 'builtin', op: 'bytesSet', args: [obj, idx, this.expr(value, NUM)] };
   }
 
   /** An assignable place: a local variable or a mutable field. */
@@ -930,6 +941,7 @@ export class Lowerer {
     const obj = this.expr(e.expression, null);
     if (name === 'length') {
       if (obj.ty.k === 'array') return { ty: NUM, e: 'builtin', op: 'arrLength', args: [obj] };
+      if (obj.ty.k === 'bytes') return { ty: NUM, e: 'builtin', op: 'bytesLength', args: [obj] };
       if (obj.ty.k === 'str') this.fail(e, 'string length is outside the subset (use code points)');
     }
     const f = this.fieldTy(obj.ty, name);
@@ -940,6 +952,11 @@ export class Lowerer {
   private elementAccess(e: ts.ElementAccessExpression): Expr {
     if (e.questionDotToken !== undefined) this.fail(e, '?. is outside the subset');
     const obj = this.expr(e.expression, null);
+    if (obj.ty.k === 'bytes') {
+      // TypeScript narrows b[i] to number after b[i] = v, though a store outside the buffer leaves it undefined.
+      if (this.checkerTy(e).k !== 'opt') this.fail(e, 'a Uint8Array element read that TypeScript narrowed by a store is outside the subset');
+      return { ty: { k: 'opt', inner: NUM }, e: 'builtin', op: 'bytesIndex', args: [obj, this.expr(e.argumentExpression, NUM)] };
+    }
     if (obj.ty.k !== 'array') this.fail(e, 'index access on arrays only (no string index)');
     const idx = this.expr(e.argumentExpression, NUM);
     const x: Expr = { ty: { k: 'opt', inner: obj.ty.elem }, e: 'builtin', op: 'arrIndex', args: [obj, idx] };
@@ -1141,6 +1158,11 @@ export class Lowerer {
         return [this.expr(el.elements[0] as ts.Expression, ty.key), this.expr(el.elements[1] as ts.Expression, ty.value)] as const;
       });
       return { ty, e: 'mapNew', entries };
+    }
+    if (c.text === 'Uint8Array' && sym !== undefined && this.isLib(sym)) {
+      const n = e.arguments?.[0];
+      if (n === undefined || (e.arguments?.length ?? 0) !== 1) this.fail(e, 'new Uint8Array(length) only');
+      return { ty: BYTES, e: 'builtin', op: 'bytesNew', args: [this.expr(n, NUM)] };
     }
     if (c.text === 'Error' && sym !== undefined && this.isLib(sym)) {
       const m = e.arguments?.[0];
