@@ -279,7 +279,6 @@ describe('hitTableOf and hitRefusal refuse a form control by name', () => {
     const input = { viewport: { width: 400, height: 300 }, devicePixelRatio: 1, ...neutralEnvironment({ width: 400, height: 300 }), root };
     expect(hitRefusal(input)).toBeNull();
     const facts = new Map(['html', 's', 'f', 'a'].map((id) => [id, { pointerEvents: 'auto', inherited: true, activation: false, radii: [] }] as const));
-    const facts = new Map(['html', 's', 'f'].map((id) => [id, { pointerEvents: 'auto', inherited: true, activation: false, radii: [] }] as const));
     const t = hitTableOf(input, ahemMeasurer, facts, NO_HIT_TABLE_FAULTS);
     expect(t.ids).toEqual(['html', 's', 'f', 'a']);
   });
