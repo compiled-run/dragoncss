@@ -11,7 +11,7 @@
 // paint order, the group opacity and the alpha byte before any device runs. Chrome's composite is measured, not assumed: the first
 // test fits the two blits and the byte against a captured sweep of opacities.
 import { describe, expect, it } from 'vitest';
-import { groupComposite, groupFill, groupFilterComposite, groupFilterMatrices, groupFoldAlpha, groupTileFoldIndex, groupTileFolds, hasRoundedCorner, LU_PER_PX, mapPoint, NO_RADIUS_FAULTS, opacityAlpha8, paintTransformMatrix, roundedShape, snapEdges } from '@dragon/layout';
+import { groupComposite, groupFill, groupFilterComposite, groupFilterMatrices, groupFoldAlpha, groupTileFoldIndex, groupTileFolds, groupCompositeLayered, hasRoundedCorner, LU_PER_PX, mapPoint, NO_RADIUS_FAULTS, opacityAlpha8, paintTransformMatrix, roundedShape, snapEdges } from '@dragon/layout';
 import type { Matrix2D, TransformOp, TransformOrigin } from '@dragon/layout';
 import { filterPairs } from '../../dragon/src/emit/paint/effects.ts';
 import { ccTileEnd, ccTileIndex, ccTileSize, ccTileStart } from '../../layout/src/paint-dither.ts';
@@ -159,7 +159,7 @@ type Stacking = { paintOrder: number; clipChain: readonly string[] };
 type Item =
   | { readonly kind: 'box'; readonly box: Box }
   | { readonly kind: 'text'; readonly node: ProgramNode; readonly glyphs: readonly { left: number; top: number; right: number; bottom: number }[] }
-  | { readonly kind: 'group'; readonly box: Box; readonly opacity: number; readonly alpha8: number; readonly matrices: readonly number[] | null; readonly matrix: Matrix2D | null; readonly items: readonly Item[] };
+  | { readonly kind: 'group'; readonly box: Box; readonly opacity: number; readonly alpha8: number; readonly matrices: readonly number[] | null; readonly matrix: Matrix2D | null; readonly layered: boolean; readonly items: readonly Item[] };
 
 const stackingOf = (n: ProgramNode): Stacking => {
   const s = n.facts['stacking'] as Stacking | undefined;
@@ -169,15 +169,18 @@ const stackingOf = (n: ProgramNode): Stacking => {
 
 /**
  * Planted model faults the test must catch: the alpha ignored (alpha-ignored), tree order instead of the paint order (order-swap),
- * a colour-matrix filter list ignored (filter-ignored), square corners for rounded boxes, and groups drawn untransformed.
+ * a colour-matrix filter list ignored (filter-ignored), square corners for rounded boxes, groups drawn untransformed, and a group in
+ * a layer of its own composited in one step.
  */
-type ModelFaults = { readonly alphaIgnored: boolean; readonly treeOrder: boolean; readonly filterIgnored?: boolean; readonly squareCorners?: boolean; readonly untransformedGroups?: boolean };
+type ModelFaults = { readonly alphaIgnored: boolean; readonly treeOrder: boolean; readonly filterIgnored?: boolean; readonly squareCorners?: boolean; readonly untransformedGroups?: boolean; readonly oneStep?: boolean };
 const NO_MODEL_FAULTS: ModelFaults = { alphaIgnored: false, treeOrder: false };
 
 /** The case's paint items in Appendix E order, each opacity context holding its subtree's items as a group. */
 function paintItems(p: NativeProgram, viewport: { width: number; height: number }, dpr: number, faults: ModelFaults = NO_MODEL_FAULTS): Item[] {
   const list = boxes(p, viewport, dpr, faults.squareCorners === true);
   const byId = new Map(list.map((b) => [b.node.id, b]));
+  // Chrome's root scroller overflows (and composites sticky boxes) when a box reaches past the viewport.
+  const overflows = list.some((b) => b.l < 0 || b.t < 0 || b.r > viewport.width * dpr || b.b > viewport.height * dpr);
   const children = new Map<string, ProgramNode[]>();
   for (const n of p.nodes) if (n.parent !== null) children.set(n.parent, [...(children.get(n.parent) ?? []), n]);
   const glyphsOf = new Map<string, { left: number; top: number; right: number; bottom: number }[]>();
@@ -208,7 +211,7 @@ function paintItems(p: NativeProgram, viewport: { width: number; height: number 
       if (sorted.slice(k, k + members.length).some((x) => !inside.has(x.id))) throw new Error(`${n.id}: its subtree is not contiguous in the paint order`);
       const filter = effects.filter ?? [];
       const matrices = filter.length === 0 ? null : groupFilterMatrices(faults.filterIgnored ? [] : filterPairs(filter));
-      out.push({ kind: 'group', box: byId.get(n.id) as Box, opacity: faults.alphaIgnored ? 1 : effects.opacity, alpha8: faults.alphaIgnored ? 255 : opacityAlpha8(effects.opacity), matrices, matrix: transformedGroup(n) && faults.untransformedGroups !== true ? groupMatrix(n, byId.get(n.id) as Box, dpr) : null, items: [...withText(n), ...build(members.filter((x) => x !== n))] });
+      out.push({ kind: 'group', box: byId.get(n.id) as Box, opacity: faults.alphaIgnored ? 1 : effects.opacity, alpha8: faults.alphaIgnored ? 255 : opacityAlpha8(effects.opacity), matrices, matrix: transformedGroup(n) && faults.untransformedGroups !== true ? groupMatrix(n, byId.get(n.id) as Box, dpr) : null, layered: overflows && n.writes.some((w) => (w.kind === 'opacity-group' || w.kind === 'filter-group') && w.after !== undefined) && faults.oneStep !== true, items: [...withText(n), ...build(members.filter((x) => x !== n))] });
       k += members.length - 1;
     }
     return out;
@@ -317,6 +320,8 @@ function paintItem(dst: Px, it: Item, x: number, y: number, tile: Tile, byId: Re
   if (content.direct.length === 1 && content.nested === 0 && only !== undefined && only.kind === 'box' && boxOps(only.box).foldable) return paintBox(dst, only.box, local.x, local.y, byId, it.opacity, x + 0.5, y + 0.5);
   let layer: Px = [0, 0, 0, 0];
   for (const member of it.items) layer = paintItem(layer, member, x, y, tile, byId, inner);
+  // In a compositor layer of its own (after a composited sticky box): onto transparent pixels, then that layer over dst.
+  if (it.layered) return unpack(groupCompositeLayered(layer[0], layer[1], layer[2], layer[3], dst[0], dst[1], dst[2], dst[3], it.alpha8));
   return s32aBlend(dst, layer, it.alpha8);
 }
 
@@ -518,6 +523,7 @@ function deviceQ(g: Item & { kind: 'group' }, plan: GroupPlan, x: number, y: num
   for (const it of members) layer = paintItem(layer, it, x, y, tile, byId, inv);
   if (layer[3] === 0) return d;
   if (plan.matrices !== null) return unpack(groupFilterComposite(layer[0], layer[1], layer[2], layer[3], d[0], d[1], d[2], d[3], plan.matrices, plan.alpha8));
+  if (g.layered) return unpack(groupCompositeLayered(layer[0], layer[1], layer[2], layer[3], d[0], d[1], d[2], d[3], plan.alpha8));
   const fold = groupTileFolds(groupDraws(members), tile.l, tile.t, tile.r, tile.b);
   return unpack(groupComposite(layer[0], layer[1], layer[2], layer[3], d[0], d[1], d[2], d[3], plan.alpha8, fold));
 }
@@ -571,7 +577,7 @@ function modelProblems(caseId: string, p: NativeProgram, viewport: { width: numb
 
 describe('PNT1 effects: the paint model at every sample point equals the committed Chrome pixels', () => {
   it('covers the opacity, stacking and filter fixtures', () => {
-    expect(FIXTURES.map((f) => f.id)).toEqual(['opacity-basic', 'opacity-cascade', 'opacity-web', 'opacity-fold', 'opacity-group-text', 'opacity-group-border', 'opacity-group-border-only', 'opacity-group-over-rects', 'opacity-group-over-group', 'opacity-group-clipped', 'opacity-group-nested', 'opacity-group-translucent', 'opacity-group-rounded', 'opacity-group-transform', 'stacking-basic', 'stacking-context', 'stacking-escape', 'stacking-transform', 'stacking-grid-items', 'stacking-isolation', 'stacking-backface', 'filter-none', 'filter-matrix-text', 'filter-matrix-over-rects']);
+    expect(FIXTURES.map((f) => f.id)).toEqual(['opacity-basic', 'opacity-cascade', 'opacity-web', 'opacity-fold', 'opacity-group-text', 'opacity-group-border', 'opacity-group-border-only', 'opacity-group-over-rects', 'opacity-group-over-group', 'opacity-group-clipped', 'opacity-group-nested', 'opacity-group-translucent', 'opacity-group-rounded', 'opacity-group-transform', 'opacity-group-sticky', 'opacity-group-sticky-short', 'opacity-group-after-sticky', 'opacity-group-after-sticky-short', 'opacity-group-button', 'stacking-basic', 'stacking-context', 'stacking-escape', 'stacking-transform', 'stacking-grid-items', 'stacking-isolation', 'stacking-backface', 'filter-none', 'filter-matrix-text', 'filter-matrix-over-rects']);
   });
   it('every opacity group lies inside one cc raster tile at every DPR, so a device composite of the whole group can match', () => {
     let groups = 0;
@@ -624,6 +630,8 @@ describe('PNT1 effects: the paint model at every sample point equals the committ
           expect(folded).toEqual(['of-a', 'of-b', 'of-d', 'of-e', 'of-h', 'of-j'].map((id) => [id, true]));
         } else if (spec.id.startsWith('opacity-')) expect(caught({ alphaIgnored: true, treeOrder: false }), 'alpha-ignored').toBe(true);
         if (spec.id.startsWith('stacking-')) expect(caught({ alphaIgnored: false, treeOrder: true }), 'order-swap').toBe(true);
+        // After a composited sticky box (the page scrolls), Chrome composites the group in two steps; the one-step blend misses.
+        if (spec.id === 'opacity-group-after-sticky') expect(caught({ alphaIgnored: false, treeOrder: false, oneStep: true }), 'one-step').toBe(true);
         if (spec.id.startsWith('filter-matrix-')) expect(caught({ alphaIgnored: false, treeOrder: false, filterIgnored: true }), 'filter-ignored').toBe(true);
       });
     }
@@ -898,7 +906,7 @@ describe('PNT1-opacity-b: the device\'s group composite equals the paint model',
   const precomposited = (id: string): boolean => id.startsWith('opacity-group-') || id.startsWith('filter-matrix-');
   const groupFixtures = FIXTURES.filter((f) => precomposited(f.id));
   it('admits every translucent or filtered group of the opacity-group and filter-matrix fixtures, which compile on native as user cases', () => {
-    expect(groupFixtures.length).toBe(12);
+    expect(groupFixtures.length).toBe(17);
     for (const spec of groupFixtures) {
       for (const c of casesOf(spec, fixtureInput(spec))) {
         const lanes = nativeCompile(spec, c.environment.direction);

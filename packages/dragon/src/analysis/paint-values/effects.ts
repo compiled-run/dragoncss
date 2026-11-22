@@ -15,6 +15,7 @@ import type { FilterFunction } from '../../css/properties/filter.ts';
 import { colorMatrixFilters, filterApplies } from '../../css/properties/filter.ts';
 import { SIDES } from '../../css/properties.ts';
 import { usedColors } from '../../lower/paint/colors.ts';
+import { buttonAppearance } from '../elements/controls.ts';
 import { isReplacedTag, SVG_SHAPE_TAGS } from '../elements/replaced.ts';
 import { FILTER_LIST_TYPE } from '../../css/properties/filter.ts';
 import { computedFilterText } from '../../css/properties/fx.ts';
@@ -153,11 +154,11 @@ function checkFilterGroup(el: ResolvedElement, plan: GroupPlan | null, targets: 
 // text blit to replace it. Translucent borders on two or three sides are refused: Chrome draws them otherwise (measured one off).
 
 /**
- * An admitted group: its colour-matrix filter (empty for none), its backdrop box (null: the device captures the platform's drawing),
+ * An admitted group: its colour-matrix filter (empty for none), the sticky or fixed box whose opaque background must hold it (null for none),
  * the admitted groups painted before it (their composites are in that capture) and every id painted before it; a group nested in an admitted group (its outer group's overlay composites it); or why not.
  */
 export type GroupPlan =
-  | { readonly kind: 'group'; readonly filter: readonly FilterFunction[]; readonly backdrop: string | null; readonly painters: readonly string[]; readonly before: readonly string[] }
+  | { readonly kind: 'group'; readonly filter: readonly FilterFunction[]; readonly backdrop: string | null; readonly painters: readonly string[]; readonly before: readonly string[]; readonly after: string | null }
   | { readonly kind: 'nested'; readonly outer: string }
   | { readonly kind: 'refused'; readonly reason: string };
 
@@ -191,7 +192,9 @@ function boxProblem(el: ResolvedElement, role: 'group' | 'member' | 'painter' | 
   const tag = el.element.tag;
   const canvasTag = tag === 'html' || tag === 'body';
   const content = role === 'group' || role === 'member';
-  if ((FOLD_TAGS_OUT.has(tag) && !(canvasTag && !content)) || isReplacedTag(tag) || SVG_SHAPE_TAGS.includes(tag)) return `${a} is a <${tag}>, a control, replaced or svg box`;
+  // A <button> Chrome paints as CSS boxes (an author background or border devolves its theme: Blink IsControlStyled) is a plain box.
+  const cssButton = tag === 'button' && content && buttonAppearance(el.props) === 'css';
+  if ((FOLD_TAGS_OUT.has(tag) && !(canvasTag && !content) && !cssButton) || isReplacedTag(tag) || SVG_SHAPE_TAGS.includes(tag)) return `${a} is a <${tag}>, a control, replaced or svg box`;
   if (!FOLD_DISPLAYS.includes(keywordAt(el, 'display') ?? '')) return `${a} has display ${keywordAt(el, 'display')}, not a plain block or inline-block box`;
   for (const [p, ok] of GROUP_KEYWORDS) {
     // The group's own filter is what the overlay applies (matrixFilterOf admits it).
@@ -329,6 +332,16 @@ export function opacityGroupPlans(root: ResolvedElement): ReadonlyMap<string, Gr
     }
     // What composites it differently: an enclosing group, layer, scroller or fixed box, or a decoration from above.
     const up = ancestors(g);
+    // D2: the one sticky or fixed box it may sit in, whose opaque square background must hold its extent (the device checks that on
+    // every layout): Chrome then composites it over that box's own paint, in that box's compositor layer or in the root one alike.
+    const layers = up.filter((a) => ['sticky', 'fixed'].includes(keywordAt(a, 'position') ?? 'static'));
+    const layerBox = layers[0] ?? null;
+    if (layers.length > 1) return refused(`it is inside ${layers.map((a) => a.element.address).join(' and ')}, more than one sticky or fixed box`);
+    if (layerBox !== null) {
+      const at = layerBox.element.address;
+      if (usedColors(layerBox)['background-color'].alpha !== 255 || (keywordAt(layerBox, 'background-image') ?? 'none') !== 'none') return refused(`it is inside ${at}, which has position ${keywordAt(layerBox, 'position')} and no opaque background colour alone under it`);
+      if (rounds(layerBox) || (keywordAt(layerBox, 'background-clip') ?? 'border-box') !== 'border-box') return refused(`it is inside ${at}, which has position ${keywordAt(layerBox, 'position')} and a background that is not its square border box`);
+    }
     for (const a of up) {
       const at = a.element.address;
       if (opacityAt(a) < 1) return refused(`it is inside ${at}, which has opacity ${opacityAt(a)}`);
@@ -336,7 +349,7 @@ export function opacityGroupPlans(root: ResolvedElement): ReadonlyMap<string, Gr
       if (transformedForStacking(a)) return refused(`it is inside ${at}, which is transformed or will change`);
       const position = keywordAt(a, 'position') ?? 'static';
       // An absolute box's containing block may skip the backdrop's clip.
-      if (position === 'fixed' || position === 'sticky' || position === 'absolute') return refused(`it is inside ${at}, which has position ${position}`);
+      if (position === 'absolute' || ((position === 'fixed' || position === 'sticky') && a !== layerBox)) return refused(`it is inside ${at}, which has position ${position}`);
       if (a !== propagated) for (const p of ['overflow-x', 'overflow-y']) if (['auto', 'scroll'].includes(keywordAt(a, p) ?? 'visible')) return refused(`it is inside ${at}, a scroller`);
       if ((keywordAt(a, 'text-decoration-line') ?? 'none') !== 'none') return refused(`it is inside ${at}, whose text decoration reaches its text`);
     }
@@ -364,11 +377,29 @@ export function opacityGroupPlans(root: ResolvedElement): ReadonlyMap<string, Gr
     // Chrome composites a box painted after a sticky or fixed box into a compositor layer of its own when the page scrolls, whose
     // tiles start at what that layer paints (measured), so the per-tile fold of the group is unknown; a box inside one is in that
     // box's layer.
-    const layered = [...up.filter((a) => ['sticky', 'fixed'].includes(keywordAt(a, 'position') ?? 'static')), ...before.filter((id) => !id.includes(':text#')).map(elementOf).filter((el) => ['sticky', 'fixed'].includes(keywordAt(el, 'position') ?? 'static'))];
-    const firstLayer = layered[0];
-    if (firstLayer !== undefined) return refused(`${firstLayer.element.address} has position ${keywordAt(firstLayer, 'position')} and ${up.includes(firstLayer) ? 'holds it' : 'paints before it'}, so Chrome may composite it in a compositor layer whose tiles Dragon does not know`);
-    // Every member's one-op item is safe from cc's fold under any tiling when a transform moves the tiles it meets (rule N).
-    if (own.length > 0) {
+    // D3: after one sticky box, with nothing else painted between that box and it, Chrome composites it in a layer of its own over
+    // transparent pixels when the page scrolls (the sticky box is then composited) and in the root layer when it does not; the device
+    // picks the composite by whether the root overflows (groupCompositeLayered).
+    const earlier = before.filter((id) => !id.includes(':text#')).map(elementOf).filter((el) => !up.includes(el) && ['sticky', 'fixed'].includes(keywordAt(el, 'position') ?? 'static'));
+    const after = earlier[0] ?? null;
+    if (after !== null) {
+      const at = after.element.address;
+      if (earlier.length > 1) return refused(`${earlier.map((el) => el.element.address).join(' and ')} have position sticky or fixed and paint before it, so Chrome may composite it in a compositor layer whose tiles Dragon does not know`);
+      if (keywordAt(after, 'position') !== 'sticky') return refused(`${at} has position fixed and paints before it, so Chrome may composite it in a compositor layer whose tiles Dragon does not know`);
+      if (layerBox !== null) return refused(`it is inside ${layerBox.element.address} and paints after ${at}, two compositor layers`);
+      if (filter.length > 0) return refused(`it has a filter and paints after ${at}, which has position sticky, a composite in a layer of its own Dragon has not measured`);
+      if (members.some((m) => (m !== g && opacityAt(m) > 0 && opacityAt(m) < 1) || translucentPaint(m))) return refused(`it paints after ${at}, which has position sticky, and Dragon builds its layer in software (translucent paint or a nested group inside it)`);
+      let end = -1;
+      before.forEach((id, k) => {
+        if (within(elementOf(id), after)) end = k;
+      });
+      const between = before.slice(end + 1)[0];
+      if (between !== undefined) return refused(`${between} paints between ${at}, which has position sticky, and it, in the compositor layer Chrome may give it`);
+    }
+    // No member's item may be one draw op when a transform or a sticky or fixed box's compositor layer moves the tiles it meets: cc
+    // never folds it then, on any tiling (rule N).
+    if (own.length > 0 || layerBox !== null || after !== null) {
+      const why = own.length > 0 ? 'it is transformed' : layerBox !== null ? `it may be in the compositor layer of ${layerBox.element.address}` : `it may be in a compositor layer of its own after ${after?.element.address}`;
       const ops = (el: ResolvedElement): number => {
         const fills = usedColors(el)['background-color'].alpha > 0 ? 1 : 0;
         const sides = SIDES.filter((side) => {
@@ -378,9 +409,9 @@ export function opacityGroupPlans(root: ResolvedElement): ReadonlyMap<string, Gr
         }).length;
         return fills + (sides === 4 ? 1 : sides);
       };
-      if (ops(g) < 2) return refused('it is transformed and its own box is not a fill and a border, so cc may fold its alpha into one op in a tile Dragon cannot place');
+      if (ops(g) < 2) return refused(`${why} and its own box is not a fill and a border, so cc may fold its alpha into one op in a tile Dragon cannot place`);
       const lone = members.find((m) => m !== g && ops(m) === 1);
-      if (lone !== undefined) return refused(`it is transformed and ${lone.element.address} inside it is one draw op, which cc may fold in a tile Dragon cannot place`);
+      if (lone !== undefined) return refused(`${why} and ${lone.element.address} inside it is one draw op, which cc may fold in a tile Dragon cannot place`);
     }
     // The backdrop is the platform's own drawing of what paints before it (DragonGroupView captures it), except paint whose capture
     // is not proven equal to the screen: a platform blend, a mask, a clip path, a rounded overflow clip, a filter or a blend mode.
@@ -403,7 +434,8 @@ export function opacityGroupPlans(root: ResolvedElement): ReadonlyMap<string, Gr
       // Paint Chrome may composite in a layer of its own (so the group over it is composited for overlap, with its own tiles), or
       // that changes without a box invalidation (a scroller's offset, a video frame, a control's own drawing).
       const tag = el.element.tag;
-      if (tag !== 'html' && tag !== 'body' && (FOLD_TAGS_OUT.has(tag) || isReplacedTag(tag) || SVG_SHAPE_TAGS.includes(tag))) return refused(`${id} paints before it and is a <${tag}>, a control, replaced or svg box, which the backdrop capture is not proven to draw as the screen does`);
+      const plainButton = tag === 'button' && buttonAppearance(el.props) === 'css';
+      if (tag !== 'html' && tag !== 'body' && ((FOLD_TAGS_OUT.has(tag) && !plainButton) || isReplacedTag(tag) || SVG_SHAPE_TAGS.includes(tag))) return refused(`${id} paints before it and is a <${tag}>, a control, replaced or svg box, which the backdrop capture is not proven to draw as the screen does`);
       if (el !== propagated) for (const p of ['overflow-x', 'overflow-y']) if (['auto', 'scroll'].includes(keywordAt(el, p) ?? 'visible')) return refused(`${id} paints before it and scrolls (${p}: ${keywordAt(el, p)}), which the backdrop capture does not follow`);
       if (elementWillChange(el).length > 0) return refused(`${id} paints before it with will-change, a compositor layer`);
       for (const [p, ok] of [['transform-style', ['flat']], ['backface-visibility', ['visible']], ['perspective', ['none']]] as const) {
@@ -411,7 +443,7 @@ export function opacityGroupPlans(root: ResolvedElement): ReadonlyMap<string, Gr
         if (k !== null && !(ok as readonly string[]).includes(k)) return refused(`${id} paints before it with ${p}: ${k}, a compositor layer`);
       }
     }
-    return { kind: 'group', filter, backdrop: null, painters, before };
+    return { kind: 'group', filter, backdrop: layerBox === null ? null : layerBox.element.address, painters, before, after: after === null ? null : after.element.address };
   };
 
   for (const id of order) {
