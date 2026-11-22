@@ -1142,8 +1142,9 @@ function controlKind(v: JsonValue, path: string): ControlKind {
     return { kind: 'legend' };
   }
   if (k === 'select-menulist') {
-    const o = obj(v, ['kind', 'font', 'lineHeight', 'arrowWidth'], path);
-    return { kind: 'select-menulist', font: fontSpec(field(o, 'font', path), `${path}.font`), lineHeight: lineHeightValue(field(o, 'lineHeight', path), `${path}.lineHeight`), arrowWidth: numField(o, 'arrowWidth', path) };
+    const o = obj(v, ['kind', 'font', 'lineHeight', 'arrowWidth', 'options'], path);
+    const options = arr(field(o, 'options', path), `${path}.options`).map((x, i) => (x.kind === 'obj' ? decodeText(x, `${path}.options[${i}]`) : fail(`${path}.options[${i}]: expected an object`)));
+    return { kind: 'select-menulist', font: fontSpec(field(o, 'font', path), `${path}.font`), lineHeight: lineHeightValue(field(o, 'lineHeight', path), `${path}.lineHeight`), arrowWidth: numField(o, 'arrowWidth', path), options };
   }
   if (k === 'select-inner') {
     obj(v, ['kind'], path);
@@ -1278,7 +1279,7 @@ const FAULT_KEYS: readonly string[] = [
   'orderHalfEven', 'orderUnclamped', 'gutterReserved', 'overflowIgnoresPadding', 'ellipsisInTextFont', 'noDotsFallback', 'truncateChangesBlockSize',
   'preservedSpaceCollapsed', 'trailingPreWrapNotHanging', 'breakSpacesHanging', 'indentEveryLine', 'indentAfterBr', 'indentPercentInIntrinsic', 'indentRtlFromLeft',
   'anywhereMinContentIgnored', 'breakWordShrinksMinContent', 'breakAnywhereAlways', 'emergencyBreakBeforeOpportunity', 'wordBreakBreakWordIgnored', 'breakAllIgnored',
-  'clampHeightIncludesHiddenLines', 'clampEllipsisMissingWhenLineFits', 'clampEllipsisOnExactLastLine', 'containedContentSized', 'containerJoinsFlow', 'wrapStyleGreedy', 'textBoxTrimIgnored',
+  'clampHeightIncludesHiddenLines', 'clampEllipsisMissingWhenLineFits', 'clampEllipsisOnExactLastLine', 'containedContentSized', 'menuListShownLabelOnly', 'containerJoinsFlow', 'wrapStyleGreedy', 'textBoxTrimIgnored',
   'inlineBlockFirstBaseline', 'overflowBaselineIgnored', 'inlineFlexLastBaseline', 'atomicMarginExcluded', 'noBreakAroundAtomic', 'atomicShrinkToFitIgnored',
   'inlineGridLastItemBaseline',
 ];
@@ -1370,6 +1371,7 @@ function decodeFaults(v: JsonValue): EngineFaults {
     clampEllipsisMissingWhenLineFits: b('clampEllipsisMissingWhenLineFits'),
     clampEllipsisOnExactLastLine: b('clampEllipsisOnExactLastLine'),
     containedContentSized: b('containedContentSized'),
+    menuListShownLabelOnly: b('menuListShownLabelOnly'),
     containerJoinsFlow: b('containerJoinsFlow'),
     wrapStyleGreedy: b('wrapStyleGreedy'),
     textBoxTrimIgnored: b('textBoxTrimIgnored'),

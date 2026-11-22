@@ -662,3 +662,4 @@ export function interactionLevelInput(compiled: object, assignment: Assignment, 
     },
   };
 }
+export { LISTED_OPTIONS_ATTRIBUTE } from './forms/select.ts';

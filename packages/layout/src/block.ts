@@ -208,6 +208,8 @@ export type EngineFaults = {
   /** TXT2-g: line N gets an ellipsis even when it is the last line (Blink relayouts without the clamp when nothing follows). */
   readonly clampEllipsisOnExactLastLine: boolean;
   /** CQ: an inline-size contained box contributes its content's intrinsic inline sizes. */
+  /** FORM-b S4: a select's natural inline size measures only its shown option's label, not its widest option. */
+  readonly menuListShownLabelOnly: boolean;
   readonly containedContentSized: boolean;
   /** CQ: an inline-size contained block joins its parent's block formatting context (margins collapse through it). */
   readonly containerJoinsFlow: boolean;
@@ -301,6 +303,7 @@ export const NO_ENGINE_FAULTS: EngineFaults = {
   clampEllipsisMissingWhenLineFits: false,
   clampEllipsisOnExactLastLine: false,
   containedContentSized: false,
+  menuListShownLabelOnly: false,
   containerJoinsFlow: false,
   wrapStyleGreedy: false,
   textBoxTrimIgnored: false,
@@ -699,7 +702,7 @@ export function blockLevelInlineSize(ctx: Ctx, node: LayoutBox | ControlBox, cbI
   const specified = keywordWidth !== null ? null : resolveInlineLengthWith(lengthWidth(box.id, s.width), cbInline, ctx.faults);
   // A block button's or range's auto width fits its content (block_layout_algorithm.cc:3341-3352: a form control is never stretched
   // by its block container), measured in Chrome 145 (packages/parity/fixtures/controls-button-block.html, controls-range-block.html).
-  const fits = node.kind === 'control' && (node.control.kind === 'button-block' || node.control.kind === 'range' || node.control.kind === 'text-field' || node.control.kind === 'legend');
+  const fits = node.kind === 'control' && (node.control.kind === 'button-block' || node.control.kind === 'range' || node.control.kind === 'text-field' || node.control.kind === 'select-menulist' || node.control.kind === 'legend');
   const auto = fits ? min(add(intrinsicContentInlineSize(ctx, node, 'max'), hbp), max(add(intrinsicContentInlineSize(ctx, node, 'min'), hbp), stretched)) : stretched;
   const raw = keywordWidth !== null ? keywordWidth : specified === null ? auto : borderBoxFromSpecified(specified, hbp, s.boxSizing);
   const lengths = inlineMinMaxWith(s, keywordMin !== null ? AUTO : lengthMinWidth(box.id, s.minWidth), keywordMax !== null ? NONE : lengthMaxWidth(box.id, s.maxWidth), cbInline, hbp, ctx.faults);

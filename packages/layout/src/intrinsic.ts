@@ -1,12 +1,12 @@
 // Intrinsic inline sizes (css-sizing-3 §5) and flex container intrinsic inline sizes (css-flexbox-1 §9.9.1, §9.9.2).
-import type { Auto, ControlBox, LayoutBox, LayoutNode, NoneValue } from './input.ts';
+import type { Auto, ControlBox, LayoutBox, LayoutNode, NoneValue, TextLeaf } from './input.ts';
 import type { LU } from './units.ts';
-import { add, fromCssPx, max, min, sum, ZERO, mulInt } from './units.ts';
+import { add, ceilFloatToWholePx, fromCssPx, max, min, sum, toPx, ZERO, mulInt } from './units.ts';
 import { borderBoxFromSpecified, hasPercent, lengthMaxWidth, lengthMinWidth, lengthWidth, resolveBorder, resolveLength, resolveMinLength, sumEdges } from './box.ts';
 import type { Ctx } from './block.ts';
 import { plainBox, textFieldInlineSize } from './controls.ts';
 import { gridIntrinsicContentInlineSize } from './grid.ts';
-import { inlineIntrinsicSize } from './inline.ts';
+import { inlineIntrinsicSize, leafFontOf } from './inline.ts';
 import { isOutOfFlow } from './position.ts';
 import { hasAspectRatio, ratioInlineContribution } from './ratio.ts';
 import { replacedContribution } from './replaced.ts';
@@ -25,6 +25,7 @@ export function intrinsicContentInlineSize(ctx: Ctx, node: LayoutBox | ControlBo
   if (node.kind === 'control' && node.control.kind === 'range') return fromCssPx(node.control.defaultInlineSize);
   // FORM-b: a text field's is size x its average character width, whatever its value (controls.ts textFieldInlineSize).
   if (node.kind === 'control' && node.control.kind === 'text-field') return textFieldInlineSize(ctx.measurer, node.control);
+  if (node.kind === 'control' && node.control.kind === 'select-menulist') return menuListNaturalInlineSize(ctx, node);
   const box = plainBox(node);
   // css-contain-2 §3.2 and css-sizing-4 §5.2: a size-contained box sizes as if it had no content, or content of its
   // contain-intrinsic-width. An empty grid keeps its explicit tracks and gaps (Chrome 145: an inline-grid of 30px 40px columns with a
@@ -52,6 +53,32 @@ export function intrinsicContentInlineSize(ctx: Ctx, node: LayoutBox | ControlBo
   }
   return max(widest, add(left, right));
   return widest;
+}
+
+/**
+ * FORM-b S4: a menulist's min- and max-content inline size, whatever the shown option: its widest option label measured in the
+ * inner element's text style, rounded up to a whole px, plus the inner element's inline margins (Chrome 145, controls-select-
+ * natural-width). The planted menuListShownLabelOnly measures only the shown label.
+ */
+function menuListNaturalInlineSize(ctx: Ctx, node: ControlBox): LU {
+  if (node.control.kind !== 'select-menulist') throw new Error(`${node.id} is not a select`);
+  const inner = node.children.find((k) => k.kind === 'control' && k.control.kind === 'select-inner');
+  if (inner === undefined || inner.kind !== 'control') throw new Error(`${node.id}: a select-menulist control without its select-inner control (validateLayoutInput rejects it)`);
+  const margin = (v: typeof inner.style.marginLeft): LU => (v.kind === 'px' ? fromCssPx(v.value) : ZERO);
+  const insets = add(margin(inner.style.marginLeft), margin(inner.style.marginRight));
+  const shown = inner.children.filter((k): k is TextLeaf => k.kind === 'text').map((k) => k.text).join('');
+  let widest = 0;
+  for (const o of node.control.options) {
+    if (ctx.faults.menuListShownLabelOnly && o.text !== shown) continue;
+    const m = ctx.measurer.measure(o.text, leafFontOf(o));
+    if (!m.ok) {
+      if (m.code === 'text-script') unsupported('text-script', o.id, 'notes/T056-txt1a-spec.md R4', m.reason);
+      unsupported('text-glyph', o.id, 'css-fonts-4 §5', m.reason);
+    }
+    const w = toPx(m.measure.width);
+    if (w > widest) widest = w;
+  }
+  return add(ceilFloatToWholePx(widest), insets);
 }
 
 // css-sizing-3 §5.2: a box's outer inline-size contribution. §5.2.1 cyclic percentages: percentage width behaves as auto, percentage
