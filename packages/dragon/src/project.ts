@@ -311,6 +311,8 @@ export type InternalOptions = {
   readonly hostTopLayer?: boolean;
   /** The host paints the canvas in the root's used colour scheme (a Markless host), so native draws a dark root; else it is refused. */
   readonly hostCanvas?: boolean;
+  /** The host app runs a form's submission and reset (a Markless host), so a submit or reset button inside a <form> compiles. */
+  readonly hostForms?: boolean;
   /** The host's Brotli decoder, which a WOFF2 @font-face src needs; without one a WOFF2 is DRAGON_FONT_UNREADABLE (no-brotli). */
   readonly brotliDecompress?: BrotliDecompress;
   /**
@@ -340,6 +342,7 @@ type Resolved = {
   readonly interactionLanes: boolean;
   readonly hostTopLayer: boolean;
   readonly hostCanvas: boolean;
+  readonly hostForms: boolean;
   readonly systemFonts: boolean;
   readonly nativeLanes: NativeLanes | null;
   readonly brotliDecompress: BrotliDecompress | null;
@@ -501,6 +504,45 @@ function checkSvgContent(valid: ValidInput, diagnostics: Diagnostic[]): void {
     }
   };
   walk(valid.rootComponent.root, 'html', new Map(), [valid.rootComponent.id]);
+}
+
+/**
+ * FORM-attrs: a button whose form owner is an ancestor <form> submits it when activated (HTML §4.10.6: type submit, the missing
+ * and invalid value default) or resets it (type reset): Chrome navigates, or moves a range back to its value, and a form with a
+ * submit button also submits implicitly on Enter in a range (§4.10.22.2). The native outputs do none of that, so such a button is
+ * refused; type=button, whose activation does nothing, compiles. Walked on the expanded tree, as checkSvgContent is, so a
+ * component's button is checked in each form it is called in.
+ */
+function checkFormButtons(valid: ValidInput, diagnostics: Diagnostic[]): void {
+  const reported = new Set<TreeNode>();
+  const walk = (nodes: readonly TreeNode[], form: Extract<TreeNode, { kind: 'element' }> | null, slots: SlotScope, stack: readonly string[]): void => {
+    for (const n of nodes) {
+      if (n.kind === 'element') {
+        if (n.tag === 'button' && form !== null && !reported.has(n)) {
+          const type = n.attributes.find((a) => a.name === 'type');
+          const values = type === undefined ? [null] : type.value.map((c) => c.value);
+          const live = values.find((v) => v === null || v.toLowerCase() !== 'button');
+          if (live !== undefined) {
+            reported.add(n);
+            const what = live?.toLowerCase() === 'reset' ? 'resets the form' : 'submits the form (and Chrome navigates)';
+            diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_ELEMENT', { origin: n.origin, message: `<button> ${n.id} inside <form> ${form.id} ${what} when activated (type ${live ?? 'missing, so submit'}), which the native outputs do not do`, manual: `Set type="button" on <button> ${n.id} and handle the action in the app, or move it out of <form> ${form.id}.` }));
+          }
+        }
+        walk(n.children, n.tag === 'form' ? (form ?? n) : form, slots, stack);
+      } else if (n.kind === 'branch') {
+        walk(n.then, form, slots, stack);
+        walk(n.else, form, slots, stack);
+      } else if (n.kind === 'call') {
+        const callee = valid.components.get(n.component);
+        if (callee === undefined || stack.includes(callee.id)) continue;
+        walk(callee.root, form, new Map(n.slots.map((s) => [s.name, { children: s.children, slots, stack }])), [...stack, callee.id]);
+      } else if (n.kind === 'projection') {
+        const slot = slots.get(n.slot);
+        if (slot !== undefined) walk(slot.children, form, slot.slots, slot.stack);
+      }
+    }
+  };
+  walk(valid.rootComponent.root, null, new Map(), [valid.rootComponent.id]);
 }
 
 const list = (values: readonly string[]): string => (values.length <= 1 ? values.join('') : `${values.slice(0, -1).join(', ')} or ${values[values.length - 1] as string}`);
@@ -1487,6 +1529,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
     const withStyles = [...rules, ...styleRules];
     checkStaticEmptyHosts(rules, [...valid.components.values()].map((c) => c.root), options.faults, diagnostics, options.hostTopLayer);
     checkSvgContent(valid, diagnostics);
+    if (!options.hostForms) checkFormButtons(valid, diagnostics);
     // MQ-a, MQ-R1: every band is checked for every target, since native switches bands at run time as web does; a rule-level check
     // reports a rule for the targets of the bands it applies in, so a rule in no band blocks nothing.
     const bandList = bands === null ? [null] : bands.partition.bands;
@@ -1992,6 +2035,7 @@ export function createProjectWith<const T extends Targets>(config: ProjectConfig
     interactionLanes: options.interactionLanes === true,
     hostTopLayer: options.hostTopLayer === true,
     hostCanvas: options.hostCanvas === true,
+    hostForms: options.hostForms === true,
     systemFonts: options.systemFonts === true,
     nativeLanes: options.nativeLanes === undefined ? null : options.nativeLanes,
     brotliDecompress: options.brotliDecompress ?? null,

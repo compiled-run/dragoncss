@@ -33,11 +33,13 @@ describe('EMS: engine paint seams', () => {
   it('index.ts exports the paint seam with one line, and each filled seam with its own lines', () => {
     const lines = readFileSync(join(layout, 'src/index.ts'), 'utf8').split('\n').filter((l) => l.includes("'./paint"));
     // REPL-a adds the replacedPaint root and its result type beside the seam's BoxShape; PNT1 adds opacityAlpha8 to its line, and
-    // the outline styles add outlineNeedsSidePainter and outlinePaintOps to paint-dash's; PNT1-opacity-b adds paint-group's line. TXT-FX adds textShadowLayerOver and
+    // the outline styles add outlineNeedsSidePainter and outlinePaintOps to paint-dash's; PNT1-opacity-b adds paint-group's line, and FORM-b paint-menulist's two. TXT-FX adds textShadowLayerOver and
     // textShadowLayerOverTexts (with its TextLinePaint) to paint-shadow's, and the blur margin helpers its text-shadow sample points read.
     expect(lines).toEqual([
       "export type { ReplacedPaint } from './paint.ts';",
       "export { opacityAlpha8, replacedPaint, runtimeImagePaint } from './paint.ts';",
+      "export type { MenuListArrowPaint } from './paint-menulist.ts';",
+      "export { menuListArrows } from './paint-menulist.ts';",
       "export { groupComposite, groupFill, groupFilterComposite, groupFilterMatrices, groupFilterMatrix, groupFoldAlpha, groupPack, groupTileFoldIndex, groupTileFolds, groupTileIndex, groupTileSize, groupTileSpan } from './paint-group.ts';",
       "export type { BoxShape } from './paint.ts';",
       "export type { RadiusFaults, RadiusLength } from './paint-radius.ts';",

@@ -27,6 +27,8 @@ export type { BorderPadding, InlineAutoBehavior, NaturalSizing, ObjectFit, Objec
 export { blockFlowSpace, drawnObjectRect, objectFitRect, pixelSnappedRect, replacedAspectRatio, replacedSize } from './replaced.ts';
 export type { ReplacedPaint } from './paint.ts';
 export { opacityAlpha8, replacedPaint, runtimeImagePaint } from './paint.ts';
+export type { MenuListArrowPaint } from './paint-menulist.ts';
+export { menuListArrows } from './paint-menulist.ts';
 export { groupComposite, groupFill, groupFilterComposite, groupFilterMatrices, groupFilterMatrix, groupFoldAlpha, groupPack, groupTileFoldIndex, groupTileFolds, groupTileIndex, groupTileSize, groupTileSpan } from './paint-group.ts';
 export type { DprChromeDeviation, DprDeviationControl, DprDeviationFault, DprDeviationNode } from './chrome-deviations-dpr.ts';
 export { dprChromeDeviations } from './chrome-deviations-dpr.ts';
@@ -35,7 +37,7 @@ export { AHEM_FONT_DATA, ahemMeasurerWith, coveredCodePoints, coveredIndex, ELLI
 export { resolvedInput, zoomInput } from './layout.ts';
 export type { Edges } from './box.ts';
 export { containsAbsolute, resolveBorder } from './box.ts';
-export { platformFontSize, snapEdge, textRunLayoutUnit, zoomFontSize } from './units.ts';
+export { effectiveZoom, platformFontSize, snapEdge, textRunLayoutUnit, zoomFontSize } from './units.ts';
 export type { LinePiece, PlacedLine } from './inline.ts';
 export { inlineBoxes, inlineBreaks, inlineLeaves, leafFontOf, placeLines } from './inline.ts';
 export { clampedInput } from './line-clamp.ts';
@@ -83,7 +85,8 @@ export { mapPoint, paintTransformMatrix, resolveTransformOrigin, transformAboutP
 export type { LengthValue as TransformLength, Matrix2D, TransformFn, TransformOp, Trig } from './rt-interpolate.ts';
 export { serializeTransform } from './rt-interpolate.ts';
 // Form controls (FORM-a): the range thumb offset and default track length, and the button's block centring shift.
-export { buttonContentShift, controlAsBox, SLIDER_DEFAULT_TRACK_LENGTH, sliderIntrinsicInlineSize, sliderThumbInlineOffset, sliderThumbShift, zoomTrackLength } from './controls.ts';
+export type { MenuListArrow } from './controls.ts';
+export { buttonContentShift, controlAsBox, menuListArrow, menuListArrowBox, menuListInnerInsets, SLIDER_DEFAULT_TRACK_LENGTH, sliderIntrinsicInlineSize, sliderThumbInlineOffset, sliderThumbShift, zoomTrackLength } from './controls.ts';
 export type { BackgroundBox, BackgroundLayer, BackgroundPaint, BackgroundPlan, CssStop, GradientFaults, GradientImage, LayerGeometry, LengthPct, StopColor } from './paint-gradient.ts';
 export { backgroundPixelExact, backgroundRow, gradientFaults, NO_GRADIENT_FAULTS, planBackground, referenceTileSize } from './paint-gradient.ts';
 export type { SvgBounds, SvgMatrix, SvgSegment, SvgShape, ViewBox } from './svg-geometry.ts';

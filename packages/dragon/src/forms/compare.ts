@@ -7,6 +7,8 @@ import { NO_FORM_FAULTS } from './faults.ts';
 import type { FormFaults } from './faults.ts';
 import { divLU, thumbLeft } from './range-geometry.ts';
 import { rangeRatio, rangeValue } from './range-value.ts';
+import { compareMenuList } from './menulist.ts';
+import type { MenuListCapture, MenuListReference } from './menulist.ts';
 import type { RangeAttributes } from './range-value.ts';
 
 /** [x, y, width, height] in LU. */
@@ -60,10 +62,11 @@ export type Captures = {
   readonly rangeGeometry: RangeGeometryCapture;
   readonly button: ButtonCapture;
   readonly devolve: DevolveCapture;
+  readonly menuList: MenuListCapture;
 };
 
 export type Mismatch = { readonly check: CheckName; readonly subject: string; readonly detail: string };
-export type CheckName = 'range-value' | 'range-geometry' | 'button-inner' | 'appearance';
+export type CheckName = 'range-value' | 'range-geometry' | 'button-inner' | 'appearance' | 'menulist';
 export type Comparison = { readonly counts: Readonly<Record<CheckName, number>>; readonly mismatches: readonly Mismatch[] };
 
 export function authorStyleOf(set: DevolveSet): AuthorControlStyle {
@@ -172,8 +175,8 @@ export function expectedButtonChildren(c: ButtonCase): { text: Rect | null; elem
 const rectText = (r: Rect | null): string => (r === null ? 'none' : `[${r.map((v) => v / 64).join(', ')}]px`);
 const sameRect = (a: Rect | null, b: Rect | null): boolean => (a === null || b === null ? a === b : a.every((v, k) => v === b[k]));
 
-export function compareForms(captures: Captures, faults: FormFaults = NO_FORM_FAULTS): Comparison {
-  const counts: Record<CheckName, number> = { 'range-value': 0, 'range-geometry': 0, 'button-inner': 0, appearance: 0 };
+export function compareForms(captures: Captures, menuList: MenuListReference, faults: FormFaults = NO_FORM_FAULTS): Comparison {
+  const counts: Record<CheckName, number> = { 'range-value': 0, 'range-geometry': 0, 'button-inner': 0, appearance: 0, menulist: 0 };
   const mismatches: Mismatch[] = [];
   const expect = (check: CheckName, ok: boolean, subject: string, detail: () => string): void => {
     counts[check]++;
@@ -208,6 +211,10 @@ export function compareForms(captures: Captures, faults: FormFaults = NO_FORM_FA
     const ours = usedAppearance(d.control, authorStyleOf(d.set), faults);
     expect('appearance', ours === d.result, `${d.control} ${d.set}`, () => `${ours} != Chrome ${d.result}`);
   }
+
+  const m = compareMenuList(captures.menuList, menuList, faults);
+  counts.menulist = m.count;
+  for (const x of m.mismatches) mismatches.push({ check: 'menulist', subject: x.subject, detail: x.detail });
 
   return { counts, mismatches };
 }
