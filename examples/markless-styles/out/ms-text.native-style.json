@@ -1,7 +1,7 @@
 {
  "schema": "dragon.native-style-export/1",
  "units": "device px; frames relative to the parent box",
- "compiler": "5aa6953b714c056fd8f0b9ab2b3cc97745dfb76bbaf6d433ac313640b0e383d1",
+ "compiler": "8718dbef797842cda4aa252e63392a9b36b10ac01785b878587b967040c3a243",
  "component": "Text",
  "source": "packages/parity/fixtures/ms-text",
  "warnings": [],
