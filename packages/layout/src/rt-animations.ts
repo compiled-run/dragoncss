@@ -60,7 +60,8 @@ function pausedList(entries: readonly AnimationEntry[]): boolean[] {
   return out;
 }
 
-function findRunning(running: readonly RunningAnimation[], name: string, nameIndex: number, listIndex: number, faults: RtFaults): RunningAnimation | null {
+/** The running animation an entry with this name, occurrence of the name and list index keeps, or null. */
+export function findRunning(running: readonly RunningAnimation[], name: string, nameIndex: number, listIndex: number, faults: RtFaults): RunningAnimation | null {
   for (const r of running) {
     if (faults.nameChangeKeepsAnimation ? r.listIndex === listIndex : r.name === name && r.nameIndex === nameIndex) return r;
   }
