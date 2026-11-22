@@ -1766,7 +1766,7 @@ function checkButton(el: ResolvedElement, parentDisplay: string | null, targets:
  * positioned one or a grid item; one whose font is Chrome's UA control font; and on iOS and Android an editable field, as
  * Dragon has no caret or keyboard input there yet (the FORM-b editing slice). A readonly field shows its value as drawn text.
  */
-function checkTextField(el: ResolvedElement, parentDisplay: string | null, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+function checkTextField(el: ResolvedElement, parentDisplay: string | null, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, hostEditing: boolean): void {
   const address = el.element.address;
   const state = inputTypeState(el.element.attributes.get('type'));
   const refuse = (v: ResolvedValue | null, what: string, message: string, manual: string, code: 'DRAGON_UNSUPPORTED_VALUE' | 'DRAGON_UNSUPPORTED_FONT' = 'DRAGON_UNSUPPORTED_VALUE', on: readonly string[] = targets): void =>
@@ -1812,7 +1812,7 @@ function checkTextField(el: ResolvedElement, parentDisplay: string | null, targe
   if (family.origin !== 'user-agent' && first !== 'ahem') {
     refuse(family, 'width-font', `<input> ${address} is in font-family: ${valueToString(family.value)}: Chrome sizes a text field by the face's average character width, which Dragon proves only for Ahem`, `Draw <input> ${address} in Ahem, or target web only, until real faces are measured for text fields.`, 'DRAGON_UNSUPPORTED_FONT', targets.filter((t) => t === 'ios' || t === 'android'));
   }
-  if (!el.element.attributes.has('readonly')) {
+  if (!hostEditing && !el.element.attributes.has('readonly')) {
     refuse(null, 'editing', `<input> ${address} is an editable text field: Dragon draws its value but has no caret, selection or keyboard input on iOS and Android yet (the FORM-b editing slice)`, `Add readonly to <input> ${address}, or target web only, until native text editing lands.`, 'DRAGON_UNSUPPORTED_VALUE', targets.filter((t) => t === 'ios' || t === 'android'));
   }
 }
@@ -2190,7 +2190,7 @@ function checkInsideButton(el: ResolvedElement, button: ResolvedElement, targets
   refuseOn(el, position, 'inside', 'DRAGON_UNSUPPORTED_VALUE', targets, diagnostics, reported, `position: ${pos} on <${el.element.tag}> ${el.element.address} inside <${button.element.tag}> ${button.element.address} is not supported yet: an absolutely positioned box inside a form control`, `Position the box outside <${button.element.tag}> ${button.element.address}.`);
 }
 
-export function checkComputed(root: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, profileOf: ProfileOf, fonts: FamilyKeyContext, realFaceAt: (address: string) => boolean, shapedAt: (address: string) => boolean, faults: GenBFaults & TxtWFaults & TxtFvFaults & TxtFtFaults & TxtFstretchFaults & TxtFfFaults & TxtFsFaults & TxtFillFaults & TxtFxFaults & FxFaults & MaskFaults & TransformExtraFaults & BorderImageFaults & ScrollContainmentFaults & Txt2IFaults & Txt2dFaults & Txt2lbFaults & Txt2talFaults & TextBoxFaults & BoxDecorationFaults & BackgroundBlendFaults & MulticolFaults & ContainIntrinsicFaults & MotionFaults & FieldSizingFaults = { ...GEN_B_FAULTS, ...TXT_W_FAULTS, ...TXT_FV_FAULTS, ...TXT_FT_FAULTS, ...TXT_FSTRETCH_FAULTS, ...TXT_FF_FAULTS, ...TXT_FS_FAULTS, ...TXT_FILL_FAULTS, ...TXT_FX_FAULTS, ...FX_FAULTS, ...MASK_FAULTS, ...TRANSFORM_EXTRA_FAULTS, ...BORDER_IMAGE_FAULTS, ...SCROLL_CONTAINMENT_FAULTS, ...TXT2_I_FAULTS, ...TXT2_D_FAULTS, ...TXT2_LB_FAULTS, ...TXT2_TAL_FAULTS, ...TEXT_BOX_FAULTS, ...BOX_DECORATION_FAULTS, ...BACKGROUND_BLEND_FAULTS, ...MULTICOL_FAULTS, ...CONTAIN_INTRINSIC_FAULTS, ...MOTION_FAULTS, ...FIELD_SIZING_FAULTS }): void {
+export function checkComputed(root: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, profileOf: ProfileOf, fonts: FamilyKeyContext, realFaceAt: (address: string) => boolean, shapedAt: (address: string) => boolean, faults: GenBFaults & TxtWFaults & TxtFvFaults & TxtFtFaults & TxtFstretchFaults & TxtFfFaults & TxtFsFaults & TxtFillFaults & TxtFxFaults & FxFaults & MaskFaults & TransformExtraFaults & BorderImageFaults & ScrollContainmentFaults & Txt2IFaults & Txt2dFaults & Txt2lbFaults & Txt2talFaults & TextBoxFaults & BoxDecorationFaults & BackgroundBlendFaults & MulticolFaults & ContainIntrinsicFaults & MotionFaults & FieldSizingFaults = { ...GEN_B_FAULTS, ...TXT_W_FAULTS, ...TXT_FV_FAULTS, ...TXT_FT_FAULTS, ...TXT_FSTRETCH_FAULTS, ...TXT_FF_FAULTS, ...TXT_FS_FAULTS, ...TXT_FILL_FAULTS, ...TXT_FX_FAULTS, ...FX_FAULTS, ...MASK_FAULTS, ...TRANSFORM_EXTRA_FAULTS, ...BORDER_IMAGE_FAULTS, ...SCROLL_CONTAINMENT_FAULTS, ...TXT2_I_FAULTS, ...TXT2_D_FAULTS, ...TXT2_LB_FAULTS, ...TXT2_TAL_FAULTS, ...TEXT_BOX_FAULTS, ...BOX_DECORATION_FAULTS, ...BACKGROUND_BLEND_FAULTS, ...MULTICOL_FAULTS, ...CONTAIN_INTRINSIC_FAULTS, ...MOTION_FAULTS, ...FIELD_SIZING_FAULTS }, hostEditing = false): void {
   const propagated = propagatedFrom(root);
   if (!faults.maskLayerAccepted) for (const m of [...maskBackdropRefusals(root), ...maskDecorationRefusals(root, analyzeDecorations(root).applied)]) refuseMask(m.el, targets, diagnostics, reported, m.refusal);
   const parents = parentsOf(root);
@@ -2272,7 +2272,7 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
       checkSelect(el, parentDisplay, chain, targets, diagnostics, reported, environmentOf(root).ua);
       checkInline(el, targets, diagnostics, reported, shapedAt, environmentOf(root).ua);
     } else if (!here && el.element.tag === 'input' && isTextFieldType(el.element.attributes.get('type'))) {
-      checkTextField(el, parentDisplay, targets, diagnostics, reported);
+      checkTextField(el, parentDisplay, targets, diagnostics, reported, hostEditing);
       checkInline(el, targets, diagnostics, reported, shapedAt, environmentOf(root).ua);
     } else if (!here && el.element.tag === 'input') {
       checkRange(el, parentDisplay, targets, diagnostics, reported);

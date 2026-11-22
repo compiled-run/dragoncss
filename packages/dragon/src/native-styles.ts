@@ -47,6 +47,11 @@ export type NativeStylesConfig = {
    */
   readonly canvas?: 'host';
   /**
+   * 'host': the host app draws and edits a text field's value in its own native text view, inside the editor box Dragon lays out
+   * (a Markless app), so an editable field compiles. Absent: an editable field is refused natively.
+   */
+  readonly editing?: 'host';
+  /**
    * 'program-and-sources' (the default): the state program and the Swift or Kotlin generated from it. 'program': the state program
    * only, for a host that applies the program as data itself; files is empty, and a write only the generated runtime lacks does not
    * block the target.
@@ -118,6 +123,7 @@ export function compileNativeStylesWith(config: NativeStylesConfig, input: Front
         : { faults: NO_FAULTS, profiles: 'derive' as const, direction: 'ltr' as const, foldViewport: { width, height }, nativeRealFaces: true, interactionLanes: true }),
       ...(config.topLayer === 'host' ? { hostTopLayer: true } : {}),
       ...(config.canvas === 'host' ? { hostCanvas: true } : {}),
+      ...(config.editing === 'host' ? { hostEditing: true } : {}),
       ...(config.brotliDecompress === undefined ? {} : { brotliDecompress: config.brotliDecompress }),
       ...(config.systemFonts === 'measured' ? { systemFonts: true } : {}),
     },
@@ -125,6 +131,7 @@ export function compileNativeStylesWith(config: NativeStylesConfig, input: Front
   if (config.systemFonts !== undefined && (config.systemFonts !== 'measured' || support !== 'lanes')) throw new Error(`compileNativeStyles: systemFonts ${JSON.stringify(config.systemFonts)} is 'measured', with support 'lanes'`);
   if (config.topLayer !== undefined && config.topLayer !== 'host') throw new Error(`compileNativeStyles: topLayer ${JSON.stringify(config.topLayer)} is not 'host'`);
   if (config.canvas !== undefined && config.canvas !== 'host') throw new Error(`compileNativeStyles: canvas ${JSON.stringify(config.canvas)} is not 'host'`);
+  if (config.editing !== undefined && config.editing !== 'host') throw new Error(`compileNativeStyles: editing ${JSON.stringify(config.editing)} is not 'host'`);
   const output = config.output ?? 'program-and-sources';
   if (output !== 'program-and-sources' && output !== 'program') throw new Error(`compileNativeStyles: output ${JSON.stringify(output)} is neither 'program-and-sources' nor 'program'`);
   const compiled = project.compile(input) as unknown as Compiled<NativeStyleTarget>;

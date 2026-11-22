@@ -309,6 +309,8 @@ export type InternalOptions = {
   readonly hostTopLayer?: boolean;
   /** The host paints the canvas in the root's used colour scheme (a Markless host), so native draws a dark root; else it is refused. */
   readonly hostCanvas?: boolean;
+  /** The host draws and edits a text field's value itself (a Markless host), so an editable field compiles; Dragon lays out its boxes. */
+  readonly hostEditing?: boolean;
   /** The host's Brotli decoder, which a WOFF2 @font-face src needs; without one a WOFF2 is DRAGON_FONT_UNREADABLE (no-brotli). */
   readonly brotliDecompress?: BrotliDecompress;
   /**
@@ -333,6 +335,7 @@ type Resolved = {
   readonly interactionLanes: boolean;
   readonly hostTopLayer: boolean;
   readonly hostCanvas: boolean;
+  readonly hostEditing: boolean;
   readonly systemFonts: boolean;
   readonly nativeLanes: NativeLanes | null;
   readonly brotliDecompress: BrotliDecompress | null;
@@ -971,7 +974,7 @@ function checkCases(linked: Linked, rules: readonly Rule[], targets: readonly Kn
     // On by default (InternalOptions.nativeRealFaces); turned off, native targets refuse real faces, and the engine lane lowers them
     // in engine mode (TXT1a-1's deferred font refusal).
     const realFaceAt = (address: string): boolean => options.nativeRealFaces && realFaces.has(address);
-    checkComputed(resolved, targets, diagnostics, refused, options.profiles === 'derive' ? null : (t) => profileFor(options.supportProfiles, t as KnownTarget), keys, realFaceAt, (address) => realFaces.has(address), options.faults);
+    checkComputed(resolved, targets, diagnostics, refused, options.profiles === 'derive' ? null : (t) => profileFor(options.supportProfiles, t as KnownTarget), keys, realFaceAt, (address) => realFaces.has(address), options.faults, options.hostEditing);
     // BG2-t: a no-repeat gradient layer away from the start edge, refused natively unless its tile provably starts inside the box.
     checkGradientPhase(resolved, targets, diagnostics, refused, options.faults);
     // (The second predicate is INL2a's: an atomic inline is proven only beside Ahem text, on every target.)
@@ -1979,6 +1982,7 @@ export function createProjectWith<const T extends Targets>(config: ProjectConfig
     interactionLanes: options.interactionLanes === true,
     hostTopLayer: options.hostTopLayer === true,
     hostCanvas: options.hostCanvas === true,
+    hostEditing: options.hostEditing === true,
     systemFonts: options.systemFonts === true,
     nativeLanes: options.nativeLanes === undefined ? null : options.nativeLanes,
     brotliDecompress: options.brotliDecompress ?? null,
