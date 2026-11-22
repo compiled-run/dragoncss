@@ -153,6 +153,15 @@ export function compareHits(n: NativeCase, c: HitCapture, faults: HitFaults = NO
   return compareHitsAt(n, c, 1, faults, tableFaults);
 }
 
+/**
+ * The device LU Chrome hit tests for elementFromPoint at the CSS px coordinate v / (dpr * 64) the capture gives it: the coordinate
+ * and the zoom in float32, their product truncated to LU (measured against every point of the DPR 2.625 captures). The identity at
+ * DPR 1 and 2; at 2.625 up to 1 LU below v, which decides points the grid puts on a rounded corner's arc.
+ */
+export function chromeHitPoint(v: number, dpr: number): number {
+  return Math.floor(Math.fround(Math.fround(v / (dpr * LU)) * Math.fround(dpr)) * LU);
+}
+
 /** compareHits at the capture's DPR: the TS hit test of the case laid out at that DPR, at every grid point in device LU. */
 export function compareHitsAt(n: NativeCase, c: HitCapture, dpr: number, faults: HitFaults = NO_HIT_FAULTS, tableFaults: HitTableFaults = NO_HIT_TABLE_FAULTS): { readonly points: number; readonly mismatches: readonly HitMismatch[]; readonly stale: boolean } {
   if ((c.dpr ?? 1) !== dpr) throw new Error(`${n.case.id}: a capture at DPR ${c.dpr ?? 1} compared at DPR ${dpr}`);
@@ -165,7 +174,7 @@ export function compareHitsAt(n: NativeCase, c: HitCapture, dpr: number, faults:
   const prepared = prepareHit(t.nodes, faults);
   grid.forEach(([x, y], i) => {
     // Chrome's elementFromPoint names a ::before or ::after box's originating element (GEN), which is also the node a tap there targets.
-    const dragon = (t.ids[hitAt(prepared, x, y)] as string).replace(/::(before|after)$/, '');
+    const dragon = (t.ids[hitAt(prepared, chromeHitPoint(x, dpr), chromeHitPoint(y, dpr))] as string).replace(/::(before|after)$/, '');
     if (dragon !== chrome[i]) mismatches.push({ case: n.case.id, x, y, chrome: chrome[i] as string, dragon });
   });
   return { points: c.points, mismatches, stale };
