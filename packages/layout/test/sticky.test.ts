@@ -78,9 +78,9 @@ describe('POSX-s: position: sticky', () => {
     expect(refusal(box('html', {}, [box('c', { overflowX: 'clip', overflowY: 'clip' }, [sticky({ top: px(0) })])]))).toBe('ok');
   });
 
-  it('validates, and the hit table refuses it', () => {
+  it('validates, and the hit table hits it where the layout places it at scroll offset 0', () => {
     const v = validateLayoutInput(JSON.parse(JSON.stringify(env(box('html', {}, [sticky({ top: px(0) })])))));
     expect(v.ok).toBe(true);
-    expect(hitRefusal(env(box('html', {}, [sticky({ top: px(0) })])))).toMatch(/^s is position: sticky/);
+    expect(hitRefusal(env(box('html', {}, [sticky({ top: px(0) })])))).toBeNull();
   });
 });

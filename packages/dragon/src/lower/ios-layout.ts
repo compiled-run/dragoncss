@@ -68,11 +68,12 @@ import type { CompilerFaults } from '../faults.ts';
 import type { MathFonts } from '../css/math.ts';
 import { fontUnitsIn, lowerLengthCalc, lowerMathNode, mathContextFor, mathHasViewport, parseMath } from '../css/math.ts';
 import type { UaDataset } from '../ua/datasets.ts';
-import { inputTypeState, isControlTag, selectAppearance } from '../analysis/elements/controls.ts';
+import { inputTypeState, isCheckboxType, isControlTag, selectAppearance } from '../analysis/elements/controls.ts';
 import { rangePartOf, selectOptionLabelsOf, selectPartOf, textFieldPartOf } from '../analysis/resolve.ts';
 import { SEARCH_CANCEL_BUTTON } from '../forms/text-field.ts';
 import { rangeRatio } from '../forms/range-value.ts';
 import { RANGE_NONE_THUMB } from '../forms/ua-shadow.generated.ts';
+import { CHECKBOX_PART_SIZE } from '../forms/checkbox.ts';
 import { DEFAULT_OBJECT_SIZE, isReplacedTag } from '../analysis/elements/replaced.ts';
 import { appliedContainment } from '../analysis/containment.ts';
 import { INTRINSIC_AUTO_TYPE } from '../css/properties/containment.ts';
@@ -1017,6 +1018,11 @@ function lowerBox(given: ResolvedElement, l: Lowerer, gridParent: GridContainer 
   if (el.element.tag === 'fieldset' && style.display === 'block') return { kind: 'control', id, boxType: 'element', style, control: { kind: 'fieldset' }, strut, children: withRenderedLegend(kids, children) };
   // FORM-a: a block button centres its contents (Blink AlignBlockContent); a flex button is the plain flex container it is.
   if (el.element.tag === 'button' && style.display === 'block') return { kind: 'control', id, boxType: 'element', style, control: { kind: 'button-block' }, strut, children };
+  if (el.element.tag === 'input' && isCheckboxType(el.element.attributes.get('type'))) {
+    // FORM-checkbox: Chrome's theme gives an auto width or height the part size, 13px (LayoutTheme, native_theme_base.cc kCheckboxSize).
+    const part = (v: LayoutStyle['width']): LayoutStyle['width'] => (v.kind === 'auto' ? { kind: 'px', value: CHECKBOX_PART_SIZE } : v);
+    return { kind: 'box', id, boxType: 'element', style: { ...style, width: part(style.width), height: part(style.height) }, strut, marker: null, children };
+  }
   const field = textFieldPartOf(el);
   if (field !== undefined && field.part === null) {
     // FORM-b: a text field's size attribute (HTML §4.10.5.3.2: a valid non-negative integer above zero, else 20) and its own font

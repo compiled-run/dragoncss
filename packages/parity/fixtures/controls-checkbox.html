@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+* { box-sizing: border-box; }
+input { display: block; font: inherit; color: inherit; }
+.check { display: flex; align-items: center; gap: 10px; min-height: 44px; width: 200px; }
+.check input { width: 22px; height: 22px; accent-color: #c2410c; }
+.light input { accent-color: #fb923c; }
+.base { display: flex; align-items: baseline; width: 200px; }
+.tall { height: 30px; }
+.narrow { width: 5px; }
+.wide { width: 30px; height: 22px; }
+</style>
+</head>
+<body data-dragon-id="body">
+<input data-dragon-id="a" type="checkbox">
+<input data-dragon-id="b" type="checkbox" checked="">
+<label data-dragon-id="l" class="check"><input data-dragon-id="c" type="checkbox" name="pinned"><span data-dragon-id="ct">Pin</span></label>
+<label data-dragon-id="m" class="check light"><input data-dragon-id="d" type="checkbox" checked=""><span data-dragon-id="dt">Pin</span></label>
+<div data-dragon-id="n" class="base">X<input data-dragon-id="e" type="checkbox" class="wide">X</div>
+<input data-dragon-id="f" type="checkbox" class="tall">
+<input data-dragon-id="g" type="checkbox" class="narrow">
+<input data-dragon-id="h" type="checkbox" class="wide" checked="">
+</body>
+</html>

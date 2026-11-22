@@ -4,7 +4,7 @@
 // focus-visible), resolves every combination of them and stores each distinct resolution once. The combinations are a second
 // level under the case's app assignment, so case keys and counts do not change; each dimension is linear in the elements.
 import { GENERATED_TAGS, MARKER_TAG } from './elements.ts';
-import { inputTypeState, isControlTag, isTextFieldType } from './elements/controls.ts';
+import { inputTypeState, isCheckboxType, isControlTag, isTextFieldType } from './elements/controls.ts';
 import { authored, diagnostic } from '../diagnostics/catalogue.ts';
 import { PROPERTY_ASPECTS } from '../css/properties.ts';
 import { isAnimationProperty } from '../css/properties/animation.ts';
@@ -26,6 +26,7 @@ import { NO_INTERACTION } from './match.ts';
 import type { ResolvedElement } from './resolve.ts';
 import { selectPartOf, textFieldPartOf } from './resolve.ts';
 import { propagatedFrom } from './computed-checks.ts';
+import { matrixParts, TRANSFORM_LIST_TYPE, transformFunctionsOf } from '../css/properties/transform.ts';
 
 /** R7: the distinct reachable interaction states one app assignment compiles; more are refused (package SELD-R2s). */
 export const MAX_INTERACTION_STATES = 256;
@@ -540,12 +541,21 @@ const all = (): boolean => true;
 // hit test does not read scroll offsets yet (OVFL-B2), so they are unmodelled facts.
 const OVERFLOW_AT_REST = new Set(['visible', 'hidden', 'clip']);
 const overflowAtRest = (v: CssValue): boolean => v.kind === 'keyword' && OVERFLOW_AT_REST.has(v.value);
+/** none, or translate and non-negative scale functions (no translate after a scale) with a rotate only by 0, as rt-hit.ts hitTransformRefusal models. */
+export const hitModelsTransform = (v: CssValue): boolean => {
+  if (v.kind === 'keyword') return v.value === 'none';
+  if (v.kind !== 'other' || v.type !== TRANSFORM_LIST_TYPE) return false;
+  const fs = transformFunctionsOf(v.text);
+  const scaled = fs.findIndex((f) => f.kind === 'scale' && (f.sx !== 1 || f.sy !== 1));
+  if (scaled >= 0 && fs.slice(scaled + 1).some((f) => f.kind === 'translate')) return false;
+  return fs.every((f) => f.kind === 'translate' || (f.kind === 'scale' && f.sx >= 0 && f.sy >= 0) || (f.kind !== 'scale' && (f.kind === 'rotate' ? f.deg : matrixParts(f.values).deg) === 0));
+};
 
 /**
  * R13: the paint longhands Dragon's hit test (packages/layout/src/rt-hit.ts) models, each with the values it models. Box
  * geometry (every layout longhand) and pointer-events are modelled too. Every other paint longhand at any value but its
  * initial one is an unmodelled fact (fail closed): a later paint package is refused here until the hit test reads it (T146).
- * transform-origin only moves a transform, which is itself unmodelled.
+ * The individual translate, rotate and scale stay unmodelled until a Chrome capture covers them.
  */
 export const HIT_MODELLED: ReadonlyMap<Longhand, (v: CssValue) => boolean> = new Map<Longhand, (v: CssValue) => boolean>([
   ['color', all],
@@ -566,6 +576,10 @@ export const HIT_MODELLED: ReadonlyMap<Longhand, (v: CssValue) => boolean> = new
   ['border-top-right-radius', all],
   ['border-bottom-right-radius', all],
   ['border-bottom-left-radius', all],
+  // Blink hits the border box (box-shadow is ink only); opacity, 0 too, moves no hit, and below 1 is a layer rt-hit.ts orders.
+  ['box-shadow', all],
+  ['opacity', all],
+  ['transform', hitModelsTransform],
   // css-view-transitions-2: a name only captures its box once a transition starts, and the only one that compiles is the UA
   // sheet's :root { view-transition-name: root } (scroll-containment.ts VIEW_TRANSITION), so it changes no hit.
   ['view-transition-name', all],
@@ -620,12 +634,12 @@ export function hitRetargetsParts(el: ResolvedElement): boolean {
 
 /**
  * FORM-a: the first form control of a resolved tree in preorder whose box the hit table does not model (rt-hit.ts hitModelsControl),
- * or null. A button, a select, a text field and a textarea are modelled; a range is not (its touch, T064 P7), nor a block fieldset or
- * any other control tag.
+ * or null. A button, a select, a text field, a textarea and a checkbox (a plain box in the layout input, FORM-checkbox) are modelled;
+ * a range is not (its touch, T064 P7), nor a block fieldset or any other control tag.
  */
 export function hitUnmodelledControl(root: ResolvedElement): string | null {
   const tag = root.element.tag;
-  if (isControlTag(tag) && tag !== 'button' && tag !== 'select' && tag !== 'textarea' && !(tag === 'input' && isTextFieldType(root.element.attributes.get('type')))) return root.element.address;
+  if (isControlTag(tag) && tag !== 'button' && tag !== 'select' && tag !== 'textarea' && !(tag === 'input' && (isTextFieldType(root.element.attributes.get('type')) || isCheckboxType(root.element.attributes.get('type'))))) return root.element.address;
   // A block fieldset lays out as the fieldset control with its rendered legend (ios-layout.ts), which the table refuses too.
   const display = root.props.get('display');
   if (tag === 'fieldset' && display !== undefined && display.value.kind === 'keyword' && display.value.value === 'block') return root.element.address;
@@ -639,15 +653,15 @@ export function hitUnmodelledControl(root: ResolvedElement): string | null {
 
 /**
  * The first box of a resolved tree the hit table does not model whose value compiles, in preorder, or null: a float in block flow
- * (FLT), which rt-hit.ts refuses in a block or inline-block container, a fixed box (POSX-f) and a sticky box (POSX-s). No Chrome hit
- * capture has them yet.
+ * (FLT), which rt-hit.ts refuses in a block or inline-block container, and a fixed box (POSX-f). No Chrome hit capture has them yet.
+ * A sticky box is hit where the layout places it at scroll offset 0 (layout.ts), as a positioned layer.
  */
-export function hitUnmodelledBox(root: ResolvedElement, compiles: (v: ResolvedValue) => boolean = () => true): { readonly address: string; readonly kind: 'float' | 'fixed box' | 'sticky box' | 'inline-grid box'; readonly pkg: 'FLT' | 'POSX-f' | 'POSX-s' | 'G-INL' } | null {
+export function hitUnmodelledBox(root: ResolvedElement, compiles: (v: ResolvedValue) => boolean = () => true): { readonly address: string; readonly kind: 'float' | 'fixed box' | 'inline-grid box'; readonly pkg: 'FLT' | 'POSX-f' | 'G-INL' } | null {
   const key = (el: ResolvedElement, p: 'display' | 'float' | 'position'): string => {
     const v = el.props.get(p);
     return v !== undefined && v.value.kind === 'keyword' ? v.value.value : '';
   };
-  const visit = (el: ResolvedElement): { address: string; kind: 'float' | 'fixed box' | 'sticky box' | 'inline-grid box'; pkg: 'FLT' | 'POSX-f' | 'POSX-s' | 'G-INL' } | null => {
+  const visit = (el: ResolvedElement): { address: string; kind: 'float' | 'fixed box' | 'inline-grid box'; pkg: 'FLT' | 'POSX-f' | 'G-INL' } | null => {
     const block = key(el, 'display') === 'block' || key(el, 'display') === 'inline-block';
     for (const c of el.children) {
       if (c.kind !== 'element') continue;
@@ -657,7 +671,6 @@ export function hitUnmodelledBox(root: ResolvedElement, compiles: (v: ResolvedVa
       const d = c.props.get('display');
       if (d !== undefined && key(c, 'display') === 'inline-grid' && compiles(d)) return { address: c.element.address, kind: 'inline-grid box', pkg: 'G-INL' };
       if (p !== undefined && key(c, 'position') === 'fixed' && compiles(p)) return { address: c.element.address, kind: 'fixed box', pkg: 'POSX-f' };
-      if (p !== undefined && key(c, 'position') === 'sticky' && compiles(p)) return { address: c.element.address, kind: 'sticky box', pkg: 'POSX-s' };
       if (block && f !== undefined && key(c, 'float') !== 'none' && key(c, 'position') !== 'absolute' && key(c, 'position') !== 'fixed' && compiles(f)) return { address: c.element.address, kind: 'float', pkg: 'FLT' };
       const found = visit(c);
       if (found !== null) return found;

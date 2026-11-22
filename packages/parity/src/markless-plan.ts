@@ -7,6 +7,7 @@ import type { FontData, FontLengths, FontMetrics, LayoutInput, TextMeasurer } fr
 import { layout } from '@dragon/layout';
 import type { NativeStyleTarget, StateProgram } from 'dragon';
 import { programAt } from 'dragon';
+import type { DensityResult } from './markless-plan-workers.ts';
 import type { SlotField, SlotRefusal, SlotWrite } from './markless-slots.ts';
 import { repoPath } from './paths.ts';
 import type { MeasurerRecorder } from './system-fonts/measurer.ts';
@@ -40,6 +41,8 @@ export type PlanAssignment = {
   /** Each box with border-styles and border-colors writes: [id, styles, rgba per side]. */
   readonly dashed: readonly (readonly unknown[])[];
   readonly scroll: readonly string[];
+  /** Only when the assignment has one: each themed checkbox (a checkbox write), whose marks the device layout returns. */
+  readonly checkboxes?: readonly string[];
   /** Only for an input with slots: the style fields and write numbers that follow them (markless-slots.ts). */
   readonly slotFields?: readonly SlotField[];
   readonly slotWrites?: readonly SlotWrite[];
@@ -76,7 +79,8 @@ export function planWidths(dpr: number): number[] {
   return [...out].sort((a, b) => a - b);
 }
 
-function recordDensity(t: NativeStyleTarget, sp: StateProgram, system: SystemFonts, bundled: readonly string[], authorFiles: ReadonlyMap<string, Uint8Array>, dpr: number, height: number): PlanDensity {
+/** One ratio's recording: every variant at every PLAN_WIDTHS root width, then checked at PLAN_HEIGHTS' heights. */
+export function recordDensity(t: NativeStyleTarget, sp: StateProgram, system: SystemFonts, bundled: readonly string[], authorFiles: ReadonlyMap<string, Uint8Array>, dpr: number, height: number): PlanDensity {
   const calls = new Map<string, readonly unknown[]>();
   const metrics = new Map<string, readonly unknown[]>();
   const lengths = new Map<string, readonly unknown[]>();
@@ -130,21 +134,29 @@ function recordDensity(t: NativeStyleTarget, sp: StateProgram, system: SystemFon
  * bundled files; `height` the height every recorded layout uses. A page whose text at PLAN_HEIGHTS' heights is not the text
  * recorded at `height` is refused, and so is a plan the device's reader (harness.ts checkMarklessPlan) cannot read all of, by field.
  */
-export function marklessPlan(t: NativeStyleTarget, sp: StateProgram, system: (dpr: number) => SystemFonts, bundled: readonly string[], authorFiles: ReadonlyMap<string, Uint8Array>, height: number): MarklessPlan {
-  const densities = PLAN_DENSITIES[t].map((dpr) => recordDensity(t, sp, system(dpr), bundled, authorFiles, dpr, height));
+export function marklessPlan(t: NativeStyleTarget, sp: StateProgram, system: (dpr: number) => SystemFonts, bundled: readonly string[], authorFiles: ReadonlyMap<string, Uint8Array>, height: number, recorded?: readonly DensityResult[]): MarklessPlan {
+  const densities = PLAN_DENSITIES[t].map((dpr, i) => {
+    const r = recorded?.[i];
+    if (r === undefined) return recordDensity(t, sp, system(dpr), bundled, authorFiles, dpr, height);
+    if ('error' in r) throw new Error(r.error);
+    return r.density;
+  });
   const faces = systemFaceData(system(PLAN_DENSITIES[t][0] as number), sp, bundled);
   const assignments = sp.assignments.map((_, i): PlanAssignment => {
     const program = programAt(sp, i);
     const dashed: (readonly unknown[])[] = [];
     const scroll: string[] = [];
+    const checkboxes: string[] = [];
     for (const n of program.nodes) {
       const writes = n.writes as readonly Write[];
       const styles = writes.find((w) => w.kind === 'border-styles')?.['styles'] as readonly string[] | undefined;
       const colors = writes.find((w) => w.kind === 'border-colors')?.['colors'] as readonly { r: number; g: number; b: number; alpha: number }[] | undefined;
       if (styles !== undefined && colors !== undefined) dashed.push([n.id, styles, colors.flatMap((c) => [c.r, c.g, c.b, c.alpha])]);
       if (writes.some((w) => w.kind === 'scroll-container')) scroll.push(n.id);
+      if (writes.some((w) => w.kind === 'checkbox')) checkboxes.push(n.id);
     }
-    return { variant: (sp.deltas[i] as { readonly variant: number }).variant, dashed, scroll };
+    const variant = (sp.deltas[i] as { readonly variant: number }).variant;
+    return checkboxes.length === 0 ? { variant, dashed, scroll } : { variant, dashed, scroll, checkboxes };
   });
   const plan: MarklessPlan = { version: MARKLESS_PLAN_VERSION, faces: [...faces].map(([id, data]) => ({ id, data })), densities, variants: sp.variants, assignments };
   const read = JSON.parse(harness.checkMarklessPlan(JSON.stringify(plan))) as readonly unknown[];

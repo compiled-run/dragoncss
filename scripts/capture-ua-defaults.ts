@@ -40,6 +40,8 @@ const KEY_SPECS = {
   'button[disabled]': { tag: 'button', attrs: { type: 'button', disabled: '' } },
   input: { tag: 'input', attrs: {} },
   'input[type=range]': { tag: 'input', attrs: { type: 'range' } },
+  // FORM-checkbox: a checkbox, whose html.css and theme rules (margins, box-sizing, cursor) differ from a text input's.
+  'input[type=checkbox]': { tag: 'input', attrs: { type: 'checkbox' } },
   textarea: { tag: 'textarea', attrs: {} },
   // FORM-b: a search field, whose html.css rule adds box-sizing: border-box to the input's.
   'input[type=search]': { tag: 'input', attrs: { type: 'search' } },

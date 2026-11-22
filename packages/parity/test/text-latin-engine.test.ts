@@ -395,7 +395,7 @@ describe('TXT1a-1 phase B: post-layout passes resolve a real-font input with the
   });
 
   it('hitTableOf builds its table, and refuses a measurer without the face with a HitError', () => {
-    const facts = new Map(['html', 'body', 'q', 'r', 'p'].map((id) => [id, { pointerEvents: 'auto', inherited: false, activation: false, radii: [] }] as const));
+    const facts = new Map(['html', 'body', 'q', 'r', 'p'].map((id) => [id, { pointerEvents: 'auto', inherited: false, activation: false, radii: [], context: false, transform: [], origin: { x: { kind: 'px', px: 0, percent: 0 }, y: { kind: 'px', px: 0, percent: 0 } } }] as const));
     const t = hitTableOf(input, shaped(), facts, NO_HIT_TABLE_FAULTS);
     expect(t.ids).toEqual(expect.arrayContaining(['q', 'r', 'p']));
     expect(() => hitTableOf(input, ahemShapedMeasurer(), facts, NO_HIT_TABLE_FAULTS)).toThrow(HitError);
