@@ -29,7 +29,7 @@
 import type { ResolvedElement, ResolvedValue } from '../analysis/resolve.ts';
 import { webkitScrollbarHidden } from '../analysis/webkit-scrollbar-state.ts';
 import { markerOf } from '../analysis/resolve.ts';
-import { rangePartOf } from '../analysis/resolve.ts';
+import { hiddenPlaceholderOf, rangePartOf, selectOptionsOf, selectPartOf, textFieldPartOf } from '../analysis/resolve.ts';
 import { serializeColor } from '../css/color.ts';
 import { serializeString } from '../css/escapes.ts';
 import { LONGHANDS } from '../css/properties.ts';
@@ -303,6 +303,9 @@ export type WebAnimations = {
  * when the project declares and maps no font, which leaves the output as it was before fonts. cases are resolved in the first
  * @media band; each later band (MQ-a) gets one @media block with the declarations that differ from it, per class.
  */
+/** The class of every option (FORM-b), which no rule names. */
+const OPTION_CLASS = 'dg-option';
+
 export function emitWebCss(cases: readonly WebCase[], digest: string, fonts: WebFontContext | null = null, bands: readonly WebBand[] = [], animations: WebAnimations | null = null, baseCondition: string = 'all', gateHover = true, webkitBoxEmittedAsFlowRoot = false, imageUrls: ReadonlyMap<string, string> = new Map()): WebEmit {
   const usedPinned = new Set<string>();
   const familyText = (v: CssValue): string => {
@@ -384,7 +387,7 @@ export function emitWebCss(cases: readonly WebCase[], digest: string, fonts: Web
       const fx = resolutions.some(writesFx);
       const mask = resolutions.some((r) => MASK_LONGHANDS.some((p) => !isInitialMask(p, (r.props.get(p) as ResolvedValue).value)));
       const borderImage = resolutions.some((r) => BORDER_IMAGE_LONGHANDS.some((p) => !isInitialBorderImage(p, (r.props.get(p) as ResolvedValue).value)));
-      const appearance = el.element.tag === 'button' || rangePartOf(el) !== undefined || resolutions.some(writesAppearance);
+      const appearance = el.element.tag === 'button' || rangePartOf(el) !== undefined || textFieldPartOf(el)?.part === null || selectPartOf(el)?.part === null || resolutions.some(writesAppearance);
       const breaks = resolutions.some(writesBreaks);
       const intrinsicInline = resolutions.every((r) => isNoneValue(r, 'contain-intrinsic-width'));
       const intrinsicBlock = resolutions.every((r) => isNoneValue(r, 'contain-intrinsic-height'));
@@ -433,7 +436,13 @@ export function emitWebCss(cases: readonly WebCase[], digest: string, fonts: Web
       // FORM-a A4: a range's track and thumb are styled through their pseudo-elements on the input's class (in every band and
       // interaction state); its container takes only UA and inherited values, which the input's own rules reproduce.
       const ranges = rangePartOf(el)?.part === null ? rangeStyledParts(el).map((p) => partOf(p.el, `::${p.pseudo}`, below, false)) : [];
-      const parts = [partOf(el, '', under, true), ...generated.map((g) => partOf(g, g.element.tag, below, false)), ...ranges, ...markerPart(el)];
+      // FORM-b: a text field's placeholder is styled through ::placeholder on the input's class; its editor takes only UA and
+      // inherited values, which the input's own rules reproduce.
+      // A field whose value hides its placeholder still writes the rule, for when the user clears it (hiddenPlaceholderOf).
+      const hidden = hiddenPlaceholderOf(el);
+      const shown = el.children.filter((ch): ch is ResolvedElement => ch.kind === 'element' && textFieldPartOf(ch)?.part === 'placeholder');
+      const placeholder = textFieldPartOf(el)?.part === null ? [...shown, ...(hidden === undefined ? [] : [hidden])].map((p) => partOf(p, '::placeholder', below, false)) : [];
+      const parts = [partOf(el, '', under, true), ...generated.map((g) => partOf(g, g.element.tag, below, false)), ...ranges, ...placeholder, ...markerPart(el)];
       // NA-NATIVE: ::-webkit-scrollbar rules that hide the element's scrollbars are written as the one rule that does (webkit-scrollbar.ts),
       // outside @media and interaction states when they hide them in any band or state: where they do not, the element scrolls on no
       // axis they leave shown (that resolution refuses them otherwise), or a scrollbar-width other than auto makes Chrome ignore the rule.
@@ -458,7 +467,9 @@ export function emitWebCss(cases: readonly WebCase[], digest: string, fonts: Web
         classesOf.set(el.element.address, list);
       }
       map.set(el.element.address, cls);
-      for (const ch of el.children) if (ch.kind === 'element' && !isGeneratedElement(ch) && (rangePartOf(ch)?.part ?? null) === null) visit(ch, below);
+      // FORM-b: an option takes Chrome's own UA style (an author style on one is refused), so its class has no rule.
+      for (const o of selectOptionsOf(el)) map.set(o.element.address, OPTION_CLASS);
+      for (const ch of el.children) if (ch.kind === 'element' && !isGeneratedElement(ch) && (rangePartOf(ch)?.part ?? null) === null && (textFieldPartOf(ch)?.part ?? null) === null && (selectPartOf(ch)?.part ?? null) === null) visit(ch, below);
     };
     visit(c.root, false);
   }

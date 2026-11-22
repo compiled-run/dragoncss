@@ -1,0 +1,8 @@
+{
+  "case": "transform-grid",
+  "dpr": 2,
+  "texts": [
+    {"id":"b1:text0","lines":[[0,2]]},
+    {"id":"a3:text0","lines":[[0,3],[3,5]]}
+  ]
+}

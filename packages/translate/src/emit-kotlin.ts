@@ -88,6 +88,8 @@ export class KotlinEmitter {
         return t.name;
       case 'array':
         return `JsArray<${this.ty(t.elem)}>`;
+      case 'bytes':
+        return 'JsBytes';
       case 'map':
         return t.key.k === 'str' ? `JsStringMap<${this.ty(t.value)}>` : `JsObjectMap<${this.ty(t.key)}, ${this.ty(t.value)}>`;
       case 'opt':
@@ -381,6 +383,14 @@ export class KotlinEmitter {
         return `jsCopy(${x})`;
       case 'arrConcat':
         return `jsConcatArrays(listOf(${a.join(', ')}))`;
+      case 'bytesNew':
+        return `jsBytesNew(${x})`;
+      case 'bytesLength':
+        return `jsBytesLength(${x})`;
+      case 'bytesIndex':
+        return `jsBytesAt(${x}, ${y})`;
+      case 'bytesSet':
+        return `jsBytesSet(${x}, ${y}, ${a[2]})`;
       case 'strCodePoints':
         return `jsCodePoints(${x})`;
       case 'strCodePointAt0':

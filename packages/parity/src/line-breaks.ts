@@ -18,6 +18,7 @@ import { repoPath } from './paths.ts';
 import { REFERENCE_PLATFORM } from './platform.ts';
 import { generatedTextId, isWhitespaceText, pseudoId, textAddresser } from './node-ids.ts';
 import { captureGeneratedTexts } from './pseudo-capture.ts';
+import { captureShadowBreakTexts } from './capture.ts';
 import type { GeneratedText } from './pseudo-capture.ts';
 import { applyTransformTwin } from './transform-capture.ts';
 
@@ -307,7 +308,7 @@ export async function captureBreakTexts(page: Page): Promise<ChromeBreakText[]> 
     return isWhitespaceText(t.data) && t.lines === 0 ? [] : [{ id, ...t }];
   });
   // GEN-a R9: generated text has no DOM node for a Range; its lines are the snapshot text boxes (pseudo-capture.ts).
-  return [...named, ...(await captureGeneratedTexts(page)).map(generatedBreakText)];
+  return [...named, ...(await captureGeneratedTexts(page)).map(generatedBreakText), ...(await captureShadowBreakTexts(page))];
 }
 
 /** A generated text's breaks from its snapshot text boxes: each unit a box covers is on that box's line; a zero-width box is blank. */

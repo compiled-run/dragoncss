@@ -125,6 +125,18 @@ export async function videosReady(): Promise<void> {
   }
 }
 
+// FORM-b: Chrome 145 keeps a select inner element's line height from the fallback font it styled with while a web font loaded
+// (a 10px Ahem select is 15px tall, 12px once restyled), so each select is restyled once the fonts are ready.
+export function selectsRestyled(): void {
+  for (const s of Array.from(document.querySelectorAll('select'))) {
+    const had = s.hasAttribute('style');
+    s.style.setProperty('--dragon-restyle', '1');
+    s.getBoundingClientRect();
+    s.style.removeProperty('--dragon-restyle');
+    if (!had) s.removeAttribute('style');
+  }
+}
+
 /** Opens a page in the case environment, loads the HTML with the harness style injected, and waits for fonts, videos and two frames. */
 export async function openPage(browser: Browser, html: string, env: PageEnvironment): Promise<Page> {
   const context = await browser.newContext({
@@ -138,6 +150,9 @@ export async function openPage(browser: Browser, html: string, env: PageEnvironm
   await page.evaluate(async () => {
     await document.fonts.load('10px Ahem');
     await document.fonts.ready;
+  });
+  await page.evaluate(selectsRestyled);
+  await page.evaluate(async () => {
     await new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r())));
   });
   const dpr = await page.evaluate(() => window.devicePixelRatio);
@@ -166,6 +181,9 @@ export async function openFrozenPage(browser: Browser, html: string, env: PageEn
   await page.evaluate(async () => {
     await document.fonts.load('10px Ahem');
     await document.fonts.ready;
+  });
+  await page.evaluate(selectsRestyled);
+  await page.evaluate(async () => {
     await new Promise<void>((r) => requestAnimationFrame(() => requestAnimationFrame(() => r())));
   });
   const dpr = await page.evaluate(() => window.devicePixelRatio);
