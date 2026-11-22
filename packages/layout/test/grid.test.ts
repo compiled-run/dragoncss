@@ -155,9 +155,15 @@ describe('the validator\'s grid rules, each with a planted input', () => {
       (r.children[0] as unknown as { children: unknown[] }).children = [button(style)];
     });
     expect(codes(withControl({ gridItem: autoItem }))).toEqual([]);
-    // The engine places no control in a grid yet: a control grid item is unsupported, never an internal error.
+    // The engine places a block button as a grid item (GRID-controls); a range stays unsupported, never an internal error.
     const placed = layout(withControl({ gridItem: autoItem }) as LayoutInput, ahemMeasurer);
-    expect(placed.kind === 'unsupported' ? [placed.unsupported.code, placed.unsupported.nodeId] : placed.kind).toEqual(['grid-control', 'btn']);
+    expect(placed.kind).toBe('ok');
+    const range = (style: Record<string, unknown>): unknown => JSON.parse(JSON.stringify(control('rng', { kind: 'range', defaultInlineSize: 129 }, { display: 'flex', ...style })));
+    const withRange = mutate((r) => {
+      (r.children[0] as unknown as { children: unknown[] }).children = [range({ gridItem: autoItem })];
+    });
+    const unplaced = layout(withRange as LayoutInput, ahemMeasurer);
+    expect(unplaced.kind === 'unsupported' ? [unplaced.unsupported.code, unplaced.unsupported.nodeId] : unplaced.kind).toEqual(['grid-control', 'rng']);
     expect(codes(withControl({}))).toContain('grid-shape $.root.children[0].children[0].style.gridItem');
     const placedOutside = input(box('root', {}, []));
     (placedOutside.root as unknown as { children: unknown[] }).children = [button({ gridItem: autoItem })];

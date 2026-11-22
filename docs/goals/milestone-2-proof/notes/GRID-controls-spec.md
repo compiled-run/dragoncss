@@ -15,3 +15,10 @@ Who needs it: the Markless notes form. Its `label.field` is `display: grid`, so 
   - a one-column grid like notes' `.field`;
   - a narrow two-column grid that overflows, holding a `width: 100%` button, a `width: 50%` text field, a `max-width: 80%` button and a select;
   - `justify-self: center` and `align-self: end`.
+
+## Judge ruling (2026-11-22): rejected 39c8d0db2b, the design sound. Its blockers are now fixed.
+- The two tests that still expected the old refusal now expect a button to compile and a range to stay refused: `dragon/test/controls.test.ts` and `layout/test/grid.test.ts`.
+- `grid-controls` now also holds a `display: flex` button grid item, which is a plain flex box, so the fixture now proves it. It also holds a shrink-to-fit `inline-grid` with a `width: 100%` text field. Every box matches live Chrome at DPR 1 and 3, measured locally.
+- The Chrome expected and emitted outputs come from the PR's regen, in their own commit. The receipt is CI green.
+- **Ledger, not fixed here:** `intrinsic.ts` `inlineContribution`, which block and flex intrinsic sizing use, still treats a text field's percentage width as auto, not compressed. That gap predates this change. Next: probe a `width: 100%` text field in a shrink-to-fit block and a flex item against Chrome, and fix it or refuse it by name.
+- **Follow-up:** `<textarea>` as a grid item comes with #575.

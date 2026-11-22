@@ -33,11 +33,9 @@ describe('FORM-a controls', () => {
     expect(range0.match(/appearance: none;/g)?.length).toBeGreaterThanOrEqual(2);
   });
 
-  it('refuses a button or range as a grid item', () => {
-    for (const kid of [button, range]) {
-      const out = compile(`${BODY}${BUTTON}${RANGE}.p { display: grid; }`, inParent(kid));
-      expect(errors(out.diagnostics)).toContainEqual(expect.stringMatching(/is a grid item, and a form control as a grid item is not supported yet/));
-    }
+  it('refuses a range as a grid item, and compiles a button as one (GRID-controls)', () => {
+    expect(errors(compile(`${BODY}${BUTTON}${RANGE}.p { display: grid; }`, inParent(range)).diagnostics)).toContainEqual(expect.stringMatching(/is a grid item, and a form control as a grid item is not supported yet/));
+    expect(errors(compile(`${BODY}${BUTTON}${RANGE}.p { display: grid; }`, inParent(button)).diagnostics).filter((m) => m.includes('grid item'))).toEqual([]);
     expect(errors(compile(`${BODY}${BUTTON}`, inParent(button)).diagnostics)).toEqual([]);
   });
 
