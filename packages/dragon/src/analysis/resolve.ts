@@ -47,7 +47,7 @@ import { computeResize } from '../css/properties/resize.ts';
 import { computeFontStretch } from '../css/properties/font-stretch.ts';
 import { computeTouchAction } from '../css/properties/touch-action.ts';
 import { applyWebkitScrollbar, hasScrollbarRules } from './webkit-scrollbar.ts';
-import { collapseInlineContext, preserveBreaksContext } from '@dragon/layout';
+import { collapseInlineContext, preserveBreaksContext } from './white-space.ts';
 
 export { SUPPORTED_TAGS } from './elements.ts';
 export { selectorMatches } from './match.ts';

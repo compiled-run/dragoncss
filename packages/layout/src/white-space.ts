@@ -1,4 +1,4 @@
-// White space phase I (css-text-3 §4.1.1-§4.1.3) over one inline formatting context, the one implementation the build and the phone run.
+// White space phase I (css-text-3 §4.1.1-§4.1.3) over one inline formatting context. packages/dragon/src/analysis/white-space.ts is a byte-for-byte copy.
 
 const ZWSP = '\u200b';
 

@@ -139,9 +139,9 @@ The plan does not say which leaves change: the Markless style input has no such 
 ### C1. One phase I for the build and the phone
 
 - **A new file.** Move collapseInlineContext and phaseOneContext's preserve-breaks branch into packages/layout/src/white-space.ts. Write them in the translator subset (no regex, no closures; index loops as in rowText). Add the file to the engine roots (translate/src/generate.ts:47-116, beside text-decoration.ts and rt-band.ts).
-- **The build imports it.** resolve.ts imports it from `@dragon/layout`, and its own copies go. The planted compiler fault `preLineKeepsSpaceBeforeNewline` becomes a parameter.
-- **What proves the move.** inline.test.ts and inline-atomic.test.ts must pass unchanged, and a regen must change no generated output except the Swift and Kotlin engines.
-- After this, the build and the phone run one phase I ("one source for both outputs").
+- **The build runs a byte-for-byte copy.** The published dragon package has css-tree as its only runtime dependency, and the core imports `@dragon/layout` for types only (packages/dragon/test/ua.test.ts; dist.test.ts f4 and f5 install the tarball without @dragon/layout). So packages/dragon/src/analysis/white-space.ts is a byte-for-byte copy of the layout file, and resolve.ts imports collapseInlineContext and preserveBreaksContext from `./white-space.ts`; its own versions go. Every `@dragon/layout` import left in resolve.ts is `import type`. packages/dragon/test/white-space-copy.test.ts reads both files and fails unless they are equal, and its message says to edit the layout file and copy it over. Only the layout file is a translated engine root. The planted compiler fault `preLineKeepsSpaceBeforeNewline` becomes a parameter.
+- **What proves the move.** inline.test.ts and inline-atomic.test.ts must pass unchanged, the layout differential test compares the new code with verbatim copies of the old loops, and a regen must change no generated output except the Swift and Kotlin engines.
+- After this, the build and the phone run the same source text: the build runs the TypeScript copy, and the phone runs its translation, which the translator corpus checks against the TypeScript.
 
 ### C2. The build exports the missing facts (F1, F2)
 
@@ -233,10 +233,11 @@ The plan does not say which leaves change: the Markless style input has no such 
 
 ## Slices
 
-- **RS1, one phase I** (C1). Add layout/src/white-space.ts, have resolve.ts import it, add the generate.ts root, and regen the Swift and Kotlin engines.
+- **RS1, one phase I** (C1). Add layout/src/white-space.ts and its byte-for-byte copy dragon/src/analysis/white-space.ts, have resolve.ts import the copy, add the generate.ts root, and regen the Swift and Kotlin engines.
   - The proof is inline.test.ts, inline-atomic.test.ts, the translator corpus and an unchanged regen of every expected file.
   - About 15-25 KB reviewed. Generated Swift and Kotlin are not reviewed.
 - **RS2, the facts and the pass** (C2, C3, the refusals and planted faults).
+  - Its premise that the phone's phase I equals the build's rests on white-space-copy.test.ts's byte equality plus the translator corpus. A1 then checks the harness and the plan table on top of that.
   - resolve.ts exposes each text's phase I input and result. markless-style-input.ts adds resolvedTextSources and `plan.texts`. markless-plan.ts adds the type. harness.ts adds the reader, substitution, insertion, withPhaseOne and the two faults, and drops rowText's edge rules.
   - Tests: markless-rows.test.ts (the rewritten :237-250, and the refusals), plus markless-plan.test.ts for the table's reader.
   - About 55-75 KB reviewed.
@@ -248,7 +249,7 @@ The plan does not say which leaves change: the Markless style input has no such 
 
 - packages/layout/src/white-space.ts (new), packages/layout/src/index.ts
 - packages/translate/src/generate.ts; packages/layout/generated/swift and kotlin (regenerated)
-- packages/dragon/src/analysis/resolve.ts
+- packages/dragon/src/analysis/resolve.ts, packages/dragon/src/analysis/white-space.ts (new, a byte-for-byte copy), packages/dragon/test/white-space-copy.test.ts (new)
 - packages/parity/src/markless-style-input.ts, packages/parity/src/markless-plan.ts
 - packages/translate/harness/harness.ts; the generated Harness.swift and Harness.kt
 - packages/parity/test/markless-rows.test.ts, markless-plan.test.ts, markless-row-text-space.test.ts (new)
