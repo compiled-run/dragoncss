@@ -1927,6 +1927,10 @@ function checkFieldWidth(el: ResolvedElement, parentDisplay: string | null, chai
   // Chrome compresses only a percentage width's min-content contribution; a length width with a percentage min-width or max-width
   // contributes the length (measured: a 120px field with max-width: 100% in a 100px-wide float is 128px with its border and padding).
   const relative = width.value.kind !== 'keyword' && hasPercentage(width) ? 'width' : rowItem && b === '' && hasPercentage(basis) ? 'flex-basis' : null;
+  const grid = chain.filter((a) => !isContents(a)).at(-1);
+  if (relative === 'width' && grid !== undefined && (parentDisplay === 'grid' || parentDisplay === 'inline-grid') && !singleStretchColumn(grid)) {
+    refuse(width, 'width-grid-font', `width: ${valueToString(width.value)} on <${tag}> ${address} is not supported here: it is a grid item of <${grid.element.tag}> ${grid.element.address}, whose column is not its whole content box, so Chrome sizes the column with the field's intrinsic width, and ${why}`, `Give <${grid.element.tag}> ${grid.element.address} one auto-placed column (no grid-template-columns), or give <${tag}> ${address} a width in px.`);
+  }
   if (relative === null || sized === null) return;
   const v = relative === 'width' ? width : basis;
   const at = `<${sized.box.element.tag}> ${sized.box.element.address}`;
@@ -2029,7 +2033,37 @@ function widthSource(box: ResolvedElement, parent: ResolvedElement | null): 'fix
     if (b === 'auto' && width === 'auto') return 'a flex item with an auto flex basis and width';
     return 'parent';
   }
+  // css-align-3 §6.1: a block aligned to the start, center or end of its block container takes its fit-content width.
+  if (width === 'auto' && !stretchesInline(box, parent)) return `justify-self: ${keywordOr(box, 'justify-self', 'auto') === 'auto' ? keywordOr(parent, 'justify-items', 'legacy') : keywordOr(box, 'justify-self', 'auto')} with an auto width`;
   return step('parent');
+}
+
+/** A computed keyword, or the initial keyword where the longhand is missing; '' for any other value. */
+const keywordOr = (el: ResolvedElement, p: Longhand, initial: string): string => {
+  const v = el.props.get(p) as ResolvedValue | undefined;
+  return v === undefined ? initial : keywordOf(v);
+};
+
+/** An item's inline-axis self-alignment that stretches it to its slot (css-align-3 §6.1: auto takes the parent's justify-items). */
+const stretchesInline = (item: ResolvedElement, parent: ResolvedElement): boolean => {
+  const self = keywordOr(item, 'justify-self', 'auto');
+  const own = self === 'auto' ? keywordOr(parent, 'justify-items', 'legacy') : self;
+  return own === 'normal' || own === 'stretch' || own === 'legacy';
+};
+
+/**
+ * A grid container whose one column is its whole content box: no column template or areas, an auto implicit column, row
+ * auto-flow, stretched content distribution, and every item auto-placed. Chrome 145 sizes the column by the items' content in each
+ * other shape (two auto columns, justify-content: start, grid-auto-columns: max-content, two areas, grid-column: 2, column flow).
+ */
+function singleStretchColumn(grid: ResolvedElement): boolean {
+  if (keywordOf(grid.props.get('grid-template-columns') as ResolvedValue) !== 'none') return false;
+  if (keywordOr(grid, 'grid-template-areas', 'none') !== 'none') return false;
+  if (keywordOr(grid, 'grid-auto-columns', 'auto') !== 'auto') return false;
+  if (keywordOr(grid, 'grid-auto-flow', 'row') !== 'row') return false;
+  const distribution = keywordOr(grid, 'justify-content', 'normal');
+  if (distribution !== 'normal' && distribution !== 'stretch') return false;
+  return grid.children.every((c) => c.kind !== 'element' || (keywordOr(c as ResolvedElement, 'grid-column-start', 'auto') === 'auto' && keywordOr(c as ResolvedElement, 'grid-column-end', 'auto') === 'auto'));
 }
 
 /** How to clear a refusal whose content-sized box is at, by why widthSource named it. */

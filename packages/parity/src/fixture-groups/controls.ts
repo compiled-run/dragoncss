@@ -52,6 +52,7 @@ export const CONTROLS: readonly FixtureSpec[] = [
   reject('reject-controls-text-font-grid-flow-column', 'DRAGON_UNSUPPORTED_FONT', '<input data-dragon-id="t" readonly="" value="Hg">', '<input> t is a grid item with min-width: auto, whose automatic minimum Chrome takes from the field\'s intrinsic width'),
   reject('reject-controls-text-font-grid-column-2', 'DRAGON_UNSUPPORTED_FONT', '<input data-dragon-id="t" readonly="" value="Hg">', '<input> t is a grid item with min-width: auto, whose automatic minimum Chrome takes from the field\'s intrinsic width'),
   reject('reject-controls-text-font-justify-self', 'DRAGON_UNSUPPORTED_FONT', '100%', 'width: 100% on <input> t is not supported here: <div> a takes its width from its content (justify-self: start with an auto width)'),
+  reject('reject-controls-text-font-grid-min0', 'DRAGON_UNSUPPORTED_FONT', '100%', 'width: 100% on <input> t is not supported here: it is a grid item of <div> d, whose column is not its whole content box'),
   reject('reject-controls-text-font-min-width', 'DRAGON_UNSUPPORTED_FONT', '100%', 'width: 100% on <input> t is not supported here: <div> d takes its width from its content (min-width: max-content)'),
   layout('controls-text-field-search'),
   layout('controls-textarea'),
