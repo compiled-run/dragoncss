@@ -104,3 +104,22 @@ slice is:
 - `packages/parity/test/atomic-inline-hit.test.ts`, `packages/parity/test/hit-refusals.ts`, `packages/parity/test/hit-report.test.ts`
 - generated: hit captures and facts, vectors and native engines for the fixture (batch regen)
 - this spec
+
+## Open: the press ring (Judge amendment 1), stopped
+
+`emit/runtime/interaction.ts` hits the press on the at-rest table and the release on the `:active` (scaled) table. Chrome 145 was
+captured with real CDP touch taps (`Input.dispatchTouchEvent`, a touchStart then a touchEnd 60 ms later, `hasTouch`) on the notes
+button. Its layout box is (77, 98, 246, 66), and `:active` is `scale(0.97); opacity: 0.85`. The results are identical at DPR 1, 2,
+2.625 and 3:
+
+| Release point | pointerdown | pointerup | click |
+|---|---|---|---|
+| centre (200, 131) | button | button | button |
+| inside the left edge, in the ring (78.5, 131) | button | button | **section** |
+| inside the top edge, in the ring (200, 98.6) | button | button | **button** |
+| 3 px outside the layout box (74, 131) | button | button | **button** |
+
+Chrome's click target comes from its gesture tap, with touch adjustment, not from a point hit. Touch adjustment is why a tap
+outside the box still clicks the button, and why the left and top ring points disagree. The hit table models neither, so a release
+in the ring doesn't match Chrome's tap target. Per the Judge's stop condition, the build stops here for a ruling: refuse the ring
+by name, model Chrome's gesture-tap targeting, or scope the parity claim to point hits.

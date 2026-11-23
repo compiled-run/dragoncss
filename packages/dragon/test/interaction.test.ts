@@ -607,16 +607,18 @@ describe('interaction states: hit model (R13)', () => {
 
   // HIT-atomic-inline INL2c: rt-hit.ts refuses an atomic inline its hit facts make a stacking context (hitFactsRefusal). Opacity
   // passes R13's paint-fact check (the table orders z-index 0 contexts), so the box check refuses the rules by that box's name.
-  it('refuses interaction rules on native beside an atomic inline that forms a stacking context', () => {
+  it('compiles interaction rules beside an atomic inline that forms a stacking context, which hits as its own layer (HIT-INL2c)', () => {
     const css = BODY + '.w { width: 100px; } .ib { display: inline-block; width: 20px; height: 8px; opacity: 0.5; } .k:hover { background-color: #0c0; }';
     const wbody = (r: Parameters<Parameters<typeof inputFor>[1]>[0]) => [div(r, 'w', ['w'], [text(r, 'wt', 'aa'), div(r, 'ib', ['ib'])]), div(r, 'k', ['k'])];
-    expect(otherErrors(compile({}, css, wbody, TARGETS, 'derive').diagnostics)).toEqual(['ios', 'android'].map((t) => `DRAGON_UNSUPPORTED_SELECTOR [${t}] :hover needs Dragon hit testing through the atomic inline forming a stacking context ib, which is not built yet (package INL2c hit model)`));
-    expect(otherErrors(compile({}, css, wbody, { web: {} }, 'derive').diagnostics)).toEqual([]);
-    // Beside a block child the atomic's line sits in an anonymous box, which the table builds and refuses the same way.
+    expect(otherErrors(compile({}, css, wbody, TARGETS, 'derive').diagnostics)).toEqual([]);
+    // Beside a block child the atomic's line sits in an anonymous box, which the table builds the same way.
     const mixed = (r: Parameters<Parameters<typeof inputFor>[1]>[0]) => [div(r, 'w', ['w'], [div(r, 'blk', []), text(r, 'wt', 'aa'), div(r, 'ib', ['ib'])]), div(r, 'k', ['k'])];
-    expect(otherErrors(compile({}, css, mixed, TARGETS, 'derive').diagnostics)).toEqual(['ios', 'android'].map((t) => `DRAGON_UNSUPPORTED_SELECTOR [${t}] :hover needs Dragon hit testing through the atomic inline forming a stacking context ib, which is not built yet (package INL2c hit model)`));
-    const moved = css.replace('opacity: 0.5;', 'transform: translateX(2px);');
-    expect(otherErrors(compile({}, moved, mixed, TARGETS, 'derive').diagnostics)).toEqual(['ios', 'android'].map((t) => `DRAGON_UNSUPPORTED_SELECTOR [${t}] :hover needs Dragon hit testing through the atomic inline forming a stacking context ib, which is not built yet (package INL2c hit model)`));
+    expect(otherErrors(compile({}, css, mixed, TARGETS, 'derive').diagnostics)).toEqual([]);
+    expect(otherErrors(compile({}, css.replace('opacity: 0.5;', 'transform: translateX(2px) scale(0.97);'), mixed, TARGETS, 'derive').diagnostics)).toEqual([]);
+    // A rotate stays refused, by the paint-fact check every box shares.
+    const rotated = otherErrors(compile({}, css.replace('opacity: 0.5;', 'transform: rotate(5deg);'), mixed, TARGETS, 'derive').diagnostics);
+    expect(rotated.length).toBeGreaterThan(0);
+    expect(rotated.every((m) => m.includes('transform'))).toBe(true);
   });
 
   it('catches the plant hitUnmodelledNotRefused', () => {

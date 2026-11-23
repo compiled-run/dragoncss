@@ -8,9 +8,9 @@ import { internalRecord } from '../../dragon/src/project.ts';
 import { caseHitTable, hitRefusal } from '../src/hit-capture.ts';
 import { nativeCases } from '../src/native-host.ts';
 
-const ATOMIC_REFUSAL = / is an atomic inline outside an inline formatting context, | has percentage padding around atomic inlines, | is an atomic inline that forms a stacking context or is transformed, /;
-// Cases with an atomic inline that forms a stacking context (containment, or opacity on a line in an anonymous box): both sides
-// refuse them, under INL2c.
+const ATOMIC_REFUSAL = / is an atomic inline outside an inline formatting context, | has percentage padding around atomic inlines, /;
+// Cases with an atomic inline that forms a stacking context (containment, or opacity on a line in an anonymous box): it hits as its
+// own layer (HIT-INL2c), so neither side refuses them and the table builds.
 const CONTEXT_CASES = ['contain-intrinsic-ahem', 'containment-layout', 'hit-atomic-inline-context'];
 const ATOMIC_DISPLAYS = ['inline-block', 'inline-flex', 'inline-grid'];
 
@@ -38,12 +38,12 @@ describe('the compiler and the hit table agree on atomic inlines', () => {
       // A case the table refuses for an earlier reason proves nothing either way.
       if (table !== null && !tableRefuses) continue;
       const unmodelled = hitUnmodelledBox(resolved);
-      const compilerRefuses = unmodelled?.pkg === 'INL2a' || unmodelled?.pkg === 'INL2c';
+      const compilerRefuses = unmodelled?.pkg === 'INL2a';
       expect([n.case.id, compilerRefuses], n.case.id).toEqual([n.case.id, tableRefuses]);
-      if (tableRefuses) expect([n.case.id, unmodelled?.pkg === 'INL2c'], n.case.id).toEqual([n.case.id, / \(INL2c\)$/.test(table)]);
       if (CONTEXT_CASES.some((id) => n.case.id === id || n.case.id === `${id}-rtl`)) {
         contexts++;
-        expect([n.case.id, unmodelled?.pkg, table], n.case.id).toEqual([n.case.id, 'INL2c', expect.stringMatching(/ \(INL2c\)$/)]);
+        expect([n.case.id, unmodelled, table], n.case.id).toEqual([n.case.id, null, null]);
+        expect(() => caseHitTable(n), n.case.id).not.toThrow();
       }
       if (!elements(resolved).some((e) => ATOMIC_DISPLAYS.includes(display(e)))) continue;
       if (table !== null) continue;
