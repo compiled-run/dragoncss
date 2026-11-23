@@ -129,8 +129,8 @@ public func dragonMetricUnits(head: [UInt8], hhea: [UInt8], hmtx: [UInt8], cmap:
 }
 
 /// The raw data as the translated measurer's FontData.
-public func dragonFontData(unitsPerEm: Double, ascent: Double, descent: Double, lineGap: Double, advances: [Double], xHeight: Double, capHeight: Double, zeroAdvance: Double, ellipsisAdvance: Double) -> FontData {
-  return FontData(unitsPerEm, ascent, descent, lineGap, JsArray(advances), xHeight, capHeight, zeroAdvance, ellipsisAdvance)
+public func dragonFontData(unitsPerEm: Double, ascent: Double, descent: Double, lineGap: Double, advances: [Double], xHeight: Double, capHeight: Double, zeroAdvance: Double, ellipsisAdvance: Double, xAdvance: Double) -> FontData {
+  return FontData(unitsPerEm, ascent, descent, lineGap, JsArray(advances), xHeight, capHeight, zeroAdvance, ellipsisAdvance, xAdvance)
 }
 
 /// The bridge self-check: the raw data read from the bundled font equal the Ahem constants of the translated engine.
@@ -145,6 +145,7 @@ public func dragonSelfCheck(_ d: FontData) -> [String] {
   if d.capHeight != want.capHeight { out.append("capHeight \(d.capHeight), Ahem \(want.capHeight)") }
   if d.zeroAdvance != want.zeroAdvance { out.append("zeroAdvance \(d.zeroAdvance), Ahem \(want.zeroAdvance)") }
   if d.ellipsisAdvance != want.ellipsisAdvance { out.append("ellipsisAdvance \(d.ellipsisAdvance), Ahem \(want.ellipsisAdvance)") }
+  if d.xAdvance != want.xAdvance { out.append("xAdvance \(d.xAdvance), Ahem \(want.xAdvance)") }
   let cps = try! text_coveredCodePoints().items
   if d.advances.items.count != want.advances.items.count { out.append("\(d.advances.items.count) advances, Ahem \(want.advances.items.count)") }
   for (k, cp) in cps.enumerated() where k < d.advances.items.count && k < want.advances.items.count {
@@ -635,7 +636,8 @@ func dragonLoadFace(_ url: URL) -> DragonFace {
   let header = dragonFontHeader(head: head, hhea: hhea)
   let units = dragonMetricUnits(head: head, hhea: hhea, hmtx: hmtx, cmap: cmap, os2: os2, loca: loca, glyf: glyf)
   let ellipsis = dragonGlyph(cmap: cmap, 0x2026)
-  let data = dragonFontData(unitsPerEm: header.unitsPerEm, ascent: header.ascent, descent: header.descent, lineGap: header.lineGap, advances: [], xHeight: units.xHeight, capHeight: units.capHeight, zeroAdvance: units.zeroAdvance, ellipsisAdvance: ellipsis == 0 ? -1 : dragonAdvance(hhea: hhea, hmtx: hmtx, ellipsis))
+  let x = dragonGlyph(cmap: cmap, 0x78)
+  let data = dragonFontData(unitsPerEm: header.unitsPerEm, ascent: header.ascent, descent: header.descent, lineGap: header.lineGap, advances: [], xHeight: units.xHeight, capHeight: units.capHeight, zeroAdvance: units.zeroAdvance, ellipsisAdvance: ellipsis == 0 ? -1 : dragonAdvance(hhea: hhea, hmtx: hmtx, ellipsis), xAdvance: x == 0 ? -1 : dragonAdvance(hhea: hhea, hmtx: hmtx, x))
   return DragonFace(id: "sha256:" + hex, data: data, postScriptName: CTFontCopyPostScriptName(probe) as String, descriptor: descriptor)
 }
 
@@ -699,7 +701,8 @@ public final class DragonBridge {
     let units = dragonMetricUnits(head: [UInt8](headData), hhea: hhea, hmtx: hmtx, cmap: cmap, os2: [UInt8](os2Data), loca: [UInt8](locaData), glyf: [UInt8](glyfData))
     // The ellipsis text-overflow draws (U+2026), measured only when the font maps it.
     let ellipsis = dragonGlyph(cmap: cmap, 0x2026)
-    data = dragonFontData(unitsPerEm: header.unitsPerEm, ascent: header.ascent, descent: header.descent, lineGap: header.lineGap, advances: advances, xHeight: units.xHeight, capHeight: units.capHeight, zeroAdvance: units.zeroAdvance, ellipsisAdvance: ellipsis == 0 ? -1 : dragonAdvance(hhea: hhea, hmtx: hmtx, ellipsis))
+    let x = dragonGlyph(cmap: cmap, 0x78)
+    data = dragonFontData(unitsPerEm: header.unitsPerEm, ascent: header.ascent, descent: header.descent, lineGap: header.lineGap, advances: advances, xHeight: units.xHeight, capHeight: units.capHeight, zeroAdvance: units.zeroAdvance, ellipsisAdvance: ellipsis == 0 ? -1 : dragonAdvance(hhea: hhea, hmtx: hmtx, ellipsis), xAdvance: x == 0 ? -1 : dragonAdvance(hhea: hhea, hmtx: hmtx, x))
     selfCheck = dragonSelfCheck(data)
     layoutShaper = DragonBridge.shaper
     fontDataMeasurer = try! text_fontDataMeasurer(data, AhemRuleFaults(false, false))
@@ -1483,7 +1486,7 @@ fun dragonMetricUnits(head: ByteArray, hhea: ByteArray, hmtx: ByteArray, cmap: B
 }
 
 /** The raw data as the translated measurer's FontData. */
-fun dragonFontData(unitsPerEm: Double, ascent: Double, descent: Double, lineGap: Double, advances: List<Double>, xHeight: Double, capHeight: Double, zeroAdvance: Double, ellipsisAdvance: Double): FontData = FontData(unitsPerEm, ascent, descent, lineGap, ArrayList(advances), xHeight, capHeight, zeroAdvance, ellipsisAdvance)
+fun dragonFontData(unitsPerEm: Double, ascent: Double, descent: Double, lineGap: Double, advances: List<Double>, xHeight: Double, capHeight: Double, zeroAdvance: Double, ellipsisAdvance: Double, xAdvance: Double): FontData = FontData(unitsPerEm, ascent, descent, lineGap, ArrayList(advances), xHeight, capHeight, zeroAdvance, ellipsisAdvance, xAdvance)
 
 /** The bridge self-check: the raw data read from the bundled font equal the Ahem constants of the translated engine. */
 fun dragonSelfCheck(d: FontData): List<String> {
@@ -1497,6 +1500,7 @@ fun dragonSelfCheck(d: FontData): List<String> {
   if (d.capHeight != want.capHeight) out.add("capHeight " + d.capHeight + ", Ahem " + want.capHeight)
   if (d.zeroAdvance != want.zeroAdvance) out.add("zeroAdvance " + d.zeroAdvance + ", Ahem " + want.zeroAdvance)
   if (d.ellipsisAdvance != want.ellipsisAdvance) out.add("ellipsisAdvance " + d.ellipsisAdvance + ", Ahem " + want.ellipsisAdvance)
+  if (d.xAdvance != want.xAdvance) out.add("xAdvance " + d.xAdvance + ", Ahem " + want.xAdvance)
   val cps = text_coveredCodePoints()
   if (d.advances.size != want.advances.size) out.add("" + d.advances.size + " advances, Ahem " + want.advances.size)
   for (k in cps.indices) {
@@ -2005,7 +2009,8 @@ fun dragonLoadFace(ctx: Context, file: String): DragonFace {
   val header = dragonFontHeader(head, hhea)
   val units = dragonMetricUnits(head, hhea, hmtx, cmap, os2, dragonSfntTable(raw, "loca"), dragonSfntTable(raw, "glyf"))
   val ellipsis = dragonGlyph(cmap, 0x2026)
-  val data = dragonFontData(header[0], header[1], header[2], header[3], emptyList(), units[0], units[1], units[2], if (ellipsis == 0) -1.0 else dragonAdvance(hhea, hmtx, ellipsis))
+  val x = dragonGlyph(cmap, 0x78)
+  val data = dragonFontData(header[0], header[1], header[2], header[3], emptyList(), units[0], units[1], units[2], if (ellipsis == 0) -1.0 else dragonAdvance(hhea, hmtx, ellipsis), if (x == 0) -1.0 else dragonAdvance(hhea, hmtx, x))
   return DragonFace("sha256:" + hex, data, font, Typeface.CustomFallbackBuilder(FontFamily.Builder(font).build()).build())
 }
 
@@ -2064,7 +2069,8 @@ class DragonBridge private constructor(ctx: Context) {
     val units = dragonMetricUnits(dragonSfntTable(raw, "head"), hhea, hmtx, cmap, dragonSfntTable(raw, "OS/2"), dragonSfntTable(raw, "loca"), dragonSfntTable(raw, "glyf"))
     // The ellipsis text-overflow draws (U+2026), measured only when the font maps it.
     val ellipsis = dragonGlyph(cmap, 0x2026)
-    data = dragonFontData(header[0], header[1], header[2], header[3], advances, units[0], units[1], units[2], if (ellipsis == 0) -1.0 else dragonAdvance(hhea, hmtx, ellipsis))
+    val x = dragonGlyph(cmap, 0x78)
+    data = dragonFontData(header[0], header[1], header[2], header[3], advances, units[0], units[1], units[2], if (ellipsis == 0) -1.0 else dragonAdvance(hhea, hmtx, ellipsis), if (x == 0) -1.0 else dragonAdvance(hhea, hmtx, x))
     selfCheck = dragonSelfCheck(data)
     layoutShaper = shaper
     fontDataMeasurer = text_fontDataMeasurer(data, AhemRuleFaults(false, false))

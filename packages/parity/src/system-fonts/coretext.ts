@@ -29,6 +29,7 @@ export type CoreTextDescription = {
   readonly xTop: number;
   readonly zeroAdvance: number;
   readonly ellipsisAdvance: number;
+  readonly xAdvance: number;
   readonly hhea: { readonly ascender: number; readonly descender: number; readonly lineGap: number } | null;
   readonly os2: { readonly sCapHeight: number; readonly sxHeight: number } | null;
 };

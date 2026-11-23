@@ -97,7 +97,7 @@ function tables(bytes: Uint8Array): Map<string, { readonly offset: number; reado
 
 /**
  * The FontData a device host reads from the bundled bytes (text.ts FontData): head unitsPerEm, hhea ascender, descender and
- * lineGap, glyph x's glyf yMax, OS/2 sCapHeight, the advance of glyph 0 and of U+2026's glyph (-1 without one). The shaped
+ * lineGap, glyph x's glyf yMax, OS/2 sCapHeight, the advance of glyph 0, of U+2026's glyph (-1 without one) and of glyph x. The shaped
  * measurer reads no per-code-point advances.
  */
 export function fontDataOf(id: string): FontData {
@@ -133,6 +133,7 @@ export function fontDataOf(id: string): FontData {
     capHeight: d.getInt16(os2 + 88),
     zeroAdvance: hb().glyphUnits(unitFont, zero),
     ellipsisAdvance: ellipsis === 0 ? -1 : hb().glyphUnits(unitFont, ellipsis),
+    xAdvance: hb().glyphUnits(unitFont, x),
   };
 }
 

@@ -88,7 +88,7 @@ function recordDensity(t: NativeStyleTarget, sp: StateProgram, system: SystemFon
       metrics.set(`${family}@${size}`, m === null ? [family, size] : [family, size, m.ascent, m.descent, m.lineGap, m.normalGapAbove]);
     },
     lengths(family, size, l: FontLengths) {
-      lengths.set(`${family}@${size}`, [family, size, l.xHeight, l.capHeight, l.zeroWidth]);
+      lengths.set(`${family}@${size}`, [family, size, l.xHeight, l.capHeight, l.zeroWidth, l.xWidth]);
     },
   };
   const lay = (m: TextMeasurer, vi: number, width: number, h: number): void => {
