@@ -1,6 +1,6 @@
 // FORM-b: a textarea compiles as Chrome 145's UA shadow tree, a placeholder and an inner editor at the content top, sized by cols
-// and rows (controls.ts textAreaInlineSize) and laid out by the engine. Refused on iOS and Android: the resizer grip, a scrollbar
-// gutter, overflow: visible and an editable textarea; everywhere: an element child.
+// and rows (controls.ts textAreaInlineSize) and laid out by the engine. Its resize compiles on iOS and Android, which draw no grip.
+// Refused there: a scrollbar gutter, overflow: visible and an editable textarea; everywhere: an element child.
 import { describe, expect, it } from 'vitest';
 import type { Compiled, Diagnostic } from 'dragon';
 import * as dragon from 'dragon';
@@ -78,12 +78,10 @@ describe('FORM-b textareas', () => {
     expect(b.get('v-a')?.y).toBe(3);
   });
 
-  it('refuses a grip, a scrollbar gutter, overflow: visible and editing on iOS and Android', () => {
+  it('compiles the UA grip, and refuses a scrollbar gutter, overflow: visible and editing on iOS and Android', () => {
     const base = 'textarea { display: block; font: inherit; appearance: none; margin: 0; border: 2px solid #036; padding: 1px 2px; }';
-    expect(errors(compile('ta-chrome', 'textarea { scrollbar-width: none; }', '<textarea data-dragon-id="t" readonly=""></textarea>', base))).toEqual([
-      expect.stringMatching(/^android DRAGON_UNSUPPORTED_VALUE the scroll container t has resize both, so Chrome draws a resizer/),
-      expect.stringMatching(/^ios DRAGON_UNSUPPORTED_VALUE the scroll container t has resize both/),
-    ]);
+    // The UA's resize: both compiles: a phone has no resizer (resize.test.ts).
+    expect(errors(compile('ta-chrome', 'textarea { scrollbar-width: none; }', '<textarea data-dragon-id="t" readonly=""></textarea>', base))).toEqual([]);
     expect(errors(compile('ta-gutter', 'textarea { scrollbar-width: auto; }', '<textarea data-dragon-id="t" readonly=""></textarea>'))).toEqual([
       expect.stringMatching(/^android DRAGON_UNSUPPORTED_VALUE <textarea> t reserves a scrollbar gutter/),
       expect.stringMatching(/^ios DRAGON_UNSUPPORTED_VALUE <textarea> t reserves a scrollbar gutter/),
