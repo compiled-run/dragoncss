@@ -126,10 +126,17 @@ slice is:
 - **Line ink.** A context atomic still counts toward its line's ink overflow at its untransformed rect. This is harmless:
   `lineHit` tests each item against its own rect, and a layer is tested before any line.
 - **Positioned atomics (F9b, F9c)** stay refused by the engine (`inline-box-position`), so the fixture doesn't carry them.
-- **Fixture.** `hit-atomic-inline-context` carries F1-F13b, plus an `overflow: hidden` line block clipping a context atomic, a
-  context atomic nested in one, and a positioned child inside one. Its rtl case uses a `direction: rtl` class. Every point
-  matches Chrome at DPR 1, 2 and 3 (5660 points) and 2.625 (7523 points). The planted `contextNotLayered` fault fails 112
-  points.
+- **Fixtures.** Split so every row is inside the 400x300 viewport, each in ltr and rtl, captured at DPR 1, 2, 2.625 and 3:
+  - `hit-atomic-inline-context`: F1-F9 with F2b.
+  - `hit-atomic-inline-context-nest`: F10 (a `direction: rtl` row), a 50px context atomic overflowing its 30px
+    `overflow: hidden` line block, a context atomic nested in one, and a positioned child inside one.
+  - `hit-atomic-inline-notes`: the notes button at rest and pressed (F11-F13b).
+
+  hit-report pins that Chrome names every element at every DPR in both directions, except the `pointer-events: none` one.
+- **Open: the contain cases.** Lifting INL2c also brings `contain-intrinsic-ahem` and `containment-layout` (ltr and rtl) into the
+  hit lane, where 12 points mismatch Chrome. Neither mismatch is at an atomic inline. In `contain-intrinsic-ahem`, it is the
+  fractional bottom edge of a `contain: strict` block (`frac`). In `containment-layout`, it is an exact edge between an absolute
+  child and the in-flow text of a `contain: strict` block (`str`). INL2c refused both cases before, and it hid these gaps.
 - **Paint.** `atomic-inline-hit.test.ts` screenshots F2 (an `opacity` atomic over the text after it) and F2b (a plain atomic) in
   Chrome. The context atomic paints over the text and the plain one under it. The compiled program writes `paint-order` (host
   `html`, bucket 1) for the context atomics, and none for the plain one.

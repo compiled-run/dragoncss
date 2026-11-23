@@ -605,8 +605,7 @@ describe('interaction states: hit model (R13)', () => {
     for (const t of ['ios', 'android']) expect(got).toContain(`DRAGON_UNSUPPORTED_SELECTOR [${t}] :hover needs Dragon hit testing through the inline replaced element fr, which is not built yet (package INL2d hit model)`);
   });
 
-  // HIT-atomic-inline INL2c: rt-hit.ts refuses an atomic inline its hit facts make a stacking context (hitFactsRefusal). Opacity
-  // passes R13's paint-fact check (the table orders z-index 0 contexts), so the box check refuses the rules by that box's name.
+  // An atomic inline its hit facts make a stacking context hits as its own layer in rt-hit.ts, so R13 leaves it out; a rotate stays refused.
   it('compiles interaction rules beside an atomic inline that forms a stacking context, which hits as its own layer (HIT-INL2c)', () => {
     const css = BODY + '.w { width: 100px; } .ib { display: inline-block; width: 20px; height: 8px; opacity: 0.5; } .k:hover { background-color: #0c0; }';
     const wbody = (r: Parameters<Parameters<typeof inputFor>[1]>[0]) => [div(r, 'w', ['w'], [text(r, 'wt', 'aa'), div(r, 'ib', ['ib'])]), div(r, 'k', ['k'])];

@@ -11,7 +11,7 @@ import { nativeCases } from '../src/native-host.ts';
 const ATOMIC_REFUSAL = / is an atomic inline outside an inline formatting context, | has percentage padding around atomic inlines, /;
 // Cases with an atomic inline that forms a stacking context (containment, or opacity on a line in an anonymous box): it hits as its
 // own layer (HIT-INL2c), so neither side refuses them and the table builds.
-const CONTEXT_CASES = ['contain-intrinsic-ahem', 'containment-layout', 'hit-atomic-inline-context'];
+const CONTEXT_CASES = ['contain-intrinsic-ahem', 'containment-layout', 'hit-atomic-inline-context', 'hit-atomic-inline-context-nest', 'hit-atomic-inline-notes'];
 const ATOMIC_DISPLAYS = ['inline-block', 'inline-flex', 'inline-grid'];
 
 /** Every element of a resolved tree in preorder. */
@@ -60,7 +60,7 @@ describe('the compiler and the hit table agree on atomic inlines', () => {
 
 // HIT-INL2c paint: hit order follows paint order. In Chrome 145 an atomic inline that forms a stacking context paints over the
 // text after it on its line (b1 at 50% red over the Ahem 'b' glyphs), a plain one under it (b01, the glyphs stay black); Dragon's
-// native program hosts the context atomics (b1, and l1 in rtl) in html's z0 layer after the flow, and leaves b01 in the flow.
+// native program hosts the context atomic b1 in html's z0 layer after the flow, and leaves b01 in the flow.
 describe('an atomic inline that forms a stacking context paints over its line text (HIT-INL2c)', () => {
   it('in Chrome and in the native program', async () => {
     const { ahemFontFace, launchChrome } = await import('../src/chrome.ts');
@@ -89,6 +89,6 @@ describe('an atomic inline that forms a stacking context paints over its line te
       await browser.close();
     }
     const order = (id: string) => n.programs.uikit.nodes.find((x) => x.id === id)?.writes.find((w) => w.kind === 'paint-order') as { host: string; bucket: number } | undefined;
-    expect([order('b1')?.host, order('b1')?.bucket, order('l1')?.host, order('l1')?.bucket, order('b01')]).toEqual(['html', 1, 'html', 1, undefined]);
+    expect([order('b1')?.host, order('b1')?.bucket, order('b01')]).toEqual(['html', 1, undefined]);
   }, 120_000);
 });
