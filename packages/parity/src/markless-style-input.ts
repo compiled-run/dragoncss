@@ -932,6 +932,8 @@ function exportMarkless(parsed: MarklessStyleInput, inputText: string, inputPath
   }
   const byId = new Map(parsed.nodes.map((n) => [n.id, n]));
   const inSelectList = (n: MarklessStyleInput['nodes'][number]): boolean => inSelectOptions(byId, n);
+  // A textarea's text is its value, which the export carries as the text of its <id>::editor part.
+  const inTextArea = (n: MarklessStyleInput['nodes'][number]): boolean => n.kind === 'text' && byId.get(n.parent)?.kind === 'element' && (byId.get(n.parent) as { element: string }).element === 'textarea';
   for (const [t, x] of Object.entries(exported.targets)) for (const a of [...x.assignments, ...interactionStates(x)]) {
     const have = new Set(a.nodes.map((n) => n.id));
     const values = cellValues(a);
@@ -939,7 +941,7 @@ function exportMarkless(parsed: MarklessStyleInput, inputText: string, inputPath
     const boxed = parsed.nodes.filter((n) => boxless(n) && have.has(n.id)).map((n) => n.id);
     if (boxed.length > 0) fail(`${t}: ${boxed.join(', ')} must generate no box (an ancestor in the markup, there for selectors and inheritance), but the CSS gives it a display other than contents`);
     // Whitespace-only text Dragon drops where it collapses away, as Chrome generates no box for it.
-    const missing = parsed.nodes.filter((n) => !boxless(n) && !inSelectList(n) && !have.has(n.id) && !(n.kind === 'text' && isWhitespaceText(shownText(n, values)))).map((n) => n.id);
+    const missing = parsed.nodes.filter((n) => !boxless(n) && !inSelectList(n) && !inTextArea(n) && !have.has(n.id) && !(n.kind === 'text' && isWhitespaceText(shownText(n, values)))).map((n) => n.id);
     if (missing.length > 0) fail(`${t}: the export has no node ${missing.join(', ')} of the input`);
   }
   if ((parsed.repeats ?? []).length > 0) checkRows(parsed, inputPath, exported, styles, compiled, fonts, mode, at);

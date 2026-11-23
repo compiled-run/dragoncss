@@ -547,7 +547,8 @@ function resolveTreeWith(root: LinkedElement, rules: readonly Rule[], faults: Co
         if (value === '') kids.push(placeholder);
         else hiddenPlaceholders.set(self, placeholder);
       }
-      kids.push(visit(textAreaPart(el, 'editor', value), here, self, null, 'editor'));
+      // Blink's inner editor ends a value that ends in a line break with a placeholder <br>, so its empty last line is a line.
+      kids.push(visit(textAreaPart(el, 'editor', value.endsWith('\n') ? `${value}\n` : value), here, self, null, 'editor'));
     }
     if (part === 'inner') selectParts.set(self, { part, host: chain[chain.length - 1] as LinkedElement });
     if (menulist) {

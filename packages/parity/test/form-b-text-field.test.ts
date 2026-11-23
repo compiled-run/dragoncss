@@ -150,9 +150,10 @@ describe('FORM-b text fields', () => {
     expect([b.get('t::cancel'), b.get('v::cancel')]).toEqual([{ x: 4 + 189 + 1, y: 3 + 1.5, width: 7, height: 7 }, undefined]);
   });
 
-  it('still refuses a textarea when the host edits single-line fields', () => {
-    const refused = errors(compile('tf-host-textarea', '', '<textarea data-dragon-id="a">XX</textarea>', BASE, false, true)).filter((e) => e.includes('is an editable text control'));
-    expect(refused).toEqual([expect.stringMatching(/^android DRAGON_UNSUPPORTED_VALUE <textarea> a is an editable text control/), expect.stringMatching(/^ios DRAGON_UNSUPPORTED_VALUE <textarea> a is an editable text control/)]);
+  it('lays out an editable textarea when the host edits text (FORM-textarea-edit), and refuses it otherwise', () => {
+    const editing = (host: boolean): string[] => errors(compile('tf-host-textarea', '', '<textarea data-dragon-id="a">XX</textarea>', BASE, false, host)).filter((e) => e.includes('is an editable text control'));
+    expect(editing(true)).toEqual([]);
+    expect(editing(false)).toEqual([expect.stringMatching(/^android DRAGON_UNSUPPORTED_VALUE <textarea> a is an editable text control/), expect.stringMatching(/^ios DRAGON_UNSUPPORTED_VALUE <textarea> a is an editable text control/)]);
   });
 
   it('accepts an editable search field in a Markless compile (textEditing: host) and refuses it in a plain native compile', () => {

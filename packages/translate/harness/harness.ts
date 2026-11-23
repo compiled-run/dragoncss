@@ -98,7 +98,7 @@ import { resolveBorder, resolvePadding } from '../../layout/src/box.ts';
 import { checkboxMarks, controlAsBox } from '../../layout/src/controls.ts';
 import { markerTextId } from '../../layout/src/marker.ts';
 import type { LinePiece } from '../../layout/src/inline.ts';
-import { inlineLeaves, leafFontOf, placeLines } from '../../layout/src/inline.ts';
+import { inlineLeaves, leafFontOf, metricsOf, placeLines } from '../../layout/src/inline.ts';
 import { clampedInput } from '../../layout/src/line-clamp.ts';
 import type { ScrollRange } from '../../layout/src/overflow.ts';
 import { scrollRanges } from '../../layout/src/overflow.ts';
@@ -1627,6 +1627,52 @@ function checkboxesJson(ids: readonly string[], abs: Map<string, LayoutRect>, dp
         out += h(v);
       });
       out += `],${h(m.checkWidth)}]`;
+    }
+  });
+  return `${out}]]`;
+}
+
+/** Every textarea control of a zoomed tree, in preorder. */
+function textAreaControls(b: LayoutBox, out: ControlBox[]): void {
+  for (const c of b.children) {
+    if (c.kind === 'box') textAreaControls(c, out);
+    else if (c.kind === 'control') {
+      if (c.control.kind === 'text-area') out.push(c);
+      textAreaControls(controlAsBox(c), out);
+    }
+  }
+}
+
+/**
+ * FORM-textarea-edit: ["text-editors", [[id, [x, y, width, height], [top, right, bottom, left], scrollMaxY, lineHeight, baseline]]],
+ * per textarea in preorder, in the frames' px: its scrollport (the padding box: its border box less its device-snapped borders,
+ * from the border box's corner), its padding (the host view's text insets), how far its content scrolls down (its block padding
+ * and its editor's height past the scrollport, 0 when it fits), and its editor's line: the line height and the baseline from the line's top (the ascent plus the
+ * half-leading, inline.ts metricsOf), by which a host that edits the textarea natively lays out its own lines.
+ */
+function textEditorsJson(root: LayoutBox, abs: Map<string, LayoutRect>, ctx: Ctx): string {
+  const areas: ControlBox[] = [];
+  textAreaControls(root, areas);
+  if (areas.length === 0) return '';
+  let out = ',["text-editors",[';
+  areas.forEach((c, i) => {
+    const r = abs.get(c.id);
+    const k = c.control;
+    if (r === undefined) fail(`the textarea ${c.id} has no laid-out box; a textarea in a list row is not supported`);
+    else if (k.kind === 'text-area') {
+      const bor = resolveBorder(c.style, ctx.devicePixelRatio);
+      const pad = resolvePadding(c.style, ZERO);
+      const m = metricsOf(ctx, c.id, k.font, k.lineHeight, false);
+      // The scroll extent is the editor's: Chrome's scroll height is the block padding around the editor's lines (the scroll
+      // ranges refuse a textarea, whose at-rest scrolling waits for FORM-b2).
+      const editor = abs.get(`${c.id}::editor`);
+      if (editor === undefined) return fail(`the textarea ${c.id} has no laid-out editor`);
+      const portHeight = r.height - bor.top - bor.bottom;
+      const scrolled = pad.top + editor.height + pad.bottom - portHeight;
+      const maxY = scrolled > 0 ? scrolled / LU_PER_PX : 0;
+      if (i > 0) out += ',';
+      out += `[${q(c.id)},[${h(bor.left / LU_PER_PX)},${h(bor.top / LU_PER_PX)},${h((r.width - bor.left - bor.right) / LU_PER_PX)},${h((r.height - bor.top - bor.bottom) / LU_PER_PX)}],`;
+      out += `[${h(pad.top / LU_PER_PX)},${h(pad.right / LU_PER_PX)},${h(pad.bottom / LU_PER_PX)},${h(pad.left / LU_PER_PX)}],${h(maxY)},${h((m.above + m.below) / LU_PER_PX)},${h(m.above / LU_PER_PX)}]`;
     }
   });
   return `${out}]]`;
@@ -4009,7 +4055,7 @@ export function checkMarklessPlan(line: string): string {
  * nodeId, detail]; per box and text node [id, [x, y, width, height] relative to its parent, borderWidths [top, right, bottom,
  * left] or null, lines or null, borderOps or null, scrollRange or null]; on a slotted page ("slots" given), then the slot
  * writes; with a menulist-button select, ["menulist-arrows", [[id, strokeWidth, segments]]], each arrow in device px from
- * its select's snapped border box; with a checkbox, last, ["checkbox-marks", marks] (checkboxesJson).
+ * its select's snapped border box; with a checkbox, ["checkbox-marks", marks] (checkboxesJson); with a textarea, ["text-editors", facts] (textEditorsJson).
  */
 export function runMarklessLayout(line: string): string {
   try {
@@ -4401,7 +4447,7 @@ function marklessLayout(o: JsonObj, live: GlyphShaper | null): string {
     }
     // POSX-s scroll: a host that moves sticky views asks for their constraints ("sticky": true); an older host is answered as before.
     const wantsSticky = o.values.has('sticky') && bool(field(o, 'sticky', '$'), '$.sticky');
-    const arrows = `${arrowsJson(menuListArrows(input, boxes, measurer), abs)}${checkboxesJson(parts.checkboxes, abs, dpr)}${wantsSticky ? stickyJson(placed.sticky) : ''}`;
+    const arrows = `${arrowsJson(menuListArrows(input, boxes, measurer), abs)}${checkboxesJson(parts.checkboxes, abs, dpr)}${textEditorsJson(zoomed.root, abs, { measurer, devicePixelRatio: zoomed.devicePixelRatio, faults: NO_ENGINE_FAULTS, gridFaults: NO_GRID_FAULTS })}${wantsSticky ? stickyJson(placed.sticky) : ''}`;
     if (!o.values.has('slots')) return `${out}]${arrows}]`;
     out += `],${writeNumbers(parts, values, '$.slots')}`;
     if (spliced === null) return `${out}${arrows}]`;

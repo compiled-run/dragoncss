@@ -1,6 +1,15 @@
 # FORM-textarea-edit: an editable `<textarea>` when the host edits it
 
-Status: spec, for the Judge. Branch `cw/form-textarea-edit`, built on batch 6 (`cw/notes-batch-6` 3bd1c18a2b).
+Status: approved with amendments by the Judge (folded in below), and built. Branch `cw/form-textarea-edit`, built on batch 6
+(`cw/notes-batch-6` 3bd1c18a2b).
+
+**What this proves, and what it doesn't.** The Chrome facts show that an editable textarea lays out as a readonly one in
+Chrome. They say nothing about whether `UITextView` or `EditText` wraps a value the way Dragon does. This slice proves two
+things:
+- the compile gate (an editable textarea compiles under host editing, and what the host view can't match is refused);
+- the facts Dragon exports for the host view.
+
+Wrap parity on the phones is delegated to the phone rung on the Markless side (R2), and is not claimed here.
 
 ## Why
 
@@ -37,72 +46,134 @@ scroll offset.
 
 ## The split, as in #645
 
-**Dragon lays out**, as it does for a readonly textarea today (#631/#640):
+**Dragon lays out**, as it does for a readonly textarea (#631/#640):
 - the textarea box, with its padding and border;
-- its UA shadow parts at rest: `<id>::editor`, holding the value wrapped as `white-space: pre-wrap` at the editor's width;
+- `<id>::editor`, holding the value wrapped as `white-space: pre-wrap` at the editor's width;
 - `<id>::placeholder`, while the value is empty.
 
-The value is the element's text, either fixed or set by state. This is the only text Dragon wraps.
+The value is the element's text, fixed or set by state.
 
-**The host draws and edits**, while the page is shown. The host places its own native multi-line text view over the
-`<id>::editor` box: `UITextView` on iOS, `EditText` on Android. That view draws:
-- the value, in the `font`, `text-color`, `line-height` and `text-align` that the `<id>::editor` box carries;
-- the caret, the selection and keyboard input;
-- the view's own vertical scrolling (E4, E5).
+**R1, the host contract (Judge amendment 1).** The host puts its native multi-line text view (`UITextView` or
+`EditText`) over the textarea's **padding box**, its scrollport, not over `::editor`. The device layout exports the frame
+and the line facts for every textarea, so the host reads them from Dragon's layout rather than working them out. The
+entry is tagged `["text-editors", [[id, [x, y, width, height], [top, right, bottom, left], scrollMaxY, lineHeight, baseline]]]`
+(`packages/translate/harness/harness.ts` `textEditorsJson`), in the frames' device px. Each field:
+- `[x, y, width, height]`: the scrollport, which is the border box less its device-snapped borders, measured from the
+  border box's corner;
+- `[top, right, bottom, left]`: the padding. The host sets its text insets to these (`textContainerInset` on iOS, the
+  view's padding on Android) and sets `lineFragmentPadding` to 0;
+- `scrollMaxY`: how far the content scrolls down. That is the top padding, plus the editor's height, plus the bottom
+  padding, less the scrollport's height, or 0 when the content fits. It matches Chrome's `scrollHeight - clientHeight`,
+  which includes the bottom padding. Dragon's scroll ranges refuse a textarea, whose at-rest scrolling waits for
+  FORM-b2, so the extent is taken from the laid-out editor;
+- `lineHeight` and `baseline`: the editor's line height, and the baseline measured from the line's top. The baseline is
+  the ascent plus the half-leading (`inline.ts` `metricsOf`, Blink's floored half-leading).
+
+**R2, one takeover rule (Judge amendment 2).** Under host editing, the host draws the value from the first frame, and
+nothing draws the `::editor` text under it. The export still carries the editor's text and lines, but only as Dragon's
+at-rest layout, for comparison. Dragon's own native emitter never compiles with `hostTextEditing`, so it never draws an
+editor's text that a host also draws.
+
+The phone rung must show two screenshots that are identical:
+- the page before focus;
+- the page after tapping the field, with nothing typed and the focus ring and caret masked.
+
+It must also show both against Chrome's screenshot of the same page. Until that rung runs, native wrap parity is unproven.
+
+**R3, line-height on each platform (Judge amendment 3).** The host turns the exported `lineHeight` and `baseline` into
+platform settings as follows:
+- **iOS:** set `NSParagraphStyle.minimumLineHeight` and `maximumLineHeight` to `lineHeight`. Set `baselineOffset` so the
+  glyph baseline sits `baseline` px below the line's top. UIKit puts the baseline at `lineHeight − |descender|` once the
+  line height is fixed, so `baselineOffset = (lineHeight − |descender|) − baseline`, using the face's descender from
+  `UIFont`.
+- **Android:** set `includeFontPadding = false` and `setLineHeight(lineHeight)`. That API spreads the extra leading
+  evenly around the font's ascent and descent. The host checks the resulting first baseline against `baseline`, and
+  where the face's metrics make them differ, it adds the difference to the top inset.
+
+These are host facts, and the phone rung is where they are proven.
 
 **What follows from E1 to E5:**
-- **Nothing moves:** no box moves when the user types. The textarea's size never follows its value (E3), and Dragon
-  re-runs no layout on input.
-- **Dragon's at-rest frame holds only before the first edit:** that frame is scrollTop 0 with the value as written.
-  After an edit, the scroll offset is the host's (E5), as in Chrome.
-- **Placeholder:** the host hides it while its own value is non-empty (E6), as #645's hosts do.
-- **Focus styles:** they come from Dragon's interaction states (E7). The host reports the textarea focused or blurred,
-  so `:focus`, `:focus-visible` and any outline resolve as they do for #645's field.
-- **Wrapping must agree:** the host's line breaking has to match Dragon's wrapped lines at rest, the same fact #645
-  relies on for one line. For more than one line this is a new claim, so the proof below covers it on the phones.
+- **Nothing moves:** no box moves on input (E3), and Dragon re-runs no layout.
+- **Scroll offset:** after an edit, the scroll offset is the host's (E5), as it is in Chrome.
+- **Placeholder:** the host hides it while its value is non-empty (E6).
+- **Focus styles:** these resolve from Dragon's interaction states as the host reports focus (E7).
+
+**A value that ends in a line break.** Blink's inner editor ends such a value with a placeholder `<br>`, so the empty
+last line counts as a line. Chrome lays out `"XX XXX\n"` two lines tall. Dragon's resolve (`resolve.ts`) now gives the
+editor's text the same extra line, for readonly and editable textareas alike. No committed fixture has such a value.
 
 ## The slice
 
-In `checkTextField`, lift the editing refusal for `<textarea>` when `hostEdits` is true, under exactly the conditions
-#645 lifts it for `<input>`. Every other textarea refusal stays:
+In `checkTextField`, lift the editing refusal for `<textarea>` when `hostEdits` is true, as #645 does for `<input>`.
 
-- `resize` other than `none`, which `checkResize` refuses. Chrome draws a grip, and that needs the owner's ruling.
-- A scrollbar gutter (`checkTextAreaChrome`), which needs the owner's ruling on which Chrome to match.
+**R4 (Judge amendment 4): refused natively on a host-edited textarea**, in `computed-checks.ts`
+`checkHostEditedTextArea`:
+- `letter-spacing` and `word-spacing` other than `normal` or `0`;
+- `text-indent` other than `0`;
+- `text-align: justify`;
+- `direction: rtl`;
+- padding that isn't a length, because the exported insets are resolved lengths.
+
+**Refused by existing checks before this one** (each pinned by the test):
+- the `dir` attribute, `auto` included, and the `wrap` attribute, which the attribute table refuses on every element;
+- a tab in the value, which is refused for every preserved white space because tab stops aren't laid out yet.
+
+A readonly textarea is still Dragon's to draw, so the R4 refusals don't apply to it.
+
+**Every other textarea refusal stays:**
+- `resize` other than `none`, which `checkResize` refuses. Chrome draws a grip, which needs the owner's ruling.
+- A scrollbar gutter (`checkTextAreaChrome`), which needs the owner's ruling.
 - Rounded corners on a scrolling box (`checkRoundedScrollContainer`), which needs the owner's ruling.
 - `overflow: visible`, an element child, `field-sizing: content`, and position or float.
-- A non-Ahem face (FORM-text-font, #681, decides that one).
+- A non-Ahem face (FORM-text-font, #681).
 
-**Text attributes the host must honour, refused unless the host can:**
-- `spellcheck`: Chrome underlines misspelt words in an editable textarea while it is focused. Chrome's spellcheck
-  squiggles are platform UI and Dragon draws none. The host uses its platform spellcheck when `spellcheck` is not
-  `false`, and none when it is. This is a host contract, not a pixel claim. The squiggles stay outside the parity
-  claim, as the caret does.
-- `autocapitalize`, `autocorrect`, `inputmode` and `enterkeyhint`: keyboard behaviour, which the host maps. No layout
-  or paint effect.
-- `wrap="off"` changes the editor's wrapping. Refuse it, since nothing measures it.
-- `maxlength` and `minlength`: rendering-neutral (FORM-attrs). The host enforces `maxlength` on input.
+**Host contract, not pixel claims:** the host honours `spellcheck`, `autocapitalize`, `autocorrect`, `inputmode` and
+`enterkeyhint` natively. Spellcheck squiggles, like the caret, fall outside the parity claim.
 
-With batch 6 alone, the notes body field still has `resize: vertical` and `border-radius: 10px` on a scrolling box. It
-compiles only after the owner's rulings, or with app changes that set `resize: none` and either remove the radius or
-land the rounded scroll clip. This slice removes the editing refusal only.
+**The Markless export:** a textarea's text node is its value, which the export carries as the text of `<id>::editor`.
+`markless-style-input.ts` therefore no longer requires a node of its own for that text.
+
+With batch 6, the notes body field still compiles only after the owner's rulings on `resize: vertical` and its rounded
+scrolling corners, or after app changes. This slice removes the editing refusal only.
 
 ## Proof
 
-1. **Chrome parity of readonly and editable** (`form-textarea-edit.test.ts`): for each of the four values above, at DPR
-   1, 2, 2.625 and 3, Chrome's box, scroll extent and unfocused pixels must equal between readonly and editable (E1, E2).
-   The test also checks that typing equals setting the value (E3), and that a tap gives `:focus-visible` (E7). These
-   pin Dragon's claim that an editable textarea lays out as a readonly one.
-2. **Compile**: with `textEditing: 'host'`, an editable textarea in the shapes Dragon already lays out
-   (`controls-textarea`) compiles with no `editing` diagnostic, and the export carries `<id>::editor` and
-   `<id>::placeholder` as for a readonly one. Without `textEditing: 'host'`, it stays refused. Rejects: `wrap="off"`,
-   and every other textarea refusal unchanged.
-3. **Markless export fixture**: `examples/markless-styles/input/textarea.native-style-input.json`, with an editable
-   textarea that is empty, has a fixed value, has an overflowing value, and has a value set by state. It is compared
-   with Chrome frame by frame, as #645's `markless-text-field.test.ts` is.
-4. **Phones**: a Markless rung with an editable textarea, through the shared runner on iOS and Android, run once the
-   Markless host side exists. The screenshot at rest must match Chrome's wrapped lines, and the step that types must
-   keep every other box still. The host side is Markless work, so its PR and that rung are listed as outstanding here
-   and are not claimed by this slice.
+**Run here** (`packages/parity/test/form-textarea-edit.test.ts`, against the pinned Chrome 145 with the vendored Ahem
+face, at DPR 1, 2, 2.625 and 3):
+1. **E1 to E3 and E7.** For six values, Chrome's box, client and scroll sizes, padding, line height and unfocused pixels
+   are equal between readonly and editable. Typing a value moves no box, gives the same scroll height as setting it,
+   and hides the placeholder. A click gives the field `:focus-visible`.
+2. **R5 (Judge amendment 5), Dragon against Chrome.** Each of the six values compiles editable under host editing, and
+   the engine's `::editor` height equals Chrome's scroll height less the block padding. The values are:
+   - a hard newline;
+   - a trailing newline (an empty last line);
+   - consecutive and trailing spaces at a wrap point;
+   - a long unbroken word (`overflow-wrap: break-word` from html.css);
+   - a CRLF;
+   - a long value with an empty line.
+
+   Emoji are excluded, because no face here holds them.
+3. **R1.** Through the Markless export, at every density the plan measures, the device layout's `text-editors` facts
+   for those six textareas equal Chrome's. The scrollport is checked against the border box less the borders, the
+   insets against the computed padding, `scrollMaxY` against `scrollHeight - clientHeight`, and the line height against
+   the computed `line-height`. All are compared to 1e-4 px, because Chrome reports a fractional ratio through float32
+   rects and 6-digit computed styles.
+4. **R4.** An editable textarea compiles under host editing and is refused without it. Each refused style and attribute
+   has its own case, and a readonly textarea takes none of the R4 refusals.
+
+**For the phone rung (Markless side):** the same six values, at the same four ratios. It must show the R2 screenshots,
+and a typing step after which every other box is unchanged.
+
+## Allowed files (Judge amendment 6)
+
+- `packages/dragon/src/analysis/computed-checks.ts` (the lifted refusal and `checkHostEditedTextArea`)
+- `packages/dragon/src/analysis/resolve.ts` (the trailing line break)
+- `packages/translate/harness/harness.ts` (`textEditorsJson`) and the translated harnesses it regenerates under
+  `packages/layout/generated/`
+- `packages/parity/src/markless-style-input.ts` (a textarea's text is its editor's)
+- `packages/parity/test/form-textarea-edit.test.ts` (new) and `packages/parity/test/form-b-text-field.test.ts` (the old
+  "still refuses a textarea" case, now the host-editing case)
+- `docs/markless-native-styles.md` and this spec
 
 ## Out of scope
 

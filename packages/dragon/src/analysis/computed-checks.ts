@@ -1857,10 +1857,39 @@ function checkTextField(el: ResolvedElement, layoutParent: ResolvedElement | nul
     refuse(direction, 'search-rtl', `direction: rtl on <input type=search> ${address} is not supported: Chrome puts its cancel button at the inline end, which the engine lays out only for ltr`, `Set direction: ltr on <input> ${address}, or use type="text".`, 'DRAGON_UNSUPPORTED_VALUE', targets.filter((t) => t === 'ios' || t === 'android'));
   }
   if (state === 'search') checkSearchField(el, (v, what, message, manual) => refuse(v, what, message, manual, 'DRAGON_UNSUPPORTED_VALUE', targets.filter((t) => t === 'ios' || t === 'android')));
-  if (!(hostEdits && tag === 'input') && !el.element.attributes.has('readonly')) {
+  const editable = !el.element.attributes.has('readonly');
+  if (hostEdits && tag === 'textarea' && editable) checkHostEditedTextArea(el, (v, what, message, manual) => refuse(v, what, message, manual, 'DRAGON_UNSUPPORTED_VALUE', targets.filter((t) => t === 'ios' || t === 'android')));
+  if (!(hostEdits && (tag === 'input' || tag === 'textarea')) && editable) {
     refuse(null, 'editing', `<${tag}> ${address} is an editable text control: Dragon draws its value but has no caret, selection or keyboard input on iOS and Android yet (the FORM-b editing slice)`, `Add readonly to <${tag}> ${address}, or target web only, until native text editing lands.`, 'DRAGON_UNSUPPORTED_VALUE', targets.filter((t) => t === 'ios' || t === 'android'));
   }
   if (tag === 'textarea') checkTextAreaChrome(el, targets, refuse);
+}
+
+/**
+ * FORM-textarea-edit (notes/FORM-textarea-edit-spec.md R4): what an editable textarea refuses when the host edits it natively over
+ * the padding box Dragon exports (the device layout's text-editors). The host's own text view lays the value out by the line
+ * height and baseline Dragon gives, so a style that moves glyphs or lines in a way the host view cannot match is refused: spacing
+ * between letters or words, a first-line indent, justification, right-to-left text (the dir attribute, auto
+ * included, and wrap are refused on every element by the attribute table, and a tab by the preserved-tab check), and padding that is not a length (the exported insets
+ * are resolved lengths).
+ */
+function checkHostEditedTextArea(el: ResolvedElement, refuse: (v: ResolvedValue | null, what: string, message: string, manual: string) => void): void {
+  const address = el.element.address;
+  const why = 'which the host\'s native text view does not lay out as Chrome does';
+  const letter = el.props.get('letter-spacing') as ResolvedValue;
+  if (keywordOf(letter) !== 'normal' && valueToString(letter.value) !== '0px') refuse(letter, 'edit-letter-spacing', `letter-spacing: ${valueToString(letter.value)} on the host-edited <textarea> ${address}, ${why}`, `Remove letter-spacing from <textarea> ${address}.`);
+  const word = el.props.get('word-spacing') as ResolvedValue;
+  if (keywordOf(word) !== 'normal' && valueToString(word.value) !== '0px') refuse(word, 'edit-word-spacing', `word-spacing: ${valueToString(word.value)} on the host-edited <textarea> ${address}, ${why}`, `Remove word-spacing from <textarea> ${address}.`);
+  const indent = el.props.get('text-indent') as ResolvedValue;
+  if (valueToString(indent.value) !== '0px') refuse(indent, 'edit-text-indent', `text-indent: ${valueToString(indent.value)} on the host-edited <textarea> ${address}, ${why}`, `Remove text-indent from <textarea> ${address}.`);
+  const align = el.props.get('text-align') as ResolvedValue;
+  if (keywordOf(align) === 'justify') refuse(align, 'edit-justify', `text-align: justify on the host-edited <textarea> ${address}, ${why}`, `Use text-align: start on <textarea> ${address}.`);
+  const direction = el.props.get('direction') as ResolvedValue;
+  if (keywordOf(direction) === 'rtl') refuse(direction, 'edit-rtl', `direction: rtl on the host-edited <textarea> ${address}: right-to-left editing is not measured`, `Set direction: ltr on <textarea> ${address}.`);
+  for (const side of ['padding-top', 'padding-right', 'padding-bottom', 'padding-left'] as const) {
+    const pad = el.props.get(side) as ResolvedValue;
+    if (pad.value.kind !== 'length') refuse(pad, `edit-${side}`, `${side}: ${valueToString(pad.value)} on the host-edited <textarea> ${address}: the host's text insets are exported only as lengths`, `Give <textarea> ${address} a ${side} in px.`);
+  }
 }
 
 /**
