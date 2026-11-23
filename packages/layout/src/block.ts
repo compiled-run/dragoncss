@@ -2,7 +2,7 @@
 import type { Auto, ControlBox, ControlKind, Direction, InlineChild, LayoutBox, LayoutNode, LayoutStyle, NoneValue, ReplacedLeaf, TextAlign } from './input.ts';
 import type { LU } from './units.ts';
 import { add, clampNegativeToZero, divInt, fromCssPx, max, min, mulInt, sub, ZERO } from './units.ts';
-import type { BlockStretch, Edges, Frag, HeightBasis, MarginResolved, MinMax, OutOfFlow, Placed, Point } from './box.ts';
+import type { BlockStretch, Edges, Frag, HeightBasis, MarginResolved, MinMax, OutOfFlow, Placed, Point, TextAreaLines } from './box.ts';
 import {
   blockMinMaxWith,
   borderBoxFromSpecified,
@@ -391,9 +391,9 @@ function collapsed(s: Strut): LU {
  */
 function withBlockInInlineLines(frag: Frag, firstLine: LU, end: Strut, direction: Direction): Frag {
   const start = direction === 'rtl' ? frag.width : ZERO;
-  const line = (j: number, x: LU, y: LU, width: LU, height: LU): Placed => ({ frag: { id: `${frag.id}:line${j}`, width, height, baseline: null, children: [], outOfFlow: [], inflow: null }, x, y });
+  const line = (j: number, x: LU, y: LU, width: LU, height: LU): Placed => ({ frag: { id: `${frag.id}:line${j}`, width, height, baseline: null, children: [], outOfFlow: [], inflow: null, lines: null }, x, y });
   const lines = [line(0, start, firstLine, ZERO, ZERO), line(1, ZERO, ZERO, frag.width, frag.height), line(2, start, add(frag.height, collapsed(end)), ZERO, ZERO)];
-  return { id: frag.id, width: frag.width, height: frag.height, baseline: frag.baseline, children: [...frag.children, ...lines], outOfFlow: frag.outOfFlow, inflow: frag.inflow };
+  return { id: frag.id, width: frag.width, height: frag.height, baseline: frag.baseline, children: [...frag.children, ...lines], outOfFlow: frag.outOfFlow, inflow: frag.inflow, lines: frag.lines };
 }
 
 // css-align-3 §9.1 with css-overflow-3 §3: a scroll container's baseline is clamped to its border box (measured, notes/T035-slice-4a.md).
@@ -457,7 +457,7 @@ function layoutOwnContents(ctx: Ctx, node: LayoutBox | ControlBox, a: ContentsAr
       sizeIsFlexDependent: a.forcedBorderBoxHeight !== null && !a.forcedHeightDefinite,
     });
     const height = fromRatio !== null ? ratioFinalBlockSize(box, fromRatio, add(r.contentHeight, vbp), minMax) : fixedBorderBox !== null ? fixedBorderBox : constrain(add(r.contentHeight, vbp), minMax);
-    const frag: Frag = { id: box.id, width: a.borderBoxWidth, height, baseline: clampScrollBaseline(box, r.baseline, height), children: r.placed, outOfFlow: r.outOfFlow, inflow: null };
+    const frag: Frag = { id: box.id, width: a.borderBoxWidth, height, baseline: clampScrollBaseline(box, r.baseline, height), children: r.placed, outOfFlow: r.outOfFlow, inflow: null, lines: null };
     return { frag, escapeTop: EMPTY_STRUT, escapeBottom: EMPTY_STRUT, collapseThrough: false, lastBaseline: null, lastBaselineFlex: box.id, defaultLastBaseline: null, defaultLastBaselineFlex: frag.baseline === null ? '' : box.id };
   }
 
@@ -474,7 +474,7 @@ function layoutOwnContents(ctx: Ctx, node: LayoutBox | ControlBox, a: ContentsAr
     });
     const height = fromRatio !== null ? ratioFinalBlockSize(box, fromRatio, add(r.contentHeight, vbp), minMax) : fixedBorderBox !== null ? fixedBorderBox : constrain(add(r.contentHeight, vbp), minMax);
     const outOfFlow = gridOutOfFlow(ctx, box, r.outOfFlow, a.borderBoxWidth, height, pad, bor);
-    const frag: Frag = { id: box.id, width: a.borderBoxWidth, height, baseline: clampScrollBaseline(box, r.baseline, height), children: r.placed, outOfFlow, inflow: isScrollContainer(s) ? r.inflow : null };
+    const frag: Frag = { id: box.id, width: a.borderBoxWidth, height, baseline: clampScrollBaseline(box, r.baseline, height), children: r.placed, outOfFlow, inflow: isScrollContainer(s) ? r.inflow : null, lines: null };
     // A grid container's last baseline is not modelled: an inline-block whose last line box would come from it is refused, as for flex.
     return { frag, escapeTop: EMPTY_STRUT, escapeBottom: EMPTY_STRUT, collapseThrough: false, lastBaseline: null, lastBaselineFlex: box.id, defaultLastBaseline: null, defaultLastBaselineFlex: frag.baseline === null ? '' : box.id };
   }
@@ -504,8 +504,11 @@ function layoutOwnContents(ctx: Ctx, node: LayoutBox | ControlBox, a: ContentsAr
   const withFloats = floatEnd === null ? flowEnd : max(flowEnd, sub(floatEnd, add(bor.top, pad.top)));
   // css-contain-2 §3.1: under size containment the content height is contain-intrinsic-height (none is 0), whatever the contents.
   // FORM-b: an empty inner editor or select inner element holds one empty line, its strut's (Blink's has-line-if-empty).
-  const empty = control !== null && (control.kind === 'text-editor' || control.kind === 'select-inner') && box.children.length === 0 && box.strut !== null ? metricsOf(ctx, box.id, box.strut.font, box.strut.lineHeight, false) : null;
-  const flowIntrinsic = s.containSize === 'size' ? containedHeight(s) : empty !== null ? add(empty.above, empty.below) : withFloats;
+  const empty = control !== null && (control.kind === 'text-editor' || control.kind === 'select-inner') && onlyEmptyTexts(box.children) && box.strut !== null ? metricsOf(ctx, box.id, box.strut.font, box.strut.lineHeight, false) : null;
+  // A textarea's editor ends a value ending in a preserved line feed with one more, empty line (Blink's placeholder <br>).
+  const last = control !== null && control.kind === 'text-editor' && box.strut !== null ? box.children[box.children.length - 1] : undefined;
+  const trailing = last !== undefined && last.kind === 'text' && last.whiteSpaceCollapse !== 'collapse' && endsInLineFeed(last.text) && box.strut !== null ? metricsOf(ctx, box.id, box.strut.font, box.strut.lineHeight, false) : null;
+  const flowIntrinsic = s.containSize === 'size' ? containedHeight(s) : empty !== null ? add(empty.above, empty.below) : trailing !== null ? add(withFloats, add(trailing.above, trailing.below)) : withFloats;
   // unpositioned_list_marker.cc AddToBoxWithoutLineBoxes: content without a baseline grows to hold the marker, top-aligned.
   const intrinsic = marker !== null && r.markerY === null ? max(flowIntrinsic, sub(marker.height, add(bor.top, pad.top))) : flowIntrinsic;
   // Blink: with a definite initial block size the end margins neither escape nor count toward the content height.
@@ -515,7 +518,8 @@ function layoutOwnContents(ctx: Ctx, node: LayoutBox | ControlBox, a: ContentsAr
   if (control !== null && control.kind === 'text-field') return layoutTextField(box, control, r.placed, add(bor.top, pad.top), a.borderBoxWidth, fixedBorderBox, minMax, vbp);
   if (control !== null && control.kind === 'text-area') {
     const lines = metricsOf(ctx, box.id, control.font, control.lineHeight, false);
-    return layoutTextArea(box, r.placed, add(bor.top, pad.top), a.borderBoxWidth, fixedBorderBox !== null ? fixedBorderBox : constrain(add(mulInt(add(lines.above, lines.below), control.rows), vbp), minMax));
+    const pitch = add(lines.above, lines.below);
+    return layoutTextArea(box, r.placed, add(bor.top, pad.top), a.borderBoxWidth, fixedBorderBox !== null ? fixedBorderBox : constrain(add(mulInt(pitch, control.rows), vbp), minMax), { pitch, above: lines.above, insets: pad });
   }
   if (control !== null && control.kind === 'button-block') {
     // block_layout_algorithm.cc:1442 AlignBlockContent: the in-flow contents, their baseline and the static positions move down.
@@ -524,16 +528,28 @@ function layoutOwnContents(ctx: Ctx, node: LayoutBox | ControlBox, a: ContentsAr
     const outOfFlow = r.outOfFlow.map((o): OutOfFlow => ({ box: o.box, x: o.x, y: { offset: add(o.y.offset, shift), edge: o.y.edge }, area: o.area }));
     const moved = clampScrollBaseline(box, r.baseline === null ? null : add(r.baseline, shift), height);
     const shifted = (b: LU | null): LU | null => (b === null ? null : add(b, shift));
-    return { frag: { id: box.id, width: a.borderBoxWidth, height, baseline: moved, children: placed, outOfFlow, inflow: null }, escapeTop: EMPTY_STRUT, escapeBottom: EMPTY_STRUT, collapseThrough: false, lastBaseline: shifted(r.lastBaseline), lastBaselineFlex: r.lastBaselineFlex, defaultLastBaseline: shifted(r.defaultLastBaseline), defaultLastBaselineFlex: r.defaultLastBaselineFlex };
+    return { frag: { id: box.id, width: a.borderBoxWidth, height, baseline: moved, children: placed, outOfFlow, inflow: null, lines: null }, escapeTop: EMPTY_STRUT, escapeBottom: EMPTY_STRUT, collapseThrough: false, lastBaseline: shifted(r.lastBaseline), lastBaselineFlex: r.lastBaselineFlex, defaultLastBaseline: shifted(r.defaultLastBaseline), defaultLastBaselineFlex: r.defaultLastBaselineFlex };
   }
   const baseline = clampScrollBaseline(box, empty === null ? r.baseline : add(add(bor.top, pad.top), empty.above), height);
   const collapseThrough = !a.formattingContextRoot && !r.hasContent && height === 0 && vbp === 0;
   if (collapseThrough) {
-    return { frag: { id: box.id, width: a.borderBoxWidth, height, baseline, children: r.placed, outOfFlow: r.outOfFlow, inflow: null }, escapeTop: joinStruts(r.escapeTop, r.endStrut), escapeBottom: EMPTY_STRUT, collapseThrough, lastBaseline: r.lastBaseline, lastBaselineFlex: r.lastBaselineFlex, defaultLastBaseline: r.defaultLastBaseline, defaultLastBaselineFlex: r.defaultLastBaselineFlex };
+    return { frag: { id: box.id, width: a.borderBoxWidth, height, baseline, children: r.placed, outOfFlow: r.outOfFlow, inflow: null, lines: null }, escapeTop: joinStruts(r.escapeTop, r.endStrut), escapeBottom: EMPTY_STRUT, collapseThrough, lastBaseline: r.lastBaseline, lastBaselineFlex: r.lastBaselineFlex, defaultLastBaseline: r.defaultLastBaseline, defaultLastBaselineFlex: r.defaultLastBaselineFlex };
   }
   // Chrome deviation min-max-end-margin: when min-height or max-height changes the height, the end margins neither escape nor count.
   const escapeBottom = bottomAdjoins && (height === add(intrinsic, vbp) || ctx.faults.minMaxEndMarginSpec) ? r.endStrut : EMPTY_STRUT;
-  return { frag: { id: box.id, width: a.borderBoxWidth, height, baseline, children: r.placed, outOfFlow: r.outOfFlow, inflow: null }, escapeTop: r.escapeTop, escapeBottom, collapseThrough, lastBaseline: r.lastBaseline, lastBaselineFlex: r.lastBaselineFlex, defaultLastBaseline: r.defaultLastBaseline, defaultLastBaselineFlex: r.defaultLastBaselineFlex };
+  return { frag: { id: box.id, width: a.borderBoxWidth, height, baseline, children: r.placed, outOfFlow: r.outOfFlow, inflow: null, lines: null }, escapeTop: r.escapeTop, escapeBottom, collapseThrough, lastBaseline: r.lastBaseline, lastBaselineFlex: r.lastBaselineFlex, defaultLastBaseline: r.defaultLastBaseline, defaultLastBaselineFlex: r.defaultLastBaselineFlex };
+}
+
+/** Whether a box holds nothing but empty text leaves (an edited textarea's empty editor keeps its leaf). */
+function onlyEmptyTexts(children: LayoutBox['children']): boolean {
+  for (const k of children) if (k.kind !== 'text' || k.text !== '') return false;
+  return true;
+}
+
+function endsInLineFeed(text: string): boolean {
+  let last = '';
+  for (const ch of text) last = ch;
+  return last === '\n';
 }
 
 /**
@@ -559,7 +575,7 @@ function layoutTextField(box: LayoutBox, field: Extract<ControlKind, { kind: 'te
     if (p === editor) return { frag: p.frag, x: p.x, y: editorY };
     // The cancel button follows the editor in the decoration container, after its inline-start margin, centred (align-items: center).
     if (field.cancelButton !== null && p.frag.id === cancelId) {
-      const frag: Frag = { id: p.frag.id, width: side, height: side, baseline: null, children: [], outOfFlow: [], inflow: null };
+      const frag: Frag = { id: p.frag.id, width: side, height: side, baseline: null, children: [], outOfFlow: [], inflow: null, lines: null };
       return { frag, x: add(add(editor.x, editor.frag.width), fromCssPx(field.cancelButton.marginStart)), y: add(containerY, divInt(sub(container, side), 2)) };
     }
     // The placeholder's baseline meets the editor's (Chrome 145: a 4px Ahem placeholder in a 10px editor sits 5px down, one clipped
@@ -567,7 +583,7 @@ function layoutTextField(box: LayoutBox, field: Extract<ControlKind, { kind: 'te
     return { frag: p.frag, x: editor.x, y: editor.frag.baseline === null || p.frag.baseline === null ? editorY : add(editorY, sub(editor.frag.baseline, p.frag.baseline)) };
   });
   const baseline = editor.frag.baseline === null ? null : add(editorY, editor.frag.baseline);
-  return { frag: { id: box.id, width, height, baseline: clampScrollBaseline(box, baseline, height), children: placed, outOfFlow: [], inflow: null }, escapeTop: EMPTY_STRUT, escapeBottom: EMPTY_STRUT, collapseThrough: false, lastBaseline: baseline, lastBaselineFlex: '', defaultLastBaseline: baseline, defaultLastBaselineFlex: '' };
+  return { frag: { id: box.id, width, height, baseline: clampScrollBaseline(box, baseline, height), children: placed, outOfFlow: [], inflow: null, lines: null }, escapeTop: EMPTY_STRUT, escapeBottom: EMPTY_STRUT, collapseThrough: false, lastBaseline: baseline, lastBaselineFlex: '', defaultLastBaseline: baseline, defaultLastBaselineFlex: '' };
 }
 
 /**
@@ -575,7 +591,7 @@ function layoutTextField(box: LayoutBox, field: Extract<ControlKind, { kind: 'te
  * top (Chrome 145: a placeholder with a smaller font or line height than the editor's is not moved down to its baseline). height
  * is its border box block size, rows x its line height plus borders and padding when auto. Its baseline is the editor's first.
  */
-function layoutTextArea(box: LayoutBox, flow: readonly Placed[], contentTop: LU, width: LU, height: LU): ContentsResult {
+function layoutTextArea(box: LayoutBox, flow: readonly Placed[], contentTop: LU, width: LU, height: LU, lines: TextAreaLines): ContentsResult {
   let editorId = '';
   for (const k of box.children) if (k.kind === 'control' && k.control.kind === 'text-editor') editorId = k.id;
   const editor = flow.find((p) => p.frag.id === editorId);
@@ -584,7 +600,7 @@ function layoutTextArea(box: LayoutBox, flow: readonly Placed[], contentTop: LU,
   const rtl = box.style.direction === 'rtl';
   const placed = flow.map((p): Placed => ({ frag: p.frag, x: p === editor || !rtl ? editor.x : sub(add(editor.x, editor.frag.width), p.frag.width), y: contentTop }));
   const baseline = editor.frag.baseline === null ? null : add(contentTop, editor.frag.baseline);
-  return { frag: { id: box.id, width, height, baseline: clampScrollBaseline(box, baseline, height), children: placed, outOfFlow: [], inflow: null }, escapeTop: EMPTY_STRUT, escapeBottom: EMPTY_STRUT, collapseThrough: false, lastBaseline: baseline, lastBaselineFlex: '', defaultLastBaseline: baseline, defaultLastBaselineFlex: '' };
+  return { frag: { id: box.id, width, height, baseline: clampScrollBaseline(box, baseline, height), children: placed, outOfFlow: [], inflow: null, lines }, escapeTop: EMPTY_STRUT, escapeBottom: EMPTY_STRUT, collapseThrough: false, lastBaseline: baseline, lastBaselineFlex: '', defaultLastBaseline: baseline, defaultLastBaselineFlex: '' };
 }
 
 // HTML §15.3.13 with Blink's FieldsetLayoutAlgorithm (fieldset_layout_algorithm.cc at 145.0.7632.6, Layout, LayoutChildren,
@@ -659,7 +675,7 @@ function layoutFieldset(ctx: Ctx, box: LayoutBox, a: ContentsArgs, pad: Edges, b
   const sized = fixedBorderBox !== null ? fixedBorderBox : constrain(add(add(intrinsic, paddingBox), bor.bottom), minMax);
   const height = legend === null ? sized : max(sized, add(add(add(bor.top, bor.bottom), padBlock), legendSize));
   for (const p of flow.placed) placed.push(p);
-  const frag: Frag = { id: box.id, width: a.borderBoxWidth, height, baseline: flow.baseline, children: placed, outOfFlow: flow.outOfFlow, inflow: null };
+  const frag: Frag = { id: box.id, width: a.borderBoxWidth, height, baseline: flow.baseline, children: placed, outOfFlow: flow.outOfFlow, inflow: null, lines: null };
   return { frag, escapeTop: EMPTY_STRUT, escapeBottom: EMPTY_STRUT, collapseThrough: false, lastBaseline: flow.lastBaseline, lastBaselineFlex: flow.lastBaselineFlex, defaultLastBaseline: flow.defaultLastBaseline, defaultLastBaselineFlex: flow.defaultLastBaselineFlex };
 }
 
@@ -885,10 +901,10 @@ function markerPlaced(marker: MarkerBox, y: LU | null, borderBoxWidth: LU, direc
   const t = marker.text;
   const children: Placed[] = [];
   if (t !== null) {
-    const line: Placed = { frag: { id: `${t.id}:line0`, width: marker.width, height: t.height, baseline: null, children: [], outOfFlow: [], inflow: null }, x: ZERO, y: ZERO };
-    children.push({ frag: { id: t.id, width: marker.width, height: t.height, baseline: null, children: [line], outOfFlow: [], inflow: null }, x: ZERO, y: t.top });
+    const line: Placed = { frag: { id: `${t.id}:line0`, width: marker.width, height: t.height, baseline: null, children: [], outOfFlow: [], inflow: null, lines: null }, x: ZERO, y: ZERO };
+    children.push({ frag: { id: t.id, width: marker.width, height: t.height, baseline: null, children: [line], outOfFlow: [], inflow: null, lines: null }, x: ZERO, y: t.top });
   }
-  return { frag: { id: marker.id, width: marker.width, height: marker.height, baseline: null, children, outOfFlow: [], inflow: null }, x: markerX(marker, borderBoxWidth, direction), y: y === null ? ZERO : y };
+  return { frag: { id: marker.id, width: marker.width, height: marker.height, baseline: null, children, outOfFlow: [], inflow: null, lines: null }, x: markerX(marker, borderBoxWidth, direction), y: y === null ? ZERO : y };
 }
 
 // CSS2 §9.4.1 and §8.3.1: stacks block-level children, collapsing adjoining vertical margins. css-align-3 §9.1: the first
