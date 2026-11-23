@@ -108,9 +108,9 @@ describe('the host hit lane at a fractional device DPR', () => {
   // device-hit lane's expectedHitRuns and the device-traces reference hit test with that model, so it must name Chrome's element too.
   it('names Chrome\'s element at every point of every DPR capture, on the grid its table derives at that DPR', () => {
     const byId = new Map(cases.map((n) => [n.case.id, n]));
-    expect(HIT_DPR_CAPTURES.map((d) => d.dpr)).toEqual([2.625]);
+    const fieldIds = ['controls-textarea', 'grid-controls-fields'];
+    expect(HIT_DPR_CAPTURES.map((d) => [d.dpr, d.ids])).toEqual([[2, fieldIds], [2.625, ['interaction-combo', 'interaction-combo-rtl', 'radius-basic', 'radius-clip', 'transform-hit-scale', 'transform-hit-subpixel', 'transform-hit-snap', 'opacity-group-transform', ...fieldIds]], [3, fieldIds]]);
     for (const { dpr, ids } of HIT_DPR_CAPTURES) {
-      expect(ids).toEqual(['interaction-combo', 'interaction-combo-rtl', 'radius-basic', 'radius-clip', 'transform-hit-scale', 'transform-hit-subpixel', 'transform-hit-snap', 'opacity-group-transform']);
       const mismatches: string[] = [];
       for (const id of ids) {
         const n = byId.get(id);
