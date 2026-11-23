@@ -108,3 +108,65 @@ The `select` element itself stays a Markless-native control: Markless's host ope
   - `zoomInput` is only for Ahem or planted-fault inputs.
 - **Ruling on scroll ranges (2026-11-21).** The style export refuses a missing scroll range only for a node with a scroll-container write, as expectedDump and the harness do, because a select's inner element clips (overflow hidden) but never scrolls on a phone.
 - **Ruling on options (2026-11-21).** The Markless export check treats an `<option>` or `<optgroup>` inside a `<select>`, and its text, as having no box, read from the input's element names and tree, because Chrome's closed control draws only the shown label; an option anywhere else is still required.
+
+## S4: a select's natural width from its widest option (proposed 2026-11-22)
+
+- **Chrome fact (Blink MenuListIntrinsicInlineSize, LGPL, reference only; pinned by the fixtures below):**
+  - A menulist's min-content and max-content inline size is the widest option label, measured in the select's own font, rounded up to a whole px, plus the inner element's internal inline insets.
+  - The font measurement includes the select's letter-spacing, word-spacing and text-transform.
+  - The insets are `menuListInnerInsets` start and end for menulist-button, and 0 for `appearance: none`.
+  - Every option counts, including disabled options and the option that is not shown. Each label follows the HTML label rule (`shownLabel`).
+- **Engine:**
+  - `select-menulist` gains `optionLabels: readonly string[]`: every option's label, in tree order.
+  - `intrinsic.ts` `intrinsicContentInlineSize` measures them with the layout's measurer, so phones measure in their own fonts, as the shown label is.
+  - The grid's own `inlineContributionOf` goes through the same function. `validate.ts` checks the new field, and the translated harness decodes it.
+- **Compiler:**
+  - #618's natural-width refusals in `checkSelect` are lifted for a select whose options Dragon reads in full:
+    - intrinsic keyword widths, min-widths and max-widths;
+    - `flex-basis: content`;
+    - a percentage width on a grid item;
+    - the content-sized ancestor walk;
+    - `min-width: auto` on a flex or grid item.
+  - A select whose options are rows of a Markless list (a style input node with `row`) has options Dragon cannot list. Those refusals stay for it, saying so.
+- **Markless (separate PR):** `packages/mobile/src/style-input.ts` writes a `@for` inside a `<select>` as plain options when the payload's list is a literal array (`list.array` of literals, as `TAGS` folds to), each option's text taken from its row. Any other list keeps its rows.
+- **Proof:**
+  - Fixture `controls-select-natural-width` (both directions):
+    - options of different widths, a `label` attribute, a disabled option, inherited `text-transform: uppercase` and letter-spacing;
+    - each with `appearance: none` and devolved to menulist-button;
+    - the select as: an auto grid track item with `min-width: auto`; `width: max-content`; `width: fit-content`; a row flex item with `min-width: auto`; a child of an `inline-block` and of a float.
+  - A Lato WOFF2 case in `form-b-select-measurer.test.ts`, so a real font measures on the layout's measurer.
+- **Judge ruling on S4 (2026-11-22): approved with amendments.**
+  1. **Rows reach the compiler:** a Markless list's one template option looks like a plain option to `checkSelect`. The Markless export therefore passes the compiler the selects whose options are rows of a list (InternalOptions `listedSelectOptions`), and `checkSelect` keeps the natural-width refusals for them, naming the list. It keeps them too where any option's text or label follows state, even when the number of options is fixed. A select inside a row whose own options are constant stays allowed.
+  2. **Markless expansion** takes the literal array from the analyzer's folded payload fact (`list.array` of literals), never by re-reading source. It keeps the `value` and `selected` bindings by state, and handles static options mixed with list rows.
+  3. **More proof:**
+     - the notes shape exactly: a `width: 100%` grid item with `min-width: auto`;
+     - `width: min-content`, word-spacing, label whitespace collapsing, a select with no options, and empty labels;
+     - a planted fault that measures only the shown label, which the fixtures must catch;
+     - the Swift and Kotlin engines decoding the option labels and matching the TypeScript engine on the translate corpus;
+     - rejects for a list's options, for an option text from a row cell, and for an option text that changes by state.
+  4. The board gets S4 as a task.
+## S5: :focus and :focus-visible on a select (2026-11-22)
+
+- **Chrome fact (form-b-select-focus.test.ts):** In Chrome 145 a tap (touch) or click (mouse) on a select, with `appearance: none` or devolved to menulist-button, gives it `:focus` and `:focus-visible`. A button gets `:focus` alone. A select is like T064 P6's text input, unlike its button, range and link.
+- **Change:** `analysis/interaction.ts` pointer focus (R6) gives focus-visible to a select it focuses (`pointerFocusVisible`). Every other element keeps focus without focus-visible. #618's select-specific refusal of `:focus` and `:focus-visible` rules is removed.
+- **What still gates a select's focus rules:**
+  - They are gated like any focus rule: the device proofs, and the native hit model. The hit model refuses every interaction rule in a case that holds a form control (`hitUnmodelledControl`, FORM-a); that is the next slice.
+  - A reachable focus-visible state whose outline is Chrome's ring (`outline: auto`) is still refused natively (T064 row 149).
+- **Proof:** for a tap and for a click, Chrome's `:focus`, `:focus-visible`, `border-top-color` and `background-color` on two selects and a button equal Dragon's pointer-focus value and its resolved style in that state.
+
+## S5b: form controls in the native hit table (2026-11-22)
+
+- **Before:** any case with an interaction rule and a form control anywhere was refused natively. Both the analysis (`hitUnmodelledControl`) and the hit table (rt-hit.ts `controlRefusal`) refused it, so no Chrome hit capture covered a control.
+- **Change:**
+  - rt-hit.ts models three controls: a block button, a select (menulist) and a single-line text field.
+    - A button is the box it lays out as, and its own children are hit as in any box.
+    - A select and a text field are one box with no child nodes, because Chrome retargets a hit on their UA shadow parts (the inner element, the editor and the placeholder) to the control element.
+  - A range is still refused (its touch is consumed, T064 P7), and so are a fieldset and a legend. A control that is an atomic inline is refused as any atomic inline is (INL2a).
+  - `hitUnmodelledControl` refuses only the controls rt-hit.ts does not model.
+- **Proof:** the hit lane's own suite against Chrome. Every layout case the hit table no longer refuses (`controls-button-*`, `controls-select-*`, `controls-text-field`) gets its `expected-hit` capture from `document.elementFromPoint` at every point of its derived hit grid. The P1 hit suite and the host hit lane compare the table's answers with those captures.
+
+- **Judge ruling on S5 and S5b (2026-11-22): approved with amendments, all in.**
+  - `pointerFocusVisible` is the one fact for both readers: the partition's pointer focus and the runtime's `keyboardInput` table (internal.ts), which rt-interaction.ts `pointerFocus` reads. It covers a select, a textarea and the keyboard input types, as P6 and this measurement found.
+  - `form-b-select-focus.test.ts` adds a readonly text input. For each element, Chrome's focus-visible after a tap or click equals the partition's and the runtime table's.
+  - The compiler's control check and the hit table must agree. `form-controls-hit.test.ts` checks every layout case: the compiler refuses for a control exactly where rt-hit refuses one, and it skips the same retargeted shadow parts (`hitRetargetsParts`). The test found the block fieldset, which the table refused and the compiler did not, and the compiler now refuses it too.
+  - The receipt is CI green with the regenerated hit captures.

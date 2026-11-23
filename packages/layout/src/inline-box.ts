@@ -2,8 +2,9 @@
 // container's inline-level children. It is laid out as its block-level equivalent at its shrink-to-fit width, and takes part in its line as
 // one U+FFFC item whose advance is its margin box and which sits on the baseline with its own baseline (INL-P family 5,
 // docs/research/inline-spike/blink-notes.md §2 and §7). RF-INL: an inline-level replaced box (CSS 2.2 §10.3.2, §10.6.2) is one too, sized
-// as a block-level replaced box is, with no baseline of its own.
-import type { LayoutBox, LayoutNode, LayoutStyle, ReplacedLeaf } from './input.ts';
+// as a block-level replaced box is, with no baseline of its own. An inline-block single-line text field (a text-field control) is one,
+// laid out as its block-level field.
+import type { ControlBox, LayoutBox, LayoutNode, LayoutStyle, ReplacedLeaf } from './input.ts';
 import type { LU } from './units.ts';
 import { add, max, min, sub, ZERO } from './units.ts';
 import type { Frag } from './box.ts';
@@ -15,13 +16,18 @@ import { inlineContribution, intrinsicContentInlineSize } from './intrinsic.ts';
 import { layoutReplacedInFlow } from './replaced.ts';
 import { unsupported } from './unsupported.ts';
 
+/** An atomic inline: an inline-level box, replaced leaf or text field (isAtomicInline). */
+export type AtomicNode = LayoutBox | ControlBox | ReplacedLeaf;
+
 /**
- * Whether a node is an atomic inline: a box with display inline-block, inline-flex or inline-grid, or a replaced leaf with an
- * inline-level display (inline, inline-block or inline-flex; css-display-3 §2.4: a replaced element is always atomic).
+ * Whether a node is an atomic inline: a box with display inline-block, inline-flex or inline-grid, a replaced leaf with an
+ * inline-level display (inline, inline-block or inline-flex; css-display-3 §2.4: a replaced element is always atomic), or a
+ * text field control with display inline-block.
  */
 export function isAtomicInline(node: LayoutNode): boolean {
   const d = node.style.display;
   if (node.kind === 'replaced') return d === 'inline' || d === 'inline-block' || d === 'inline-flex';
+  if (node.kind === 'control') return node.control.kind === 'text-field' && d === 'inline-block';
   return d === 'inline-block' || d === 'inline-flex' || d === 'inline-grid';
 }
 
@@ -35,6 +41,13 @@ export function blockLevelOf(box: LayoutBox): LayoutBox {
   const display = d === 'inline-flex' ? 'flex' : d === 'inline-grid' ? 'grid' : 'block';
   const style: LayoutStyle = { ...box.style, display };
   return { kind: 'box', id: box.id, boxType: box.boxType, style, strut: box.strut, marker: box.marker, children: box.children };
+}
+
+/** An inline-block text field as the block-level field it lays out as. */
+export function blockLevelControlOf(c: ControlBox): ControlBox {
+  if (!isAtomicInline(c)) return c;
+  const style: LayoutStyle = { ...c.style, display: 'block' };
+  return { kind: 'control', id: c.id, boxType: c.boxType, style, control: c.control, strut: c.strut, children: c.children };
 }
 
 /**
@@ -54,7 +67,7 @@ export type AtomicLayout = {
 // CSS2 §10.3.9 (Blink ComputeInlineSizeForFragment with shrink-to-fit): a specified width, or min(max(min-content, available),
 // max-content) with the available width the containing block's less the margins; then min-width and max-width. Planted fault
 // atomicShrinkToFitIgnored fills the available width instead.
-function atomicWidth(ctx: Ctx, box: LayoutBox, cbInline: LU, margins: LU): LU {
+function atomicWidth(ctx: Ctx, box: LayoutBox | ControlBox, cbInline: LU, margins: LU): LU {
   const s = box.style;
   const pad = resolvePaddingWith(s, cbInline, ctx.faults);
   const bor = resolveBorder(s, ctx.devicePixelRatio);
@@ -64,7 +77,7 @@ function atomicWidth(ctx: Ctx, box: LayoutBox, cbInline: LU, margins: LU): LU {
   if (specified !== null) width = borderBoxFromSpecified(specified, hbp, s.boxSizing);
   else if (ctx.faults.atomicShrinkToFitIgnored) width = sub(cbInline, margins);
   else {
-    const block = blockLevelOf(box);
+    const block = box.kind === 'control' ? blockLevelControlOf(box) : blockLevelOf(box);
     const minContent = add(intrinsicContentInlineSize(ctx, block, 'min'), hbp);
     const maxContent = add(intrinsicContentInlineSize(ctx, block, 'max'), hbp);
     width = min(maxContent, max(minContent, sub(cbInline, margins)));
@@ -111,7 +124,7 @@ function inlineGridBaseline(ctx: Ctx, box: LayoutBox, frag: Frag): LU | null {
 }
 
 /** Lays out an atomic inline in a block container whose content box is cbInline wide (percentages resolve against it). */
-export function layoutAtomic(ctx: Ctx, atom: LayoutBox | ReplacedLeaf, cbInline: LU): AtomicLayout {
+export function layoutAtomic(ctx: Ctx, atom: AtomicNode, cbInline: LU): AtomicLayout {
   if (atom.kind === 'replaced') return layoutAtomicReplaced(ctx, atom, cbInline);
   const box = atom;
   const s = box.style;
@@ -127,7 +140,7 @@ export function layoutAtomic(ctx: Ctx, atom: LayoutBox | ReplacedLeaf, cbInline:
   const marginBottom = noMargins ? ZERO : mb;
   const width = atomicWidth(ctx, box, cbInline, add(ml, mr));
   // inline.ts checkAtomic refuses a percentage block size, so the containing block's height is never read.
-  const r = layoutContents(ctx, blockLevelOf(box), {
+  const r = layoutContents(ctx, box.kind === 'control' ? blockLevelControlOf(box) : blockLevelOf(box), {
     cbInline,
     borderBoxWidth: width,
     forcedBorderBoxHeight: null,
@@ -137,7 +150,8 @@ export function layoutAtomic(ctx: Ctx, atom: LayoutBox | ReplacedLeaf, cbInline:
     bfcLineOffset: ZERO,
     blockStretch: NO_STRETCH,
   });
-  const baseline = atomicBaseline(ctx, box, r.frag, r.lastBaseline, r.lastBaselineFlex);
+  // A text field's baseline is its editor line's whatever its overflow (TextFieldInputType::AdjustStyle).
+  const baseline = box.kind === 'control' ? r.lastBaseline : atomicBaseline(ctx, box, r.frag, r.lastBaseline, r.lastBaselineFlex);
   const marginBox = add(add(marginTop, r.frag.height), marginBottom);
   const above = baseline === null ? marginBox : add(marginTop, baseline);
   return { frag: r.frag, marginLeft, marginRight, marginTop, advance: add(add(marginLeft, width), marginRight), above, below: sub(marginBox, above) };
@@ -161,8 +175,8 @@ function layoutAtomicReplaced(ctx: Ctx, leaf: ReplacedLeaf, cbInline: LU): Atomi
 }
 
 /** An atomic inline's min-content or max-content contribution: its margin box (css-sizing-3 §5.2). */
-export function atomicContribution(ctx: Ctx, atom: LayoutBox | ReplacedLeaf, kind: IntrinsicKind): LU {
-  const c = inlineContribution(ctx, atom.kind === 'replaced' ? atom : blockLevelOf(atom), kind);
+export function atomicContribution(ctx: Ctx, atom: AtomicNode, kind: IntrinsicKind): LU {
+  const c = inlineContribution(ctx, atom.kind === 'replaced' ? atom : atom.kind === 'control' ? blockLevelControlOf(atom) : blockLevelOf(atom), kind);
   if (!ctx.faults.atomicMarginExcluded) return c;
   const s = atom.style;
   const m = (v: typeof s.marginLeft): LU => (v.kind === 'px' ? resolveMarginWith(v, ZERO, ctx.faults).value : ZERO);

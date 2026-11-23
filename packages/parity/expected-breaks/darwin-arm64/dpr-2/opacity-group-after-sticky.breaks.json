@@ -1,0 +1,10 @@
+{
+  "case": "opacity-group-after-sticky",
+  "chrome": "145.0.7632.6",
+  "dpr": 2,
+  "texts": [
+    {"id":"bar:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"word:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"new:text0","data":"XX","lines":1,"units":[0,0],"blank":[]}
+  ]
+}

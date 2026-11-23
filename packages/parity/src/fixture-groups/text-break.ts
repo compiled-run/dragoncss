@@ -5,7 +5,7 @@
 // directions, Lato left to right. text-break-all-ahem, -letters and -lato (TXT-BREAK-2) lay out word-break: break-all, which breaks
 // between letters by Chrome's pair table, and keep-all, which breaks as normal over the Latin set; text-break-hyphen-lato lays out a
 // hyphen-minus before a Latin-1 letter at real widths, where the break after the hyphen depends on whether the line starts at it. The rejects are what every target
-// refuses: word-break: break-all over a character outside the Latin set (TXT-BREAK-2), breaking preserved white space, and two
+// refuses: word-break: break-all over a character outside the Latin set (TXT-BREAK-2), breaking preserved white space (but break-word with word-break: normal over pre-wrap, laid out by controls-textarea), and two
 // overflow-wrap values in one inline formatting context.
 import type { FixtureSpec } from '../fixtures.ts';
 import { layout, reject } from './define.ts';
@@ -18,7 +18,7 @@ export const TEXT_BREAK: readonly FixtureSpec[] = [
   layout('text-break-all-lato'),
   layout('text-break-hyphen-lato'),
   reject('reject-text-break-all', 'DRAGON_UNSUPPORTED_VALUE', 'break-all', 'word-break: break-all on '),
-  reject('reject-text-break-preserved', 'DRAGON_UNSUPPORTED_VALUE', '<div data-dragon-id="d" class="a">XXXXXXXXXX  XX</div>', 'overflow-wrap: break-word on '),
+  reject('reject-text-break-preserved', 'DRAGON_UNSUPPORTED_VALUE', '<div data-dragon-id="d" class="a">XXXXXXXXXX  XX</div>', 'overflow-wrap: anywhere on '),
   reject('reject-text-break-mixed', 'DRAGON_UNSUPPORTED_VALUE', '<div data-dragon-id="d" class="a">XX <span data-dragon-id="s" class="s">XXXXXXXX</span></div>', 'overflow-wrap: normal; word-break: normal ('),
 ];
 

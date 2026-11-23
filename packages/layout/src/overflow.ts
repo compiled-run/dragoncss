@@ -442,8 +442,13 @@ function gridInflowOf(ix: Index, id: string): OverflowRect {
 /**
  * A form control the port decides: a block button, fieldset or legend that is no scroll container; its overflow is then its plain
  * box's (a fieldset's anonymous contents box lies inside its border box, and only a scroll container adds its padding to its contents).
+ * A text field clipped on both axes (Chrome's forced overflow: clip) propagates its border box alone, and so does its clipped
+ * editor; its placeholder, a block of text alone, is a plain block container, scroll container or not.
  */
 function controlChecked(n: Node, kind: ControlKind): void {
+  if (kind.kind === 'text-placeholder') return;
+  const s = n.box.style;
+  if ((kind.kind === 'text-field' || kind.kind === 'text-editor') && s.overflowX === 'clip' && s.overflowY === 'clip') return;
   if (kind.kind !== 'button-block' && kind.kind !== 'fieldset' && kind.kind !== 'legend') throw new OverflowRefusal(n.box.id, `a ${kind.kind} form control: its scrollable overflow is not decided here`);
   if (isScrollContainer(n.box.style)) throw new OverflowRefusal(n.box.id, 'a form control that is a scroll container: its scrollable overflow is not decided here');
 }
@@ -469,7 +474,7 @@ export const PLACED_LINE_FIELDS: readonly string[] = ['top', 'height', 'baseline
 
 /** Whether a box's children form an inline formatting context (placeLines): it has a text, inline box, <br> or atomic inline child. */
 function hasInlineContent(box: LayoutBox): boolean {
-  return box.children.some((k) => k.kind === 'text' || k.kind === 'inline' || k.kind === 'br' || ((k.kind === 'box' || k.kind === 'replaced') && isAtomicInline(k)));
+  return box.children.some((k) => k.kind === 'text' || k.kind === 'inline' || k.kind === 'br' || ((k.kind === 'box' || k.kind === 'replaced' || k.kind === 'control') && isAtomicInline(k)));
 }
 
 /**
@@ -479,7 +484,7 @@ function hasInlineContent(box: LayoutBox): boolean {
 export function refuseLineLevelBoxes(box: LayoutBox): void {
   if (!hasInlineContent(box)) return;
   for (const k of box.children) {
-    if (k.kind === 'box' || k.kind === 'replaced') throw new OverflowRefusal(k.id, `an atomic inline in the inline formatting context of ${box.id}: its scrollable overflow is not decided here (R16, INL2)`);
+    if (k.kind === 'box' || k.kind === 'replaced' || k.kind === 'control') throw new OverflowRefusal(k.id, `an atomic inline in the inline formatting context of ${box.id}: its scrollable overflow is not decided here (R16, INL2)`);
     // INL1a's inline box fragments and <br>s are line items addLines does not measure (ScrollableOverflowForLine adds them).
     if (k.kind === 'inline') throw new OverflowRefusal(k.id, `an inline box in the inline formatting context of ${box.id}: its scrollable overflow is not decided here (R16, INL1a)`);
     if (k.kind === 'br') throw new OverflowRefusal(k.id, `a <br> in the inline formatting context of ${box.id}: its scrollable overflow is not decided here (R16, INL1a)`);

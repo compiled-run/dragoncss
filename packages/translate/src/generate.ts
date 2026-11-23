@@ -72,6 +72,8 @@ export function engineRoots(files: readonly string[]): { file: string; name: str
     { file: at('paint-menulist.ts'), name: 'menuListArrows' },
     // TXT2-g: the line-clamp containers' children as the layout clamped them, whose lines the native text views place.
     { file: at('line-clamp.ts'), name: 'clampedInput' },
+    // FORM-checkbox: a themed checkbox's marks, which Dragon's box views and the Markless device layout draw from.
+    { file: at('controls.ts'), name: 'checkboxMarks' },
   ];
   const program = createProgram(files);
   const units = program.getSourceFile(at('units.ts')) as ts.SourceFile;
