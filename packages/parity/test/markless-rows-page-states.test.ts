@@ -55,4 +55,34 @@ describe('rows written out where a by-state list also follows a page state', () 
     const broken = { ...follows, nodes: follows.nodes.map((n) => (n.id === 'root' ? { ...n, attributesByState: { 'ui-open': combos.map((when) => ({ when, value: when[SELECTED] === '1' ? '' : null })) } } : n)) } as MarklessStyleInput;
     expect(() => marklessWithRows(broken, rows)).toThrow("root: its by-state list follows a row's state outside the rows");
   });
+
+  it("drops another list's row state from a row's list, and merges a list's entries whatever order their keys are in", () => {
+    const OTHER = 'h9#ui-selected';
+    const base = input((open, selected) => (open && selected === '1' ? '' : null));
+    const four = (n: MarklessStyleInput['nodes'][number]) => {
+      if (n.id !== 'h4' || n.kind !== 'element') return n;
+      const list = n.attributesByState?.['ui-selected'] ?? [];
+      return { ...n, attributesByState: { 'ui-selected': list.flatMap((e) => ['0', '1'].map((o) => ({ when: { [OTHER]: o, ...e.when }, value: e.value }))) } };
+    };
+    const twoLists = {
+      ...base,
+      states: [...base.states, { cell: OTHER, domain: ['0', '1'], initial: '0', row: 'repeat:1' }],
+      repeats: [...(base.repeats ?? []), { id: 'repeat:1', parent: 'root' }],
+      nodes: base.nodes.map(four),
+    } as MarklessStyleInput;
+    const out = marklessWithRows(twoLists, new Map([...rows, ['repeat:1', []]]));
+    const a = out.nodes.find((n) => n.id === 'h4@a') as { readonly attributesByState?: unknown };
+    expect(a.attributesByState).toEqual({ 'ui-selected': [{ when: { [OPEN]: false }, value: null }, { when: { [OPEN]: true }, value: '' }] });
+
+    const PAGE = 'theme.dark';
+    const reordered = {
+      ...base,
+      states: [{ cell: PAGE, domain: [false, true], initial: false }, ...base.states],
+      nodes: base.nodes.map((n) =>
+        n.id !== 'root' ? n : { ...n, attributesByState: { 'ui-open': combos.flatMap((when) => [false, true].map((dark) => ({ when: when[SELECTED] === '0' ? { [PAGE]: dark, ...when } : { ...when, [PAGE]: dark }, value: when[OPEN] ? '' : null }))) } },
+      ),
+    } as MarklessStyleInput;
+    const root = marklessWithRows(reordered, rows).nodes.find((n) => n.id === 'root') as { readonly attributesByState?: { readonly 'ui-open': readonly unknown[] } };
+    expect(root.attributesByState?.['ui-open']).toHaveLength(4);
+  });
 });
