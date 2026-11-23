@@ -8,7 +8,6 @@ import { checkMarklessExport, marklessStyleExport, marklessTextHeightProof } fro
 import { paintRows } from '../src/markless-style-compare.ts';
 import type { MarklessPlan } from '../src/markless-plan.ts';
 import { heightDependence, PLAN_DENSITIES, planWidths } from '../src/markless-plan.ts';
-import { ahemFont, box, control, text } from '../../layout/test/helpers.ts';
 import type { ExportNode } from '../src/native-style-export.ts';
 import { repoPath } from '../src/paths.ts';
 import { checkboxColors } from '../../dragon/src/forms/checkbox.ts';
@@ -150,6 +149,7 @@ describe('the layout plan of a Markless export', () => {
         if (v === undefined) delete process.env[k];
         else process.env[k] = v;
       }
+    }
   });
 
   it('fails, naming the recording, when a plan worker exits before it answers, and waits on no timeout', () => {
@@ -195,11 +195,18 @@ describe('the layout plan of a Markless export', () => {
   });
 
   it("names a select whose option text is spaced in vh, though the option is not among the select's children", () => {
-    const vh = { kind: 'viewport', value: 2, axis: 'height', size: 'large' } as const;
-    const select = (letterSpacing: typeof vh | { readonly kind: 'px'; readonly value: number }) =>
-      ({ variants: [{ rootFontSize: 16, root: box('h0', {}, [control('h1', { kind: 'select-menulist', font: ahemFont(10), lineHeight: { kind: 'normal' }, arrowWidth: 0, options: [text('h2:text0', 'Longest option', { letterSpacing })] }, { display: 'flex' }, [control('h1::inner', { kind: 'select-inner' }, {})])]) }] }) as unknown as Parameters<typeof heightDependence>[0];
-    expect(heightDependence(select({ kind: 'px', value: 0 }), [])).toBeNull();
-    expect(heightDependence(select(vh), [])).toBe('h2:text0 has spacing in vh, vmin or vmax');
+    // Only what heightDependence reads: every length auto, no grid, multicol or anchor.
+    const style = new Proxy({ display: 'block', multicol: null, anchor: null, grid: null } as Record<string, unknown>, { get: (o, k: string) => (k in o ? o[k] : { kind: 'auto' }) });
+    const px = (value: number) => ({ kind: 'px', value }) as const;
+    const font = { specifiedSize: px(10) };
+    const tree = (letterSpacing: unknown) => {
+      const option = { kind: 'text', id: 'h2:text0', text: 'Longest option', font, lineHeight: { kind: 'normal' }, letterSpacing, wordSpacing: px(0) };
+      const inner = { kind: 'control', id: 'h1::inner', style, strut: null, control: { kind: 'select-inner' }, children: [] };
+      const select = { kind: 'control', id: 'h1', style, strut: null, control: { kind: 'select-menulist', font, lineHeight: { kind: 'normal' }, arrowWidth: 0, options: [option] }, children: [inner] };
+      return { variants: [{ root: { kind: 'box', id: 'h0', style, strut: null, marker: null, children: [select] } }] } as unknown as Parameters<typeof heightDependence>[0];
+    };
+    expect(heightDependence(tree(px(0)), [])).toBeNull();
+    expect(heightDependence(tree({ kind: 'viewport', value: 2, axis: 'height', size: 'large' }), [])).toBe('h2:text0 has spacing in vh, vmin or vmax');
   });
 
   it('still checks the text at other heights on a page it cannot prove, and refuses one whose text follows the height', () => {
