@@ -180,7 +180,26 @@ Nothing is dropped silently. There are two outcomes, and both name what they ref
 
 ## Limits today
 
-- Interaction states (`:hover`, `:active`, `:focus`) compile on native only inside the parity lanes. A production compile refuses them until the device lanes prove them, and this entry point emits no interaction tables yet.
+- Interaction states (`:hover`, `:active`, `:focus`) compile on native only inside the parity lanes. A production compile refuses them until the device lanes prove them. With `support: 'lanes'` and `output: 'program'` (the Markless path) a target carries its interaction program; generated sources still refuse them.
+
+## Interaction states (`:hover`, `:active`, `:focus`, `:focus-visible`)
+
+With `support: 'lanes'` and `output: 'program'`, a target whose assignments have interaction states carries `interaction`, Dragon's interaction program over its state program (`lower/interaction-program.ts`), and `interactionValues`, each state's value. A state is a second level under an assignment, never one more assignment. Under `@media` each (assignment, band) pair has its own level, from that band's own resolution (`interactionLevelInputIn`).
+
+The export writes it per target as `interaction: { levels }`, one level per assignment:
+
+- `tables`: the interaction runtime's tables (`layout/src/rt-interaction.ts`), which the host runs on touch, pointer, key and focus to select a state;
+- `addresses`: the node each table index names (from a Markless input, the input's ids);
+- `states`: each state laid out as `assignments` are, with its own frames, writes, canvas, body background and colour scheme;
+- `matches`: per state, the nodes `:hover`, `:active`, `:focus` and `:focus-visible` match in it, and `force`, what `CSS.forcePseudoState` forces to reach it in Chrome;
+- `rows` (from a Markless input): each address inside a list row, with the list. The export holds the row template; a phone applies the state to the row copy the touch or focus is in;
+- `planAssignments` (with `--plan`): the plan assignment each state lays out as. The plan's assignments are the program's, then each level's states in order, and its variants include those only a state lays out, so `runMarklessLayout` lays a state out like any assignment.
+
+`markless:style-compare` compares each state with Chrome forced into it (`forced-pseudo.ts`): every frame, and every background colour the state changes. A state that changes another write fails, naming it, until the comparison reads that property from Chrome (`packages/parity/test/markless-interaction.test.ts`).
+
+Refused by name for now: interaction states together with transitions or animations (the animator's tables cover the program's assignments only), and together with style values that follow state (slots). A state's colour scheme is its assignment's, so a state that changes `color-scheme` keeps the assignment's.
+
+Hit testing still gates what compiles: a pressed or focused style through opacity, a transform, a box-shadow, a sticky or fixed box or a form control is refused until its hit model is built (SELD-R2b, POSX-s, FORM-a).
 - Native text is Ahem-only in production (see above).
 - One call compiles one component in its own document. Generated names are per component (`Dragon<Name>States`), so two components need two different names.
 - The generated Kotlin is in the package `dev.dragon.cases`, which the support files share.

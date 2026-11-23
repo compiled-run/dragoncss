@@ -1,0 +1,28 @@
+{
+  "case": "hit-atomic-inline",
+  "dpr": 3,
+  "texts": [
+    {"id":"a1:text0","lines":[[0,1]]},
+    {"id":"a2:text0","lines":[[0,2]]},
+    {"id":"ab:text0","lines":[[0,1]]},
+    {"id":"b:text0","lines":[[0,2]]},
+    {"id":"bi:text0","lines":[[0,1]]},
+    {"id":"b:text1","lines":[[0,2]]},
+    {"id":"c:text0","lines":[[0,4]]},
+    {"id":"c:text1","lines":[[0,2]]},
+    {"id":"c:text2","lines":[[0,2]]},
+    {"id":"c:text3","lines":[[0,2]]},
+    {"id":"d:text0","lines":[[0,1]]},
+    {"id":"d:text1","lines":[[0,1]]},
+    {"id":"d:text2","lines":[[0,1]]},
+    {"id":"f:text0","lines":[[0,3]]},
+    {"id":"f:text1","lines":[[0,3]]},
+    {"id":"g:text0","lines":[[0,1]]},
+    {"id":"g:text1","lines":[[0,1]]},
+    {"id":"g:text2","lines":[[0,1]]},
+    {"id":"bh:text0","lines":[[0,2]]},
+    {"id":"bh:text1","lines":[[0,2]]},
+    {"id":"bm:text0","lines":[[0,2]]},
+    {"id":"bm:text1","lines":[[0,2]]}
+  ]
+}

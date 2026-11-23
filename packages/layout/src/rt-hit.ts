@@ -11,10 +11,11 @@
 import type { Ctx as EngineCtx } from './block.ts';
 import { NO_ENGINE_FAULTS } from './block.ts';
 import { NO_GRID_FAULTS } from './grid.ts';
-import { isScrollContainer, resolveBorder } from './box.ts';
+import { hasPercent, isScrollContainer, resolveBorder, resolvePadding } from './box.ts';
 import type { Edges } from './box.ts';
-import { controlAsBox } from './controls.ts';
-import { placeLines } from './inline.ts';
+import { buttonContentShift, controlAsBox } from './controls.ts';
+import type { HitLine, LinePiece } from './inline.ts';
+import { placeHitLines, placeLines } from './inline.ts';
 import { fromPxCeil, fromPxFloor, fromRaw, ZERO } from './units.ts';
 import type { ControlBox, InlineChild, LayoutBox, LayoutInput, LayoutStyle, ReplacedLeaf, TextLeaf } from './input.ts';
 import type { LayoutRect } from './layout.ts';
@@ -52,15 +53,15 @@ export type HitNode = {
   readonly absolute: boolean;
   /** position fixed: its containing block is the viewport (a transformed ancestor's containing block is refused). */
   readonly fixed: boolean;
-  /** Painted atomically (a flex item): all its phases are tested together, in the parent's foreground phase. */
+  /** Painted atomically (a flex or grid item, or an atomic inline): all its phases are tested together, in the parent's foreground phase. */
   readonly atomic: boolean;
   /** The flex item's place in its container's fragment order (its atomic paint); 0 for every other box. */
   readonly order: number;
   /** The CSS order of an in-flow flex item, which orders positioned boxes among siblings; 0 for every other box. */
   readonly layerOrder: number;
-  /** The index of the inline line a text piece or line belongs to, within its block; -1 for boxes. */
+  /** The index of the inline line a text piece, line or atomic inline belongs to, within its block; -1 for other boxes. */
   readonly line: number;
-  /** A text piece's glyph ink (its glyph bounds rounded out to whole pixels); 0 for boxes and lines. */
+  /** A text piece's glyph ink (its glyph bounds rounded out to whole pixels), an atomic inline's ink overflow; 0 for other boxes and lines. */
   readonly inkLeft: number;
   readonly inkTop: number;
   readonly inkRight: number;
@@ -421,7 +422,7 @@ function foreground(ctx: HitCtx, i: number): number {
   for (const c of kids) {
     const k = node(ctx, c);
     if (k.kind === 'box') {
-      if (ownLayer(k)) continue;
+      if (ownLayer(k) || k.line >= 0) continue;
       const hit = k.atomic ? allPhases(ctx, c) : foreground(ctx, c);
       if (hit >= 0) return hit;
       continue;
@@ -435,10 +436,11 @@ function foreground(ctx: HitCtx, i: number): number {
 }
 
 /**
- * HitTestLineBoxFragment: when the line's ink overflow (the line box and its text) holds the point, the line's text items, last
- * first, against their pixel-snapped rects exclusively (HitTestTextItem); then the line itself, exclusively against the line rect,
- * inclusively against the block's border box placed at the line's offset and pixel-snapped (HitTestClippedOutByBorder), and against
- * the line rect rounded with the block's radii (PixelSnappedContouredBorder of the block's style on the line's bounds).
+ * HitTestLineBoxFragment: when the line's ink overflow (the line box, its text and its atomic inlines) holds the point, the line's
+ * items, last first: a text item against its pixel-snapped rect exclusively (HitTestTextItem), an atomic inline in all its phases
+ * (HitTestChildBoxFragment) unless it is its own layer, which the layer pass tests; then the line itself, exclusively against the
+ * line rect, inclusively against the block's border box placed at the line's offset and pixel-snapped (HitTestClippedOutByBorder),
+ * and against the line rect rounded with the block's radii (PixelSnappedContouredBorder of the block's style on the line's bounds).
  */
 function lineHit(ctx: HitCtx, block: HitNode, line: HitNode, at: number): number {
   const l = locationOf(ctx, at);
@@ -448,11 +450,9 @@ function lineHit(ctx: HitCtx, block: HitNode, line: HitNode, at: number): number
   let y1 = line.y + line.height;
   const own = ctx.lineTexts[at];
   if (own === undefined) throw new HitError(`no text list for line ${at}`);
-  const texts: HitNode[] = [];
   for (const c of own) {
     const t = node(ctx, c);
-    texts.push(t);
-    // The text item's ink overflow: its rect and its glyph ink.
+    // The item's ink overflow: its rect and its glyph ink, or an atomic inline's ink overflow.
     const left = t.inkLeft < t.x ? t.inkLeft : t.x;
     const right = t.inkRight > t.x + t.width ? t.inkRight : t.x + t.width;
     if (left < x0) x0 = left;
@@ -463,7 +463,14 @@ function lineHit(ctx: HitCtx, block: HitNode, line: HitNode, at: number): number
     if (bottom > y1) y1 = bottom;
   }
   if (!intersects(l, x0, y0, x1 - x0, y1 - y0)) return -1;
-  for (const t of texts) {
+  for (const c of own) {
+    const t = node(ctx, c);
+    if (t.kind === 'box') {
+      if (ownLayer(t)) continue;
+      const hit = allPhases(ctx, c);
+      if (hit >= 0) return hit;
+      continue;
+    }
     if (visible(ctx, t) && intersectsSnapped(l, t.x, t.y, t.width, t.height)) return t.target;
   }
   if (visible(ctx, line) && intersects(l, line.x, line.y, line.width, line.height) && touchesBlockBorder(l, line.x, line.y, block) && insideRoundedBorder(ctx, line, at)) return line.target;
@@ -535,7 +542,7 @@ function layerVisible(ctx: HitCtx, i: number): boolean {
 export type HitPrepared = {
   readonly nodes: readonly HitNode[];
   readonly children: readonly (readonly number[])[];
-  /** For each line node, the text pieces of its block on that line, in its block's reverse paint order; empty for other nodes. */
+  /** For each line node, the text pieces and atomic inlines of its block on that line, in its block's reverse paint order; empty for other nodes. */
   readonly lineTexts: readonly (readonly number[])[];
   readonly layers: readonly number[];
   readonly spaces: HitSpaces;
@@ -601,13 +608,13 @@ export function prepareHit(nodes: readonly HitNode[], faults: HitFaults): HitPre
   };
   collect(0);
   const reversed = faults.reversedOrder ? ordered : ordered.map((own) => own.slice(0).reverse());
-  // Each line's text pieces, grouped once per block (in the block's child order) so a point tests a line in O(its pieces).
+  // Each line's text pieces and atomic inlines, grouped once per block (in the block's child order) so a point tests a line in O(its items).
   const lineTexts: number[][] = nodes.map((): number[] => []);
   reversed.forEach((own) => {
     const byLine: number[][] = [];
     for (const c of own) {
       const t = nodes[c];
-      if (t === undefined || t.kind !== 'text') continue;
+      if (t === undefined || t.kind === 'line' || t.line < 0) continue;
       while (byLine.length <= t.line) byLine.push([]);
       (byLine[t.line] as number[]).push(c);
     }
@@ -775,6 +782,10 @@ type TableState = {
   readonly zoomed: Map<string, LayoutBox>;
   /** The zoomed style of each replaced leaf, by id. */
   readonly zoomedReplaced: Map<string, LayoutStyle>;
+  /** Each atomic inline's ink overflow, by node index, set once its subtree is built. */
+  readonly inks: Map<string, InkRect>;
+  /** The ids of the boxes a block button lays out as, whose in-flow contents the engine moves down by buttonContentShift. */
+  readonly buttons: Map<string, boolean>;
   readonly ctx: EngineCtx;
   /** The input's device pixel ratio: the hit facts' px radii are CSS px, the rects device px (ctx's ratio is the zoomed input's 1). */
   readonly dpr: number;
@@ -979,19 +990,22 @@ function linePieces(s: TableState, b: LayoutBox, parent: number, target: number,
   const y = top - run.halfLeading;
   const radii = roundedOf(x0, y, x1 - x0, run.lineHeight, NO_EDGES, lengths, s.dpr, sox, soy);
   pushNode(s, { kind: 'line', parent, target, x: x0, y, width: x1 - x0, height: run.lineHeight, clips: false, borderTop: 0, borderRight: 0, borderBottom: 0, borderLeft: 0, layer: false, absolute: false, fixed: false, atomic: false, order: 0, layerOrder: 0, line: k, inkLeft: 0, inkTop: 0, inkRight: 0, inkBottom: 0, pointerEvents: pe, radii, context: false, transformed: false, scaleX: 1, scaleY: 1, offsetX: 0, offsetY: 0 }, `${b.id}:hitline${k}`, false);
-  for (const p of own) {
-    const q = p.rect;
-    // Ahem's ink: the glyph run's bounds rounded out to whole pixels in the run's own space (from the run origin to n em, and
-    // from 0.8 em above the baseline to 0.2 em below), placed at the text's origin and ascent; measured against Chrome.
-    const baseline = q.y + run.ascent;
-    const glyphs = roundOf(q.width / (em * LU_PX));
-    const above = p.full ? floorOf(-0.8 * em) : 0;
-    pushNode(s, {
-      kind: 'text', parent, target, x: q.x, y: q.y, width: q.width, height: q.height, clips: false, borderTop: 0, borderRight: 0, borderBottom: 0, borderLeft: 0,
-      layer: false, absolute: false, fixed: false, atomic: false, order: 0, layerOrder: 0, line: k, inkLeft: q.x, inkTop: baseline + above * LU_PX, inkRight: q.x - floorOf(-(glyphs * em)) * LU_PX,
-      inkBottom: baseline - floorOf(-0.2 * em) * LU_PX, pointerEvents: pe, radii: [], context: false, transformed: false, scaleX: 1, scaleY: 1, offsetX: 0, offsetY: 0,
-    }, q.id, false);
-  }
+  for (const p of own) textNode(s, parent, target, pe, p.rect, run.ascent, em, p.full, k);
+}
+
+/**
+ * A text piece on line k. Ahem's ink: the glyph run's bounds rounded out to whole pixels in the run's own space (from the run origin
+ * to n em, and from 0.8 em above the baseline to 0.2 em below), placed at the text's origin and ascent; measured against Chrome.
+ */
+function textNode(s: TableState, parent: number, target: number, pe: PointerEvents, q: LayoutRect, ascent: number, em: number, full: boolean, k: number): void {
+  const baseline = q.y + ascent;
+  const glyphs = roundOf(q.width / (em * LU_PX));
+  const above = full ? floorOf(-0.8 * em) : 0;
+  pushNode(s, {
+    kind: 'text', parent, target, x: q.x, y: q.y, width: q.width, height: q.height, clips: false, borderTop: 0, borderRight: 0, borderBottom: 0, borderLeft: 0,
+    layer: false, absolute: false, fixed: false, atomic: false, order: 0, layerOrder: 0, line: k, inkLeft: q.x, inkTop: baseline + above * LU_PX, inkRight: q.x - floorOf(-(glyphs * em)) * LU_PX,
+    inkBottom: baseline - floorOf(-0.2 * em) * LU_PX, pointerEvents: pe, radii: [], context: false, transformed: false, scaleX: 1, scaleY: 1, offsetX: 0, offsetY: 0,
+  }, q.id, false);
 }
 
 const NO_EDGES: Edges = { top: ZERO, right: ZERO, bottom: ZERO, left: ZERO };
@@ -1010,7 +1024,8 @@ function roundedOf(x: number, y: number, w: number, h: number, border: Edges, le
   return hasRoundedCorner(outer) ? shape : [];
 }
 
-function boxNodes(s: TableState, b: LayoutBox, parent: number, orders: Map<string, number> | null, target: number, inherited: PointerEvents, ox: number, oy: number, sox: number, soy: number): void {
+/** line: the line index of an atomic inline in its block, -1 for every other box. */
+function boxNodes(s: TableState, b: LayoutBox, parent: number, orders: Map<string, number> | null, target: number, inherited: PointerEvents, ox: number, oy: number, sox: number, soy: number, line: number): void {
   const i = s.nodes.length;
   let pe = inherited;
   let own = target;
@@ -1027,6 +1042,7 @@ function boxNodes(s: TableState, b: LayoutBox, parent: number, orders: Map<strin
     lengths = f.radii;
     paint = paintOf(b.id, f, r, s.dpr, ox, oy, sox, soy, s.faults);
   }
+  if (line >= 0 && (paint.context || paint.transformed)) throw new HitError(contextAtomicRefusal(b.id));
   if (own < 0) throw new HitError(`anonymous box ${b.id} has no element ancestor`);
   const border = resolveBorder(zoomedBox(s, b.id).style, s.ctx.devicePixelRatio);
   const order = orders === null ? undefined : orders.get(b.id);
@@ -1036,31 +1052,200 @@ function boxNodes(s: TableState, b: LayoutBox, parent: number, orders: Map<strin
   pushNode(s, {
     kind: 'box', parent, target: own, x: r.x, y: r.y, width: r.width, height: r.height, clips: clipsBothAxes(b.style),
     borderTop: border.top, borderRight: border.right, borderBottom: border.bottom, borderLeft: border.left, layer: b.style.position !== 'static',
-    absolute: b.style.position === 'absolute', fixed: b.style.position === 'fixed', atomic: orders !== null, order: order === undefined ? 0 : order,
-    layerOrder: orders !== null && b.style.position !== 'absolute' && b.style.position !== 'fixed' ? b.style.order : 0, line: -1,
+    absolute: b.style.position === 'absolute', fixed: b.style.position === 'fixed', atomic: orders !== null || line >= 0, order: order === undefined ? 0 : order,
+    layerOrder: orders !== null && b.style.position !== 'absolute' && b.style.position !== 'fixed' ? b.style.order : 0, line,
     inkLeft: 0, inkTop: 0, inkRight: 0, inkBottom: 0, pointerEvents: pe, radii: roundedOf(r.x, r.y, r.width, r.height, border, lengths, s.dpr, snapX0, snapY0),
     context: paint.context, transformed: paint.transformed, scaleX: paint.scaleX, scaleY: paint.scaleY, offsetX: paint.offsetX, offsetY: paint.offsetY,
   }, b.id, act);
   const sx = paint.transformed ? r.x : ox;
   const sy = paint.transformed ? r.y : oy;
   const leaves: TextLeaf[] = [];
+  const atoms: (LayoutBox | ReplacedLeaf)[] = [];
   let kids = 0;
   for (const child of b.children) {
     const c = child.kind === 'control' ? hitControlBox(child) : child;
     if (c.kind === 'text') leaves.push(c);
     else if (c.kind === 'inline' || c.kind === 'br') throw new HitError(inlineRefusal(c.id, c.kind));
-    else if ((c.kind === 'box' || c.kind === 'replaced') && isAtomicInline(c)) throw new HitError(atomicRefusal(c.id));
+    else if ((c.kind === 'box' || c.kind === 'replaced') && isAtomicInline(c) && b.strut === null) throw new HitError(atomicRefusal(c.id));
+    else if ((c.kind === 'box' || c.kind === 'replaced') && isAtomicInline(c)) atoms.push(c);
     else if ((c.kind === 'box' || c.kind === 'replaced') && c.style.float !== 'none' && c.style.position !== 'absolute' && c.style.position !== 'fixed' && (b.style.display === 'block' || b.style.display === 'inline-block')) throw new HitError(floatRefusal(c.id));
     else kids++;
   }
-  if (leaves.length > 0 && kids > 0) throw new HitError(`${b.id} mixes text and boxes; the compiler wraps text in anonymous boxes`);
-  if (leaves.length > 0) inlineNodes(s, b, i, own, pe, leaves, lengths, snapX0, snapY0);
-  const childOrders = b.style.display === 'flex' ? fragmentOrders(s, b) : b.style.display === 'grid' ? gridOrders(s, b) : null;
-  for (const c of b.children) {
-    if (c.kind === 'box') boxNodes(s, c, i, childOrders, own, pe, sx, sy, snapX0, snapY0);
-    else if (c.kind === 'control') boxNodes(s, hitControlBox(c), i, childOrders, own, pe, sx, sy, snapX0, snapY0);
-    else if (c.kind === 'replaced') replacedNode(s, c, i, childOrders, sx, sy, snapX0, snapY0);
+  if ((leaves.length > 0 || atoms.length > 0) && kids > 0) throw new HitError(`${b.id} mixes inline content and boxes; the compiler wraps inline content in anonymous boxes`);
+  if (atoms.length > 0 && percentPadded(b.style)) throw new HitError(paddingRefusal(b.id));
+  if (atoms.length > 0) inlineAtomicNodes(s, b, i, own, pe, atoms, lengths, sx, sy, snapX0, snapY0);
+  else if (leaves.length > 0) inlineNodes(s, b, i, own, pe, leaves, lengths, snapX0, snapY0);
+  if (atoms.length === 0) {
+    const d = b.style.display;
+    const childOrders = d === 'flex' || d === 'inline-flex' ? fragmentOrders(s, b) : d === 'grid' || d === 'inline-grid' ? gridOrders(s, b) : null;
+    for (const c of b.children) {
+      if (c.kind === 'box') boxNodes(s, c, i, childOrders, own, pe, sx, sy, snapX0, snapY0, -1);
+      else if (c.kind === 'control') {
+        const hb = hitControlBox(c);
+        if (c.control.kind === 'button-block') s.buttons.set(hb.id, true);
+        boxNodes(s, hb, i, childOrders, own, pe, sx, sy, snapX0, snapY0, -1);
+      }
+      else if (c.kind === 'replaced') replacedNode(s, c, i, childOrders, sx, sy, snapX0, snapY0, -1);
+    }
   }
+  if (line >= 0) atomicInk(s, i);
+}
+
+/** An ink overflow rect in LU, absolute to the root. */
+type InkRect = { readonly left: number; readonly top: number; readonly right: number; readonly bottom: number };
+
+/** One item of a line holding atomic inlines: a text piece (leaf >= 0) or an atomic inline (atom >= 0), with its pen extent. */
+type LineItem = { readonly at: number; readonly leaf: number; readonly atom: number; readonly rect: LayoutRect; readonly ascent: number; readonly start: number; readonly end: number };
+
+/**
+ * A block's inline content holding atomic inlines: each line of the engine's placeHitLines over its content box (checked against
+ * the engine's own fragments), its line node, then its text pieces and atomic inlines in tree order, which is their paint order on
+ * the line (the engine refuses an rtl paragraph that would reorder them; the pen check below catches any other reordering).
+ */
+function inlineAtomicNodes(s: TableState, b: LayoutBox, parent: number, target: number, pe: PointerEvents, atoms: readonly (LayoutBox | ReplacedLeaf)[], lengths: readonly RadiusLength[], ox: number, oy: number, sox: number, soy: number): void {
+  const zb = zoomedBox(s, b.id);
+  const r = rectOf(s, b.id);
+  const border = resolveBorder(zb.style, s.ctx.devicePixelRatio);
+  const padding = resolvePadding(zb.style, ZERO);
+  const left = r.x + border.left + padding.left;
+  const contentTop = r.y + border.top + padding.top;
+  const width = r.width - border.left - border.right - padding.left - padding.right;
+  // Each leaf's and atomic inline's place among b's children, and the zoomed leaves (the engine's inlineLeaves order).
+  const leafAt: number[] = [];
+  const atomAt: number[] = [];
+  const leaves: TextLeaf[] = [];
+  for (let k = 0; k < b.children.length; k++) {
+    const c = b.children[k];
+    if (c === undefined) throw new HitError(`${b.id}: no child ${k}`);
+    if (c.kind === 'text') {
+      leafAt.push(k);
+      leaves.push(c);
+    } else if (c.kind === 'box' || c.kind === 'replaced' || c.kind === 'control') atomAt.push(k);
+  }
+  if (atomAt.length !== atoms.length) throw new HitError(`${b.id}: ${atoms.length} atomic inlines but ${atomAt.length} inline-level boxes`);
+  const zLeaves: TextLeaf[] = [];
+  for (const c of zb.children) {
+    if (c.kind === 'text') zLeaves.push(c);
+  }
+  const pieceCount = new Map<string, number>();
+  const full: boolean[] = [];
+  for (const leaf of leaves) full.push(inkAbove(leaf));
+  const lines: HitLine[] = placeHitLines(s.ctx, zb, fromRaw(width));
+  const last = lines[lines.length - 1];
+  const linesHeight = last === undefined ? 0 : last.line.top + last.line.height;
+  const contentHeight = r.height - border.top - border.bottom - padding.top - padding.bottom;
+  const top = s.buttons.has(b.id) ? contentTop + buttonContentShift(fromRaw(contentHeight), fromRaw(linesHeight)) : contentTop;
+  for (let k = 0; k < lines.length; k++) {
+    const l = lines[k];
+    if (l === undefined) throw new HitError(`${b.id}: no line ${k}`);
+    const items: LineItem[] = [];
+    for (const p of l.line.pieces) items.push(pieceItem(s, b, leaves, leafAt, pieceCount, p, left, top));
+    for (let m = 0; m < l.atomics.length; m++) {
+      const a = l.atomics[m];
+      const ar = l.atomicRects[m];
+      const ml = l.marginLefts[m];
+      const mr = l.marginRights[m];
+      if (a === undefined || ar === undefined || ml === undefined || mr === undefined) throw new HitError(`${b.id}: no atomic inline ${m} on line ${k}`);
+      const atom = atoms[a];
+      const at = atomAt[a];
+      if (atom === undefined || at === undefined) throw new HitError(`${b.id}: no atomic inline ${a}`);
+      const own = rectOf(s, atom.id);
+      if (own.x !== left + ar.x || own.y !== top + ar.y) throw new HitError(`${atom.id} is at ${own.x},${own.y} where its line places it at ${left + ar.x},${top + ar.y}`);
+      items.push({ at, leaf: -1, atom: a, rect: own, ascent: 0, start: own.x - ml, end: own.x + own.width + mr });
+    }
+    const ordered = items.slice(0).sort((p, q) => p.at - q.at);
+    const first = ordered[0];
+    const last = ordered[ordered.length - 1];
+    if (first === undefined || last === undefined) throw new HitError(`${b.id}: an empty line ${k}`);
+    for (let q = 1; q < ordered.length; q++) {
+      const prev = ordered[q - 1] as LineItem;
+      const cur = ordered[q] as LineItem;
+      if (cur.start !== prev.end) throw new HitError(`${b.id}: line ${k} does not paint its items in tree order, which the hit table does not model`);
+    }
+    const ly = top + l.line.top;
+    const radii = roundedOf(first.start, ly, last.end - first.start, l.line.height, NO_EDGES, lengths, s.dpr, sox, soy);
+    pushNode(s, { kind: 'line', parent, target, x: first.start, y: ly, width: last.end - first.start, height: l.line.height, clips: false, borderTop: 0, borderRight: 0, borderBottom: 0, borderLeft: 0, layer: false, absolute: false, fixed: false, atomic: false, order: 0, layerOrder: 0, line: k, inkLeft: 0, inkTop: 0, inkRight: 0, inkBottom: 0, pointerEvents: pe, radii, context: false, transformed: false, scaleX: 1, scaleY: 1, offsetX: 0, offsetY: 0 }, `${b.id}:hitline${k}`, false);
+    for (const it of ordered) {
+      if (it.atom >= 0) {
+        const c = atoms[it.atom] as LayoutBox | ReplacedLeaf;
+        if (c.kind === 'box') boxNodes(s, c, parent, null, target, pe, ox, oy, sox, soy, k);
+        else replacedNode(s, c, parent, null, ox, oy, sox, soy, k);
+        continue;
+      }
+      const zl = zLeaves[it.leaf];
+      const inks = full[it.leaf];
+      if (zl === undefined || inks === undefined) throw new HitError(`${b.id}: no zoomed leaf ${it.leaf}`);
+      textNode(s, parent, target, pe, it.rect, it.ascent, zl.font.size, inks, k);
+    }
+  }
+  for (let li = 0; li < leaves.length; li++) {
+    const leaf = leaves[li] as TextLeaf;
+    const n = pieceCount.get(`${li}`);
+    if (hasPartialInk(leaf) && inkAbove(leaf) && n !== undefined && n > 1) throw new HitError(`${leaf.id}: Ahem p glyphs mixed with full glyphs over several lines give each line its own ink, which the hit table does not model`);
+  }
+}
+
+/** A text piece of a line holding atomic inlines, at the engine's own fragment of it (<leaf>:line<j>), checked against its line. */
+function pieceItem(s: TableState, b: LayoutBox, leaves: readonly TextLeaf[], leafAt: readonly number[], pieceCount: Map<string, number>, p: LinePiece, left: number, top: number): LineItem {
+  const leaf = leaves[p.leaf];
+  const at = leafAt[p.leaf];
+  if (leaf === undefined || at === undefined) throw new HitError(`${b.id}: no leaf ${p.leaf}`);
+  if (p.truncated || p.shifts.length > 0) throw new HitError(`${leaf.id}: a truncated or justified line beside an atomic inline, which the hit table does not model`);
+  const seen = pieceCount.get(`${p.leaf}`);
+  const j = seen === undefined ? 0 : seen;
+  pieceCount.set(`${p.leaf}`, j + 1);
+  const own = rectOf(s, `${leaf.id}:line${j}`);
+  if (own.x !== left + p.x || own.y !== top + p.top) throw new HitError(`${leaf.id}:line${j} is at ${own.x},${own.y} where its line places it at ${left + p.x},${top + p.top}`);
+  return { at, leaf: p.leaf, atom: -1, rect: own, ascent: p.ascent, start: own.x, end: own.x + own.width };
+}
+
+/**
+ * An atomic inline's ink overflow, which its line's hit test reads: its border box and, unless it clips, the boxes and text ink of
+ * its descendants outside any clipping box or layer below it.
+ */
+function atomicInk(s: TableState, at: number): void {
+  const a = s.nodes[at];
+  if (a === undefined) throw new HitError(`no hit node ${at}`);
+  let x0 = a.x;
+  let y0 = a.y;
+  let x1 = a.x + a.width;
+  let y1 = a.y + a.height;
+  if (!a.clips) {
+    for (let d = at + 1; d < s.nodes.length; d++) {
+      const n = s.nodes[d] as HitNode;
+      if (n.kind === 'box' && ownLayer(n)) continue;
+      let p = n.parent;
+      let inked = true;
+      while (p !== at && p >= 0) {
+        const q = s.nodes[p] as HitNode;
+        if (q.clips || (q.kind === 'box' && ownLayer(q))) inked = false;
+        p = q.parent;
+      }
+      if (!inked || p !== at) continue;
+      if (n.x < x0) x0 = n.x;
+      if (n.y < y0) y0 = n.y;
+      if (n.x + n.width > x1) x1 = n.x + n.width;
+      if (n.y + n.height > y1) y1 = n.y + n.height;
+      if (n.kind !== 'text') continue;
+      if (n.inkLeft < x0) x0 = n.inkLeft;
+      if (n.inkTop < y0) y0 = n.inkTop;
+      if (n.inkRight > x1) x1 = n.inkRight;
+      if (n.inkBottom > y1) y1 = n.inkBottom;
+    }
+  }
+  s.inks.set(`${at}`, { left: x0, top: y0, right: x1, bottom: y1 });
+}
+
+/** The node with an atomic inline's ink overflow, when it has one. */
+function withInk(s: TableState, n: HitNode, i: number): HitNode {
+  const k = s.inks.get(`${i}`);
+  if (k === undefined) return n;
+  return {
+    kind: n.kind, parent: n.parent, target: n.target, x: n.x, y: n.y, width: n.width, height: n.height, clips: n.clips, borderTop: n.borderTop, borderRight: n.borderRight,
+    borderBottom: n.borderBottom, borderLeft: n.borderLeft, layer: n.layer, absolute: n.absolute, fixed: n.fixed, atomic: n.atomic, order: n.order, layerOrder: n.layerOrder, line: n.line,
+    inkLeft: k.left, inkTop: k.top, inkRight: k.right, inkBottom: k.bottom, pointerEvents: n.pointerEvents, radii: n.radii,
+    context: n.context, transformed: n.transformed, scaleX: n.scaleX, scaleY: n.scaleY, offsetX: n.offsetX, offsetY: n.offsetY,
+  };
 }
 
 /** css-overflow-3 §3: a scroll container (at rest) and clip on both axes clip hits to the padding box. */
@@ -1073,7 +1258,7 @@ function clipsBothAxes(style: LayoutStyle): boolean {
  * replaced box like any block child (BoxFragmentPainter::HitTestBlockChildren; a flex item is painted atomically), and a point
  * inside an iframe's content box returns the iframe element itself to the outer document's elementFromPoint.
  */
-function replacedNode(s: TableState, c: ReplacedLeaf, parent: number, orders: Map<string, number> | null, ox: number, oy: number, sox: number, soy: number): void {
+function replacedNode(s: TableState, c: ReplacedLeaf, parent: number, orders: Map<string, number> | null, ox: number, oy: number, sox: number, soy: number, line: number): void {
   const f = s.facts.get(c.id);
   if (f === undefined) throw new HitError(`no hit facts for replaced element ${c.id}`);
   const pe = s.faults.pointerEventsNotInherited && f.inherited ? 'auto' : f.pointerEvents;
@@ -1083,14 +1268,16 @@ function replacedNode(s: TableState, c: ReplacedLeaf, parent: number, orders: Ma
   const border = resolveBorder(style, s.ctx.devicePixelRatio);
   const order = orders === null ? undefined : orders.get(c.id);
   const paint = paintOf(c.id, f, r, s.dpr, ox, oy, sox, soy, s.faults);
+  if (line >= 0 && (paint.context || paint.transformed)) throw new HitError(contextAtomicRefusal(c.id));
   pushNode(s, {
     kind: 'box', parent, target: s.nodes.length, x: r.x, y: r.y, width: r.width, height: r.height, clips: c.style.overflowX === 'hidden',
     borderTop: border.top, borderRight: border.right, borderBottom: border.bottom, borderLeft: border.left, layer: c.style.position !== 'static',
-    absolute: c.style.position === 'absolute', fixed: c.style.position === 'fixed', atomic: orders !== null, order: order === undefined ? 0 : order,
-    layerOrder: orders !== null && c.style.position !== 'absolute' && c.style.position !== 'fixed' ? c.style.order : 0, line: -1,
+    absolute: c.style.position === 'absolute', fixed: c.style.position === 'fixed', atomic: orders !== null || line >= 0, order: order === undefined ? 0 : order,
+    layerOrder: orders !== null && c.style.position !== 'absolute' && c.style.position !== 'fixed' ? c.style.order : 0, line,
     inkLeft: 0, inkTop: 0, inkRight: 0, inkBottom: 0, pointerEvents: pe, radii: roundedOf(r.x, r.y, r.width, r.height, border, f.radii, s.dpr, paint.transformed && !(paint.scaleX === 1 && paint.scaleY === 1) ? r.x : sox, paint.transformed && !(paint.scaleX === 1 && paint.scaleY === 1) ? r.y : soy),
     context: paint.context, transformed: paint.transformed, scaleX: paint.scaleX, scaleY: paint.scaleY, offsetX: paint.offsetX, offsetY: paint.offsetY,
   }, c.id, f.activation);
+  if (line >= 0) atomicInk(s, s.nodes.length - 1);
 }
 
 function inlineRefusal(id: string, kind: 'inline' | 'br'): string {
@@ -1128,8 +1315,23 @@ function floatRefusal(id: string): string {
   return `${id} is a float, which the hit table does not model yet (FLT; no Chrome hit capture)`;
 }
 
+function percentPadded(style: LayoutStyle): boolean {
+  return hasPercent(style.paddingTop) || hasPercent(style.paddingRight) || hasPercent(style.paddingBottom) || hasPercent(style.paddingLeft);
+}
+
+/** inlineAtomicNodes places a block's lines over its content box, which it does not resolve percentage padding for. */
+function paddingRefusal(id: string): string {
+  return `${id} has percentage padding around atomic inlines, whose lines the hit table does not place yet (INL2a)`;
+}
+
+/** No Chrome hit capture orders an atomic inline that is its own stacking context, or transformed, against its line's text yet. */
+function contextAtomicRefusal(id: string): string {
+  return `${id} is an atomic inline that forms a stacking context or is transformed, which no Chrome hit capture orders against its line yet (INL2c)`;
+}
+
+/** An atomic inline outside an inline formatting context (which the compiler never builds) has no line to paint on. */
 function atomicRefusal(id: string): string {
-  return `${id} is an atomic inline, which the hit table does not model yet (INL2a and G-INL: inline-block, inline-flex and inline-grid on their lines; no Chrome hit capture)`;
+  return `${id} is an atomic inline outside an inline formatting context, which the hit table does not model (INL2a)`;
 }
 
 /**
@@ -1148,11 +1350,12 @@ function boxHitRefusal(b: LayoutBox): string | null {
     if (child.kind === 'control' && !hitModelsControl(child)) return controlRefusal(child.id);
     const c = child.kind === 'control' ? hitControlBox(child) : child;
     if (c.kind === 'inline' || c.kind === 'br') return inlineRefusal(c.id, c.kind);
-    if (c.kind === 'replaced' && isAtomicInline(c)) return atomicRefusal(c.id);
+    if ((c.kind === 'replaced' || c.kind === 'box') && isAtomicInline(c) && b.strut !== null && percentPadded(b.style)) return paddingRefusal(b.id);
+    if (c.kind === 'replaced' && isAtomicInline(c) && b.strut === null) return atomicRefusal(c.id);
     if ((c.kind === 'box' || c.kind === 'replaced') && c.style.float !== 'none' && c.style.position !== 'absolute' && c.style.position !== 'fixed' && (b.style.display === 'block' || b.style.display === 'inline-block')) return floatRefusal(c.id);
     if (c.kind === 'box') {
       if (c.style.lineClamp > 0) return clampRefusal(c.id);
-      if (isAtomicInline(c)) return atomicRefusal(c.id);
+      if (isAtomicInline(c) && b.strut === null) return atomicRefusal(c.id);
       const r = boxHitRefusal(c);
       if (r !== null) return r;
     }
@@ -1166,6 +1369,27 @@ function boxHitRefusal(b: LayoutBox): string | null {
  */
 export function hitRefusal(input: LayoutInput): string | null {
   return boxHitRefusal(input.root);
+}
+
+/** The first atomic inline on a line under b whose hit facts make it a stacking context or transform it, or null. */
+function boxContextRefusal(b: LayoutBox, facts: ReadonlyMap<string, HitFact>): string | null {
+  for (const child of b.children) {
+    const c = child.kind === 'control' ? hitControlBox(child) : child;
+    if ((c.kind === 'box' || c.kind === 'replaced') && isAtomicInline(c) && b.strut !== null) {
+      const f = facts.get(c.id);
+      if (f !== undefined && (f.context || f.transform.length > 0)) return contextAtomicRefusal(c.id);
+    }
+    if (c.kind === 'box') {
+      const r = boxContextRefusal(c, facts);
+      if (r !== null) return r;
+    }
+  }
+  return null;
+}
+
+/** Why hitTableOf refuses an input with these hit facts beyond hitRefusal: an atomic inline that is a stacking context (INL2c). */
+export function hitFactsRefusal(input: LayoutInput, facts: ReadonlyMap<string, HitFact>): string | null {
+  return boxContextRefusal(input.root, facts);
 }
 
 /** The input as layout resolved it, with the caller's measurer; a refusal there is a HitError, as the layout's own is. */
@@ -1182,7 +1406,8 @@ function hitZoomed(input: LayoutInput, measurer: TextMeasurer): LayoutInput {
 export function hitTableOf(input: LayoutInput, measurer: TextMeasurer, facts: ReadonlyMap<string, HitFact>, faults: HitTableFaults): HitTable {
   // The named refusal comes first, so a case is refused for what hitRefusal names, not for whatever the walk meets before it
   // (line-clamp-lines' walk meets l7's Ahem p glyphs over several lines first).
-  const refused = hitRefusal(input);
+  const named = hitRefusal(input);
+  const refused = named !== null ? named : hitFactsRefusal(input, facts);
   if (refused !== null) throw new HitError(refused);
   const out = layout(input, measurer);
   if (out.kind !== 'ok') throw new HitError(`the engine refused the input (${out.unsupported.code} at ${out.unsupported.nodeId})`);
@@ -1190,9 +1415,11 @@ export function hitTableOf(input: LayoutInput, measurer: TextMeasurer, facts: Re
   const zmap = new Map<string, LayoutBox>();
   const rmap = new Map<string, LayoutStyle>();
   indexZoomed(zmap, rmap, zoomed.root);
-  const s: TableState = { nodes: [], ids: [], activation: [], abs: absoluteRects(out.boxes), boxes: out.boxes, zoomed: zmap, zoomedReplaced: rmap, ctx: { measurer, devicePixelRatio: zoomed.devicePixelRatio, faults: NO_ENGINE_FAULTS, gridFaults: NO_GRID_FAULTS }, dpr: input.devicePixelRatio, facts, faults };
-  boxNodes(s, input.root, -1, null, -1, 'auto', 0, 0, 0, 0);
-  return { nodes: s.nodes, ids: s.ids, activation: s.activation };
+  const s: TableState = { nodes: [], ids: [], activation: [], abs: absoluteRects(out.boxes), boxes: out.boxes, zoomed: zmap, zoomedReplaced: rmap, inks: new Map<string, InkRect>(), buttons: new Map<string, boolean>(), ctx: { measurer, devicePixelRatio: zoomed.devicePixelRatio, faults: NO_ENGINE_FAULTS, gridFaults: NO_GRID_FAULTS }, dpr: input.devicePixelRatio, facts, faults };
+  boxNodes(s, input.root, -1, null, -1, 'auto', 0, 0, 0, 0, -1);
+  const nodes: HitNode[] = [];
+  for (let i = 0; i < s.nodes.length; i++) nodes.push(withInk(s, s.nodes[i] as HitNode, i));
+  return { nodes, ids: s.ids, activation: s.activation };
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
