@@ -6683,7 +6683,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@2048-2080|page/song-call/mini-video-shell has a box-shadow and position: fixed; Chrome paints it after the in-flow content of its stacking context, and android keeps its shadow at its tree place until the stacking sort lands",
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@2048-2080|page/song-call/mini-video-shell has a box-shadow and position: fixed; Chrome paints it after the in-flow content of its stacking context, and android's shadow backdrop for a positioned box is not proven against Chrome yet",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "android",
@@ -6695,14 +6695,14 @@
     "column": 14,
     "text": "0 16px 40px var(--shadow-strong)"
    },
-   "message": "page/song-call/mini-video-shell has a box-shadow and position: fixed; Chrome paints it after the in-flow content of its stacking context, and android keeps its shadow at its tree place until the stacking sort lands",
+   "message": "page/song-call/mini-video-shell has a box-shadow and position: fixed; Chrome paints it after the in-flow content of its stacking context, and android's shadow backdrop for a positioned box is not proven against Chrome yet",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@2048-2080|page/song-call/mini-video-shell has a box-shadow and position: fixed; Chrome paints it after the in-flow content of its stacking context, and ios keeps its shadow at its tree place until the stacking sort lands",
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@2048-2080|page/song-call/mini-video-shell has a box-shadow and position: fixed; Chrome paints it after the in-flow content of its stacking context, and ios's shadow backdrop for a positioned box is not proven against Chrome yet",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "ios",
@@ -6714,7 +6714,7 @@
     "column": 14,
     "text": "0 16px 40px var(--shadow-strong)"
    },
-   "message": "page/song-call/mini-video-shell has a box-shadow and position: fixed; Chrome paints it after the in-flow content of its stacking context, and ios keeps its shadow at its tree place until the stacking sort lands",
+   "message": "page/song-call/mini-video-shell has a box-shadow and position: fixed; Chrome paints it after the in-flow content of its stacking context, and ios's shadow backdrop for a positioned box is not proven against Chrome yet",
    "viaRelated": false,
    "passes": [
     "C-context"
@@ -7006,7 +7006,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@2716-2842|page/song-call/record has a box-shadow and position: relative; Chrome paints it after the in-flow content of its stacking context, and android keeps its shadow at its tree place until the stacking sort lands",
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@2716-2842|page/song-call/record has a box-shadow and position: relative; Chrome paints it after the in-flow content of its stacking context, and android's shadow backdrop for a positioned box is not proven against Chrome yet",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "android",
@@ -7018,14 +7018,14 @@
     "column": 3,
     "text": "0 28px 70px var(--shadow-strong),\n\t\tinset 0 0 0 0.7rem rgba(255, 255, 255, 0.02),\n\t\tinset 0 0 2.5rem rgba(255, 255, 255, 0.05)"
    },
-   "message": "page/song-call/record has a box-shadow and position: relative; Chrome paints it after the in-flow content of its stacking context, and android keeps its shadow at its tree place until the stacking sort lands",
+   "message": "page/song-call/record has a box-shadow and position: relative; Chrome paints it after the in-flow content of its stacking context, and android's shadow backdrop for a positioned box is not proven against Chrome yet",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@2716-2842|page/song-call/record has a box-shadow and position: relative; Chrome paints it after the in-flow content of its stacking context, and ios keeps its shadow at its tree place until the stacking sort lands",
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@2716-2842|page/song-call/record has a box-shadow and position: relative; Chrome paints it after the in-flow content of its stacking context, and ios's shadow backdrop for a positioned box is not proven against Chrome yet",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "ios",
@@ -7037,14 +7037,14 @@
     "column": 3,
     "text": "0 28px 70px var(--shadow-strong),\n\t\tinset 0 0 0 0.7rem rgba(255, 255, 255, 0.02),\n\t\tinset 0 0 2.5rem rgba(255, 255, 255, 0.05)"
    },
-   "message": "page/song-call/record has a box-shadow and position: relative; Chrome paints it after the in-flow content of its stacking context, and ios keeps its shadow at its tree place until the stacking sort lands",
+   "message": "page/song-call/record has a box-shadow and position: relative; Chrome paints it after the in-flow content of its stacking context, and ios's shadow backdrop for a positioned box is not proven against Chrome yet",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@3141-3221|page/song-call/record-label has a box-shadow and position: absolute; Chrome paints it after the in-flow content of its stacking context, and android keeps its shadow at its tree place until the stacking sort lands",
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@3141-3221|page/song-call/record-label has a box-shadow and position: absolute; Chrome paints it after the in-flow content of its stacking context, and android's shadow backdrop for a positioned box is not proven against Chrome yet",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "android",
@@ -7056,14 +7056,14 @@
     "column": 3,
     "text": "0 0 0 0.35rem rgba(255, 255, 255, 0.05),\n\t\tinset 0 0 1.25rem rgba(0, 0, 0, 0.45)"
    },
-   "message": "page/song-call/record-label has a box-shadow and position: absolute; Chrome paints it after the in-flow content of its stacking context, and android keeps its shadow at its tree place until the stacking sort lands",
+   "message": "page/song-call/record-label has a box-shadow and position: absolute; Chrome paints it after the in-flow content of its stacking context, and android's shadow backdrop for a positioned box is not proven against Chrome yet",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@3141-3221|page/song-call/record-label has a box-shadow and position: absolute; Chrome paints it after the in-flow content of its stacking context, and ios keeps its shadow at its tree place until the stacking sort lands",
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@3141-3221|page/song-call/record-label has a box-shadow and position: absolute; Chrome paints it after the in-flow content of its stacking context, and ios's shadow backdrop for a positioned box is not proven against Chrome yet",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "ios",
@@ -7075,7 +7075,7 @@
     "column": 3,
     "text": "0 0 0 0.35rem rgba(255, 255, 255, 0.05),\n\t\tinset 0 0 1.25rem rgba(0, 0, 0, 0.45)"
    },
-   "message": "page/song-call/record-label has a box-shadow and position: absolute; Chrome paints it after the in-flow content of its stacking context, and ios keeps its shadow at its tree place until the stacking sort lands",
+   "message": "page/song-call/record-label has a box-shadow and position: absolute; Chrome paints it after the in-flow content of its stacking context, and ios's shadow backdrop for a positioned box is not proven against Chrome yet",
    "viaRelated": false,
    "passes": [
     "C-context"
@@ -7348,7 +7348,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@4186-4260|page/song-call/record-center has a box-shadow and position: absolute; Chrome paints it after the in-flow content of its stacking context, and android keeps its shadow at its tree place until the stacking sort lands",
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@4186-4260|page/song-call/record-center has a box-shadow and position: absolute; Chrome paints it after the in-flow content of its stacking context, and android's shadow backdrop for a positioned box is not proven against Chrome yet",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "android",
@@ -7360,14 +7360,14 @@
     "column": 3,
     "text": "0 0 0 0.2rem rgba(255, 255, 255, 0.18),\n\t\t0 0.3rem 1rem rgba(0, 0, 0, 0.5)"
    },
-   "message": "page/song-call/record-center has a box-shadow and position: absolute; Chrome paints it after the in-flow content of its stacking context, and android keeps its shadow at its tree place until the stacking sort lands",
+   "message": "page/song-call/record-center has a box-shadow and position: absolute; Chrome paints it after the in-flow content of its stacking context, and android's shadow backdrop for a positioned box is not proven against Chrome yet",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@4186-4260|page/song-call/record-center has a box-shadow and position: absolute; Chrome paints it after the in-flow content of its stacking context, and ios keeps its shadow at its tree place until the stacking sort lands",
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@4186-4260|page/song-call/record-center has a box-shadow and position: absolute; Chrome paints it after the in-flow content of its stacking context, and ios's shadow backdrop for a positioned box is not proven against Chrome yet",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "ios",
@@ -7379,7 +7379,7 @@
     "column": 3,
     "text": "0 0 0 0.2rem rgba(255, 255, 255, 0.18),\n\t\t0 0.3rem 1rem rgba(0, 0, 0, 0.5)"
    },
-   "message": "page/song-call/record-center has a box-shadow and position: absolute; Chrome paints it after the in-flow content of its stacking context, and ios keeps its shadow at its tree place until the stacking sort lands",
+   "message": "page/song-call/record-center has a box-shadow and position: absolute; Chrome paints it after the in-flow content of its stacking context, and ios's shadow backdrop for a positioned box is not proven against Chrome yet",
    "viaRelated": false,
    "passes": [
     "C-context"
@@ -7652,7 +7652,7 @@
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@6382-6415|page/library-call/library has a box-shadow and position: fixed; Chrome paints it after the in-flow content of its stacking context, and android keeps its shadow at its tree place until the stacking sort lands",
+   "key": "DRAGON_UNSUPPORTED_VALUE|android|css@6382-6415|page/library-call/library has a box-shadow and position: fixed; Chrome paints it after the in-flow content of its stacking context, and android's shadow backdrop for a positioned box is not proven against Chrome yet",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "android",
@@ -7664,14 +7664,14 @@
     "column": 14,
     "text": "-24px 0 70px var(--shadow-strong)"
    },
-   "message": "page/library-call/library has a box-shadow and position: fixed; Chrome paints it after the in-flow content of its stacking context, and android keeps its shadow at its tree place until the stacking sort lands",
+   "message": "page/library-call/library has a box-shadow and position: fixed; Chrome paints it after the in-flow content of its stacking context, and android's shadow backdrop for a positioned box is not proven against Chrome yet",
    "viaRelated": false,
    "passes": [
     "C-context"
    ]
   },
   {
-   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@6382-6415|page/library-call/library has a box-shadow and position: fixed; Chrome paints it after the in-flow content of its stacking context, and ios keeps its shadow at its tree place until the stacking sort lands",
+   "key": "DRAGON_UNSUPPORTED_VALUE|ios|css@6382-6415|page/library-call/library has a box-shadow and position: fixed; Chrome paints it after the in-flow content of its stacking context, and ios's shadow backdrop for a positioned box is not proven against Chrome yet",
    "code": "DRAGON_UNSUPPORTED_VALUE",
    "severity": "error",
    "target": "ios",
@@ -7683,7 +7683,7 @@
     "column": 14,
     "text": "-24px 0 70px var(--shadow-strong)"
    },
-   "message": "page/library-call/library has a box-shadow and position: fixed; Chrome paints it after the in-flow content of its stacking context, and ios keeps its shadow at its tree place until the stacking sort lands",
+   "message": "page/library-call/library has a box-shadow and position: fixed; Chrome paints it after the in-flow content of its stacking context, and ios's shadow backdrop for a positioned box is not proven against Chrome yet",
    "viaRelated": false,
    "passes": [
     "C-context"
