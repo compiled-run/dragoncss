@@ -504,6 +504,8 @@ function resolveTreeWith(root: LinkedElement, rules: readonly Rule[], faults: Co
     // An inline formatting context is a maximal sequence of text, inline boxes and <br>s; display: none elements generate no box
     // (CSS2 §9.2.4), so they do not end it, and any other element does (CSS2 §9.2.1.1, css-flexbox-1 §4).
     const collapsed = new Map<LinkedText, string>();
+    const sources = new Map<LinkedText, string>();
+    const keeps = new Map<LinkedText, boolean>();
     const refusals = new Map<LinkedText, string>();
     // null is a <br>, and 'atomic' an atomic inline, which stays in the context as U+FFFC (INL-P f5-break-space-atomic).
     let run: (LinkedText | null | 'atomic')[] = [];
@@ -517,8 +519,12 @@ function resolveTreeWith(root: LinkedElement, rules: readonly Rule[], faults: Co
       const transformed = transformRun(transforms, faults, refusals);
       const strings = run.map((t) => (t === null ? null : t === 'atomic' ? ATOMIC_RUN : (transformed.get(t) as string)));
       const texts = modes.every((m) => m === 'collapse') ? collapseInlineContext(strings) : phaseOneContext(strings, modes, faults);
+      const kept = run.some((t, i) => t !== null && t !== 'atomic' && texts[i] !== '');
       run.forEach((t, i) => {
-        if (t !== null && t !== 'atomic') collapsed.set(t, texts[i] as string);
+        if (t === null || t === 'atomic') return;
+        collapsed.set(t, texts[i] as string);
+        sources.set(t, strings[i] as string);
+        keeps.set(t, kept);
       });
       run = [];
       modes = [];
@@ -560,21 +566,37 @@ function resolveTreeWith(root: LinkedElement, rules: readonly Rule[], faults: Co
     };
     gather(kids, props);
     flush();
-    const place = (owner: { children: (ResolvedElement | ResolvedText)[] }, ownerProps: ReadonlyMap<Longhand, ResolvedValue>, items: readonly (ResolvedElement | LinkedText)[]): void => {
+    const place = (owner: { children: (ResolvedElement | ResolvedText)[] } & ResolvedElement, ownerProps: ReadonlyMap<Longhand, ResolvedValue>, items: readonly (ResolvedElement | LinkedText)[]): void => {
+      const dropped: DroppedText[] = [];
+      let waiting: { readonly text: ResolvedText; readonly source: string }[] = [];
+      const push = (child: ResolvedElement | ResolvedText): void => {
+        for (const w of waiting) dropped.push({ ...w, next: child });
+        waiting = [];
+        owner.children.push(child);
+      };
       for (const kid of items) {
         if (kid.kind === 'element') {
-          owner.children.push(kid);
+          push(kid);
           const pending = pendingInline.get(kid);
           if (pending !== undefined) place(kid as { children: (ResolvedElement | ResolvedText)[] } & ResolvedElement, kid.props, pending);
           continue;
         }
         const text = collapsed.get(kid);
-        if (text === undefined) throw new Error(`${kid.address}: text outside any inline formatting context`);
-        if (text.length === 0) continue;
+        const source = sources.get(kid);
+        if (text === undefined || source === undefined) throw new Error(`${kid.address}: text outside any inline formatting context`);
         const refusal = refusals.get(kid);
         const resolvedText: ResolvedText = { kind: 'text', node: kid, text, props: textProps(ownerProps, faults, environment.ua), smallCaps: !faults.smallCapsUnsynthesized && synthesizesSmallCaps(ownerProps) };
-        owner.children.push(refusal === undefined ? resolvedText : { ...resolvedText, transformRefusal: refusal });
+        if (text.length === 0) {
+          // A phone may change a text only in a context that keeps one; an empty text is kept anywhere, for a phone to refuse by name.
+          if (keeps.get(kid) === true || source === '') waiting.push({ text: resolvedText, source });
+          continue;
+        }
+        const placed = refusal === undefined ? resolvedText : { ...resolvedText, transformRefusal: refusal };
+        if (source !== text) textSources.set(placed, source);
+        push(placed);
       }
+      for (const w of waiting) dropped.push({ ...w, next: null });
+      if (dropped.length > 0) droppedTexts.set(owner, dropped);
     };
     place(self, props, kids);
     return self;
@@ -627,6 +649,21 @@ function liftTopLayer(root: ResolvedElement): void {
 }
 
 const resolvedEnvironments = new WeakMap<ResolvedElement, ResolveEnvironment>();
+
+/** A text phase I dropped from an element's children: its text "", its phase I input (after text-transform), and the child it sat before. */
+export type DroppedText = { readonly text: ResolvedText; readonly source: string; readonly next: ResolvedElement | ResolvedText | null };
+const droppedTexts = new WeakMap<ResolvedElement, readonly DroppedText[]>();
+const textSources = new WeakMap<ResolvedText, string>();
+
+/** The texts phase I dropped from el's children, in tree order: those in a context that keeps a text, and every empty one. */
+export function droppedTextsOf(el: ResolvedElement): readonly DroppedText[] {
+  return droppedTexts.get(el) ?? [];
+}
+
+/** A kept text's phase I input (after text-transform): its own text unless phase I changed it. */
+export function textSourceOf(t: ResolvedText): string {
+  return textSources.get(t) ?? t.text;
+}
 
 /** GEN-a: a generated box's pseudo-element and its host (R2). */
 export type GeneratedInfo = { readonly pseudo: GeneratedPseudo; readonly host: ResolvedElement };

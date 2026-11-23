@@ -59,7 +59,7 @@ import type { CssValue } from '../css/stylesheet.ts';
 import { exactLayoutRatio, MATH_VALUE_FUNCTIONS } from '../css/values.ts';
 import { FONT_METRIC_LAYOUT_UNITS } from '../css/units.ts';
 import type { ResolvedElement, ResolvedText, ResolvedValue } from '../analysis/resolve.ts';
-import { initialValue, isInitialByProvenance, valueToString } from '../analysis/resolve.ts';
+import { droppedTextsOf, initialValue, isInitialByProvenance, textSourceOf, valueToString } from '../analysis/resolve.ts';
 import { lineClampOf } from '../analysis/line-clamp.ts';
 import type { ListItemMarker } from '../analysis/markers.ts';
 import { listItemMarkers } from '../analysis/markers.ts';
@@ -760,7 +760,74 @@ const isInlineLevel = (c: ResolvedElement | ResolvedText): boolean => c.kind ===
  * propagated is the element whose overflow the viewport took (viewportOverflow), which uses visible. zoom is the zoom chain of the
  * element whose content is being lowered: the one its text and anonymous boxes take, and the parent chain of its children.
  */
-type Lowerer = { readonly anchors: Map<string, AnchorFacts>; readonly faults: CompilerFaults; readonly ua: UaDataset; readonly rootFontSize: number | null; readonly images: ImageNaturals; readonly mode: LowerMode; readonly propagated: string | null; readonly markers: ReadonlyMap<string, ListItemMarker>; readonly zoom: readonly number[] };
+type Lowerer = { readonly anchors: Map<string, AnchorFacts>; readonly faults: CompilerFaults; readonly ua: UaDataset; readonly rootFontSize: number | null; readonly images: ImageNaturals; readonly mode: LowerMode; readonly propagated: string | null; readonly markers: ReadonlyMap<string, ListItemMarker>; readonly zoom: readonly number[]; readonly texts: LoweredTextFacts; readonly container: TextContainer };
+
+/** The block container whose inline formatting context the content being lowered is in, and the strut it has with inline content. */
+type TextContainer = { readonly id: string; readonly strut: () => LineStrut | null };
+
+/** A text phase I dropped, placed in the lowered tree: before next (null: last) among parent's children, in container's context. */
+export type LoweredDroppedText = { readonly container: string; readonly strut: LineStrut | null; readonly parent: string; readonly next: string | null; readonly leaf: TextLeaf; readonly source: string };
+/** The phase I input of each kept text leaf whose input differs from its text, by leaf id, and the dropped texts, in tree order. */
+export type LoweredTextFacts = { readonly sources: [string, string][]; readonly dropped: LoweredDroppedText[] };
+const loweredTexts = new WeakMap<LayoutBox, LoweredTextFacts>();
+
+/** The text facts of a tree lowerTree returned, beside it (the tree itself holds only phase I results). */
+export function loweredTextFactsOf(root: LayoutBox): LoweredTextFacts | undefined {
+  return loweredTexts.get(root);
+}
+
+type DroppedItem = { readonly kind: 'dropped'; readonly text: ResolvedText; readonly source: string; readonly owner: string };
+type Kid = ResolvedElement | ResolvedText;
+const kidId = (k: Kid): string => (k.kind === 'text' ? k.node.address : k.element.address);
+
+/** boxChildren with the texts phase I dropped from el and its display: contents children in their places. */
+function withDropped(el: ResolvedElement): (Kid | DroppedItem)[] {
+  const dropped = droppedTextsOf(el);
+  let placed = 0;
+  const before = (c: Kid | null): DroppedItem[] => dropped.filter((d) => d.next === c).map((d): DroppedItem => {
+    placed++;
+    return { kind: 'dropped', text: d.text, source: d.source, owner: el.element.address };
+  });
+  const out: (Kid | DroppedItem)[] = [];
+  for (const c of el.children) {
+    out.push(...before(c));
+    if (c.kind === 'text') out.push(c);
+    else if (displayOf(c) === 'contents' && !isReplacedTag(c.element.tag)) out.push(...withDropped(c));
+    else if (displayOf(c) !== 'none') out.push(c);
+  }
+  out.push(...before(null));
+  if (placed !== dropped.length) throw new Error(`${el.element.address}: a text phase I dropped sits before a child the element no longer holds`);
+  return out;
+}
+
+/** Where a dropped text goes in the lowered tree: its parent, the container whose context it is in, and the sibling it precedes. */
+type DroppedPlace = { readonly parent: string; readonly container: TextContainer; readonly next: string | null };
+
+/** Records each dropped text of all (withDropped of an element whose box children are kids, in order) where place puts it between two kids. */
+function recordDropped(all: readonly (Kid | DroppedItem)[], kids: readonly Kid[], l: Lowerer, place: (prev: Kid | null, next: Kid | null) => DroppedPlace): void {
+  let j = 0;
+  for (const item of all) {
+    if (item.kind !== 'dropped') {
+      if (kids[j] !== item) throw new Error(`${kidId(item)}: the dropped texts' child list differs from the box's children`);
+      j++;
+      continue;
+    }
+    const at = place(kids[j - 1] ?? null, kids[j] ?? null);
+    let leaf: TextLeaf;
+    let strut: LineStrut | null;
+    try {
+      // Its face is its owner's: the text inherits every font property from it, and faces are resolved for laid-out texts only.
+      const id = item.text.node.address;
+      leaf = lowerText(item.text, { ...l.mode, faceOf: (a) => l.mode.faceOf(a === id ? item.owner : a) }, l.zoom);
+      strut = at.container.strut();
+    } catch (e) {
+      // An empty text alone in a context the lowering cannot lay text out in stays unrecorded: no phone could fill it.
+      if (e instanceof LoweringError && item.source === '') continue;
+      throw e;
+    }
+    l.texts.dropped.push({ container: at.container.id, strut, parent: at.parent, next: at.next, leaf, source: item.source });
+  }
+}
 
 /**
  * One piece of inline content (CSS2 §9.2.2): a text leaf, a <br> as a LineBreak, or an inline box with its own font and
@@ -769,7 +836,12 @@ type Lowerer = { readonly anchors: Map<string, AnchorFacts>; readonly faults: Co
  * carries them (C5).
  */
 function lowerInline(c: ResolvedElement | ResolvedText, l: Lowerer): InlineChild {
-  if (c.kind === 'text') return lowerText(c, l.mode, l.zoom);
+  if (c.kind === 'text') {
+    const leaf = lowerText(c, l.mode, l.zoom);
+    const source = textSourceOf(c);
+    if (source !== c.text) l.texts.sources.push([leaf.id, source]);
+    return leaf;
+  }
   const id = c.element.address;
   const zoom = zoomChain(c, l.zoom);
   const own = lowerFont(id, zoomedGet(id, (p: TextLonghand) => (c.props.get(p) as ResolvedValue).value, zoom), l.mode);
@@ -794,6 +866,7 @@ function lowerInline(c: ResolvedElement | ResolvedText, l: Lowerer): InlineChild
       throw e;
     }
   }
+  recordDropped(withDropped(c), kids, inner, (_prev, next) => ({ parent: id, container: l.container, next: next === null ? null : kidId(next) }));
   return { kind: 'inline', id, style: lowerStyle(c, l.faults, l.ua, l.rootFontSize, NO_LAST_BASELINE, zoom, l.mode), font: own.font, lineHeight: own.lineHeight, children: kids.map((k) => lowerInline(k, inner)) };
 }
 
@@ -825,7 +898,8 @@ function anonymousBox(parent: ResolvedElement, id: string, items: readonly (Reso
   // Its effective zoom is its parent's (l.zoom), which its inherited text-indent takes.
   const style = lowerStyleFrom(id, zoomedGet(id, (p) => values.get(p) as CssValue, l.zoom), (p) => !INHERITED.has(p), l.faults, l.ua, { em: null, rem: null }, lastBaseline, 0, l.zoom);
   for (const t of items) if (t.kind === 'text') assertTextCarriesContainer(style, id, t);
-  return { kind: 'box', id, boxType: 'anonymous', style, strut: strutOf(parent, items.length > 0, l.mode, l.zoom), marker: null, children: items.map((c) => lowerInlineLevel(c, l)) };
+  const inner: Lowerer = { ...l, container: { id, strut: () => strutOf(parent, true, l.mode, l.zoom) } };
+  return { kind: 'box', id, boxType: 'anonymous', style, strut: strutOf(parent, items.length > 0, l.mode, l.zoom), marker: null, children: items.map((c) => lowerInlineLevel(c, inner)) };
 }
 
 /**
@@ -840,10 +914,14 @@ export function lowerTree(root: ResolvedElement, faults: CompilerFaults, ua: UaD
   // The engine input's rootFontSize (V2) needs the root's font size in px, so a root whose font-size did not compute to px is refused here.
   const markers = new Map(listItemMarkers(root, faults).map((m) => [m.address, m] as const));
   const anchors = new Map<string, AnchorFacts>();
-  const box = lowerBox(root, { anchors, faults, ua, rootFontSize: rootFontSizeOf(root), images, mode, propagated: viewportOverflow(root, faults).source, markers, zoom: [] }, null);
+  const texts: LoweredTextFacts = { sources: [], dropped: [] };
+  const container: TextContainer = { id: root.element.address, strut: () => null };
+  const box = lowerBox(root, { anchors, faults, ua, rootFontSize: rootFontSizeOf(root), images, mode, propagated: viewportOverflow(root, faults).source, markers, zoom: [], texts, container }, null);
   if (box.kind !== 'box') throw new LoweringError(root.element.address, 'display', `the root element ${root.element.address} lowered to a control box`);
   try {
-    return lowerAnchors(box, anchors);
+    const lowered = lowerAnchors(box, anchors);
+    loweredTexts.set(lowered, texts);
+    return lowered;
   } catch (e) {
     if (e instanceof AnchorLoweringError) throw new LoweringError(e.nodeId, e.property, e.message);
     throw e;
@@ -971,7 +1049,7 @@ function lowerBox(given: ResolvedElement, l: Lowerer, gridParent: GridContainer 
   const zoom = zoomChain(el, l.zoom);
   const lowered = lowerStyle(el, l.faults, l.ua, l.rootFontSize, { items: display === 'grid' || display === 'inline-grid', self: gridParent !== null }, zoom, l.mode);
   // Its text, anonymous boxes and children lower at its effective zoom.
-  const lc: Lowerer = { ...l, zoom };
+  const lc: Lowerer = { ...l, zoom, container: { id, strut: () => strutOf(el, true, l.mode, zoom) } };
   // css-overflow-3 §3.3: the element the viewport took its overflow from uses visible.
   const own: LayoutStyle = id === l.propagated ? { ...lowered, overflowX: 'visible', overflowY: 'visible' } : lowered;
   // css-grid-2 §7, §8 and §9: a grid container carries its tracks; each child of one carries its placement (an absolutely
@@ -986,8 +1064,10 @@ function lowerBox(given: ResolvedElement, l: Lowerer, gridParent: GridContainer 
   const children: (LayoutBox | ControlBox | ReplacedLeaf | InlineChild)[] = [];
   let run: (ResolvedElement | ResolvedText)[] = [];
   let anon = 0;
+  const anonOf = new Map<Kid, string>();
   const flush = (): void => {
     if (run.length > 0) {
+      for (const r of run) anonOf.set(r, `${id}:anon${anon}`);
       const box = anonymousBox(el, `${id}:anon${anon++}`, run, lc);
       children.push(grid === null ? box : { ...box, style: { ...box.style, gridItem: ANONYMOUS_GRID_ITEM } });
     }
@@ -1008,6 +1088,12 @@ function lowerBox(given: ResolvedElement, l: Lowerer, gridParent: GridContainer 
     }
   }
   flush();
+  recordDropped(withDropped(given), kids, lc, (prev, next) => {
+    const inlineNext = next !== null && isInlineLevel(next);
+    const k = inlineNext ? next : prev !== null && isInlineLevel(prev) ? prev : null;
+    const own = k === null ? undefined : anonOf.get(k);
+    return { parent: own ?? id, container: own === undefined ? lc.container : { id: own, strut: lc.container.strut }, next: inlineNext || own === undefined ? (next === null ? null : kidId(next)) : null };
+  });
   // A line strut only when the box holds inline content: a block-level replaced leaf is a box of its own, not a line (REPL-a with
   // INL1a); an atomic inline is on a line (INL2a, RF-INL).
   const inlineContent = children.some((c) => (c.kind !== 'box' && c.kind !== 'control' && c.kind !== 'replaced') || (c.kind === 'box' && (c.style.display === 'inline-block' || c.style.display === 'inline-flex' || c.style.display === 'inline-grid')) || (c.kind === 'replaced' && c.style.display !== 'block' && c.style.display !== 'flex'));

@@ -227,8 +227,8 @@ The plan does not say which leaves change: the Markless style input has no such 
 
 ### Planted faults
 
-- **`givenTextCollapsedAlone` must fail** cases 1, 3, 4, 8 and 9.
-- **`fixedTextsAsLaidOut` must fail** cases 3, 5 and 8.
+- **`givenTextCollapsedAlone` must fail** cases 1, 3, 4, 8 and 9. As measured in RS2 (Chrome alone): it fails cases 1, 3, 5 and 8.
+- **`fixedTextsAsLaidOut` must fail** cases 3, 5 and 8. As measured in RS2: it fails cases 5 and 8; case 3 holds no fixed text whose phase I input differs from its laid-out string. Cases 4 and 9 go to RS3; case 10 is refused by name.
 - **Both through Chrome, not only through the build.** Each fault is run against the Chrome comparison alone, and must fail there.
 
 ## Slices
@@ -250,6 +250,8 @@ The plan does not say which leaves change: the Markless style input has no such 
 - packages/layout/src/white-space.ts (new), packages/layout/src/index.ts
 - packages/translate/src/generate.ts; packages/layout/generated/swift and kotlin (regenerated)
 - packages/dragon/src/analysis/resolve.ts, packages/dragon/src/analysis/white-space.ts (new, a byte-for-byte copy), packages/dragon/test/white-space-copy.test.ts (new)
+- packages/dragon/src/internal.ts (RS2, added by the coordinator): resolvedTextSources lives beside resolvedTextTransforms, the compiler entry markless-style-input.ts reads.
+- packages/dragon/src/lower/ios-layout.ts (RS2, added by the coordinator): a dropped text's leaf and its block container's strut come from the lowering (lowerText, strutOf), kept in a side table keyed by the lowered root, so project.ts and the lowered trees stay as they are.
 - packages/parity/src/markless-style-input.ts, packages/parity/src/markless-plan.ts
 - packages/translate/harness/harness.ts; the generated Harness.swift and Harness.kt
 - packages/parity/test/markless-rows.test.ts, markless-plan.test.ts, markless-row-text-space.test.ts (new)
@@ -287,7 +289,7 @@ Approved with amendments.
 - **Q1: no DPR 1 on the phone path.** Prove the rules with function-level unit tests against the Chrome probe strings, at ratios 2 and 3 on iOS and Android, and 2.625 on Android.
 - **Q2: a side table,** keeping `dragon.markless-plan/1` (precedent: the optional `slots?` and `transformed?`).
 - **Q3: pre-line stays refused,** and case 13 is dropped.
-- **Q4: a test-only entry point,** `runMarklessRowsLayoutWithFaults(line, faults)`. The production entry passes no faults, and the rows line and FAULT_KEYS stay unchanged.
+- **Q4: a test-only entry point,** `runMarklessRowsLayoutWithFaults(line, shaper, faults)` (it keeps runMarklessRowsLayout's shaper argument). The production entry passes no faults, and the rows line and FAULT_KEYS stay unchanged.
 - **Q5: refuse only a fixed capitalize leaf whose previous character comes from a changed text,** through a new optional `capitalized?: string[]`.
 - **Q6: refuse CR and FF in a changed text.** A separate build-side task re-captures Chrome with corrected probes; the CR and FF numbers above, 11.95 and 23.34 px, cannot be right.
 - **Q7: abspos inside inline content is a separate build-side task** after RS2, under A1.
@@ -296,3 +298,31 @@ Approved with amendments.
 - **Missing evidence before RS2 finishes:** whether the Markless hosts can draw a leaf that had no text view at build time. If they cannot, refuse by name a text that was empty at build time.
 - **Licensing.** The Blink files cited in this spec are BSD-licensed (The Chromium Authors). They were read as references only; no code is copied from them.
 - **Completion.** Markless S42 passes on both phones against the landed Dragon.
+
+## RS2 rulings (Judge, 2026-11-22)
+
+RS2 is approved with these deviations from the text above:
+
+1. **Two more files:** packages/dragon/src/internal.ts and packages/dragon/src/lower/ios-layout.ts (Files).
+2. **Q4's signature** keeps the shaper: `runMarklessRowsLayoutWithFaults(line, shaper, faults)`.
+3. **No span borders:** the engine refuses a border, padding or inline margin on an inline box (INL1b), so the fixtures' inline boxes have none, and the padded and bordered case of 3 waits for INL1b.
+4. **letter-spacing, not font-size,** tells the boxes apart: the engine refuses adjacent texts in one face, size and spacing (`text-shaping-run`, Blink shapes them as one run), and mixed font sizes add a vertical difference that has nothing to do with white space. A space's width then shows which box owns it.
+5. **Every empty text is recorded,** wherever it sits, so a host's string for one is refused by name even alone in its box (`<p>{t}</p>`); a white space only text only where its context keeps a text.
+6. **A dropped text takes its owner element's face:** it inherits every font property from it, and faces are resolved for laid-out texts only.
+7. **The two rewritten assertions** of markless-rows.test.ts: :237-250 now accepts " Groceries", "Groceries " and "" beside a `<b>`, each compared with the build; the U+200B refusal became the U+000D and U+000C refusals, and a segment break beside U+200B is accepted.
+8. **The fault lists as measured** (Planted faults, above), and `fixedTextsAsLaidOut` passes A1: at the build's own strings phase I returns its own output, and a dropped text only ever held a space another text kept, so only a changed neighbour shows the fault.
+
+**iOS inline-box height.** On iOS the fixtures compare span, b and i with Chrome on x and width only. The iOS target measures fonts as Safari does, rounding Core Text ascent and descent up to whole CSS px (system-fonts/provider.ts:127-136, feeding inline.ts:2241), and the comparator already refuses iOS against Chrome for author faces (markless-style-compare.ts:559-560). Their y and height stay covered by the device-equals-fresh-build check. Block and inline-block boxes keep all four values on both targets, and Android keeps all four everywhere.
+
+Follow-up task: iOS inline-box height in Safari. Run the RS2 fixtures (cases 0-8, Ahem and Lato, iOS 2x and 3x) through Safari on iOS with pnpm markless:style-web-column, and compare span/b/i y and height with the device. If Safari matches, add the check against Safari and close with no build change; otherwise fix provider.ts:127-136 or the inline box metrics feeding inline.ts:2241 in the build, with a planted fault. Also explain why Lato 2x matches Chrome but Lato 3x and Ahem don't.
+
+**RS3 still owes** cases 2, 4, 6, 7, 9, 11 and 12, and the bordered span once INL1b lifts.
+
+## Host evidence (2026-11-22, Markless main plus #1128)
+
+Neither host can draw a text leaf that had no box at build time, so RS2 refuses by name a changed string for a text the build dropped, and inserts dropped texts only for phase I (they never need a view: a restored space is drawn by nobody, it only moves the boxes after it).
+
+- A host sends a page text only when its export node has a frame and its laid-out text differs (StyleExport.kt:309-311, StyleExport.swift:728-736).
+- The new tree is built only from the build-time export's nodes, and a result id with no export node is ignored (StyleExport.kt:393-420, StyleExport.swift:834-862).
+- On iOS a shown text whose export text was "" and now has content fails the text check (ResolvedStyle.swift:315-318), which is a fatalError (MarklessViewController.swift:440).
+- So case 10 is a refusal test, not a Chrome case: "had no text box at build time".

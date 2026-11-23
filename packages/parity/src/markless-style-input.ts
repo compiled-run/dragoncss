@@ -6,12 +6,12 @@ import { createHash } from 'node:crypto';
 import { posix } from 'node:path';
 import { brotliDecompressSync } from 'node:zlib';
 import type { BrotliDecompress, ClassSymbol, Condition, FontMap, FrontEndResult, NativeStyles, NativeStylesConfig, NativeStyleTarget, Rgba8, SourceFile, TreeNode } from 'dragon';
-import { BAND_KEY, compiledCases, compileNativeStylesWith, decodeFontFile, isTreeNodeId, nativeBands, parseStylesheet, resolvedTextTransforms, TREE_SCHEMA_REVISION } from 'dragon';
+import { BAND_KEY, compiledCases, compileNativeStylesWith, decodeFontFile, isTreeNodeId, nativeBands, parseStylesheet, resolvedTextSources, resolvedTextTransforms, TREE_SCHEMA_REVISION } from 'dragon';
 import type { rtBand } from '@dragon/layout';
 import { textDecoration } from '@dragon/layout';
 import { FONT_REFERENCE_MAP } from './font-reference.ts';
 import { checkPlan, hexBits, PLAN_HEIGHTS, slottedLayout } from './markless-plan.ts';
-import type { MarklessPlan } from './markless-plan.ts';
+import type { MarklessPlan, PlanText } from './markless-plan.ts';
 import { withFontMapAssets } from './fixture-groups/fonts.ts';
 import { DOCUMENT_ID, PROJECT_ID } from './fixture-reader.ts';
 import type { ExportAssignment, ExportDevice, ExportNode, ExportTarget, NativeStyleExport } from './native-style-export.ts';
@@ -787,10 +787,12 @@ type PlanNode = { readonly id: string; readonly kind: string; readonly children?
 
 /**
  * The plan with every text leaf the build lays out with a text-transform in any case and band (resolve.ts transformRun) listed in
- * `transformed`, which the phone refuses to replace with a page text, as it would lay out that text as typed.
+ * `transformed`, which the phone refuses to replace with a page text, as it would lay out that text as typed, and those with
+ * capitalize also in `capitalized`.
  */
 function withTransformed(plan: MarklessPlan, compiled: object): MarklessPlan {
   const on = new Set<string>();
+  const capital = new Set<string>();
   const elements = new Set<string>();
   const bands = nativeBands(compiled);
   for (let band = 0; band < (bands === null ? 1 : bands.table.bands.length); band++) {
@@ -800,17 +802,87 @@ function withTransformed(plan: MarklessPlan, compiled: object): MarklessPlan {
       for (const [address, transform] of transforms) {
         elements.add(address);
         if (transform !== 'none') on.add(address);
+        if (transform === 'capitalize') capital.add(address);
       }
     }
   }
   const leaves = new Set<string>();
+  const capitalized = new Set<string>();
   const walk = (n: PlanNode, element: string | null): void => {
     const own = elements.has(n.id) ? n.id : element;
     if (n.kind === 'text' && own !== null && on.has(own)) leaves.add(n.id);
+    if (n.kind === 'text' && own !== null && capital.has(own)) capitalized.add(n.id);
     for (const child of n.children ?? []) walk(child, own);
   };
   for (const v of plan.variants) walk(v.root as unknown as PlanNode, null);
-  return leaves.size === 0 ? plan : { ...plan, transformed: [...leaves].sort() };
+  if (leaves.size === 0) return plan;
+  return { ...plan, transformed: [...leaves].sort(), ...(capitalized.size === 0 ? {} : { capitalized: [...capitalized].sort() }) };
+}
+
+/**
+ * The plan with `texts` (markless-plan.ts): each variant's kept text leaves whose phase I input differs from their text, and the
+ * texts phase I dropped in contexts that keep a text, from the native lowering of every case in every band whose tree is that
+ * variant. Cases that share a variant must agree on its facts.
+ */
+function withTexts(plan: MarklessPlan, compiled: object): MarklessPlan {
+  const byRoot = new Map<unknown, number>(plan.variants.map((v, i) => [v.root, i] as const));
+  const byJson = new Map<string, number>();
+  const facts = new Map<number, string>();
+  const rows: PlanText[] = [];
+  const bands = nativeBands(compiled);
+  for (let band = 0; band < (bands === null ? 1 : bands.table.bands.length); band++) {
+    for (const c of compiledCases(compiled)) {
+      const got = resolvedTextSources(compiled, c.assignment, band);
+      if (got === null) return fail(`a case has no native lowering in band ${band}`);
+      let vi = byRoot.get(got.root);
+      if (vi === undefined) {
+        if (byJson.size === 0) plan.variants.forEach((v, i) => byJson.set(JSON.stringify(v.root), i));
+        vi = byJson.get(JSON.stringify(got.root));
+      }
+      if (vi === undefined) return fail(`a case's native lowering in band ${band} is no variant of the plan`);
+      const variant = vi;
+      const boxes = new Map<string, PlanNode & { readonly strut?: unknown }>();
+      const index = (n: PlanNode): void => {
+        boxes.set(n.id, n);
+        for (const child of n.children ?? []) index(child);
+      };
+      index(plan.variants[variant]!.root as unknown as PlanNode);
+      const own: PlanText[] = [
+        ...got.facts.sources.map(([leaf, source]): PlanText => [variant, leaf, source]),
+        ...got.facts.dropped.map((d): PlanText => {
+          const container = boxes.get(d.container);
+          if (container === undefined) return fail(`the dropped text ${d.leaf.id} is in context of ${d.container}, which variant ${variant} has no box for`);
+          return container.strut === null && d.strut !== null ? [variant, d.parent, d.next, d.leaf, d.source, d.container, d.strut] : [variant, d.parent, d.next, d.leaf, d.source];
+        }),
+      ];
+      const key = JSON.stringify(own);
+      const seen = facts.get(variant);
+      if (seen === undefined) {
+        facts.set(variant, key);
+        rows.push(...own);
+      } else if (seen !== key) return fail(`two cases lay variant ${variant} out with different text sources or dropped texts`);
+    }
+  }
+  rows.sort((a, b) => a[0] - b[0]);
+  return rows.length === 0 ? plan : { ...plan, texts: rows };
+}
+
+/** A target's plan with its text facts and transforms, its plan names (the dropped text leaves' too), and its lists. */
+function planWithTexts(raw: MarklessPlan, compiled: object, assignments: readonly ExportAssignment[], renameIn: (a: ExportAssignment) => (id: string) => string, parsed: MarklessStyleInput, dragonIds: ReadonlyMap<string, string>): Pick<ExportTarget, 'plan' | 'planNames' | 'planRepeats'> {
+  const plan = withTransformed(withTexts(raw, compiled), compiled);
+  if (plan !== raw) {
+    const read = JSON.parse(checkPlan(JSON.stringify(plan))) as readonly unknown[];
+    if (read[0] !== 'ok') fail(`the device cannot read this page's text facts: ${String(read[1] ?? read[0])}`);
+  }
+  const dropped = new Map<number, string[]>();
+  for (const t of plan.texts ?? []) if (t.length !== 3) dropped.set(t[0], [...(dropped.get(t[0]) ?? []), t[3].id]);
+  // The plan lays out Dragon's own ids; a host names each assignment's geometry with the input's, by the export's rule.
+  const planNames = assignments.map((a, i) => {
+    const rename = renameIn(a);
+    const ids = [...a.nodes.map((n) => n.id), ...(dropped.get(plan.assignments[i]!.variant) ?? [])];
+    return ids.map((d) => [d, rename(d)] as const).filter(([d, m]) => d !== m);
+  });
+  return { plan, planNames, planRepeats: planRepeats(parsed, dragonIds) };
 }
 
 /** The media features whose value changes with the viewport's height. */
@@ -833,10 +905,7 @@ function exportMarkless(parsed: MarklessStyleInput, inputText: string, inputPath
       ...x,
       assignments: x.assignments.map(renamed),
       // The plan lays out Dragon's own ids; a host names each assignment's geometry with the input's, by the export's rule.
-      ...(x.plan === undefined ? {} : { plan: withTransformed(x.plan, compiled), planNames: x.assignments.map((a) => {
-        const rename = renameIn(a);
-        return a.nodes.map((n) => [n.id, rename(n.id)] as const).filter(([d, m]) => d !== m);
-      }), planRepeats: planRepeats(parsed, dragonIds) }),
+      ...(x.plan === undefined ? {} : planWithTexts(x.plan, compiled, x.assignments, renameIn, parsed, dragonIds)),
     }])),
   };
   for (const [t, x] of Object.entries(exported.targets)) for (const a of x.assignments) {
