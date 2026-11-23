@@ -1245,7 +1245,7 @@ public func rtHit_rectOf(_ s: TableState, _ id: JsString) throws -> LayoutRect {
   let r: LayoutRect? = s.abs.get(id)
   // ts: packages/layout/src/rt-hit.ts:780
   if (r == nil) {
-    throw try HitError(jsConcat(S.s1173, id))
+    throw try HitError(jsConcat(S.s1172, id))
   }
   return try jsUnwrap(r)
 }
@@ -1863,7 +1863,7 @@ public func rtHit_hitZoomed(_ input: LayoutInput, _ measurer: TextMeasurer) thro
   } catch let e {
     // ts: packages/layout/src/rt-hit.ts:1175
     if (e is UnsupportedSignal) {
-      throw try HitError(jsConcat(S.s1174, (e as! UnsupportedSignal).unsupported.code, S.s21, (e as! UnsupportedSignal).unsupported.nodeId, S.s204))
+      throw try HitError(jsConcat(S.s1173, (e as! UnsupportedSignal).unsupported.code, S.s21, (e as! UnsupportedSignal).unsupported.nodeId, S.s204))
     }
     throw e
   }
@@ -1879,7 +1879,7 @@ public func rtHit_hitTableOf(_ input: LayoutInput, _ measurer: TextMeasurer, _ f
   let out: any U_LayoutResult_ok_LayoutResult_unsupported = try layout_layout(input, measurer)
   // ts: packages/layout/src/rt-hit.ts:1187
   if (out.kind != S.s_ok) {
-    throw try HitError(jsConcat(S.s1174, (out as! LayoutResult_unsupported).unsupported.code, S.s21, (out as! LayoutResult_unsupported).unsupported.nodeId, S.s204))
+    throw try HitError(jsConcat(S.s1173, (out as! LayoutResult_unsupported).unsupported.code, S.s21, (out as! LayoutResult_unsupported).unsupported.nodeId, S.s204))
   }
   let zoomed: LayoutInput = try rtHit_hitZoomed(input, measurer)
   let zmap: JsStringMap<LayoutBox> = JsStringMap<LayoutBox>()

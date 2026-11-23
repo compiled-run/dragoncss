@@ -51,9 +51,9 @@ const body = (css: string): string => css.split('\n').slice(1).join('\n');
 describe('FORM-a A3 identity: every case that predates the button package is unchanged', () => {
   it('covers every earlier layout fixture, and the controls group adds only its own', () => {
     expect(earlier.length).toBeGreaterThan(200);
-    // 19: the A3 buttons and A4 ranges, then fieldset-legend, fieldset-positioned, controls-text-field, controls-text-field-search,
-    // controls-textarea, the four FORM-b selects (S4's controls-select-natural-width among them), GRID-items' grid-button-block and
-    // -flex, then FORM-checkbox's controls-checkbox.
+    // 19: the A3 buttons and A4 ranges, then fieldset-legend, fieldset-positioned, controls-text-field, controls-textarea,
+    // controls-text-field-search, the four FORM-b selects (S4's controls-select-natural-width among them), GRID-items'
+    // grid-button-block and -flex, then FORM-checkbox's controls-checkbox.
     expect(FIXTURES.filter((f) => f.kind === 'layout' && controlIds.has(f.id)).length).toBe(19);
     expect(FIXTURES.filter((f) => f.kind === 'layout' && notEarlier.has(f.id)).length).toBe(19 + LATER_WITH_CONTROLS.length);
   });
@@ -128,8 +128,8 @@ describe('FORM-a A4 identity: every case that predates the range package is unch
   const beforeA4 = FIXTURES.filter((f) => f.kind === 'layout' && !f.id.startsWith('controls-range-') && !FORM_ATTRIBUTE_PAIRS.includes(f.id));
   const rangeBoxes = (b: LayoutBox | ControlBox): number => b.children.reduce((n, c) => n + (c.kind === 'control' && (c.control.kind === 'range' || c.control.kind === 'slider-thumb') ? 1 : 0) + (c.kind === 'box' || c.kind === 'control' ? rangeBoxes(c) : 0), 0);
   it('covers every earlier layout fixture, the A3 controls cases included', () => {
-    // 17: the 5 A3 cases, then fieldset-legend, fieldset-positioned, controls-text-field, controls-text-field-search,
-    // controls-textarea, the four FORM-b selects, the two grid-button cases and controls-checkbox, which hold no range.
+    // 17: the 5 A3 cases, then fieldset-legend, fieldset-positioned, controls-text-field, controls-textarea,
+    // controls-text-field-search, the four FORM-b selects, the two grid-button cases and controls-checkbox, which hold no range.
     expect(beforeA4.filter((f) => controlIds.has(f.id)).length).toBe(17);
     expect(FIXTURES.filter((f) => f.id.startsWith('controls-range-')).length).toBe(2);
   });

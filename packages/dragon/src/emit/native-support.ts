@@ -3422,7 +3422,7 @@ export function inputFunctions(lang: Lang, root: import('@dragon/layout').Layout
                       : c.kind === 'select-menulist'
                         ? `ControlKind_selectMenulist(${str('select-menulist')}, ${fontSpecValue(lang, c.font)}, ${lineHeightValue(lang, c.lineHeight)}, ${doubleLit(c.arrowWidth)}, ${lang === 'swift' ? `JsArray<TextLeaf>([${c.options.map(inline).join(', ')}])` : `jsArrayOf<TextLeaf>(${c.options.map(inline).join(', ')})`})`
                         : `ControlKind_selectInner(${str('select-inner')})`;
-    const visit = (b: import('@dragon/layout').LayoutBox | import('@dragon/layout').ControlBox): string => {
+  const visit = (b: import('@dragon/layout').LayoutBox | import('@dragon/layout').ControlBox): string => {
     const name = `${prefix}Box${n++}`;
     const kids = b.children.map((c) => (c.kind === 'box' || c.kind === 'control' ? `${visit(c)}()` : c.kind === 'replaced' ? replaced(c) : inline(c)));
     const strut = b.strut === null ? (lang === 'swift' ? 'nil' : 'null') : `LineStrut(${fontSpecValue(lang, b.strut.font)}, ${lineHeightValue(lang, b.strut.lineHeight)})`;

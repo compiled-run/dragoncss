@@ -16,8 +16,8 @@ export const CONTROL_TAGS: readonly string[] = ['button', 'input', 'select', 'te
 
 /**
  * The UA dataset key of a control: a button's UA rules do not depend on its type (controls-button-type proves it), but do on
- * :disabled (html.css's disabled colours, captured as button[disabled]); an input's do, and only type=range and type=search (ASCII
- * case-insensitive, HTML §4.10.5) and type=checkbox (FORM-checkbox) read keys of their own; any other input reads the plain input key.
+ * :disabled (html.css's disabled colours, captured as button[disabled]); an input's do, and only type=range, type=checkbox
+ * (FORM-checkbox) and type=search (ASCII case-insensitive, HTML §4.10.5) read keys of their own; any other input reads the plain input key.
  */
 export function controlUaKey(tag: string, type: string | undefined, disabled = false): ControlKey | null {
   if (tag === 'button') return disabled ? 'button[disabled]' : 'button';

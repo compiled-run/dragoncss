@@ -3207,7 +3207,7 @@ public func grid_itemBaseline(_ ctx: Ctx, _ box: any U_ControlBox_LayoutBox_Repl
 public func grid_lastBaselineOf(_ item: GridItemData, _ r: GridItemLayout) throws -> Double? {
   // ts: packages/layout/src/grid.ts:1985
   if (r.lastBaselineFlex != S.s0) {
-    try unsupported_unsupported(S.s_grid_last_baseline, item.box.id, S.s685, jsConcat(S.s1179, r.lastBaselineFlex, S.s197, item.box.id, S.s8))
+    try unsupported_unsupported(S.s_grid_last_baseline, item.box.id, S.s685, jsConcat(S.s1178, r.lastBaselineFlex, S.s197, item.box.id, S.s8))
   }
   let b: Double? = r.lastBaseline
   // ts: packages/layout/src/grid.ts:1987
@@ -3538,7 +3538,7 @@ public func grid_buildGrid(_ ctx: Ctx, _ box: LayoutBox, _ pad: Edges, _ bor: Ed
     let rowAlign: GridAlignment = try grid_axisEdge(ctx, box, b, S.s_rows, grid_selfAlignOf(jsUnwrap(g), b, S.s_rows, s))
     // ts: packages/layout/src/grid.ts:2228
     if ((b.kind == S.s_replaced) && ((columnAlign.baseline != S.s_none) || (rowAlign.baseline != S.s_none))) {
-      try unsupported_unsupported(S.s_grid_replaced, (b as! ReplacedLeaf).id, S.s685, jsConcat(S.s1168, (b as! ReplacedLeaf).id, S.s8))
+      try unsupported_unsupported(S.s_grid_replaced, (b as! ReplacedLeaf).id, S.s685, jsConcat(S.s1167, (b as! ReplacedLeaf).id, S.s8))
     }
     return try GridItemData(b, i, jsUnwrap(jsAt(placement.columns, i)), jsUnwrap(jsAt(placement.rows, i)), GridSetIndices(0.0, 0.0), GridSetIndices(0.0, 0.0), grid_NO_PROPS(), grid_NO_PROPS(), columnAlign.edge, rowAlign.edge, columnAlign.safe, rowAlign.safe, columnAlign.stretch, rowAlign.stretch, columnAlign.baseline, rowAlign.baseline, false, false, false)
 })

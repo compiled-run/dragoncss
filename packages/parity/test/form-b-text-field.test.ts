@@ -143,7 +143,7 @@ describe('FORM-b text fields', () => {
   it('lays out an editable field when the host edits text fields, and a compile without that still refuses it', () => {
     const body = '<input data-dragon-id="t" type="search" placeholder="PP">\n<input data-dragon-id="v" value="XX">';
     expect(errors(compile('tf-host-edits', '', body, BASE, false, true))).toEqual([]);
-    expect(errors(compile('tf-not-host', '', body)).filter((e) => e.includes('is an editable text field'))).toHaveLength(4);
+    expect(errors(compile('tf-not-host', '', body)).filter((e) => e.includes('is an editable text control'))).toHaveLength(4);
     const b = boxes(compile('tf-host-edits', '', body, BASE, false, true));
     expect([b.get('t::placeholder')?.width, b.get('t::editor')?.width, b.get('v::editor')?.width]).toEqual([189, 189, 200]);
     // The host's clear control, in the field's frame: from the editor's inline end to the 200px content box's, a 7px button (10px font) and its 1px and 3px margins.
@@ -152,7 +152,8 @@ describe('FORM-b text fields', () => {
   });
 
   it('still refuses a textarea when the host edits single-line fields', () => {
-    expect(errors(compile('tf-host-textarea', '', '<textarea data-dragon-id="a">XX</textarea>', BASE, false, true))).toEqual([expect.stringMatching(/^all DRAGON_UNSUPPORTED_ELEMENT <textarea> a is not supported/)]);
+    const refused = errors(compile('tf-host-textarea', '', '<textarea data-dragon-id="a">XX</textarea>', BASE, false, true)).filter((e) => e.includes('is an editable text control'));
+    expect(refused).toEqual([expect.stringMatching(/^android DRAGON_UNSUPPORTED_VALUE <textarea> a is an editable text control/), expect.stringMatching(/^ios DRAGON_UNSUPPORTED_VALUE <textarea> a is an editable text control/)]);
   });
 
   it('accepts an editable search field in a Markless compile (textEditing: host) and refuses it in a plain native compile', () => {
@@ -171,7 +172,7 @@ describe('FORM-b text fields', () => {
     const config: NativeStylesConfig = { projectId: PROJECT_ID, name: 'Search', targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 } }, fonts: FONT_REFERENCE_MAP, viewport: { width: 402, height: 874 }, support: 'lanes', output: 'program' };
     const refusals = (c: NativeStylesConfig): string[] => dragon.compileNativeStyles(c, input).diagnostics.filter((d) => d.severity === 'error').map((d) => `${d.target ?? 'all'} ${d.message}`);
     expect(refusals({ ...config, textEditing: 'host' })).toEqual([]);
-    expect(refusals(config)).toEqual([expect.stringMatching(/^android <input> h1 is an editable text field/), expect.stringMatching(/^ios <input> h1 is an editable text field/)]);
+    expect(refusals(config)).toEqual([expect.stringMatching(/^android <input> h1 is an editable text control/), expect.stringMatching(/^ios <input> h1 is an editable text control/)]);
     expect(() => dragon.compileNativeStyles({ ...config, textEditing: 'device' as 'host' }, input)).toThrow("textEditing \"device\" is not 'host'");
   });
 });
