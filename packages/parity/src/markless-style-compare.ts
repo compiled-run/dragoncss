@@ -548,11 +548,14 @@ function computedRgba(text: string | undefined): Rgba8 | null {
 const OUTLINE_PROPERTIES = ['outline-style', 'outline-width', 'outline-color', 'outline-offset'];
 
 /** A state's outline against Chrome's computed one: style, width and offset in CSS px, and colour; none where the state draws none. */
-function outlineRow(target: string, values: Values, state: string, id: string, w: Record<string, unknown> | undefined, c: CapturedNode | undefined): CompareRow {
+function outlineRow(target: string, values: Values, state: string, id: string, w: Record<string, unknown> | undefined, c: CapturedNode | undefined, dpr: number): CompareRow {
   const got = c?.computed;
   const px = (v: string | undefined): number | null => (v !== undefined && v.endsWith('px') ? Number(v.slice(0, -2)) : null);
-  const chrome = got === undefined || got === null || got['outline-style'] === 'none' ? null : { style: got['outline-style'], width: px(got['outline-width']), offset: px(got['outline-offset']), color: computedRgba(got['outline-color']) };
-  const exported = w === undefined ? null : { style: w['style'], width: w['width'], offset: w['offset'], color: w['color'] };
+  // Chrome uses an outline's width floored to whole device px (at least one), as it does a border's; both are compared in device px.
+  const devicePx = (css: number | null): number | null => (css === null ? null : css === 0 ? 0 : Math.max(1, Math.floor(css * dpr + 1e-6)));
+  const chromeWidth = px(got?.['outline-width']);
+  const chrome = got === undefined || got === null || got['outline-style'] === 'none' ? null : { style: got['outline-style'], width: chromeWidth === null ? null : Math.round(chromeWidth * dpr), offset: px(got['outline-offset']), color: computedRgba(got['outline-color']) };
+  const exported = w === undefined ? null : { style: w['style'], width: devicePx(w['width'] as number), offset: w['offset'], color: w['color'] };
   const pass = JSON.stringify(chrome) === JSON.stringify(exported);
   return { target, values, state, id, maxDeltaDevicePx: null, pass, ...(pass ? {} : { problem: `outline ${JSON.stringify(exported)} in the export, ${JSON.stringify(chrome)} in Chrome` }) };
 }
@@ -563,7 +566,7 @@ function outlineRow(target: string, values: Values, state: string, id: string, w
  * computed one, so a state that misses a change Chrome makes fails too. A write of another kind the state changes from its
  * assignment is a failing row naming it, as this comparison does not read it from Chrome yet.
  */
-export function interactionPaintRows(target: string, state: string, base: ExportAssignment, a: ExportAssignment, captured: readonly CapturedNode[]): CompareRow[] {
+export function interactionPaintRows(target: string, state: string, base: ExportAssignment, a: ExportAssignment, captured: readonly CapturedNode[], dpr = 1): CompareRow[] {
   const rows: CompareRow[] = [];
   const before = new Map(base.nodes.map((n) => [n.id, n]));
   const chrome = new Map(captured.filter((c) => c.kind === 'element').map((c) => [c.id, c]));
@@ -574,7 +577,7 @@ export function interactionPaintRows(target: string, state: string, base: Export
     const now = byKind(n.writes);
     const then = byKind(before.get(n.id)?.writes ?? []);
     const c = chrome.get(n.id);
-    if (now.get('outline') !== then.get('outline')) rows.push(outlineRow(target, a.values, state, n.id, n.writes.find((w) => w['kind'] === 'outline'), c));
+    if (now.get('outline') !== then.get('outline')) rows.push(outlineRow(target, a.values, state, n.id, n.writes.find((w) => w['kind'] === 'outline'), c, dpr));
     for (const kind of [...new Set([...now.keys(), ...then.keys()])].filter((k) => k !== 'background-color' && k !== 'outline' && now.get(k) !== then.get(k))) {
       rows.push({ target, values: a.values, state, id: n.id, maxDeltaDevicePx: null, pass: false, problem: `the state changes its ${kind} write, which this comparison does not read from Chrome yet` });
     }
@@ -637,7 +640,7 @@ export async function compareMarklessExport(input: MarklessStyleInput, given: Na
         };
         const capture = await captureMarklessAssignment(browser, input, t, assignment.values, scheme, { mode: fontMode, files, prepare }, screenshots === undefined ? undefined : join(screenshots, `${target}-${label}.png`));
         if (base === null) paint.push(...paintRows(target, assignment, await chromePagePaint(browser, authoredFontHtml(marklessDocumentHtml(input, assignment.values, fontMode), files), input, t, assignment.values, scheme)));
-        else rows.push(...interactionPaintRows(target, label, base, assignment, capture.nodes));
+        else rows.push(...interactionPaintRows(target, label, base, assignment, capture.nodes, t.dpr));
         const paired = pairBoxes(input, assignment, capture.nodes);
         for (const { id, kind } of paired.problems) rows.push({ target, values: assignment.values, ...(base === null ? {} : { state: label }), id, maxDeltaDevicePx: null, pass: false, problem: CHROME_PROBLEM[kind] });
         for (const { id, c } of paired.pairs) {
