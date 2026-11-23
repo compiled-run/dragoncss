@@ -653,15 +653,15 @@ export function hitUnmodelledControl(root: ResolvedElement): string | null {
 
 /**
  * The first box of a resolved tree the hit table does not model whose value compiles, in preorder, or null: a float in block flow
- * (FLT), which rt-hit.ts refuses in a block or inline-block container, and a fixed box (POSX-f). No Chrome hit capture has them yet.
- * A sticky box is hit where the layout places it at scroll offset 0 (layout.ts), as a positioned layer.
+ * (FLT), which rt-hit.ts refuses in a block or inline-block container. No Chrome hit capture has them yet. A sticky or fixed box is hit
+ * where the layout places it at scroll offset 0 (layout.ts), as a positioned layer.
  */
-export function hitUnmodelledBox(root: ResolvedElement, compiles: (v: ResolvedValue) => boolean = () => true): { readonly address: string; readonly kind: 'float' | 'fixed box' | 'inline-grid box'; readonly pkg: 'FLT' | 'POSX-f' | 'G-INL' } | null {
+export function hitUnmodelledBox(root: ResolvedElement, compiles: (v: ResolvedValue) => boolean = () => true): { readonly address: string; readonly kind: 'float' | 'inline-grid box'; readonly pkg: 'FLT' | 'G-INL' } | null {
   const key = (el: ResolvedElement, p: 'display' | 'float' | 'position'): string => {
     const v = el.props.get(p);
     return v !== undefined && v.value.kind === 'keyword' ? v.value.value : '';
   };
-  const visit = (el: ResolvedElement): { address: string; kind: 'float' | 'fixed box' | 'inline-grid box'; pkg: 'FLT' | 'POSX-f' | 'G-INL' } | null => {
+  const visit = (el: ResolvedElement): { address: string; kind: 'float' | 'inline-grid box'; pkg: 'FLT' | 'G-INL' } | null => {
     const block = key(el, 'display') === 'block' || key(el, 'display') === 'inline-block';
     for (const c of el.children) {
       if (c.kind !== 'element') continue;
@@ -670,7 +670,6 @@ export function hitUnmodelledBox(root: ResolvedElement, compiles: (v: ResolvedVa
       // rt-hit.ts refuses an inline-grid as an atomic inline (G-INL); a block-level grid is hit in order-modified document order.
       const d = c.props.get('display');
       if (d !== undefined && key(c, 'display') === 'inline-grid' && compiles(d)) return { address: c.element.address, kind: 'inline-grid box', pkg: 'G-INL' };
-      if (p !== undefined && key(c, 'position') === 'fixed' && compiles(p)) return { address: c.element.address, kind: 'fixed box', pkg: 'POSX-f' };
       if (block && f !== undefined && key(c, 'float') !== 'none' && key(c, 'position') !== 'absolute' && key(c, 'position') !== 'fixed' && compiles(f)) return { address: c.element.address, kind: 'float', pkg: 'FLT' };
       const found = visit(c);
       if (found !== null) return found;
@@ -689,10 +688,13 @@ export function hitUnmodelledFact(root: ResolvedElement, ua: UaDataset, compiles
     if (el.element.tag === 'svg') return { property: 'fill', address: el.element.address };
     // An overflow value computed from its partner (computeOverflowPair) has no declaration: it compiles only when the partner does.
     const partner = (p: Longhand): ResolvedValue | undefined => (p === 'overflow-x' ? el.props.get('overflow-y') : p === 'overflow-y' ? el.props.get('overflow-x') : undefined);
+    const oneBox = hitRetargetsParts(el);
     for (const [p, v] of el.props) {
       const other = partner(p);
       if (!PROPERTY_ASPECTS[p].paint || !compiles(v) || (other !== undefined && !compiles(other))) continue;
       if (other !== undefined && el === propagated) continue;
+      // A control hit as one box has no content its scrolling could move, and Chrome hits its border box at any scroll offset.
+      if (other !== undefined && oneBox) continue;
       const modelled = HIT_MODELLED.get(p);
       if (modelled !== undefined) {
         if (modelled(v.value)) continue;
@@ -705,7 +707,7 @@ export function hitUnmodelledFact(root: ResolvedElement, ua: UaDataset, compiles
       }
       if (JSON.stringify(v.value) !== init) return { property: p, address: el.element.address };
     }
-    if (hitRetargetsParts(el)) return null;
+    if (oneBox) return null;
     for (const c of el.children) {
       if (c.kind !== 'element') continue;
       const found = visit(c);

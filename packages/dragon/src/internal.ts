@@ -5,7 +5,8 @@ import type { TextContext } from './analysis/context.ts';
 import type { RootFont } from './analysis/resolve.ts';
 import { textContext } from './analysis/context.ts';
 import type { ResolvedElement } from './analysis/resolve.ts';
-import { environmentOf, markerStyleOf, selectOptionsOf } from './analysis/resolve.ts';
+import { environmentOf, markerStyleOf, selectOptionsOf, textFieldPartOf } from './analysis/resolve.ts';
+import { inputTypeState } from './analysis/elements/controls.ts';
 import type { SvgScene } from './analysis/elements/svg.ts';
 export type { SvgPaint, SvgScene, SvgShapeScene } from './analysis/elements/svg.ts';
 import { svgSceneOf } from './analysis/elements/svg.ts';
@@ -209,6 +210,12 @@ export function resolvedColors(compiled: object, assignment: Assignment, state: 
     if (m.type.kind === 'none' || item === undefined) continue;
     const color = usedColors(markerStyleOf(item)).color;
     out.set(`${m.address}::marker`, { color, 'background-color': TRANSPARENT, 'border-top-color': color, 'border-right-color': color, 'border-bottom-color': color, 'border-left-color': color });
+  }
+  // FORM-b: a search field's cancel button box inherits the field's color, with its initial background and currentcolor borders.
+  for (const [address, el] of items) {
+    if (textFieldPartOf(el)?.part !== null || inputTypeState(el.element.attributes.get('type')) !== 'search') continue;
+    const color = usedColors(el).color;
+    out.set(`${address}::cancel`, { color, 'background-color': TRANSPARENT, 'border-top-color': color, 'border-right-color': color, 'border-bottom-color': color, 'border-left-color': color });
   }
   return out;
 }
@@ -439,8 +446,8 @@ export function hitFacts(compiled: object, assignment: Assignment, state: string
     if (opacity === null) throw new Error(`${el.element.address}: opacity did not compute to a number`);
     const transform = elementTransformWrite(el);
     const pos = el.props.get('position');
-    // css-position-3 §3.4: a sticky box always makes a stacking context.
-    const context = opacity < 1 || transformedForStacking(el) || (pos !== undefined && pos.value.kind === 'keyword' && pos.value.value === 'sticky');
+    // css-position-3 §3.4: a sticky or fixed box always makes a stacking context.
+    const context = opacity < 1 || transformedForStacking(el) || (pos !== undefined && pos.value.kind === 'keyword' && (pos.value.value === 'sticky' || pos.value.value === 'fixed'));
     out.set(el.element.address, { pointerEvents: v.value.value, inherited: v.origin === 'inherited', activation: activates(el.element.tag, el.element.attributes), radii: roundsAnyCorner(lengths) ? lengths : [], context, transform: transform === null ? [] : transform.ops, origin: transform === null ? NO_ORIGIN : transform.origin });
     for (const ch of el.children) if (ch.kind === 'element') walk(ch);
   };

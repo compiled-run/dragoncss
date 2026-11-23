@@ -546,11 +546,23 @@ function layoutTextField(box: LayoutBox, field: Extract<ControlKind, { kind: 'te
   const editor = flow.find((p) => p.frag.id === editorId);
   if (editor === undefined) throw new Error(`${box.id} is a text field without an inner editor; validateLayoutInput rejects this input`);
   const height = fixedBorderBox !== null ? fixedBorderBox : constrain(add(editor.frag.height, vbp), minMax);
-  const container = field.cancelButton !== null ? max(editor.frag.height, fromCssPx(searchCancelButtonSize(field))) : editor.frag.height;
-  const editorY = add(add(contentTop, textEditorShift(contentBox(height, vbp), container)), divInt(sub(container, editor.frag.height), 2));
-  // The placeholder's baseline meets the editor's (Chrome 145: a 4px Ahem placeholder in a 10px editor sits 5px down, one clipped
-  // to 2px 6px down, since its clipped baseline is 2px); with no baseline on either it starts at the editor's top.
-  const placed = flow.map((p): Placed => (p === editor ? { frag: p.frag, x: p.x, y: editorY } : { frag: p.frag, x: editor.x, y: editor.frag.baseline === null || p.frag.baseline === null ? editorY : add(editorY, sub(editor.frag.baseline, p.frag.baseline)) }));
+  const side = field.cancelButton !== null ? fromCssPx(searchCancelButtonSize(field)) : ZERO;
+  const container = field.cancelButton !== null ? max(editor.frag.height, side) : editor.frag.height;
+  const containerY = add(contentTop, textEditorShift(contentBox(height, vbp), container));
+  const editorY = add(containerY, divInt(sub(container, editor.frag.height), 2));
+  let cancelId = '';
+  for (const k of box.children) if (k.kind === 'box' && k.boxType === 'anonymous') cancelId = k.id;
+  const placed = flow.map((p): Placed => {
+    if (p === editor) return { frag: p.frag, x: p.x, y: editorY };
+    // The cancel button follows the editor in the decoration container, after its inline-start margin, centred (align-items: center).
+    if (field.cancelButton !== null && p.frag.id === cancelId) {
+      const frag: Frag = { id: p.frag.id, width: side, height: side, baseline: null, children: [], outOfFlow: [], inflow: null };
+      return { frag, x: add(add(editor.x, editor.frag.width), fromCssPx(field.cancelButton.marginStart)), y: add(containerY, divInt(sub(container, side), 2)) };
+    }
+    // The placeholder's baseline meets the editor's (Chrome 145: a 4px Ahem placeholder in a 10px editor sits 5px down, one clipped
+    // to 2px 6px down, since its clipped baseline is 2px); with no baseline on either it starts at the editor's top.
+    return { frag: p.frag, x: editor.x, y: editor.frag.baseline === null || p.frag.baseline === null ? editorY : add(editorY, sub(editor.frag.baseline, p.frag.baseline)) };
+  });
   const baseline = editor.frag.baseline === null ? null : add(editorY, editor.frag.baseline);
   return { frag: { id: box.id, width, height, baseline: clampScrollBaseline(box, baseline, height), children: placed, outOfFlow: [], inflow: null }, escapeTop: EMPTY_STRUT, escapeBottom: EMPTY_STRUT, collapseThrough: false, lastBaseline: baseline, lastBaselineFlex: '', defaultLastBaseline: baseline, defaultLastBaselineFlex: '' };
 }

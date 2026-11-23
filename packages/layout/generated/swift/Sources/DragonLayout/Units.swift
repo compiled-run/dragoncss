@@ -150,7 +150,7 @@ public func units_anchorPercentOffset(_ size: Double, _ fraction: Double) throws
 public func units_fromWholePx(_ n: Double) throws -> Double {
   // ts: packages/layout/src/units.ts:113
   if (!jsIsInteger(n)) {
-    throw JsError(message: jsConcat(S.s1219, jsNumberToString(n)))
+    throw JsError(message: jsConcat(S.s1220, jsNumberToString(n)))
   }
   return try units_saturate((n * units_LU_PER_PX))
 }
