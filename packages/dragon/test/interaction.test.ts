@@ -596,6 +596,15 @@ describe('interaction states: hit model (R13)', () => {
     expect(otherErrors(compile({}, padded, mixed, TARGETS, 'derive').diagnostics)).toEqual([]);
   });
 
+  // HIT-atomic-inline INL2d: only an inline <img> has a Chrome hit capture on a line (inline-replaced-img, hit-atomic-inline), so an
+  // inline <iframe> or <video> beside text refuses the rules by its name.
+  it('refuses interaction rules on native beside an inline replaced element other than an image', () => {
+    const css = BODY + '.w { width: 200px; } .fr { display: inline; width: 40px; height: 20px; } .k:hover { background-color: #0c0; }';
+    const wbody = (r: Parameters<Parameters<typeof inputFor>[1]>[0]) => [div(r, 'w', ['w'], [text(r, 'wt', 'aa'), { ...div(r, 'fr', ['fr']), tag: 'iframe' }]), div(r, 'k', ['k'])];
+    const got = otherErrors(compile({}, css, wbody, TARGETS, 'derive').diagnostics);
+    for (const t of ['ios', 'android']) expect(got).toContain(`DRAGON_UNSUPPORTED_SELECTOR [${t}] :hover needs Dragon hit testing through the inline replaced element fr, which is not built yet (package INL2d hit model)`);
+  });
+
   // HIT-atomic-inline INL2c: rt-hit.ts refuses an atomic inline its hit facts make a stacking context (hitFactsRefusal). Opacity
   // passes R13's paint-fact check (the table orders z-index 0 contexts), so the box check refuses the rules by that box's name.
   it('refuses interaction rules on native beside an atomic inline that forms a stacking context', () => {

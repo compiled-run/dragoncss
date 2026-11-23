@@ -5,6 +5,7 @@
 // level under the case's app assignment, so case keys and counts do not change; each dimension is linear in the elements.
 import { GENERATED_TAGS, MARKER_TAG } from './elements.ts';
 import { inputTypeState, isCheckboxType, isControlTag, isTextFieldType } from './elements/controls.ts';
+import { isReplacedTag } from './elements/replaced.ts';
 import { authored, diagnostic } from '../diagnostics/catalogue.ts';
 import { PROPERTY_ASPECTS } from '../css/properties.ts';
 import { isAnimationProperty } from '../css/properties/animation.ts';
@@ -655,8 +656,8 @@ export function hitUnmodelledControl(root: ResolvedElement): string | null {
 /** The kinds of box hitUnmodelledBox names, with the package each waits for. */
 export type HitUnmodelledBox = {
   readonly address: string;
-  readonly kind: 'float' | 'inline-grid box' | 'block with percentage padding around atomic inlines' | 'atomic inline forming a stacking context';
-  readonly pkg: 'FLT' | 'G-INL' | 'INL2a' | 'INL2c';
+  readonly kind: 'float' | 'inline-grid box' | 'block with percentage padding around atomic inlines' | 'atomic inline forming a stacking context' | 'inline replaced element';
+  readonly pkg: 'FLT' | 'G-INL' | 'INL2a' | 'INL2c' | 'INL2d';
 };
 
 /**
@@ -678,7 +679,11 @@ export function hitUnmodelledBox(root: ResolvedElement, compiles: (v: ResolvedVa
         if (v !== undefined && percent(v) && compiles(v)) return { address: el.element.address, kind: 'block with percentage padding around atomic inlines', pkg: 'INL2a' };
       }
     }
-    for (const a of lineAtomics(el)) if (hitFactContext(a)) return { address: a.element.address, kind: 'atomic inline forming a stacking context', pkg: 'INL2c' };
+    for (const a of lineAtomics(el)) {
+      if (hitFactContext(a)) return { address: a.element.address, kind: 'atomic inline forming a stacking context', pkg: 'INL2c' };
+      // Only an inline <img> has a Chrome hit capture on a line (inline-replaced-img, hit-atomic-inline); an inline <svg> is refused as SVG.
+      if (isReplacedTag(a.element.tag) && a.element.tag !== 'img' && a.element.tag !== 'svg') return { address: a.element.address, kind: 'inline replaced element', pkg: 'INL2d' };
+    }
     const block = key(el, 'display') === 'block' || key(el, 'display') === 'inline-block';
     for (const c of el.children) {
       if (c.kind !== 'element') continue;

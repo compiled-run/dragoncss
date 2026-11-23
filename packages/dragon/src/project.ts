@@ -1223,7 +1223,9 @@ function hitModelRefusals(cases: readonly CaseResult[], rules: readonly Rule[], 
               ? `Use lengths for the padding of ${unmodelled.address} in a document with :${pseudo} rules, or style the state with a component state.`
               : unmodelled?.pkg === 'INL2c'
                 ? `Keep ${unmodelled.address} from forming a stacking context (opacity, transform, containment, isolation and the like) in a document with :${pseudo} rules, or style the state with a component state.`
-                : `Keep ${unmodelled?.address} in flow in a document with :${pseudo} rules, or style the state with a component state until its hit testing is built.`;
+                : unmodelled?.pkg === 'INL2d'
+                  ? `Make ${unmodelled.address} block-level, or put it outside a line of text, in a document with :${pseudo} rules, or style the state with a component state.`
+                  : `Keep ${unmodelled?.address} in flow in a document with :${pseudo} rules, or style the state with a component state until its hit testing is built.`;
         diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_SELECTOR', { origin, target: t, message, manual }));
       }
     }
