@@ -32,7 +32,7 @@ public func intrinsic_intrinsicContentInlineSize(_ ctx: Ctx, _ node: any U_Contr
   let kids: JsArray<any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf> = box.children
   // ts: packages/layout/src/intrinsic.ts:38
   if (box.style.multicol != nil) {
-    try unsupported_unsupported(S.s_multicol, box.id, S.s701, jsConcat(S.s1165, kind, S.s238, box.id, S.s127))
+    try unsupported_unsupported(S.s_multicol, box.id, S.s701, jsConcat(S.s1165, kind, S.s238, box.id, S.s128))
   }
   // ts: packages/layout/src/intrinsic.ts:39
   if (box.style.display == S.s_flex) {
@@ -57,11 +57,11 @@ public func intrinsic_intrinsicContentInlineSize(_ ctx: Ctx, _ node: any U_Contr
   var right: Double = units_ZERO
   // ts: packages/layout/src/intrinsic.ts:49
   do {
-    let _a171 = kids
-    var _i171 = 0
-    while _i171 < _a171.items.count {
-      let k: any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a171.items[_i171]
-      _i171 += 1
+    let _a172 = kids
+    var _i172 = 0
+    while _i172 < _a172.items.count {
+      let k: any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a172.items[_i172]
+      _i172 += 1
       // ts: packages/layout/src/intrinsic.ts:50
       if try ((((k.kind != S.s_box) && ((k as! any U_ControlBox_InlineBox_LineBreak_ReplacedLeaf_TextLeaf).kind != S.s_control)) && ((k as! any U_InlineBox_LineBreak_ReplacedLeaf_TextLeaf).kind != S.s_replaced)) || position_isOutOfFlow(ctx, (k as! any U_ControlBox_LayoutBox_ReplacedLeaf))) {
         continue
@@ -86,18 +86,18 @@ public func intrinsic_menuListNaturalInlineSize(_ ctx: Ctx, _ node: ControlBox) 
   let c: any U_ControlKind_d084c13b74a53fa6 = node.control
   // ts: packages/layout/src/intrinsic.ts:67
   if (c.kind != S.s_select_menulist) {
-    throw JsError(message: jsConcat(node.id, S.s115))
+    throw JsError(message: jsConcat(node.id, S.s116))
   }
   var insets: Double = units_ZERO
   var shown: JsString = S.s0
   var inners: Double = 0.0
   // ts: packages/layout/src/intrinsic.ts:71
   do {
-    let _a172 = node.children
-    var _i172 = 0
-    while _i172 < _a172.items.count {
-      let k: any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a172.items[_i172]
-      _i172 += 1
+    let _a173 = node.children
+    var _i173 = 0
+    while _i173 < _a173.items.count {
+      let k: any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a173.items[_i173]
+      _i173 += 1
       // ts: packages/layout/src/intrinsic.ts:72
       if ((k.kind != S.s_control) || ((k as! ControlBox).control.kind != S.s_select_inner)) {
         continue
@@ -113,11 +113,11 @@ public func intrinsic_menuListNaturalInlineSize(_ ctx: Ctx, _ node: ControlBox) 
       }
       // ts: packages/layout/src/intrinsic.ts:76
       do {
-        let _a173 = (k as! ControlBox).children
-        var _i173 = 0
-        while _i173 < _a173.items.count {
-          let t: any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a173.items[_i173]
-          _i173 += 1
+        let _a174 = (k as! ControlBox).children
+        var _i174 = 0
+        while _i174 < _a174.items.count {
+          let t: any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a174.items[_i174]
+          _i174 += 1
           // ts: packages/layout/src/intrinsic.ts:77
           if (t.kind == S.s_text) {
             shown = jsConcat(shown, (t as! TextLeaf).text)
@@ -133,11 +133,11 @@ public func intrinsic_menuListNaturalInlineSize(_ ctx: Ctx, _ node: ControlBox) 
   var widest: Double = 0.0
   // ts: packages/layout/src/intrinsic.ts:82
   do {
-    let _a174 = (c as! ControlKind_selectMenulist).options
-    var _i174 = 0
-    while _i174 < _a174.items.count {
-      let o: TextLeaf = _a174.items[_i174]
-      _i174 += 1
+    let _a175 = (c as! ControlKind_selectMenulist).options
+    var _i175 = 0
+    while _i175 < _a175.items.count {
+      let o: TextLeaf = _a175.items[_i175]
+      _i175 += 1
       // ts: packages/layout/src/intrinsic.ts:83
       if (ctx.faults.menuListShownLabelOnly && (o.text != shown)) {
         continue
@@ -254,11 +254,11 @@ public func intrinsic_flexIntrinsicContent(_ ctx: Ctx, _ box: LayoutBox, _ kind:
     var widest: Double = units_ZERO
     // ts: packages/layout/src/intrinsic.ts:156
     do {
-      let _a175 = contributions
-      var _i175 = 0
-      while _i175 < _a175.items.count {
-        let c: Double = _a175.items[_i175]
-        _i175 += 1
+      let _a176 = contributions
+      var _i176 = 0
+      while _i176 < _a176.items.count {
+        let c: Double = _a176.items[_i176]
+        _i176 += 1
         try widest = units_max(widest, c)
       }
     }
