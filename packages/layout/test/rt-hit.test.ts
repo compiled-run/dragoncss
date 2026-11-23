@@ -8,7 +8,7 @@ import { activationTarget, HitError, hitAt, hitTest, NO_HIT_FAULTS, NO_HIT_TABLE
 const PX = 64;
 const base = { clips: false, borderTop: 0, borderRight: 0, borderBottom: 0, borderLeft: 0, layer: false, absolute: false, fixed: false, atomic: false, order: 0, layerOrder: 0, line: -1, inkLeft: 0, inkTop: 0, inkRight: 0, inkBottom: 0, pointerEvents: 'auto', radii: [], context: false, transformed: false, scaleX: 1, scaleY: 1, offsetX: 0, offsetY: 0 } as const;
 const NO_ORIGIN = { x: { kind: 'px', px: 0, percent: 0 }, y: { kind: 'px', px: 0, percent: 0 } } as const;
-const FLAT = { radii: [], context: false, transform: [], origin: NO_ORIGIN } as const;
+const FLAT = { radii: [], context: false, otherContext: '', transform: [], origin: NO_ORIGIN } as const;
 const box = (parent: number, target: number, x: number, y: number, w: number, h: number, more: Partial<HitNode> = {}): HitNode => ({ ...base, kind: 'box', parent, target, x: x * PX, y: y * PX, width: w * PX, height: h * PX, ...more });
 const at = (nodes: readonly HitNode[], x: number, y: number, faults = NO_HIT_FAULTS): number => hitTest(nodes, Math.floor(x * PX), Math.floor(y * PX), faults);
 
@@ -571,6 +571,11 @@ describe('atomic inlines on their lines', () => {
     r.set('c1', { ...base, context: true, transform: [{ fn: 'rotate', x: { kind: 'px', px: 0, percent: 0 }, y: { kind: 'px', px: 0, percent: 0 }, angle: 5, sx: 1, sy: 1 }] } as unknown as HitFact);
     expect(hitFactsRefusal(input, r)).toMatch(/^c1 rotates/);
     expect(() => hitTableOf(input, ahemMeasurer, r, NO_HIT_TABLE_FAULTS)).toThrow(/c1 rotates/);
+    // A context that containment (or any source but opacity and a transform) makes stays refused by name, with opacity beside it too.
+    const contained = new Map<string, HitFact>(facts);
+    contained.set('c1', { ...base, context: true, otherContext: 'containment' });
+    expect(hitFactsRefusal(input, contained)).toBe('c1 is an atomic inline that containment makes a stacking context, which no Chrome hit capture orders against its line yet (INL2c)');
+    expect(() => hitTableOf(input, ahemMeasurer, contained, NO_HIT_TABLE_FAULTS)).toThrow(/c1 is an atomic inline that containment makes a stacking context/);
   });
 });
 

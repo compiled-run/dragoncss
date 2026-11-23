@@ -22,14 +22,14 @@ import { markerTextId } from './list-marker.ts';
 import type { ResolvedElement, ResolvedValue } from '../../analysis/resolve.ts';
 import { isTopLayer } from '../../analysis/top-layer.ts';
 import { opacityOf, zIndexOf } from '../../css/properties/effects.ts';
-import { elementWillChange, transformsDescendants } from '../../analysis/paint-values/transform.ts';
+import { elementWillChange, hasPerspective, transformsDescendants } from '../../analysis/paint-values/transform.ts';
 import { elementMaskGradient } from '../../analysis/mask.ts';
 import { hasClipPath } from '../../css/properties/clip-path.ts';
 import { filterApplies } from '../../css/properties/filter.ts';
 import { containsDescendants } from '../../analysis/containment.ts';
 import { isolates } from '../../css/properties/isolation.ts';
 import { backfaceHidden } from '../../css/properties/transform-extra.ts';
-import { blendModeOf } from '../../css/properties/fx.ts';
+import { blendModeOf, hasBackdropFilter } from '../../css/properties/fx.ts';
 import { clipsChildren } from './clip.ts';
 import type { PaintLowering } from './types.ts';
 import { ProgramError } from './types.ts';
@@ -395,6 +395,26 @@ export function hitFactContext(el: ResolvedElement): boolean {
   const pos = el.props.get('position');
   // css-position-3 §3.4: a sticky or fixed box always makes a stacking context.
   return opacity < 1 || transformedForStacking(el) || (pos !== undefined && pos.value.kind === 'keyword' && (pos.value.value === 'sticky' || pos.value.value === 'fixed'));
+}
+
+/**
+ * What makes an element a stacking context besides opacity below 1 and a transform, as a message names it, or '' for nothing else.
+ * The hit table orders an atomic inline's stacking context from those two alone, which the Chrome captures prove (HIT-INL2c).
+ */
+export function hitFactOtherContext(el: ResolvedElement): string {
+  const will = elementWillChange(el);
+  if (will.includes('transform') || will.includes('opacity')) return 'will-change';
+  if (hasPerspective(el)) return 'perspective';
+  if (hasBackdropFilter(el.props.get('backdrop-filter')?.value)) return 'backdrop-filter';
+  if (hasClipPath(el)) return 'clip-path';
+  if (elementMaskGradient(el) !== null) return 'mask';
+  if (filterOf(el)) return 'filter';
+  if (isolates(el)) return 'isolation';
+  if (blendModeOf(el.props.get('mix-blend-mode')?.value) !== 'normal') return 'mix-blend-mode';
+  if (containsDescendants(el)) return 'containment';
+  const pos = el.props.get('position');
+  if (pos !== undefined && pos.value.kind === 'keyword' && (pos.value.value === 'sticky' || pos.value.value === 'fixed')) return `position: ${pos.value.value}`;
+  return '';
 }
 
 /** Whether an element has a filter other than none (a hand-built element may carry no filter value at all). */

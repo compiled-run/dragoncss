@@ -8,10 +8,12 @@ import { internalRecord } from '../../dragon/src/project.ts';
 import { caseHitTable, hitRefusal } from '../src/hit-capture.ts';
 import { nativeCases } from '../src/native-host.ts';
 
-const ATOMIC_REFUSAL = / is an atomic inline outside an inline formatting context, | has percentage padding around atomic inlines, /;
-// Cases with an atomic inline that forms a stacking context (containment, or opacity on a line in an anonymous box): it hits as its
-// own layer (HIT-INL2c), so neither side refuses them and the table builds.
-const CONTEXT_CASES = ['contain-intrinsic-ahem', 'containment-layout', 'hit-atomic-inline-context', 'hit-atomic-inline-context-nest', 'hit-atomic-inline-notes'];
+const ATOMIC_REFUSAL = / is an atomic inline outside an inline formatting context, | has percentage padding around atomic inlines, | is an atomic inline that .+ makes a stacking context, /;
+// Cases with an atomic inline that opacity or a scale or translate transform makes a stacking context: it hits as its own layer
+// (HIT-INL2c), so neither side refuses them and the table builds.
+const CONTEXT_CASES = ['hit-atomic-inline-context', 'hit-atomic-inline-context-nest', 'hit-atomic-inline-notes'];
+// Cases with an atomic inline that containment makes a stacking context, which no Chrome capture orders on its line: both refuse.
+const CONTAINED_CASES = ['contain-intrinsic-ahem', 'containment-layout'];
 const ATOMIC_DISPLAYS = ['inline-block', 'inline-flex', 'inline-grid'];
 
 /** Every element of a resolved tree in preorder. */
@@ -29,6 +31,7 @@ describe('the compiler and the hit table agree on atomic inlines', () => {
     let atomic = 0;
     let modelled = 0;
     let contexts = 0;
+    let contained = 0;
     for (const n of nativeCases()) {
       const record = internalRecord(n.compiled);
       const resolved = record?.cases.find((c) => c.resolved !== null)?.resolved ?? null;
@@ -38,8 +41,13 @@ describe('the compiler and the hit table agree on atomic inlines', () => {
       // A case the table refuses for an earlier reason proves nothing either way.
       if (table !== null && !tableRefuses) continue;
       const unmodelled = hitUnmodelledBox(resolved);
-      const compilerRefuses = unmodelled?.pkg === 'INL2a';
+      const compilerRefuses = unmodelled?.pkg === 'INL2a' || unmodelled?.pkg === 'INL2c';
       expect([n.case.id, compilerRefuses], n.case.id).toEqual([n.case.id, tableRefuses]);
+      if (CONTAINED_CASES.some((id) => n.case.id === id || n.case.id === `${id}-rtl`)) {
+        contained++;
+        expect([n.case.id, unmodelled?.pkg, unmodelled?.reason], n.case.id).toEqual([n.case.id, 'INL2c', 'containment']);
+        expect(table, n.case.id).toMatch(/ is an atomic inline that containment makes a stacking context, which no Chrome hit capture orders against its line yet \(INL2c\)$/);
+      }
       if (CONTEXT_CASES.some((id) => n.case.id === id || n.case.id === `${id}-rtl`)) {
         contexts++;
         expect([n.case.id, unmodelled, table], n.case.id).toEqual([n.case.id, null, null]);
@@ -54,7 +62,7 @@ describe('the compiler and the hit table agree on atomic inlines', () => {
     }
     expect(atomic).toBeGreaterThan(10);
     expect(modelled).toBe(atomic);
-    expect(contexts).toBeGreaterThanOrEqual(CONTEXT_CASES.length);
+    expect([contexts, contained]).toEqual([2 * CONTEXT_CASES.length, 2 * CONTAINED_CASES.length]);
   });
 });
 

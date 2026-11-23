@@ -133,10 +133,20 @@ slice is:
   - `hit-atomic-inline-notes`: the notes button at rest and pressed (F11-F13b).
 
   hit-report pins that Chrome names every element at every DPR in both directions, except the `pointer-events: none` one.
-- **Open: the contain cases.** Lifting INL2c also brings `contain-intrinsic-ahem` and `containment-layout` (ltr and rtl) into the
-  hit lane, where 12 points mismatch Chrome. Neither mismatch is at an atomic inline. In `contain-intrinsic-ahem`, it is the
-  fractional bottom edge of a `contain: strict` block (`frac`). In `containment-layout`, it is an exact edge between an absolute
-  child and the in-flow text of a `contain: strict` block (`str`). INL2c refused both cases before, and it hid these gaps.
+- **Narrowed to opacity and transforms (coordinator ruling).** The rule lifts INL2c only for an atomic inline that opacity below
+  1, or a scale or translate transform, makes a stacking context. Those are the sources the captures prove. Any other source stays
+  refused by name, opacity beside it or not. The sources are `contain` (layout, paint, strict, content), a filter, isolation,
+  `mix-blend-mode`, `will-change`, `perspective`, `backdrop-filter`, `clip-path`, a mask, and sticky or fixed position. One
+  definition, `stacking.ts` `hitFactOtherContext`, decides it for both sides:
+  - The compiler's `hitUnmodelledBox` names the atomic (INL2c, with the source as its reason).
+  - The hit fact `otherContext` (hit facts version 4, a ninth facts.json field when set) feeds the table's `hitFactsRefusal`,
+    whose message is "c1 is an atomic inline that containment makes a stacking context, which no Chrome hit capture orders against
+    its line yet (INL2c)".
+
+  So `contain-intrinsic-ahem` and `containment-layout` stay out of the hit lane, refused as on master. The 12 points where Dragon
+  misses Chrome there are at block-level `contain: strict` boxes, and they belong to whichever slice lifts those. With
+  interaction rules in the document, a `contain` value is already refused by the paint-fact check first (`contain on ib`,
+  SELD-R2b).
 - **Paint.** `atomic-inline-hit.test.ts` screenshots F2 (an `opacity` atomic over the text after it) and F2b (a plain atomic) in
   Chrome. The context atomic paints over the text and the plain one under it. The compiled program writes `paint-order` (host
   `html`, bucket 1) for the context atomics, and none for the plain one.

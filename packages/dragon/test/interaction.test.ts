@@ -14,7 +14,7 @@ import type { ProfileRow } from '../src/profiles/types.ts';
 import type { SupportProfiles } from '../src/project.ts';
 import type { ElementNode } from '../src/types.ts';
 import type { LinkedElement } from '../src/analysis/link.ts';
-import { comboIndex, COMMITTED_PROFILES, conditionsExclusive, createProjectWith, gatedConditions, HIT_MODELLED, hitUnmodelledFact, interactionCondition, laneOnlyNative, LONGHANDS, NO_FAULTS, stateMembers } from '../src/internal.ts';
+import { comboIndex, COMMITTED_PROFILES, conditionsExclusive, createProjectWith, gatedConditions, HIT_MODELLED, hitUnmodelledBox, hitUnmodelledFact, interactionCondition, laneOnlyNative, LONGHANDS, NO_FAULTS, stateMembers } from '../src/internal.ts';
 import type { ResolvedElement } from '../src/analysis/resolve.ts';
 import { resolveTree, valueToString } from '../src/analysis/resolve.ts';
 import { parseStylesheet } from '../src/css/stylesheet.ts';
@@ -618,6 +618,16 @@ describe('interaction states: hit model (R13)', () => {
     const rotated = otherErrors(compile({}, css.replace('opacity: 0.5;', 'transform: rotate(5deg);'), mixed, TARGETS, 'derive').diagnostics);
     expect(rotated.length).toBeGreaterThan(0);
     expect(rotated.every((m) => m.includes('transform'))).toBe(true);
+    // A context that containment makes, with or without opacity beside it, no Chrome capture orders on its line: the paint-fact
+    // check refuses the rules for contain first, and the box check names the atomic by the shared definition (hitFactOtherContext).
+    for (const decl of ['contain: paint;', 'contain: paint; opacity: 0.5;']) {
+      const compiled = compile({}, css.replace('opacity: 0.5;', decl), mixed, TARGETS, 'derive');
+      for (const t of ['ios', 'android']) expect(otherErrors(compiled.diagnostics), decl).toContain(`DRAGON_UNSUPPORTED_SELECTOR [${t}] :hover needs Dragon hit testing through contain on ib, which is not built yet (package SELD-R2b)`);
+      const root = internalRecord(compiled)?.cases[0]?.resolved as ResolvedElement;
+      expect(hitUnmodelledBox(root), decl).toEqual({ address: 'ib', kind: 'atomic inline forming a stacking context', pkg: 'INL2c', reason: 'containment' });
+    }
+    const plain = internalRecord(compile({}, css, mixed, TARGETS, 'derive'))?.cases[0]?.resolved as ResolvedElement;
+    expect(hitUnmodelledBox(plain)).toBeNull();
   });
 
   it('catches the plant hitUnmodelledNotRefused', () => {

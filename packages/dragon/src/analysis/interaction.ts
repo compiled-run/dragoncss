@@ -27,6 +27,7 @@ import { NO_INTERACTION } from './match.ts';
 import type { ResolvedElement } from './resolve.ts';
 import { selectPartOf, textFieldPartOf } from './resolve.ts';
 import { holdsAtomicLine, lineAtomics, propagatedFrom } from './computed-checks.ts';
+import { hitFactContext, hitFactOtherContext } from '../lower/paint/stacking.ts';
 import { matrixParts, TRANSFORM_LIST_TYPE, transformFunctionsOf } from '../css/properties/transform.ts';
 
 /** R7: the distinct reachable interaction states one app assignment compiles; more are refused (package SELD-R2s). */
@@ -655,8 +656,10 @@ export function hitUnmodelledControl(root: ResolvedElement): string | null {
 /** The kinds of box hitUnmodelledBox names, with the package each waits for. */
 export type HitUnmodelledBox = {
   readonly address: string;
-  readonly kind: 'float' | 'inline-grid box' | 'block with percentage padding around atomic inlines' | 'inline replaced element';
-  readonly pkg: 'FLT' | 'G-INL' | 'INL2a' | 'INL2d';
+  readonly kind: 'float' | 'inline-grid box' | 'block with percentage padding around atomic inlines' | 'atomic inline forming a stacking context' | 'inline replaced element';
+  readonly pkg: 'FLT' | 'G-INL' | 'INL2a' | 'INL2c' | 'INL2d';
+  /** For INL2c, what besides opacity or a transform makes the atomic inline a stacking context (stacking.ts hitFactOtherContext). */
+  readonly reason?: string;
 };
 
 /**
@@ -679,6 +682,8 @@ export function hitUnmodelledBox(root: ResolvedElement, compiles: (v: ResolvedVa
       }
     }
     for (const a of lineAtomics(el)) {
+      const other = hitFactContext(a) ? hitFactOtherContext(a) : '';
+      if (other !== '') return { address: a.element.address, kind: 'atomic inline forming a stacking context', pkg: 'INL2c', reason: other };
       // Only an inline <img> has a Chrome hit capture on a line (inline-replaced-img, hit-atomic-inline); an inline <svg> is refused as SVG.
       if (isReplacedTag(a.element.tag) && a.element.tag !== 'img' && a.element.tag !== 'svg') return { address: a.element.address, kind: 'inline replaced element', pkg: 'INL2d' };
     }

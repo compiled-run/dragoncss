@@ -264,7 +264,7 @@ const lengthBits = (l: TransformLength): [string, string, string] => [l.kind, bi
 /**
  * The text of HIT_FACTS_PATH for these cases: each case's facts as [id, pointerEvents, inherited, activation, radii], radii the
  * eight [percent, value] border-radius components or empty, followed for a stacking context or a transformed box by [context,
- * transform, origin], sorted by id, and the refused cases with their reasons, which the P1 hit suite skips by name.
+ * transform, origin] and, when something else makes the context, its name, sorted by id, and the refused cases with their reasons, which the P1 hit suite skips by name.
  */
 export function hitFactsJson(cases: readonly NativeCase[], refused: readonly { readonly id: string; readonly reason: string }[] = hitRefusedCases()): string {
   const rows = cases.map((n) => {
@@ -272,7 +272,9 @@ export function hitFactsJson(cases: readonly NativeCase[], refused: readonly { r
     if (facts === null) throw new Error(`${n.case.id}: no hit facts`);
     const v = [...facts].sort(([x], [y]) => (x < y ? -1 : x > y ? 1 : 0)).map(([id, f]) => {
       const flat = [id, f.pointerEvents, f.inherited, f.activation, f.radii.map((l) => [l.percent, l.value])];
-      return !f.context && f.transform.length === 0 ? flat : [...flat, f.context, f.transform.map((o) => [o.fn, lengthBits(o.x), lengthBits(o.y), bitsHex(o.angle), bitsHex(o.sx), bitsHex(o.sy)]), [lengthBits(f.origin.x), lengthBits(f.origin.y)]];
+      if (!f.context && f.transform.length === 0) return flat;
+      const painted = [...flat, f.context, f.transform.map((o) => [o.fn, lengthBits(o.x), lengthBits(o.y), bitsHex(o.angle), bitsHex(o.sx), bitsHex(o.sy)]), [lengthBits(f.origin.x), lengthBits(f.origin.y)]];
+      return f.otherContext === '' ? painted : [...painted, f.otherContext];
     });
     return `    ${JSON.stringify(n.case.id)}: ${JSON.stringify(v)}`;
   });
