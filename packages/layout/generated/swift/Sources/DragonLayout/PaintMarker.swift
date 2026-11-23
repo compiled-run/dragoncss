@@ -43,11 +43,11 @@ public func paintMarker_symbolCoverage(_ symbol: JsString, _ left: Double, _ top
   try paintAa_antiFillPath(dev, paintAa_ovalPath(PaintAa_FRect(left, top, right, bottom)), b, paintAa_NO_AA_FAULTS)
   // ts: packages/layout/src/paint-marker.ts:29
   do {
-    let _a232 = try paintAa_devicePixels(dev)
-    var _i232 = 0
-    while _i232 < _a232.items.count {
-      let v: Double = _a232.items[_i232]
-      _i232 += 1
+    let _a234 = try paintAa_devicePixels(dev)
+    var _i234 = 0
+    while _i234 < _a234.items.count {
+      let v: Double = _a234.items[_i234]
+      _i234 += 1
       _ = jsPush(out, (255.0 - v))
     }
   }
