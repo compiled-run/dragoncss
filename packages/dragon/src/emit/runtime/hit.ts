@@ -5,7 +5,7 @@
 import type { RadiusLengthValue } from '../../lower/paint/radius.ts';
 import type { TransformOp, TransformOrigin } from '@dragon/layout';
 
-export const HIT_FACTS_VERSION = 'dragon.hit-facts/3';
+export const HIT_FACTS_VERSION = 'dragon.hit-facts/4';
 
 /** One element's hit facts (rt-hit.ts HitFact). */
 export type HitFact = {
@@ -16,6 +16,8 @@ export type HitFact = {
   readonly radii: readonly RadiusLengthValue[];
   /** A stacking context in the z-index 0 layer (opacity below 1, a transform), and the transform functions (none when empty) and origin. */
   readonly context: boolean;
+  /** What else makes it a stacking context, as a message names it (containment, a filter, isolation and the like), or ''. */
+  readonly otherContext: string;
   readonly transform: readonly TransformOp[];
   readonly origin: TransformOrigin;
 };
