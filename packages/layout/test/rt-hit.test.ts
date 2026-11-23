@@ -484,7 +484,7 @@ describe('atomic inlines on their lines', () => {
     const ib = box('c1', { display: 'inline-block', width: px(20), height: px(8), marginLeft: px(-25) }, [box('k', { width: px(10), height: px(4) })]);
     const p = box('p', { width: px(200), paddingLeft: pad === 'px' ? px(0) : pct(5) }, [text('t1', 'aaaa'), ib, text('t2', 'bb')]);
     const root = box('html', {}, [box('body', {}, [p])]);
-    const facts = new Map(['html', 'body', 'p', 'c1', 'k'].map((id) => [id, { pointerEvents: 'auto', inherited: true, activation: false, radii: [] }] as const));
+    const facts = new Map(['html', 'body', 'p', 'c1', 'k'].map((id) => [id, { pointerEvents: 'auto', inherited: true, activation: false, ...FLAT }] as const));
     return { input: { viewport: { width: 400, height: 300 }, devicePixelRatio: 1, ...neutralEnvironment({ width: 400, height: 300 }), root }, facts };
   };
 
@@ -637,6 +637,7 @@ describe('hitTableOf reads a transform and a stacking context from the hit facts
     const still = await setup([{ fn: 'rotate', x: len(0), y: len(0), angle: 0, sx: 1, sy: 1 }, { fn: 'translateX', x: len(5), y: len(0), angle: 0, sx: 1, sy: 1 }], true);
     expect((still().nodes[1] as HitNode).offsetX).toBe(5);
   });
+});
 
 // HIT-atomic-inline in a block button: the engine moves a button's in-flow contents down by half its free block space
 // (buttonContentShift), so its lines and atomic inlines sit there in the table too, with or without a definite height.
@@ -649,7 +650,7 @@ describe('atomic inlines in a block button', () => {
     const size = sizing === 'height' ? { height: px(60) } : sizing === 'min-height' ? { minHeight: px(60) } : {};
     const btn = control('btn', { kind: 'button-block' }, { width: px(100), ...size }, kids);
     const root = box('html', { width: px(200) }, [box('body', {}, [btn])]);
-    const facts = new Map(['html', 'body', 'btn', 'ib', 'k', 'img'].map((id) => [id, { pointerEvents: 'auto', inherited: true, activation: id === 'btn', radii: [] }] as const));
+    const facts = new Map(['html', 'body', 'btn', 'ib', 'k', 'img'].map((id) => [id, { pointerEvents: 'auto', inherited: true, activation: id === 'btn', ...FLAT }] as const));
     return { input: { viewport: { width: 400, height: 300 }, devicePixelRatio: 1, ...neutralEnvironment({ width: 400, height: 300 }), root }, facts };
   };
 
