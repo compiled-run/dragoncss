@@ -194,6 +194,8 @@ The export writes it per target as `interaction: { levels }`, one level per assi
 
 `markless:style-compare` compares each state with Chrome forced into it (`forced-pseudo.ts`): every frame, and every background colour the state changes. A state that changes another write fails, naming it, until the comparison reads that property from Chrome (`packages/parity/test/markless-interaction.test.ts`).
 
+Refused by name for now: interaction states together with transitions or animations (the animator's tables cover the program's assignments only), and together with style values that follow state (slots). A state's colour scheme is its assignment's, so a state that changes `color-scheme` keeps the assignment's.
+
 Hit testing still gates what compiles: a pressed or focused style through opacity, a transform, a box-shadow, a sticky or fixed box or a form control is refused until its hit model is built (SELD-R2b, POSX-s, FORM-a).
 - Native text is Ahem-only in production (see above).
 - One call compiles one component in its own document. Generated names are per component (`Dragon<Name>States`), so two components need two different names.
