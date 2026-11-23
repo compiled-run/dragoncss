@@ -1130,7 +1130,7 @@ function controlKind(v: JsonValue, path: string): ControlKind {
   }
   if (k === 'text-area') {
     const o = obj(v, ['kind', 'cols', 'rows', 'font', 'lineHeight'], path);
-    return { kind: 'text-area', cols: numField(o, 'cols', path), rows: numField(o, 'rows', path), font: fontSpec(field(o, 'font', path), `${path}.font`), lineHeight: lineHeightValue(field(o, 'lineHeight', path), `${path}.lineHeight`) };
+    return { kind: 'text-area', cols: numField(o, 'cols', path), rows: numField(o, 'rows', path), font: fontSpec(field(o, 'font', path), `${path}.font`), lineHeight: lineHeightValue(field(o, 'lineHeight', path), `${path}.lineHeight`), scrollbarInline: numField(o, 'scrollbarInline', path), scrollbarBlock: numField(o, 'scrollbarBlock', path) };
   }
   if (k === 'text-editor') {
     obj(v, ['kind'], path);

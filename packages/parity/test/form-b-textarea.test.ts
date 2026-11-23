@@ -1,6 +1,7 @@
 // FORM-b: a textarea compiles as Chrome 145's UA shadow tree, a placeholder and an inner editor at the content top, sized by cols
-// and rows (controls.ts textAreaInlineSize) and laid out by the engine. Its resize compiles on iOS and Android, which draw no grip.
-// Refused there: a scrollbar gutter, overflow: visible and an editable textarea; everywhere: an element child.
+// and rows (controls.ts textAreaInlineSize) and laid out by the engine. Its resize compiles on iOS and Android, which draw no grip,
+// and so does the scrollbar thickness Chrome adds to its default size. Refused there: overflow: visible and an editable textarea;
+// everywhere: an element child.
 import { describe, expect, it } from 'vitest';
 import type { Compiled, Diagnostic } from 'dragon';
 import * as dragon from 'dragon';
@@ -78,15 +79,28 @@ describe('FORM-b textareas', () => {
     expect(b.get('v-a')?.y).toBe(3);
   });
 
-  it('compiles the UA grip, and refuses a scrollbar gutter, overflow: visible and editing on iOS and Android', () => {
+  it('adds the platform scrollbar thickness Chrome adds to the default size, on iOS and Android too', () => {
+    // Chrome 145 (macOS overlay scrollbars, no gutter): 16 DIP at scrollbar-width auto, 14 at thin, to the inline size unless
+    // overflow-y is hidden or clip, and to the height at overflow-x: scroll. BASE's border and padding add 8 x 6.
+    const sized = (id: string, css: string): { width: number; height: number } | undefined => {
+      const c = compile(id, `textarea { ${css} }`, '<textarea data-dragon-id="t" readonly="" cols="5" rows="3"></textarea>');
+      expect(errors(c), css).toEqual([]);
+      return boxes(c).get('t');
+    };
+    expect(sized('ta-sb-none', 'scrollbar-width: none')).toMatchObject({ width: 58, height: 36 });
+    expect(sized('ta-sb-auto', 'scrollbar-width: auto')).toMatchObject({ width: 74, height: 36 });
+    expect(sized('ta-sb-thin', 'scrollbar-width: thin')).toMatchObject({ width: 72, height: 36 });
+    expect(sized('ta-sb-hidden', 'scrollbar-width: auto; overflow: hidden')).toMatchObject({ width: 58, height: 36 });
+    expect(sized('ta-sb-clip', 'scrollbar-width: thin; overflow-y: clip; overflow-x: hidden')).toMatchObject({ width: 58, height: 36 });
+    expect(sized('ta-sb-scroll', 'scrollbar-width: auto; overflow-x: scroll')).toMatchObject({ width: 74, height: 52 });
+    expect(sized('ta-sb-scroll-y-hidden', 'scrollbar-width: thin; overflow-x: scroll; overflow-y: hidden')).toMatchObject({ width: 58, height: 50 });
+    expect(sized('ta-sb-width', 'scrollbar-width: auto; overflow-x: scroll; width: 30px; height: 20px')).toMatchObject({ width: 38, height: 26 });
+  });
+
+  it('compiles the UA grip, and refuses overflow: visible and editing on iOS and Android', () => {
     const base = 'textarea { display: block; font: inherit; appearance: none; margin: 0; border: 2px solid #036; padding: 1px 2px; }';
     // The UA's resize: both compiles: a phone has no resizer (resize.test.ts).
     expect(errors(compile('ta-chrome', 'textarea { scrollbar-width: none; }', '<textarea data-dragon-id="t" readonly=""></textarea>', base))).toEqual([]);
-    expect(errors(compile('ta-gutter', 'textarea { scrollbar-width: auto; }', '<textarea data-dragon-id="t" readonly=""></textarea>'))).toEqual([
-      expect.stringMatching(/^android DRAGON_UNSUPPORTED_VALUE <textarea> t reserves a scrollbar gutter/),
-      expect.stringMatching(/^ios DRAGON_UNSUPPORTED_VALUE <textarea> t reserves a scrollbar gutter/),
-    ]);
-    expect(errors(compile('ta-gutter-hidden', 'textarea { scrollbar-width: auto; overflow: hidden; }', '<textarea data-dragon-id="t" readonly=""></textarea>'))).toEqual([]);
     expect(errors(compile('ta-visible', 'textarea { overflow: visible; }', '<textarea data-dragon-id="t" readonly=""></textarea>'))).toEqual([
       expect.stringMatching(/^android DRAGON_UNSUPPORTED_VALUE overflow: visible on <textarea> t/),
       expect.stringMatching(/^ios DRAGON_UNSUPPORTED_VALUE overflow: visible on <textarea> t/),

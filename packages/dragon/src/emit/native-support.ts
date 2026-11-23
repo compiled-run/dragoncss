@@ -3410,7 +3410,7 @@ export function inputFunctions(lang: Lang, root: import('@dragon/layout').Layout
           : c.kind === 'text-field'
             ? `ControlKind_textField(${str('text-field')}, ${doubleLit(c.size)}, ${fontSpecValue(lang, c.font)}, ${lineHeightValue(lang, c.lineHeight)}, ${c.cancelButton === null ? none : `CancelButton(${doubleLit(c.cancelButton.marginStart)}, ${doubleLit(c.cancelButton.marginEnd)})`})`
             : c.kind === 'text-area'
-              ? `ControlKind_textArea(${str('text-area')}, ${doubleLit(c.cols)}, ${doubleLit(c.rows)}, ${fontSpecValue(lang, c.font)}, ${lineHeightValue(lang, c.lineHeight)})`
+              ? `ControlKind_textArea(${str('text-area')}, ${doubleLit(c.cols)}, ${doubleLit(c.rows)}, ${fontSpecValue(lang, c.font)}, ${lineHeightValue(lang, c.lineHeight)}, ${doubleLit(c.scrollbarInline)}, ${doubleLit(c.scrollbarBlock)})`
               : c.kind === 'text-editor'
                 ? `ControlKind_textEditor(${str('text-editor')})`
                 : c.kind === 'text-placeholder'
