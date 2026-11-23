@@ -138,17 +138,17 @@
   }
  },
  "summary": {
-  "diagnostics": 265,
-  "errors": 240,
+  "diagnostics": 259,
+  "errors": 234,
   "byCode": {
    "DRAGON_CONTROL_STATIC_NATIVE [android]": 9,
    "DRAGON_CONTROL_STATIC_NATIVE [ios]": 9,
    "DRAGON_NOT_APPLICABLE_NATIVE [android]": 3,
    "DRAGON_NOT_APPLICABLE_NATIVE [ios]": 3,
    "DRAGON_SELECTOR_DROPPED": 1,
-   "DRAGON_UNPROVEN_CONTEXT [android]": 46,
-   "DRAGON_UNPROVEN_CONTEXT [ios]": 46,
-   "DRAGON_UNPROVEN_CONTEXT [web]": 44,
+   "DRAGON_UNPROVEN_CONTEXT [android]": 44,
+   "DRAGON_UNPROVEN_CONTEXT [ios]": 44,
+   "DRAGON_UNPROVEN_CONTEXT [web]": 42,
    "DRAGON_UNSUPPORTED_ATTRIBUTE": 5,
    "DRAGON_UNSUPPORTED_FONT [android]": 2,
    "DRAGON_UNSUPPORTED_FONT [ios]": 2,
@@ -162,7 +162,7 @@
   "perTarget": {
    "web": {
     "errors": {
-     "DRAGON_UNPROVEN_CONTEXT": 44,
+     "DRAGON_UNPROVEN_CONTEXT": 42,
      "DRAGON_UNSUPPORTED_ATTRIBUTE": 5,
      "DRAGON_UNSUPPORTED_PROPERTY": 3,
      "DRAGON_UNSUPPORTED_VALUE": 16
@@ -174,7 +174,7 @@
    },
    "ios": {
     "errors": {
-     "DRAGON_UNPROVEN_CONTEXT": 46,
+     "DRAGON_UNPROVEN_CONTEXT": 44,
      "DRAGON_UNSUPPORTED_ATTRIBUTE": 5,
      "DRAGON_UNSUPPORTED_FONT": 2,
      "DRAGON_UNSUPPORTED_SELECTOR": 5,
@@ -190,7 +190,7 @@
    },
    "android": {
     "errors": {
-     "DRAGON_UNPROVEN_CONTEXT": 46,
+     "DRAGON_UNPROVEN_CONTEXT": 44,
      "DRAGON_UNSUPPORTED_ATTRIBUTE": 5,
      "DRAGON_UNSUPPORTED_FONT": 2,
      "DRAGON_UNSUPPORTED_SELECTOR": 5,
@@ -210,11 +210,11 @@
   "notApplicableIos": 3,
   "notApplicableAndroid": 3,
   "applicableDeclarations": 288,
-  "supportedBothTargets": 250,
-  "supportedWeb": 270,
-  "supportedIos": 250,
-  "supportedAndroid": 250,
-  "supportPercent": 86.8,
+  "supportedBothTargets": 252,
+  "supportedWeb": 272,
+  "supportedIos": 252,
+  "supportedAndroid": 252,
+  "supportPercent": 87.5,
   "elements": 62,
   "supportedElements": 62,
   "tags": {
@@ -299,7 +299,7 @@
   "rawDiagnosticsPerPass": {
    "A-authored": 27,
    "B-unwrapped": 27,
-   "C-context": 258
+   "C-context": 252
   }
  },
  "features": {
@@ -2250,12 +2250,10 @@
    "atRule": null,
    "property": "-webkit-appearance",
    "value": "none",
-   "web": "blocked",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNPROVEN_CONTEXT"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 148,
@@ -2290,12 +2288,10 @@
    "atRule": null,
    "property": "width",
    "value": "100%",
-   "web": "blocked",
-   "ios": "blocked",
-   "android": "blocked",
-   "codes": [
-    "DRAGON_UNPROVEN_CONTEXT"
-   ]
+   "web": "supported",
+   "ios": "supported",
+   "android": "supported",
+   "codes": []
   },
   {
    "index": 151,
@@ -7380,120 +7376,6 @@
     "text": "0 0 0 0.2rem rgba(255, 255, 255, 0.18),\n\t\t0 0.3rem 1rem rgba(0, 0, 0, 0.5)"
    },
    "message": "page/song-call/record-center has a box-shadow and position: absolute; Chrome paints it after the in-flow content of its stacking context, and ios's shadow backdrop for a positioned box is not proven against Chrome yet",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNPROVEN_CONTEXT|android|css@4860-4864|appearance:none (set by -webkit-appearance: none) on page/player-call/progress-input is used in the atomic-inline/ltr context, which is not proven (proven: block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, grid/ltr, grid/rtl); no appearance value is proven in atomic-inline/ltr",
-   "code": "DRAGON_UNPROVEN_CONTEXT",
-   "severity": "error",
-   "target": "android",
-   "location": {
-    "kind": "css",
-    "start": 4860,
-    "end": 4864,
-    "line": 271,
-    "column": 22,
-    "text": "none"
-   },
-   "message": "appearance:none (set by -webkit-appearance: none) on page/player-call/progress-input is used in the atomic-inline/ltr context, which is not proven (proven: block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, grid/ltr, grid/rtl); no appearance value is proven in atomic-inline/ltr",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@4860-4864|appearance:none (set by -webkit-appearance: none) on page/player-call/progress-input is used in the atomic-inline/ltr context, which is not proven (proven: block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, grid/ltr, grid/rtl); no appearance value is proven in atomic-inline/ltr",
-   "code": "DRAGON_UNPROVEN_CONTEXT",
-   "severity": "error",
-   "target": "ios",
-   "location": {
-    "kind": "css",
-    "start": 4860,
-    "end": 4864,
-    "line": 271,
-    "column": 22,
-    "text": "none"
-   },
-   "message": "appearance:none (set by -webkit-appearance: none) on page/player-call/progress-input is used in the atomic-inline/ltr context, which is not proven (proven: block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, grid/ltr, grid/rtl); no appearance value is proven in atomic-inline/ltr",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@4860-4864|appearance:none (set by -webkit-appearance: none) on page/player-call/progress-input is used in the atomic-inline/ltr context, which is not proven (proven: block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, grid/ltr, grid/rtl); no appearance value is proven in atomic-inline/ltr",
-   "code": "DRAGON_UNPROVEN_CONTEXT",
-   "severity": "error",
-   "target": "web",
-   "location": {
-    "kind": "css",
-    "start": 4860,
-    "end": 4864,
-    "line": 271,
-    "column": 22,
-    "text": "none"
-   },
-   "message": "appearance:none (set by -webkit-appearance: none) on page/player-call/progress-input is used in the atomic-inline/ltr context, which is not proven (proven: block/ltr, block/rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, flex-row/rtl, grid/ltr, grid/rtl); no appearance value is proven in atomic-inline/ltr",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNPROVEN_CONTEXT|android|css@4918-4922|width:<percentage> on page/player-call/progress-input is used in the atomic-inline/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, fixed-in-block/ltr/cb-ltr, fixed-in-block/rtl/cb-rtl, fixed-in-grid/ltr/cb-ltr, fixed-in-grid/rtl/cb-rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, grid/ltr, grid/rtl); width values proven in atomic-inline/ltr: <length-px> or auto",
-   "code": "DRAGON_UNPROVEN_CONTEXT",
-   "severity": "error",
-   "target": "android",
-   "location": {
-    "kind": "css",
-    "start": 4918,
-    "end": 4922,
-    "line": 274,
-    "column": 9,
-    "text": "100%"
-   },
-   "message": "width:<percentage> on page/player-call/progress-input is used in the atomic-inline/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, fixed-in-block/ltr/cb-ltr, fixed-in-block/rtl/cb-rtl, fixed-in-grid/ltr/cb-ltr, fixed-in-grid/rtl/cb-rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, grid/ltr, grid/rtl); width values proven in atomic-inline/ltr: <length-px> or auto",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNPROVEN_CONTEXT|ios|css@4918-4922|width:<percentage> on page/player-call/progress-input is used in the atomic-inline/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, fixed-in-block/ltr/cb-ltr, fixed-in-block/rtl/cb-rtl, fixed-in-grid/ltr/cb-ltr, fixed-in-grid/rtl/cb-rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, grid/ltr, grid/rtl); width values proven in atomic-inline/ltr: <length-px> or auto",
-   "code": "DRAGON_UNPROVEN_CONTEXT",
-   "severity": "error",
-   "target": "ios",
-   "location": {
-    "kind": "css",
-    "start": 4918,
-    "end": 4922,
-    "line": 274,
-    "column": 9,
-    "text": "100%"
-   },
-   "message": "width:<percentage> on page/player-call/progress-input is used in the atomic-inline/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, fixed-in-block/ltr/cb-ltr, fixed-in-block/rtl/cb-rtl, fixed-in-grid/ltr/cb-ltr, fixed-in-grid/rtl/cb-rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, grid/ltr, grid/rtl); width values proven in atomic-inline/ltr: <length-px> or auto",
-   "viaRelated": false,
-   "passes": [
-    "C-context"
-   ]
-  },
-  {
-   "key": "DRAGON_UNPROVEN_CONTEXT|web|css@4918-4922|width:<percentage> on page/player-call/progress-input is used in the atomic-inline/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, fixed-in-block/ltr/cb-ltr, fixed-in-block/rtl/cb-rtl, fixed-in-grid/ltr/cb-ltr, fixed-in-grid/rtl/cb-rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, grid/ltr, grid/rtl); width values proven in atomic-inline/ltr: <length-px> or auto",
-   "code": "DRAGON_UNPROVEN_CONTEXT",
-   "severity": "error",
-   "target": "web",
-   "location": {
-    "kind": "css",
-    "start": 4918,
-    "end": 4922,
-    "line": 274,
-    "column": 9,
-    "text": "100%"
-   },
-   "message": "width:<percentage> on page/player-call/progress-input is used in the atomic-inline/ltr context, which is not proven (proven: absolute-in-block/ltr/cb-ltr, absolute-in-block/rtl/cb-rtl, absolute-in-flex-row/ltr/cb-ltr, absolute-in-flex-row/rtl/cb-rtl, block/ltr, block/rtl, fixed-in-block/ltr/cb-ltr, fixed-in-block/rtl/cb-rtl, fixed-in-grid/ltr/cb-ltr, fixed-in-grid/rtl/cb-rtl, flex-column/ltr, flex-column/rtl, flex-row/ltr, grid/ltr, grid/rtl); width values proven in atomic-inline/ltr: <length-px> or auto",
    "viaRelated": false,
    "passes": [
     "C-context"
