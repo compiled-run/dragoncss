@@ -465,7 +465,7 @@ describe('FORM-a control boxes: what the engine and the validator refuse', () =>
     const strut = { font: ahemFont(10), lineHeight: { kind: 'normal' } } as const;
     const edges = { borderTopWidth: px(2), borderRightWidth: px(2), borderBottomWidth: px(2), borderLeftWidth: px(2), paddingTop: px(1), paddingRight: px(2), paddingBottom: px(1), paddingLeft: px(2) };
     const editor = control('t::editor', { kind: 'text-editor' }, { overflowX: 'clip', overflowY: 'clip' }, [text('t::editor:text0', 'X')]);
-    const field = (display: 'inline-block' | 'block', parts: ControlBox = editor): ControlBox => control('t', { kind: 'text-field', size: 3, font: ahemFont(10), lineHeight: { kind: 'normal' }, cancelButton: null }, { ...edges, display, marginBottom: px(4) }, [parts]);
+    const field = (display: 'inline-block' | 'block', parts: ControlBox = editor): ControlBox => control('t', { kind: 'text-field', size: 3, font: ahemFont(10), lineHeight: { kind: 'normal' }, avgChar: 'ahem', cancelButton: null }, { ...edges, display, marginBottom: px(4) }, [parts]);
     const input = (f: ControlBox): LayoutInput => ({ ...env, root: box('root', {}, [text('root:text0', 'XX '), f], strut) });
     expect(codes(input(field('inline-block')))).toEqual([]);
     const r = layout(input(field('inline-block')), ahemMeasurer);
