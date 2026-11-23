@@ -271,3 +271,27 @@ The plan does not say which leaves change: the Markless style input has no such 
 6. **CR and FF.** The build treats U+000D and U+000C as phase I white space (resolve.ts:81). Chrome 145 does not collapse them when script sets them (the HTML parser normalises CR in markup). This spec refuses them in a changed text. Should a separate task capture what Chrome does and correct WHITE_SPACE for authored text?
 7. **Out-of-flow boxes among inline content.** Chrome collapses white space across an abspos box (probe), but resolve.ts ends the context there (:623). That is outside this spec, but the phone inherits it, because both sides run the same code. Should it be its own task?
 8. **Marking texts that change.** The style input does not say which texts change, so `plan.texts` covers every leaf whose source differs, and the harness accepts any leaf. Should Markless mark live texts? The table could then shrink to their contexts, and the phone could refuse a fixed leaf given as changed.
+
+## Judge verdict (2026-11-23)
+
+Approved with amendments.
+
+- **Order.** RS1, then RS2, then RS3. RS2 never lands without RS3: stack them in one landing batch, or fold the Chrome cases 1, 5, 8 and 10 into RS2.
+- **A1 (RS2): a self-check.** Over every existing Markless parity fixture and plan, withPhaseOne with every text at its F1 source and every dropped leaf inserted must equal the variant byte for byte.
+- **A2 (RS2): struts and the table's shape.**
+  - An emptied box's strut becomes null, as the build emits it (layout/src/validate.ts:924-942), not kept as C3 step 4 says.
+  - The F2 strut is keyed to the block container, not to `parent`.
+  - Ordered entries keep tree order when several dropped leaves sit before the same `next`.
+  - checkMarklessPlan checks the ids, the variant range, that `next` is a child of `parent`, and that no entry repeats.
+- **Q1: no DPR 1 on the phone path.** Prove the rules with function-level unit tests against the Chrome probe strings, at ratios 2 and 3 on iOS and Android, and 2.625 on Android.
+- **Q2: a side table,** keeping `dragon.markless-plan/1` (precedent: the optional `slots?` and `transformed?`).
+- **Q3: pre-line stays refused,** and case 13 is dropped.
+- **Q4: a test-only entry point,** `runMarklessRowsLayoutWithFaults(line, faults)`. The production entry passes no faults, and the rows line and FAULT_KEYS stay unchanged.
+- **Q5: refuse only a fixed capitalize leaf whose previous character comes from a changed text,** through a new optional `capitalized?: string[]`.
+- **Q6: refuse CR and FF in a changed text.** A separate build-side task re-captures Chrome with corrected probes; the CR and FF numbers above, 11.95 and 23.34 px, cannot be right.
+- **Q7: abspos inside inline content is a separate build-side task** after RS2, under A1.
+- **Q8: don't mark live texts now.** RS2 reports the plan size growth on the Markless yardstick, and goes to the owner if it is over 5%.
+- **Proof.** Chrome captures in Ahem and Lato, plus the two planted faults, which must also fail A1, or the PR explains why.
+- **Missing evidence before RS2 finishes:** whether the Markless hosts can draw a leaf that had no text view at build time. If they cannot, refuse by name a text that was empty at build time.
+- **Licensing.** The Blink files cited in this spec are BSD-licensed (The Chromium Authors). They were read as references only; no code is copied from them.
+- **Completion.** Markless S42 passes on both phones against the landed Dragon.
