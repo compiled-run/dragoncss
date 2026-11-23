@@ -1791,40 +1791,55 @@ function checkButton(el: ResolvedElement, parentDisplay: string | null, targets:
   }
 }
 
-/**
- * FORM-b: a single-line text field (text, email, url, tel and an unknown or missing type) is laid out as its UA shadow tree, the
- * inner editor and placeholder (resolve.ts), and painted as CSS boxes once its used appearance is none (the devolve probe:
- * appearance: none, or an author background or border). Refused: a themed field; a password field (Chrome masks its text with
- * the font's bullet, which no fixture proves); any display but block or inline-block; an inline-block field off the baseline
- * or right to left (checkInlineTextField); an absolutely positioned one or a grid item; one whose font is Chrome's UA control
- * font; on iOS and Android a right-to-left search field;
- * and on iOS and Android an editable field, as Dragon has no caret or keyboard input there yet (the FORM-b editing slice),
- * unless the host edits it (hostEdits: the compile's textEditing 'host'). A readonly field shows its value as drawn text.
- */
 /** A width that names no intrinsic size: a length or a percentage. */
 const sizedWithoutContent = (v: ResolvedValue | undefined): boolean => v !== undefined && (v.value.kind === 'length' || v.value.kind === 'percentage');
 
-/** A grid container laying out its items in one stretching column: no column template, row flow, items stretched. */
+/** A computed keyword, or '' for any other value (a missing longhand reads as its initial keyword). */
+const keywordOr = (el: ResolvedElement, p: Longhand, initial: string): string => {
+  const v = el.props.get(p) as ResolvedValue | undefined;
+  return v === undefined ? initial : keywordOf(v);
+};
+
+/** An item's inline-axis self-alignment that stretches it to its slot (css-align-3 §6.1: auto takes the parent's justify-items). */
+const stretchesInline = (item: ResolvedElement, parent: ResolvedElement): boolean => {
+  const self = keywordOr(item, 'justify-self', 'auto');
+  const own = self === 'auto' ? keywordOr(parent, 'justify-items', 'legacy') : self;
+  return own === 'normal' || own === 'stretch' || own === 'legacy';
+};
+
+/** A min-width or max-width that names no intrinsic size: its initial value, a length or a percentage. */
+const boundWithoutContent = (el: ResolvedElement, p: 'min-width' | 'max-width'): boolean => {
+  const v = el.props.get(p) as ResolvedValue;
+  return keywordOf(v) === (p === 'min-width' ? 'auto' : 'none') || sizedWithoutContent(v);
+};
+
+/**
+ * A grid container whose one column is its whole content box: no column template or areas, an auto implicit column, row
+ * auto-flow, stretched content distribution, and every item auto-placed. Chrome 145 measured each other shape (justify-content:
+ * start, grid-auto-columns: max-content, two areas, grid-column: 2, column auto-flow) sizing its column by the item's content.
+ */
 function singleStretchColumn(grid: ResolvedElement): boolean {
-  const template = grid.props.get('grid-template-columns') as ResolvedValue;
-  const flow = keywordOf(grid.props.get('grid-auto-flow') as ResolvedValue);
-  const justify = keywordOf(grid.props.get('justify-items') as ResolvedValue);
-  return keywordOf(template) === 'none' && flow !== 'column' && (justify === 'normal' || justify === 'stretch' || justify === 'legacy');
+  if (keywordOf(grid.props.get('grid-template-columns') as ResolvedValue) !== 'none') return false;
+  if (keywordOr(grid, 'grid-template-areas', 'none') !== 'none') return false;
+  if (keywordOr(grid, 'grid-auto-columns', 'auto') !== 'auto') return false;
+  if (keywordOr(grid, 'grid-auto-flow', 'row') !== 'row') return false;
+  const distribution = keywordOr(grid, 'justify-content', 'normal');
+  if (distribution !== 'normal' && distribution !== 'stretch') return false;
+  return grid.children.every((c) => c.kind !== 'element' || (keywordOr(c, 'grid-column-start', 'auto') === 'auto' && keywordOr(c, 'grid-column-end', 'auto') === 'auto'));
 }
 
 /**
  * FORM-text-font: why a text control's inline size can read its face's average character width, or null when it cannot. Chrome 145
  * measured: a field with a length width, or a percentage width whose containing block's width does not depend on content, is the
  * same size in Roboto, Inter and Ahem; with no width, or a percentage width in a float, an inline-block, a max-content box, an
- * auto-width absolute box or a multi-column grid, it is not (197, 217 and 350px for one field).
+ * auto-width absolute box, a grid whose column is sized by content, a box aligned to the start (justify-self: start, in block and
+ * grid layout) or a box whose min-width is max-content, it is not (175 and 195px for one field in Roboto and Inter).
  */
 function avgWidthReader(el: ResolvedElement, chain: readonly ResolvedElement[]): string | null {
   const width = el.props.get('width') as ResolvedValue;
   if (!sizedWithoutContent(width)) return `its width is ${valueToString(width.value)}`;
-  const minWidth = el.props.get('min-width') as ResolvedValue;
-  if (keywordOf(minWidth) !== 'auto' && !sizedWithoutContent(minWidth)) return `its min-width is ${valueToString(minWidth.value)}`;
-  const maxWidth = el.props.get('max-width') as ResolvedValue;
-  if (keywordOf(maxWidth) !== 'none' && !sizedWithoutContent(maxWidth)) return `its max-width is ${valueToString(maxWidth.value)}`;
+  if (!boundWithoutContent(el, 'min-width')) return `its min-width is ${valueToString((el.props.get('min-width') as ResolvedValue).value)}`;
+  if (!boundWithoutContent(el, 'max-width')) return `its max-width is ${valueToString((el.props.get('max-width') as ResolvedValue).value)}`;
   const sizing = el.props.get('field-sizing') as ResolvedValue | undefined;
   if (sizing !== undefined && keywordOf(sizing) !== 'fixed') return `its field-sizing is ${valueToString(sizing.value)}`;
   if (width.value.kind === 'length') return null;
@@ -1835,7 +1850,13 @@ function avgWidthReader(el: ResolvedElement, chain: readonly ResolvedElement[]):
     const box = boxes[i] as ResolvedElement;
     const display = displayKeyword(box);
     if (display === 'flex' || display === 'inline-flex') return `${child.element.address} is a flex item of ${box.element.address}, sized by its content`;
-    if ((display === 'grid' || display === 'inline-grid') && !singleStretchColumn(box)) return `${child.element.address} is a grid item of ${box.element.address}, whose columns are not one stretching column`;
+    if ((display === 'grid' || display === 'inline-grid') && !singleStretchColumn(box)) return `${child.element.address} is a grid item of ${box.element.address}, whose column is not its whole content box`;
+    // The control's own self-alignment and margins do not move a percentage width; an ancestor's do size it by content.
+    if (child !== el && !stretchesInline(child, box)) return `${child.element.address} is aligned in ${box.element.address} by justify-self, sized by its content`;
+    if (child !== el && (display === 'grid' || display === 'inline-grid') && (keywordOf(child.props.get('margin-left') as ResolvedValue) === 'auto' || keywordOf(child.props.get('margin-right') as ResolvedValue) === 'auto')) return `${child.element.address} has an auto inline margin in grid ${box.element.address}, sized by its content`;
+    for (const bound of ['min-width', 'max-width'] as const) {
+      if (!boundWithoutContent(box, bound)) return `${box.element.address} has ${bound}: ${valueToString((box.props.get(bound) as ResolvedValue).value)}, sized by its content`;
+    }
     if (box.element.tag === 'html') return null;
     const w = box.props.get('width') as ResolvedValue;
     if (w.value.kind === 'length') return null;
@@ -1852,6 +1873,16 @@ function avgWidthReader(el: ResolvedElement, chain: readonly ResolvedElement[]):
   return null;
 }
 
+/**
+ * FORM-b: a single-line text field (text, email, url, tel and an unknown or missing type) is laid out as its UA shadow tree, the
+ * inner editor and placeholder (resolve.ts), and painted as CSS boxes once its used appearance is none (the devolve probe:
+ * appearance: none, or an author background or border). Refused: a themed field; a password field (Chrome masks its text with
+ * the font's bullet, which no fixture proves); any display but block or inline-block; an inline-block field off the baseline
+ * or right to left (checkInlineTextField); an absolutely positioned one or a grid item; one whose font is Chrome's UA control
+ * font; on iOS and Android a right-to-left search field;
+ * and on iOS and Android an editable field, as Dragon has no caret or keyboard input there yet (the FORM-b editing slice),
+ * unless the host edits it (hostEdits: the compile's textEditing 'host'). A readonly field shows its value as drawn text.
+ */
 function checkTextField(el: ResolvedElement, layoutParent: ResolvedElement | null, parentDisplay: string | null, chain: readonly ResolvedElement[], targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, hostEdits: boolean): void {
   const address = el.element.address;
   const tag = el.element.tag;

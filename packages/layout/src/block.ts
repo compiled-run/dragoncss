@@ -544,13 +544,17 @@ function layoutOwnContents(ctx: Ctx, node: LayoutBox | ControlBox, a: ContentsAr
  * editor in it (align-items: center).
  */
 function layoutTextField(ctx: Ctx, box: LayoutBox, field: Extract<ControlKind, { kind: 'text-field' }>, flow: readonly Placed[], contentTop: LU, width: LU, fixedBorderBox: LU | null, minMax: MinMax, vbp: LU): ContentsResult {
-  // FORM-text-font: below its face's ascent + descent a field's line height becomes normal (as Chrome 145 grows the field to the
-  // glyphs: Roboto 16px at line-height 1 and 0.8 is 19 tall); measured only for faces without a line gap, where the two agree.
-  const lineBox = metricsOf(ctx, box.id, field.font, field.lineHeight, false);
-  const face = fontMetricsOf(ctx, box.id, field.font);
-  if (face.lineGap !== 0 && add(lineBox.above, lineBox.below) < add(face.ascent, face.descent)) unsupported('text-field-line-height', box.id, 'css-ui-4 §6', `${box.id} has a line height below its face's ascent and descent in a face with a line gap, which Chrome's field height is not measured for; give it a line height of at least its font's height`);
   let editorId = '';
-  for (const k of box.children) if (k.kind === 'control' && k.control.kind === 'text-editor') editorId = k.id;
+  let editorNormal = false;
+  for (const k of box.children) {
+    if (k.kind === 'control' && k.control.kind === 'text-editor') {
+      editorId = k.id;
+      editorNormal = k.strut !== null && k.strut.lineHeight.kind === 'normal' && field.lineHeight.kind !== 'normal';
+    }
+  }
+  // FORM-text-font: an editor that took line-height normal (environment.ts editorLineHeightIsNormal) in a face with a line gap is not
+  // measured against Chrome; the compiler refuses the same case (project.ts checkTextFieldLineGap).
+  if (editorNormal && fontMetricsOf(ctx, box.id, field.font).lineGap !== 0) unsupported('text-field-line-height', box.id, 'css-ui-4 §6', `${box.id} takes line-height normal in its field in a face with a line gap, which Chrome's field height is not measured for; give it a line height of at least its font size + 1px`);
   const editor = flow.find((p) => p.frag.id === editorId);
   if (editor === undefined) throw new Error(`${box.id} is a text field without an inner editor; validateLayoutInput rejects this input`);
   const height = fixedBorderBox !== null ? fixedBorderBox : constrain(add(editor.frag.height, vbp), minMax);
