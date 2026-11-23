@@ -4461,6 +4461,13 @@ function jsonKind(v: JsonValue): string {
   return k !== undefined && k.kind === 'str' ? k.text : '';
 }
 
+/** The control kind of a plan box (text-area, text-editor, ...), '' for a box that is no control. */
+function controlKindJson(v: JsonValue): string {
+  if (v.kind !== 'obj') return '';
+  const c = v.values.get('control');
+  return c === undefined ? '' : jsonKind(c);
+}
+
 /** Whether a child of a box is inline-level: a text leaf, an inline box, a <br> or an atomic inline. */
 function inlineLevelJson(v: JsonValue): boolean {
   const k = jsonKind(v);
@@ -4530,8 +4537,11 @@ function settleContext(run: ContextRun, results: Map<string, string>, p: PhaseOn
   }
 }
 
-/** items with each text leaf holding its phase I result (results, else its own text) and dropped when that is "". */
-function rebuildContext(items: readonly JsonValue[], results: ReadonlyMap<string, string>, p: PhaseOne): JsonValue[] {
+/**
+ * items with each text leaf holding its phase I result (results, else its own text) and dropped when that is "", unless keepEmpty
+ * (items of a textarea's editor, whose leaf the build keeps).
+ */
+function rebuildContext(items: readonly JsonValue[], results: ReadonlyMap<string, string>, p: PhaseOne, keepEmpty: boolean, inTextArea: boolean): JsonValue[] {
   const out: JsonValue[] = [];
   for (const item of items) {
     if (item.kind !== 'obj') {
@@ -4544,7 +4554,7 @@ function rebuildContext(items: readonly JsonValue[], results: ReadonlyMap<string
       const own = str(field(item, 'text', id), `${id}.text`);
       const got = results.get(id);
       const text = got === undefined ? own : got;
-      if (text === '') continue;
+      if (text === '' && !keepEmpty) continue;
       if (text === own) out.push(item);
       else {
         const values = new Map<string, JsonValue>();
@@ -4553,9 +4563,9 @@ function rebuildContext(items: readonly JsonValue[], results: ReadonlyMap<string
       }
     } else if (k === 'inline') {
       const values = new Map<string, JsonValue>();
-      for (const key of item.keys) values.set(key, key === 'children' ? { kind: 'arr', items: rebuildContext(arr(field(item, 'children', k), `${k}.children`), results, p) } : (item.values.get(key) as JsonValue));
+      for (const key of item.keys) values.set(key, key === 'children' ? { kind: 'arr', items: rebuildContext(arr(field(item, 'children', k), `${k}.children`), results, p, keepEmpty, false) } : (item.values.get(key) as JsonValue));
       out.push({ kind: 'obj', keys: item.keys, values });
-    } else if (k === 'box' || k === 'control') out.push(phaseOneBox(item, p));
+    } else if (k === 'box' || k === 'control') out.push(phaseOneBox(item, p, inTextArea && controlKindJson(item) === 'text-editor'));
     else out.push(item);
   }
   return out;
@@ -4563,10 +4573,11 @@ function rebuildContext(items: readonly JsonValue[], results: ReadonlyMap<string
 
 /**
  * A box with phase I run again over each of its inline formatting contexts that holds a changed text, with every fixed text at its
- * phase I input, and each emptied leaf dropped; a box left with no inline-level children loses its strut, as the build emits it, and
- * a box without one that gains inline content takes the strut the plan exported for it.
+ * phase I input, and each emptied leaf dropped (a textarea editor's kept, as the build keeps it); a box left with no inline-level
+ * children loses its strut, as the build emits it, and a box without one that gains inline content takes the strut the plan exported
+ * for it.
  */
-function phaseOneBox(v: JsonObj, p: PhaseOne): JsonObj {
+function phaseOneBox(v: JsonObj, p: PhaseOne, keepEmpty: boolean): JsonObj {
   const cv = v.values.get('children');
   if (cv === undefined || cv.kind !== 'arr') return v;
   const results = new Map<string, string>();
@@ -4582,7 +4593,7 @@ function phaseOneBox(v: JsonObj, p: PhaseOne): JsonObj {
     }
   }
   settleContext(run, results, p);
-  const items = rebuildContext(cv.items, results, p);
+  const items = rebuildContext(cv.items, results, p, keepEmpty, controlKindJson(v) === 'text-area');
   let hasInline = false;
   for (const item of items) if (inlineLevelJson(item)) hasInline = true;
   const idv = v.values.get('id');
@@ -4665,7 +4676,7 @@ export function marklessPhaseOneSelfCheck(line: string, faults: RowTextFaults): 
       textLeafIds(inserted, changed);
       const given = withSources(inserted, facts.sources, faults);
       if (given.kind !== 'obj') return fail(`$.plan.variants[${vi}].root: expected a box`);
-      const got = phaseOneBox(given, { changed, sources: new Map<string, string>(), capitalized: new Map<string, boolean>(), struts: facts.struts, alone: faults.givenTextCollapsedAlone });
+      const got = phaseOneBox(given, { changed, sources: new Map<string, string>(), capitalized: new Map<string, boolean>(), struts: facts.struts, alone: faults.givenTextCollapsedAlone }, false);
       const d = jsonDiff(got, root, `$.plan.variants[${vi}].root`);
       if (d !== '') return `["differs",${q(d)}]`;
     }
@@ -5027,6 +5038,6 @@ function rowsVariant(plan: JsonObj, parts: PlanAssignmentParts, rowsValue: JsonV
   for (const [leaf, _text] of texts) if (!usedTexts.has(leaf) || !kept.has(leaf)) fail(`$.texts: ${leaf} is no text leaf of the page outside its lists' rows`);
   for (const parent of parents) if (!sink.placed.has(parent) && (lists.get(parent) as RowList).rows.length > 0) fail(`$.rows: the page has no box ${parent} to hold its list's rows`);
   if (spliced.kind !== 'obj' || kindOf(spliced, `${at}.root`) !== 'box') return fail(`${at}.root: expected a box`);
-  const root = phaseOneBox(spliced, { changed, sources, capitalized: planCapitalized(plan), struts, alone: faults.givenTextCollapsedAlone });
+  const root = phaseOneBox(spliced, { changed, sources, capitalized: planCapitalized(plan), struts, alone: faults.givenTextCollapsedAlone }, false);
   return { variant: { rootFontSize: numField(vo, 'rootFontSize', at), root: decodeBox(root, `${at}.root`) }, dashed: sink.dashed, scrollers: sink.scrollers, rows: all };
 }
