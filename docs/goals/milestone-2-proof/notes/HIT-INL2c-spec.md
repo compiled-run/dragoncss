@@ -45,8 +45,8 @@ page and script are `scratch/inl2c-probe.ts` with its page (not committed). The 
 | F13 | notes shape, pressed: the layout box's left edge + 0.4px, outside the scaled box | the section, at every DPR |
 | F13b | the same at the top edge + 0.4px | the section at DPR 2, 2.625 and 3; the button at DPR 1 |
 
-F13b is the 1x1 px hit rect of Blink's point hit at DPR 1. The scaled top edge sits 0.78px below the layout top edge, inside the
-rect. That is #650's existing transformed-location rule (`mappedLocation`), not a new fact.
+F13b is the 1x1 px hit rect of Blink's point hit at DPR 1. The scaled top edge sits 0.99px below the layout top edge (0.98px at
+DPR 2.625), inside the rect. That is #650's existing transformed-location rule (`mappedLocation`), not a new fact.
 
 **Conclusion:** an atomic inline that forms a stacking context paints and hits in the stacking context's z-index:auto/0 layer
 phase (CSS 2.1 Appendix E step 8, Blink `PaintLayer` hit order). That puts it above every in-flow item of its line, the text before
@@ -105,21 +105,52 @@ slice is:
 - generated: hit captures and facts, vectors and native engines for the fixture (batch regen)
 - this spec
 
-## Open: the press ring (Judge amendment 1), stopped
+## Scope notes
 
-`emit/runtime/interaction.ts` hits the press on the at-rest table and the release on the `:active` (scaled) table. Chrome 145 was
-captured with real CDP touch taps (`Input.dispatchTouchEvent`, a touchStart then a touchEnd 60 ms later, `hasTouch`) on the notes
-button. Its layout box is (77, 98, 246, 66), and `:active` is `scale(0.97); opacity: 0.85`. The results are identical at DPR 1, 2,
-2.625 and 3:
+- **Point-hit parity only.** Parity is point-hit only. A press hits the at-rest table and a release the `:active` table, each
+  equal to Chrome `elementFromPoint` at that point (F11-F13b). Chrome's gesture-tap touch adjustment (TADJ, T019; T064 §1)
+  changes click and focus targets near any clickable, including outside its box. It is a known, global deviation and is not
+  claimed.
+- **F13b comes from #650's rule, with no exception.** The table's transformed-location rule (`mappedLocation`) gives F13b at all
+  four DPRs, with no tolerance and no per-DPR case. Measured rects of the notes button (`getBoundingClientRect`):
 
-| Release point | pointerdown | pointerup | click |
-|---|---|---|---|
-| centre (200, 131) | button | button | button |
-| inside the left edge, in the ring (78.5, 131) | button | button | **section** |
-| inside the top edge, in the ring (200, 98.6) | button | button | **button** |
-| 3 px outside the layout box (74, 131) | button | button | **button** |
+  | DPR | layout box (x, y, w, h) | scaled box (x, y, w, h) | scaled offset (left, top) |
+  |---|---|---|---|
+  | 1 | 77, 97.594, 246, 66 | 80.690, 98.584, 238.620, 64.020 | 3.690, 0.990 |
+  | 2 | 77, 97.594, 246, 66 | 80.690, 98.584, 238.620, 64.020 | 3.690, 0.990 |
+  | 2.625 | 77.238, 97.595, 245.524, 65.524 | 80.921, 98.578, 238.158, 63.558 | 3.683, 0.983 |
+  | 3 | 77, 97.599, 246, 66 | 80.690, 98.589, 238.620, 64.020 | 3.690, 0.990 |
 
-Chrome's click target comes from its gesture tap, with touch adjustment, not from a point hit. Touch adjustment is why a tap
-outside the box still clicks the button, and why the left and top ring points disagree. The hit table models neither, so a release
-in the ring doesn't match Chrome's tap target. Per the Judge's stop condition, the build stops here for a ruling: refuse the ring
-by name, model Chrome's gesture-tap targeting, or scope the parity claim to point hits.
+- **z-index.** `z-index` has no effect on a non-positioned inline-flex or inline-block. A `z-index` that compiles stays refused by
+  R13, unchanged.
+- **Line ink.** A context atomic still counts toward its line's ink overflow at its untransformed rect. This is harmless:
+  `lineHit` tests each item against its own rect, and a layer is tested before any line.
+- **Positioned atomics (F9b, F9c)** stay refused by the engine (`inline-box-position`), so the fixture doesn't carry them.
+- **Fixture.** `hit-atomic-inline-context` carries F1-F13b, plus an `overflow: hidden` line block clipping a context atomic, a
+  context atomic nested in one, and a positioned child inside one. Its rtl case uses a `direction: rtl` class. Every point
+  matches Chrome at DPR 1, 2 and 3 (5660 points) and 2.625 (7523 points). The planted `contextNotLayered` fault fails 112
+  points.
+- **Paint.** `atomic-inline-hit.test.ts` screenshots F2 (an `opacity` atomic over the text after it) and F2b (a plain atomic) in
+  Chrome. The context atomic paints over the text and the plain one under it. The compiled program writes `paint-order` (host
+  `html`, bucket 1) for the context atomics, and none for the plain one.
+- **Interaction.** `rt-interaction.test.ts` drives a press in the ring of a scaled `:active` atomic. `touchPressed` sets
+  `:active` on the button chain. `touchReleased` at the ring point and at the outside point clears `:active`. Focus follows the
+  `:active`-table point hit, which is the section at the left ring point. In Chrome, pointerup lands on the button through
+  implicit touch pointer capture, which Dragon doesn't model and this slice doesn't claim.
+
+## Ring capture (Chrome 145, not claimed)
+
+Real CDP touch taps (`Input.dispatchTouchEvent`, a touchStart then a touchEnd 60 ms later, `hasTouch`) on the notes button, with
+`:active` at `scale(0.97); opacity: 0.85`. The touch point's `radiusX` = `radiusY` were left unset (CDP default), 1 and 10. With
+an unset radius and with radius 1, the results are identical at DPR 1, 2, 2.625 and 3:
+
+| Release point | pointerdown | pointerup | click | `elementFromPoint`, forced `:active` |
+|---|---|---|---|---|
+| centre (200, 131) | button | button | button | button |
+| inside the left edge, in the ring (78.5, 131) | button | button | section (no focus) | section |
+| inside the top edge, in the ring (200, 98.6) | button | button | button | button |
+| 3 px outside the layout box (74, 131) | button | button | button | section |
+
+With radius 10, the results are the same, except that the outside point clicks the section at DPR 2.625 and 3. The release-point
+hit (`elementFromPoint` under forced `:active`) equals the `:active` table at every captured DPR. The clicks that differ from it
+come from touch adjustment.

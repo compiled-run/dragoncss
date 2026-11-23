@@ -1,5 +1,6 @@
 // SELD-R2 PR 3 (notes/T064-seld-r2-spec.md R1, R6, R8, R15): the interaction runtime's rules on synthetic tables, and every plant.
 import { describe, expect, it } from 'vitest';
+import type { HitFact } from '../src/rt-hit.ts';
 import type { InteractionFaults, InteractionPointer, InteractionTables } from '../src/rt-interaction.ts';
 import * as rt from '../src/rt-interaction.ts';
 
@@ -124,5 +125,58 @@ describe('rt-interaction (SELD-R2 PR 3)', () => {
   it('refuses elements outside the tables', () => {
     expect(() => rt.pointerMoved(T, start(), 8)).toThrow(/no element 8/);
     expect(() => rt.mousePressed(T, start(), 1.5, OK)).toThrow(/no element/);
+  });
+});
+
+// HIT-INL2c: the notes "Back to notes" button, an inline-flex that :active scales by 0.97 and fades to 0.85. A press hits the
+// at-rest table and the release the :active table, each as Chrome 145 elementFromPoint does at that point with :active forced
+// (HIT-INL2c-spec.md, the press ring). Chrome's click lands where its gesture tap's touch adjustment sends it (TADJ, not claimed),
+// and pointerup on the button by implicit pointer capture, which neither table models.
+describe('a press ring around a scaled :active atomic inline (HIT-INL2c)', () => {
+  it('activates the button at press, clears :active at a ring or outside release, and focuses the :active table hit', async () => {
+    const { hitAt, hitTableOf, prepareHit, NO_HIT_FAULTS, NO_HIT_TABLE_FAULTS } = await import('../src/rt-hit.ts');
+    const { ahemMeasurer } = await import('../src/index.ts');
+    const { box, neutralEnvironment, px, text } = await import('./helpers.ts');
+    const LU = 64;
+    const zero = { kind: 'px', px: 0, percent: 0 } as const;
+    const centre = { x: { kind: 'percent', px: 0, percent: 50 }, y: { kind: 'percent', px: 0, percent: 50 } } as const;
+    const flat = { pointerEvents: 'auto', inherited: true, activation: false, radii: [], context: false, transform: [], origin: centre } as const;
+    const b = box('b', { display: 'inline-flex', width: px(246), height: px(66), marginLeft: px(77) });
+    const root = box('html', {}, [box('body', {}, [box('s', { width: px(400) }, [text('t', 'x'), b])])]);
+    const input = { viewport: { width: 400, height: 300 }, devicePixelRatio: 1, ...neutralEnvironment({ width: 400, height: 300 }), root };
+    const rest = new Map<string, HitFact>(['html', 'body', 's', 'b'].map((id) => [id, { ...flat, activation: id === 'b' }] as const));
+    const active = new Map<string, HitFact>(rest);
+    active.set('b', { ...flat, activation: true, context: true, transform: [{ fn: 'scale', x: zero, y: zero, angle: 0, sx: 0.97, sy: 0.97 }] });
+    const restTable = hitTableOf(input, ahemMeasurer, rest, NO_HIT_TABLE_FAULTS);
+    const activeTable = hitTableOf(input, ahemMeasurer, active, NO_HIT_TABLE_FAULTS);
+    const node = restTable.nodes[restTable.ids.indexOf('b')];
+    if (node === undefined) throw new Error('no b');
+    const [x, y, w, h] = [node.x / LU, node.y / LU, node.width / LU, node.height / LU];
+    const hitIn = (t: typeof restTable, px0: number, py0: number): string => {
+      const i = hitAt(prepareHit(t.nodes, NO_HIT_FAULTS), Math.floor(px0 * LU), Math.floor(py0 * LU));
+      return t.ids[t.nodes[i]?.target ?? -1] ?? 'none';
+    };
+    const ringLeft = [x + 1.5, y + h / 2] as const;
+    const ringTop = [x + w / 2, y + 0.6] as const;
+    const outside = [x - 3, y + h / 2] as const;
+    // Chrome elementFromPoint at rest: the button at every ring point, the section outside; under :active the left ring is the section.
+    expect([hitIn(restTable, ...ringLeft), hitIn(restTable, ...ringTop), hitIn(restTable, ...outside)]).toEqual(['b', 'b', 's']);
+    expect([hitIn(activeTable, ...ringLeft), hitIn(activeTable, ...ringTop), hitIn(activeTable, ...outside)]).toEqual(['s', 'b', 's']);
+    // 0 html > 1 body > 2 s > 3 b; b (a link) is focusable and the active candidate.
+    const N: InteractionTables = {
+      parent: [-1, 0, 1, 2], focusable: [false, false, false, true], touchConsumesTap: [false, false, false, false], keyboardInput: [false, false, false, false],
+      chainOf: [0, 0, 0, 0], activeChainOf: [0, 0, 0, 1], pointerFocusOf: [0, 0, 0, 1], keyboardFocusOf: [-1, -1, -1, 2],
+      forcedHoverOf: [-1, -1, -1, -1], forcedActiveOf: [-1, -1, -1, -1], forcedFocusOf: [-1, -1, -1, -1], forcedFocusVisibleOf: [-1, -1, -1, -1],
+      hoverValues: 1, activeValues: 2, focusValues: 2, combos: [-1, 0, 1, 2],
+    };
+    const index = (id: string): number => ['html', 'body', 's', 'b'].indexOf(id);
+    const down = rt.touchPressed(N, start(), index(hitIn(restTable, ...ringLeft)), OK);
+    expect(rt.activeMatches(N, down, OK)).toEqual([0, 1, 2, 3]);
+    const upLeft = rt.touchReleased(N, down, index(hitIn(activeTable, ...ringLeft)), OK);
+    expect([rt.activeMatches(N, upLeft, OK), rt.focusMatch(upLeft)]).toEqual([[], -1]);
+    const upTop = rt.touchReleased(N, down, index(hitIn(activeTable, ...ringTop)), OK);
+    expect([rt.activeMatches(N, upTop, OK), rt.focusMatch(upTop)]).toEqual([[], 3]);
+    const upOutside = rt.touchReleased(N, down, index(hitIn(activeTable, ...outside)), OK);
+    expect([rt.activeMatches(N, upOutside, OK), rt.focusMatch(upOutside)]).toEqual([[], -1]);
   });
 });
