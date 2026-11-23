@@ -442,8 +442,13 @@ function gridInflowOf(ix: Index, id: string): OverflowRect {
 /**
  * A form control the port decides: a block button, fieldset or legend that is no scroll container; its overflow is then its plain
  * box's (a fieldset's anonymous contents box lies inside its border box, and only a scroll container adds its padding to its contents).
+ * A text field clipped on both axes (Chrome's forced overflow: clip) propagates its border box alone, and so does its clipped
+ * editor; its placeholder, a block of text alone, is a plain block container, scroll container or not.
  */
 function controlChecked(n: Node, kind: ControlKind): void {
+  if (kind.kind === 'text-placeholder') return;
+  const s = n.box.style;
+  if ((kind.kind === 'text-field' || kind.kind === 'text-editor') && s.overflowX === 'clip' && s.overflowY === 'clip') return;
   if (kind.kind !== 'button-block' && kind.kind !== 'fieldset' && kind.kind !== 'legend') throw new OverflowRefusal(n.box.id, `a ${kind.kind} form control: its scrollable overflow is not decided here`);
   if (isScrollContainer(n.box.style)) throw new OverflowRefusal(n.box.id, 'a form control that is a scroll container: its scrollable overflow is not decided here');
 }

@@ -653,15 +653,15 @@ export function hitUnmodelledControl(root: ResolvedElement): string | null {
 
 /**
  * The first box of a resolved tree the hit table does not model whose value compiles, in preorder, or null: a float in block flow
- * (FLT), which rt-hit.ts refuses in a block or inline-block container, a fixed box (POSX-f) and a sticky box (POSX-s). No Chrome hit
- * capture has them yet.
+ * (FLT), which rt-hit.ts refuses in a block or inline-block container, and a fixed box (POSX-f). No Chrome hit capture has them yet.
+ * A sticky box is hit where the layout places it at scroll offset 0 (layout.ts), as a positioned layer.
  */
-export function hitUnmodelledBox(root: ResolvedElement, compiles: (v: ResolvedValue) => boolean = () => true): { readonly address: string; readonly kind: 'float' | 'fixed box' | 'sticky box' | 'inline-grid box'; readonly pkg: 'FLT' | 'POSX-f' | 'POSX-s' | 'G-INL' } | null {
+export function hitUnmodelledBox(root: ResolvedElement, compiles: (v: ResolvedValue) => boolean = () => true): { readonly address: string; readonly kind: 'float' | 'fixed box' | 'inline-grid box'; readonly pkg: 'FLT' | 'POSX-f' | 'G-INL' } | null {
   const key = (el: ResolvedElement, p: 'display' | 'float' | 'position'): string => {
     const v = el.props.get(p);
     return v !== undefined && v.value.kind === 'keyword' ? v.value.value : '';
   };
-  const visit = (el: ResolvedElement): { address: string; kind: 'float' | 'fixed box' | 'sticky box' | 'inline-grid box'; pkg: 'FLT' | 'POSX-f' | 'POSX-s' | 'G-INL' } | null => {
+  const visit = (el: ResolvedElement): { address: string; kind: 'float' | 'fixed box' | 'inline-grid box'; pkg: 'FLT' | 'POSX-f' | 'G-INL' } | null => {
     const block = key(el, 'display') === 'block' || key(el, 'display') === 'inline-block';
     for (const c of el.children) {
       if (c.kind !== 'element') continue;
@@ -671,7 +671,6 @@ export function hitUnmodelledBox(root: ResolvedElement, compiles: (v: ResolvedVa
       const d = c.props.get('display');
       if (d !== undefined && key(c, 'display') === 'inline-grid' && compiles(d)) return { address: c.element.address, kind: 'inline-grid box', pkg: 'G-INL' };
       if (p !== undefined && key(c, 'position') === 'fixed' && compiles(p)) return { address: c.element.address, kind: 'fixed box', pkg: 'POSX-f' };
-      if (p !== undefined && key(c, 'position') === 'sticky' && compiles(p)) return { address: c.element.address, kind: 'sticky box', pkg: 'POSX-s' };
       if (block && f !== undefined && key(c, 'float') !== 'none' && key(c, 'position') !== 'absolute' && key(c, 'position') !== 'fixed' && compiles(f)) return { address: c.element.address, kind: 'float', pkg: 'FLT' };
       const found = visit(c);
       if (found !== null) return found;

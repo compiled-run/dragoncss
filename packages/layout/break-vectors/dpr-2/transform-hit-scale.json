@@ -1,0 +1,8 @@
+{
+  "case": "transform-hit-scale",
+  "dpr": 2,
+  "texts": [
+    {"id":"a2:text0","lines":[[0,4]]},
+    {"id":"b3:text0","lines":[[0,4],[4,5]]}
+  ]
+}
