@@ -393,8 +393,8 @@ export function hitFactContext(el: ResolvedElement): boolean {
   const opacity = o === undefined ? 1 : opacityOf(o.value);
   if (opacity === null) throw new ProgramError(`${el.element.address}: opacity did not compute to a number`);
   const pos = el.props.get('position');
-  // css-position-3 §3.4: a sticky box always makes a stacking context.
-  return opacity < 1 || transformedForStacking(el) || (pos !== undefined && pos.value.kind === 'keyword' && pos.value.value === 'sticky');
+  // css-position-3 §3.4: a sticky or fixed box always makes a stacking context.
+  return opacity < 1 || transformedForStacking(el) || (pos !== undefined && pos.value.kind === 'keyword' && (pos.value.value === 'sticky' || pos.value.value === 'fixed'));
 }
 
 /** Whether an element has a filter other than none (a hand-built element may carry no filter value at all). */

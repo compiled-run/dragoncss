@@ -655,16 +655,15 @@ export function hitUnmodelledControl(root: ResolvedElement): string | null {
 /** The kinds of box hitUnmodelledBox names, with the package each waits for. */
 export type HitUnmodelledBox = {
   readonly address: string;
-  readonly kind: 'float' | 'fixed box' | 'inline-grid box' | 'block with percentage padding around atomic inlines' | 'atomic inline forming a stacking context';
-  readonly pkg: 'FLT' | 'POSX-f' | 'G-INL' | 'INL2a' | 'INL2c';
+  readonly kind: 'float' | 'inline-grid box' | 'block with percentage padding around atomic inlines' | 'atomic inline forming a stacking context';
+  readonly pkg: 'FLT' | 'G-INL' | 'INL2a' | 'INL2c';
 };
 
 /**
  * The first box of a resolved tree the hit table does not model whose value compiles, in preorder, or null: a float in block flow
- * (FLT), which rt-hit.ts refuses in a block or inline-block container, a fixed box (POSX-f), and a block container of an atomic
- * inline's line with percentage padding (INL2a), whose lines rt-hit.ts places over a content box it does not resolve percentages
- * for. No Chrome hit capture has the first two yet. A sticky box is hit where the layout places it at scroll offset 0 (layout.ts), as
- * a positioned layer.
+ * (FLT), which rt-hit.ts refuses in a block or inline-block container, and a block container of an atomic inline's line with
+ * percentage padding (INL2a), whose lines rt-hit.ts places over a content box it does not resolve percentages for. No Chrome hit
+ * capture has a float yet. A sticky or fixed box is hit where the layout places it at scroll offset 0 (layout.ts), as a positioned layer.
  */
 export function hitUnmodelledBox(root: ResolvedElement, compiles: (v: ResolvedValue) => boolean = () => true): HitUnmodelledBox | null {
   const key = (el: ResolvedElement, p: 'display' | 'float' | 'position'): string => {
@@ -688,7 +687,6 @@ export function hitUnmodelledBox(root: ResolvedElement, compiles: (v: ResolvedVa
       // rt-hit.ts refuses an inline-grid as an atomic inline (G-INL); a block-level grid is hit in order-modified document order.
       const d = c.props.get('display');
       if (d !== undefined && key(c, 'display') === 'inline-grid' && compiles(d)) return { address: c.element.address, kind: 'inline-grid box', pkg: 'G-INL' };
-      if (p !== undefined && key(c, 'position') === 'fixed' && compiles(p)) return { address: c.element.address, kind: 'fixed box', pkg: 'POSX-f' };
       if (block && f !== undefined && key(c, 'float') !== 'none' && key(c, 'position') !== 'absolute' && key(c, 'position') !== 'fixed' && compiles(f)) return { address: c.element.address, kind: 'float', pkg: 'FLT' };
       const found = visit(c);
       if (found !== null) return found;
