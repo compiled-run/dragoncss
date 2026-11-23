@@ -32,7 +32,7 @@ public func intrinsic_intrinsicContentInlineSize(_ ctx: Ctx, _ node: any U_Contr
   let kids: JsArray<any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf> = box.children
   // ts: packages/layout/src/intrinsic.ts:38
   if (box.style.multicol != nil) {
-    try unsupported_unsupported(S.s_multicol, box.id, S.s701, jsConcat(S.s1164, kind, S.s238, box.id, S.s127))
+    try unsupported_unsupported(S.s_multicol, box.id, S.s701, jsConcat(S.s1165, kind, S.s238, box.id, S.s127))
   }
   // ts: packages/layout/src/intrinsic.ts:39
   if (box.style.display == S.s_flex) {
