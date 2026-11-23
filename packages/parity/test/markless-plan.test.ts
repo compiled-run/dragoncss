@@ -2,7 +2,7 @@
 // gives exactly the geometry the export computes at build time, at the proof devices and at other sizes and ratios.
 import { readFileSync } from 'node:fs';
 import type { ControlBox, LayoutBox } from '@dragon/layout';
-import { checkboxMarks, fromRaw, LU_PER_PX, menuListArrow, menuListArrowBox, snapRect } from '@dragon/layout';
+import { checkboxMarks, fromRaw, LU_PER_PX, menuListArrow, menuListArrowBox, snapRect, stickyShift } from '@dragon/layout';
 import { describe, expect, it } from 'vitest';
 import { checkMarklessExport, marklessStyleExport } from '../src/markless-style-input.ts';
 import { paintRows } from '../src/markless-style-compare.ts';
@@ -13,7 +13,7 @@ import { repoPath } from '../src/paths.ts';
 import { checkboxColors } from '../../dragon/src/forms/checkbox.ts';
 
 // The translate harness is loaded by path at run time, as text-latin-engine.test.ts does.
-const { checkMarklessPlan, runMarklessLayout } = (await import(new URL('../../translate/harness/harness.ts', import.meta.url).href)) as { checkMarklessPlan(line: string): string; runMarklessLayout(line: string): string };
+const { checkMarklessPlan, runMarklessLayout, runMarklessSticky } = (await import(new URL('../../translate/harness/harness.ts', import.meta.url).href)) as { checkMarklessPlan(line: string): string; runMarklessLayout(line: string): string; runMarklessSticky(line: string): string };
 const { bitsHex, hexBits } = (await import(new URL('../../translate/harness/host.ts', import.meta.url).href)) as { bitsHex(x: number): string; hexBits(s: string): number };
 
 const INPUTS = ['fluid', 'width-media', 'borders-dashed', 'scheme', 'tabs'].map((n) => `examples/markless-styles/input/${n}.native-style-input.json`);
@@ -142,6 +142,30 @@ describe('the layout plan of a Markless export', () => {
     } finally {
       if (before === undefined) delete process.env['DRAGON_PLAN_WORKERS'];
       else process.env['DRAGON_PLAN_WORKERS'] = before;
+    }
+  });
+
+  it('POSX-s scroll: a host that asks gets each sticky box\'s constraint after the boxes, an older host the answer as before', () => {
+    const plan = marklessStyleExport(withCss('.bar { position: sticky; top: 0; }'), FLUID, undefined, 'system', undefined, true).exported.targets.ios!.plan!;
+    const line = { assignment: 0, dpr: 3, viewport: { width: 402, height: 778 }, safeArea: { top: 0, right: 0, bottom: 0, left: 0 }, plan };
+    const before = JSON.parse(runMarklessLayout(JSON.stringify(line))) as unknown[];
+    const asked = JSON.parse(runMarklessLayout(JSON.stringify({ ...line, sticky: true }))) as unknown[];
+    expect(before[0]).toBe('ok');
+    expect(before.some((e) => Array.isArray(e) && e[0] === 'sticky')).toBe(false);
+    const tag = asked[asked.length - 1] as [string, unknown[][]];
+    expect(asked.slice(0, -1)).toEqual(before);
+    expect(tag[0]).toBe('sticky');
+    expect(tag[1].length).toBe(1);
+    // The host echoes the rows as written and gets stickyShift at its scroll offset, floored to the LU grid.
+    const row = tag[1][0] as [string, ...(string | null)[]];
+    const lu = (v: string | null) => (v === null ? null : fromRaw(Math.round(hexBits(v) * LU_PER_PX)));
+    const [x, y, width, height, cbLeft, cbTop, cbRight, cbBottom, viewportWidth, viewportHeight, top, right, bottom, left] = row.slice(1).map(lu);
+    const c = { id: row[0], x: x!, y: y!, width: width!, height: height!, cbLeft: cbLeft!, cbTop: cbTop!, cbRight: cbRight!, cbBottom: cbBottom!, viewportWidth: viewportWidth!, viewportHeight: viewportHeight!, top: top ?? null, right: right ?? null, bottom: bottom ?? null, left: left ?? null };
+    for (const scroll of [0, 40.3, 2000]) {
+      const moved = JSON.parse(runMarklessSticky(JSON.stringify({ sticky: tag[1], scroll: [0, scroll] }))) as [string, [string, string, string][]];
+      expect(moved[0]).toBe('ok');
+      const d = stickyShift(c, fromRaw(0), fromRaw(Math.floor(scroll * LU_PER_PX)));
+      expect([hexBits(moved[1][0]![1]), hexBits(moved[1][0]![2])], `${scroll}`).toEqual([d.dx / LU_PER_PX, d.dy / LU_PER_PX]);
     }
   });
 
