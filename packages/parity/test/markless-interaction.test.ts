@@ -108,13 +108,31 @@ describe('interaction states in the Markless style export', () => {
     const at = (writes: ExportNode['writes']): ExportAssignment => ({ values: {}, pageScroll: null, nodes: [node(writes)] });
     const resting = [{ kind: 'background-color', color: { r: 241, g: 250, b: 238, alpha: 255 } }];
     const base = at(resting);
-    const chrome = [{ id: 'h5', kind: 'element' as const, hasBox: true, x: 0, y: 0, width: 10, height: 10, computed: { 'background-color': 'rgb(42, 157, 143)' } }];
+    const chrome = [{ id: 'h5', kind: 'element' as const, hasBox: true, x: 0, y: 0, width: 10, height: 10, computed: { 'background-color': 'rgb(42, 157, 143)', 'outline-style': 'none' } }];
     const failed = (a: ExportAssignment) => interactionPaintRows('ios', '0-state0', base, a, chrome).filter((r) => !r.pass).map((r) => r.problem);
     expect(failed(at([{ kind: 'background-color', color: PRESSED }]))).toEqual([]);
     expect(failed(at([{ kind: 'background-color', color: { r: 230, g: 57, b: 70, alpha: 255 } }]))).toEqual(['background-color {"r":230,"g":57,"b":70,"alpha":255} in the export, {"r":42,"g":157,"b":143,"alpha":255} in Chrome']);
     // The export missed the press: the state is its assignment, and Chrome shows the pressed colour.
     expect(failed(at(resting))).toEqual(['background-color {"r":241,"g":250,"b":238,"alpha":255} in the export, {"r":42,"g":157,"b":143,"alpha":255} in Chrome']);
     expect(failed(at([{ kind: 'background-color', color: PRESSED }, { kind: 'opacity', value: 0.85 }]))).toEqual(['the state changes its opacity write, which this comparison does not read from Chrome yet']);
+  });
+
+  it("compares every boxed element's outline with Chrome's, so a focus ring the export misses fails", () => {
+    const node = (writes: ExportNode['writes']): ExportNode => ({ id: 'h5', parent: 'body', kind: 'element', native: 'DragonBoxView', text: null, frame: { x: 0, y: 0, width: 10, height: 10 }, borderWidths: null, writes });
+    const at = (writes: ExportNode['writes']): ExportAssignment => ({ values: {}, pageScroll: null, nodes: [node(writes)] });
+    const bg = { kind: 'background-color', color: { r: 230, g: 57, b: 70, alpha: 255 } };
+    const chrome = (outline: Record<string, string>) => [{ id: 'h5', kind: 'element' as const, hasBox: true, x: 0, y: 0, width: 10, height: 10, computed: { 'background-color': 'rgb(230, 57, 70)', ...outline } }];
+    const failed = (a: ExportAssignment, outline: Record<string, string>, dpr = 1) => interactionPaintRows('ios', '0-state0', at([bg]), a, chrome(outline), dpr).filter((r) => !r.pass).map((r) => r.problem);
+    const ring = { 'outline-style': 'auto', 'outline-width': '1px', 'outline-color': 'rgb(16, 16, 16)', 'outline-offset': '0px' };
+    // Chrome draws its focus ring in the state; the export, which writes no outline in the state or its base, must not pass.
+    expect(failed(at([bg]), ring)).toEqual(['outline null in the export, {"style":"auto","width":1,"color":{"r":16,"g":16,"b":16,"alpha":255},"offset":0} in Chrome']);
+    // A transparent or zero-width outline draws nothing in Chrome, and the export writes none.
+    expect(failed(at([bg]), { ...ring, 'outline-style': 'solid', 'outline-color': 'rgba(0, 0, 0, 0)' })).toEqual([]);
+    expect(failed(at([bg]), { ...ring, 'outline-style': 'solid', 'outline-width': '0px' })).toEqual([]);
+    // Chrome keeps the offset to 1/64 device px: 1.3px is 1.29762px at 2.625x.
+    const solid = { kind: 'outline', style: 'solid', width: 2, offset: 1.3, color: { r: 16, g: 16, b: 16, alpha: 255 } };
+    expect(failed(at([bg, solid]), { ...ring, 'outline-style': 'solid', 'outline-width': '1.90476px', 'outline-offset': '1.29762px' }, 2.625)).toEqual([]);
+    expect(failed(at([bg]), { 'outline-width': '1px' })).toEqual(["Chrome's outline was not captured"]);
   });
 
   it('records a text-transform only a state sets, so the phone keeps that text as the plan laid it out', () => {

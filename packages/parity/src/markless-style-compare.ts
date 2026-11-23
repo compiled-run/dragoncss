@@ -550,20 +550,28 @@ const OUTLINE_PROPERTIES = ['outline-style', 'outline-width', 'outline-color', '
 /** A state's outline against Chrome's computed one: style, width and offset in CSS px, and colour; none where the state draws none. */
 function outlineRow(target: string, values: Values, state: string, id: string, w: Record<string, unknown> | undefined, c: CapturedNode | undefined, dpr: number): CompareRow {
   const got = c?.computed;
+  if (got === undefined || got === null || typeof got['outline-style'] !== 'string') return { target, values, state, id, maxDeltaDevicePx: null, pass: false, problem: "Chrome's outline was not captured" };
   const px = (v: string | undefined): number | null => (v !== undefined && v.endsWith('px') ? Number(v.slice(0, -2)) : null);
   // Chrome uses an outline's width floored to whole device px (at least one), as it does a border's; both are compared in device px.
   const devicePx = (css: number | null): number | null => (css === null ? null : css === 0 ? 0 : Math.max(1, Math.floor(css * dpr + 1e-6)));
   const chromeWidth = px(got?.['outline-width']);
-  const chrome = got === undefined || got === null || got['outline-style'] === 'none' ? null : { style: got['outline-style'], width: chromeWidth === null ? null : Math.round(chromeWidth * dpr), offset: px(got['outline-offset']), color: computedRgba(got['outline-color']) };
-  const exported = w === undefined ? null : { style: w['style'], width: devicePx(w['width'] as number), offset: w['offset'], color: w['color'] };
-  const pass = JSON.stringify(chrome) === JSON.stringify(exported);
-  return { target, values, state, id, maxDeltaDevicePx: null, pass, ...(pass ? {} : { problem: `outline ${JSON.stringify(exported)} in the export, ${JSON.stringify(chrome)} in Chrome` }) };
+  const chromeColor = computedRgba(got?.['outline-color']);
+  // Chrome draws nothing for a zero-width or transparent outline, where the export writes none.
+  const drawn = got['outline-style'] !== 'none' && chromeWidth !== 0 && chromeColor?.alpha !== 0;
+  const chrome = drawn ? { style: got['outline-style'], width: chromeWidth === null ? null : Math.round(chromeWidth * dpr), color: chromeColor } : null;
+  const exported = w === undefined ? null : { style: w['style'], width: devicePx(w['width'] as number), color: w['color'] };
+  // Chrome keeps an offset to 1/64 device px; the export writes the CSS value.
+  const chromeOffset = drawn ? px(got['outline-offset']) : null;
+  const exportOffset = w === undefined || typeof w['offset'] !== 'number' ? null : Math.round((w['offset'] as number) * dpr * 64) / (64 * dpr);
+  const offsetsMatch = chromeOffset === null || exportOffset === null ? chromeOffset === exportOffset : Math.abs(chromeOffset - exportOffset) < 1e-4;
+  const pass = JSON.stringify(chrome) === JSON.stringify(exported) && offsetsMatch;
+  return { target, values, state, id, maxDeltaDevicePx: null, pass, ...(pass ? {} : { problem: `outline ${JSON.stringify(exported === null ? null : { ...exported, offset: exportOffset })} in the export, ${JSON.stringify(chrome === null ? null : { ...chrome, offset: chromeOffset })} in Chrome` }) };
 }
 
 /**
  * An interaction state's paint against Chrome forced into the state. Every element of the state but html and body (whose
- * backgrounds the canvas rows compare): its background colour, or transparent where the export writes none, against Chrome's
- * computed one, so a state that misses a change Chrome makes fails too. A write of another kind the state changes from its
+ * backgrounds the canvas rows compare): its background colour, or transparent where the export writes none, and its outline, or
+ * none, against Chrome's computed ones, so a state that misses a change Chrome makes fails too. A write of another kind the state changes from its
  * assignment is a failing row naming it, as this comparison does not read it from Chrome yet.
  */
 export function interactionPaintRows(target: string, state: string, base: ExportAssignment, a: ExportAssignment, captured: readonly CapturedNode[], dpr = 1): CompareRow[] {
@@ -577,7 +585,8 @@ export function interactionPaintRows(target: string, state: string, base: Export
     const now = byKind(n.writes);
     const then = byKind(before.get(n.id)?.writes ?? []);
     const c = chrome.get(n.id);
-    if (now.get('outline') !== then.get('outline')) rows.push(outlineRow(target, a.values, state, n.id, n.writes.find((w) => w['kind'] === 'outline'), c, dpr));
+    // Every boxed element, as for its background: an outline Chrome draws in the state (its focus ring included) and the export misses fails.
+    if (c !== undefined && c.hasBox) rows.push(outlineRow(target, a.values, state, n.id, n.writes.find((w) => w['kind'] === 'outline'), c, dpr));
     for (const kind of [...new Set([...now.keys(), ...then.keys()])].filter((k) => k !== 'background-color' && k !== 'outline' && now.get(k) !== then.get(k))) {
       rows.push({ target, values: a.values, state, id: n.id, maxDeltaDevicePx: null, pass: false, problem: `the state changes its ${kind} write, which this comparison does not read from Chrome yet` });
     }

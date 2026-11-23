@@ -192,6 +192,8 @@ describe('the layout plan of a Markless export', () => {
     expect(proof('.bar { height: 40vh; aspect-ratio: 2; }').ios).toMatch(/has an aspect-ratio$/);
     expect(proof('.bar { display: flex; flex-direction: column; flex-wrap: wrap; height: 50vh; }').ios).toMatch(/is a multi-line column flex container$/);
     expect(proof('@media (orientation: landscape) { .bar { color: red; } }').ios).toBe('a media query on orientation');
+    // A font size only a pressed state sets is in a variant the plan records, so the proof reads it too.
+    expect(proof('.cell:active { font-size: 4vh; }').ios).toMatch(/has a font size or line height in vh, vmin or vmax$/);
   });
 
   it("names a select whose option text is spaced in vh, though the option is not among the select's children", () => {

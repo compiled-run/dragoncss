@@ -10,7 +10,7 @@ import { BAND_KEY, compiledCases, compileNativeStylesWith, decodeFontFile, isTre
 import type { rtBand } from '@dragon/layout';
 import { textDecoration } from '@dragon/layout';
 import { FONT_REFERENCE_MAP } from './font-reference.ts';
-import { checkPlan, HEIGHT_FEATURES, heightDependence, hexBits, PLAN_HEIGHTS, slottedLayout } from './markless-plan.ts';
+import { checkPlan, HEIGHT_FEATURES, heightDependence, hexBits, PLAN_HEIGHTS, planStateProgram, slottedLayout } from './markless-plan.ts';
 import type { MarklessPlan } from './markless-plan.ts';
 import { withFontMapAssets } from './fixture-groups/fonts.ts';
 import { DOCUMENT_ID, PROJECT_ID } from './fixture-reader.ts';
@@ -762,7 +762,7 @@ export function marklessTextHeightProof(inputText: string, inputPath: string, re
   const out: { [T in NativeStyleTarget]?: string | null } = {};
   for (const t of ['ios', 'android'] as const) {
     const o = styles.targets[t];
-    if (o?.kind === 'emitted') out[t] = heightDependence(o.program, (o.bands?.table.atoms ?? []).map((a) => a.feature));
+    if (o?.kind === 'emitted') out[t] = heightDependence(planStateProgram(o.program, o.interaction), (o.bands?.table.atoms ?? []).map((a) => a.feature));
   }
   return out;
 }
