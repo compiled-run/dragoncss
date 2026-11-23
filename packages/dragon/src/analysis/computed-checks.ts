@@ -1898,9 +1898,9 @@ function checkTextAreaChrome(el: ResolvedElement, targets: readonly string[], re
  * FIELD-font-width FW1: Chrome sizes a field's intrinsic inline size from its primary face's average character width (on macOS
  * the advance of x, plus the ascent's excess), which the engine measures only for Ahem. So a field in another face is accepted
  * natively only where its used width never reads that size: a length or percentage width (or, on a row flex item, a definite
- * length basis with min-width set and no intrinsic max-width), no intrinsic min-width or max-width, no row flex or grid item with
- * min-width: auto, no content-sized row flex basis, and no percentage width or basis under a content-sized ancestor. A grid
- * item never reaches here (refuseGridItem).
+ * length basis with min-width set and no intrinsic max-width), no intrinsic min-width or max-width, no row flex item with
+ * min-width: auto, no grid item with min-width: auto unless a percentage width in a singleStretchColumn grid, no content-sized row
+ * flex basis, and no percentage width or basis under a content-sized ancestor.
  */
 function checkFieldWidth(el: ResolvedElement, parentDisplay: string | null, chain: readonly ResolvedElement[], refuse: (v: ResolvedValue, what: string, message: string, manual: string) => void): void {
   const address = el.element.address;
