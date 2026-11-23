@@ -41,7 +41,7 @@ export const CONTROLS: readonly FixtureSpec[] = [
   layout('controls-text-field-search'),
   layout('controls-textarea'),
   layout('controls-text-field-inline'),
-  reject('reject-controls-text-field-inline-rtl', 'DRAGON_UNSUPPORTED_VALUE', 'rtl', 'the inline-block <input> f is on a right-to-left line of d'),
+  reject('reject-controls-text-field-inline-dir', 'DRAGON_UNSUPPORTED_VALUE', 'rtl', 'the inline-block <input> f is on a right-to-left line of d'),
   reject('reject-controls-text-field-inline-valign', 'DRAGON_UNSUPPORTED_VALUE', 'middle', 'vertical-align: middle on the inline-block <input> f is not supported'),
   reject('reject-controls-text-field-inline-flex', 'DRAGON_UNSUPPORTED_VALUE', 'inline-flex', 'display: inline-flex on <input> f is not supported on a text field'),
   // FORM-checkbox: a themed checkbox, 13px unless sized, as a block and a flex item (the notes form's row), checked

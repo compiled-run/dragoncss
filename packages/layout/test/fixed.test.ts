@@ -43,13 +43,13 @@ describe('POSX-f: position: fixed', () => {
     expect(r.refused).toEqual([]);
   });
 
-  it('validates as an out-of-flow box but never the root, and the hit table refuses it', () => {
+  it('validates as an out-of-flow box but never the root, and the hit table models it', () => {
     const errors = (root: LayoutBox): string[] => {
       const v = validateLayoutInput(JSON.parse(JSON.stringify(env(root))));
       return v.ok ? [] : [...new Set(v.errors.map((e) => e.code))];
     };
     expect(errors(box('root', {}, [box('f', { position: 'fixed' })]))).toEqual([]);
     expect(errors(box('root', { position: 'fixed' }))).toContain('bad-value');
-    expect(hitRefusal(env(box('root', {}, [box('f', { position: 'fixed' })])))).toMatch(/^f is position: fixed/);
+    expect(hitRefusal(env(box('root', {}, [box('f', { position: 'fixed' })])))).toBeNull();
   });
 });
