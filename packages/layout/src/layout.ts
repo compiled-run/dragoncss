@@ -54,13 +54,17 @@ type Placement = {
   readonly pending: Pending[];
   readonly inflow: InflowBounds[];
   readonly sticky: StickyIndex;
+  readonly textAreas: TextAreaRow[];
 };
 
 /** A grid scroll container's inflow bounds (Frag.inflow) in its border box; overflow.ts reads them for its scrollable overflow. */
 export type InflowBounds = { readonly id: string; readonly x: LU; readonly y: LU; readonly width: LU; readonly height: LU };
 
+/** A textarea's line pitch and first-line baseline offset in a line (Frag.lines), which a host that edits it lays its lines out by. */
+export type TextAreaRow = { readonly id: string; readonly pitch: LU; readonly above: LU };
+
 /** A layout with the inflow bounds its grid scroll containers set (empty when it is refused). */
-export type LayoutWithInflow = { readonly result: LayoutResult; readonly inflow: readonly InflowBounds[] };
+export type LayoutWithInflow = { readonly result: LayoutResult; readonly inflow: readonly InflowBounds[]; readonly textAreas: readonly TextAreaRow[] };
 
 /** layout with seeded engine errors; only the parity harness's planted tests pass anything but NO_ENGINE_FAULTS. */
 export function layoutWithFaults(given: LayoutInput, measurer: TextMeasurer, faults: EngineFaults): LayoutResult {
@@ -98,12 +102,12 @@ export function layoutWithInflow(given: LayoutInput, measurer: TextMeasurer, fau
     if (root.style.position === 'sticky') unsupported('sticky', root.id, 'css-position-3 §3.4', `the root box ${root.id} has no containing block to stick in`);
     const sticky = new Map<string, Sticky>();
     collectSticky(root, null, null, sticky);
-    const out: Placement = { boxes: [], absolute: new Map(), pending: [], inflow: [], sticky: { ctx, boxes: sticky, width: icbWidth, height: icbHeight } };
+    const out: Placement = { boxes: [], absolute: new Map(), pending: [], inflow: [], sticky: { ctx, boxes: sticky, width: icbWidth, height: icbHeight }, textAreas: [] };
     flatten(r.frag, null, add(inline.x, offset.dx), add(inline.marginTop, offset.dy), ZERO, ZERO, out);
     placeOutOfFlow(ctx, input, out, { x: ZERO, y: ZERO, width: icbWidth, height: icbHeight, direction: icbDirection });
-    return { result: { kind: 'ok', boxes: out.boxes, dependencies: environmentDependencies(given) }, inflow: out.inflow };
+    return { result: { kind: 'ok', boxes: out.boxes, dependencies: environmentDependencies(given) }, inflow: out.inflow, textAreas: out.textAreas };
   } catch (e) {
-    if (e instanceof UnsupportedSignal) return { result: { kind: 'unsupported', unsupported: e.unsupported }, inflow: [] };
+    if (e instanceof UnsupportedSignal) return { result: { kind: 'unsupported', unsupported: e.unsupported }, inflow: [], textAreas: [] };
     throw e;
   }
 }
@@ -122,6 +126,7 @@ function flatten(frag: Frag, parent: string | null, inFlowX: LU, inFlowY: LU, pa
   out.boxes.push({ id: frag.id, parent, x, y, width: frag.width, height: frag.height });
   out.absolute.set(frag.id, { x: absX, y: absY, width: frag.width, height: frag.height });
   if (frag.inflow !== null) out.inflow.push({ id: frag.id, x: frag.inflow.x, y: frag.inflow.y, width: frag.inflow.width, height: frag.inflow.height });
+  if (frag.lines !== null) out.textAreas.push({ id: frag.id, pitch: frag.lines.pitch, above: frag.lines.above });
   for (const oof of frag.outOfFlow) out.pending.push({ oof, parent: frag.id, originX: absX, originY: absY, deferredAt: -1 });
   for (const c of frag.children) flatten(c.frag, frag.id, c.x, c.y, absX, absY, out);
 }

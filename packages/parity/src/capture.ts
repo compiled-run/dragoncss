@@ -341,13 +341,16 @@ async function shadowPartNodes(cdp: CDPSession, partId: string, n: DomNode, prop
   }
   const [x1, y1, , , x3, y3] = box ?? [0, 0, 0, 0, 0, 0];
   nodes.push({ id: partId, kind: 'element', hasBox: box !== null, x: x1 as number, y: y1 as number, width: (x3 as number) - (x1 as number), height: (y3 as number) - (y1 as number), computed });
-  const text = (n.children ?? []).find((c) => c.nodeName === '#text' && !(skipEmptyText && c.nodeValue === ''));
-  if (text === undefined) return nodes;
-  let quads: number[][] = [];
-  try {
-    quads = ((await cdp.send('DOM.getContentQuads', { nodeId: text.nodeId })) as { quads: number[][] }).quads;
-  } catch (e) {
-    if (!String(e).includes('Could not compute content quads')) throw e;
+  // A textarea's editor holds its value as one text node per line, with a <br> between: they are one text leaf's fragments.
+  const texts = (n.children ?? []).filter((c) => c.nodeName === '#text' && !(skipEmptyText && c.nodeValue === ''));
+  if (texts.length === 0) return nodes;
+  const quads: number[][] = [];
+  for (const text of texts) {
+    try {
+      quads.push(...((await cdp.send('DOM.getContentQuads', { nodeId: text.nodeId })) as { quads: number[][] }).quads);
+    } catch (e) {
+      if (!String(e).includes('Could not compute content quads')) throw e;
+    }
   }
   const rects = quads.map((q) => {
     const xs = [q[0], q[2], q[4], q[6]] as number[];

@@ -1,7 +1,7 @@
 export type * from './input.ts';
 export type { LU, FactorSum } from './units.ts';
 export { fromCssPx, fromRaw, toPx, LU_PER_PX } from './units.ts';
-export type { LayoutRect, LayoutResult } from './layout.ts';
+export type { LayoutRect, LayoutResult, TextAreaRow } from './layout.ts';
 export { layout, layoutWithFaults, layoutWithGridFaults, absoluteRects } from './layout.ts';
 export type { GridFaults } from './grid.ts';
 export { NO_GRID_FAULTS } from './grid.ts';

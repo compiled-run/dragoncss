@@ -29,6 +29,8 @@ export type OutOfFlow = { readonly box: LayoutBox; readonly x: StaticAxis; reado
  * outOfFlow: the box's absolutely positioned children, in document order.
  * inflow: a grid scroll container's inflow bounds in its border box (Blink GridLayoutAlgorithm::LayoutInternal SetInflowBounds: the grid's tracks,
  * not where its items are placed); null for every other box, whose inflow bounds overflow.ts takes from its children.
+ * lines: a textarea's line pitch and first-line baseline offset in a line (the above of its BoxMetrics), the ones its auto height
+ * multiplies by rows; null for every other box.
  */
 export type Frag = {
   readonly id: string;
@@ -38,7 +40,10 @@ export type Frag = {
   readonly children: readonly Placed[];
   readonly outOfFlow: readonly OutOfFlow[];
   readonly inflow: AreaRect | null;
+  readonly lines: TextAreaLines | null;
 };
+/** A textarea's line pitch (the line height its lines are apart) and the baseline's offset from a line's top, in LU. */
+export type TextAreaLines = { readonly pitch: LU; readonly above: LU };
 export type Placed = { readonly frag: Frag; readonly x: LU; readonly y: LU };
 
 /** A point in LU. */

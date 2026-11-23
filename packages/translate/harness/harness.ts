@@ -88,7 +88,8 @@ import type {
   TrackSize,
 } from '../../layout/src/input.ts';
 import type { LayoutRect } from '../../layout/src/layout.ts';
-import { absoluteRects, layout, layoutWithFaults, resolvedInput } from '../../layout/src/layout.ts';
+import type { TextAreaRow } from '../../layout/src/layout.ts';
+import { absoluteRects, layout, layoutWithFaults, layoutWithInflow, resolvedInput } from '../../layout/src/layout.ts';
 import type { Ctx } from '../../layout/src/block.ts';
 import { NO_ENGINE_FAULTS } from '../../layout/src/block.ts';
 import { NO_GRID_FAULTS } from '../../layout/src/grid.ts';
@@ -4007,13 +4008,15 @@ export function checkMarklessPlan(line: string): string {
  * nodeId, detail]; per box and text node [id, [x, y, width, height] relative to its parent, borderWidths [top, right, bottom,
  * left] or null, lines or null, borderOps or null, scrollRange or null]; on a slotted page ("slots" given), then the slot
  * writes; with a menulist-button select, ["menulist-arrows", [[id, strokeWidth, segments]]], each arrow in device px from
- * its select's snapped border box; with a checkbox, last, ["checkbox-marks", marks] (checkboxesJson).
+ * its select's snapped border box; with a checkbox, last, ["checkbox-marks", marks] (checkboxesJson); when asked ("textAreas": true), ["text-areas", [[id, pitch, above], ...]] (textAreasJson).
  */
 export function runMarklessLayout(line: string): string {
   try {
     const parsed = parseJson(line);
-    const withSlots = parsed.kind === 'obj' && parsed.values.has('slots');
-    return marklessLayout(obj(parsed, withSlots ? ['assignment', 'dpr', 'viewport', 'safeArea', 'plan', 'slots'] : ['assignment', 'dpr', 'viewport', 'safeArea', 'plan'], '$'), null);
+    const keys: string[] = ['assignment', 'dpr', 'viewport', 'safeArea', 'plan'];
+    if (parsed.kind === 'obj' && parsed.values.has('slots')) keys.push('slots');
+    if (parsed.kind === 'obj' && parsed.values.has('textAreas')) keys.push('textAreas');
+    return marklessLayout(obj(parsed, keys, '$'), null);
   } catch (e) {
     if (e instanceof HarnessError) return `["harness-error",${q(e.detail)}]`;
     return '["threw"]';
@@ -4109,6 +4112,7 @@ export function runMarklessRowsLayout(line: string, shaper: GlyphShaper): string
     const keys: string[] = ['assignment', 'dpr', 'viewport', 'safeArea', 'plan', 'rows'];
     if (parsed.kind === 'obj' && parsed.values.has('slots')) keys.push('slots');
     if (parsed.kind === 'obj' && parsed.values.has('texts')) keys.push('texts');
+    if (parsed.kind === 'obj' && parsed.values.has('textAreas')) keys.push('textAreas');
     return marklessLayout(obj(parsed, keys, '$'), shaper);
   } catch (e) {
     if (e instanceof HarnessError) return `["harness-error",${q(e.detail)}]`;
@@ -4313,7 +4317,8 @@ function marklessLayout(o: JsonObj, live: GlyphShaper | null): string {
     const dashed = spliced === null ? parts.dashed : spliced.dashed;
     const scrollers = spliced === null ? parts.scrollers : spliced.scrollers;
 
-    const r = layout(input, measurer);
+    const placed = layoutWithInflow(input, measurer, NO_ENGINE_FAULTS, NO_GRID_FAULTS);
+    const r = placed.result;
     if (r.kind !== 'ok') return fail(`the engine refused the plan at ${r.unsupported.nodeId}: ${r.unsupported.code} ${r.unsupported.detail}`);
     const boxes = r.boxes;
     const abs = absoluteRects(boxes);
@@ -4361,7 +4366,8 @@ function marklessLayout(o: JsonObj, live: GlyphShaper | null): string {
       const range = rangeOf.get(b.id);
       out += `[${q(b.id)},[${h(b.x / LU_PER_PX)},${h(b.y / LU_PER_PX)},${h(b.width / LU_PER_PX)},${h(b.height / LU_PER_PX)}],${s === undefined ? 'null' : edgeHex(resolveBorder(s, dpr), dpr)},${ownLines === undefined ? 'null' : ownLines},${ops === '' ? 'null' : ops},${range !== undefined && scrollers.has(b.id) ? `[${h(range.minX)},${h(range.maxX)},${h(range.minY)},${h(range.maxY)}]` : 'null'}]`;
     }
-    const arrows = `${arrowsJson(menuListArrows(input, boxes, measurer), abs)}${checkboxesJson(parts.checkboxes, abs, dpr)}`;
+    const wantsTextAreas = o.values.has('textAreas') && bool(field(o, 'textAreas', '$'), '$.textAreas');
+    const arrows = `${arrowsJson(menuListArrows(input, boxes, measurer), abs)}${checkboxesJson(parts.checkboxes, abs, dpr)}${wantsTextAreas ? textAreasJson(placed.textAreas) : ''}`;
     if (!o.values.has('slots')) return `${out}]${arrows}]`;
     out += `],${writeNumbers(parts, values, '$.slots')}`;
     if (spliced === null) return `${out}${arrows}]`;
@@ -4371,6 +4377,15 @@ function marklessLayout(o: JsonObj, live: GlyphShaper | null): string {
       out += `${i === 0 ? '' : ','}[${q(row.key)},${writeNumbers(row.parts, row.values, `${row.at}.slots`)}]`;
     });
     return `${out}]${arrows}]`;
+}
+
+function textAreasJson(rows: readonly TextAreaRow[]): string {
+  if (rows.length === 0) return '';
+  let out = ',["text-areas",[';
+  rows.forEach((r, i) => {
+    out += `${i === 0 ? '' : ','}[${q(r.id)},${h(r.pitch / LU_PER_PX)},${h(r.above / LU_PER_PX)}]`;
+  });
+  return `${out}]]`;
 }
 
 /** Every bound write number of an assignment at these slot values: [[node, write kind, path, value], ...]. */

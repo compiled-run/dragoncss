@@ -873,7 +873,7 @@ function checkPreservedText(el: ResolvedElement, t: ResolvedText, refuse: (at: R
   const breakWord = mode === 'preserve' && keywordOf(t.props.get('overflow-wrap') as ResolvedValue) === 'break-word' && keywordOf(t.props.get('word-break') as ResolvedValue) === 'normal';
   const breaks = breakWord ? [] : (['overflow-wrap', 'word-break'] as const).filter((p) => keywordOf(t.props.get(p) as ResolvedValue) !== 'normal');
   if (breaks.length > 0) refuse(el, 'preserved-break', `${breaks.map((p) => `${p}: ${keywordOf(t.props.get(p) as ResolvedValue)}`).join(' and ')} on ${t.node.address}, whose white-space-collapse is ${mode}: breaking preserved white space inside words is not laid out yet`, `Remove the ${breaks.join(' and ')} or the white-space declaration that reaches ${t.node.address}.`);
-  if (/^[ \t\n]*$/.test(t.text)) refuse(el, 'preserved-blank', `${t.node.address} is only white space kept by white-space-collapse: ${mode} (css-text-4 §4.1.1), which Dragon does not lay out yet`, `Remove the white space of ${t.node.address}, or the white-space declaration that reaches it.`);
+  if (t.text !== '' && /^[ \t\n]*$/.test(t.text)) refuse(el, 'preserved-blank', `${t.node.address} is only white space kept by white-space-collapse: ${mode} (css-text-4 §4.1.1), which Dragon does not lay out yet`, `Remove the white space of ${t.node.address}, or the white-space declaration that reaches it.`);
 }
 
 // CSS2 §9.2.1.1 and §10.3.7: an absolutely positioned box beside text in a block container would take its static position inside
@@ -1819,7 +1819,7 @@ function checkTextField(el: ResolvedElement, parentDisplay: string | null, targe
   if (state === 'search' && keywordOf(direction) === 'rtl') {
     refuse(direction, 'search-rtl', `direction: rtl on <input type=search> ${address} is not supported: Chrome puts its cancel button at the inline end, which the engine lays out only for ltr`, `Set direction: ltr on <input> ${address}, or use type="text".`, 'DRAGON_UNSUPPORTED_VALUE', targets.filter((t) => t === 'ios' || t === 'android'));
   }
-  if (!(hostEdits && tag === 'input') && !el.element.attributes.has('readonly')) {
+  if (!hostEdits && !el.element.attributes.has('readonly')) {
     refuse(null, 'editing', `<${tag}> ${address} is an editable text control: Dragon draws its value but has no caret, selection or keyboard input on iOS and Android yet (the FORM-b editing slice)`, `Add readonly to <${tag}> ${address}, or target web only, until native text editing lands.`, 'DRAGON_UNSUPPORTED_VALUE', targets.filter((t) => t === 'ios' || t === 'android'));
   }
   if (tag === 'textarea') checkTextAreaChrome(el, targets, refuse);

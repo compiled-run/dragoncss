@@ -150,9 +150,20 @@ describe('FORM-b text fields', () => {
     expect([b.get('t::cancel'), b.get('v::cancel')]).toEqual([{ x: 4 + 189 + 1, y: 3 + 1.5, width: 7, height: 7 }, undefined]);
   });
 
-  it('still refuses a textarea when the host edits single-line fields', () => {
-    const refused = errors(compile('tf-host-textarea', '', '<textarea data-dragon-id="a">XX</textarea>', BASE, false, true)).filter((e) => e.includes('is an editable text control'));
-    expect(refused).toEqual([expect.stringMatching(/^android DRAGON_UNSUPPORTED_VALUE <textarea> a is an editable text control/), expect.stringMatching(/^ios DRAGON_UNSUPPORTED_VALUE <textarea> a is an editable text control/)]);
+  it('lays out an editable textarea when the host edits text, its empty editor one line tall, and a compile without that still refuses it', () => {
+    const css = 'textarea { display: block; font: inherit; margin: 0; border: 2px solid #036; padding: 1px 2px; resize: none; scrollbar-width: none; line-height: 1.5; }';
+    const body = '<textarea data-dragon-id="a" rows="3">XX</textarea>\n<textarea data-dragon-id="e" rows="3"></textarea>\n<textarea data-dragon-id="r" rows="3" readonly=""></textarea>';
+    expect(errors(compile('ta-host-edits', css, body, BASE, false, true))).toEqual([]);
+    const refused = errors(compile('ta-not-host', css, body)).filter((e) => e.includes('is an editable text control'));
+    expect(refused).toEqual(['a', 'a', 'e', 'e'].map((id, i) => expect.stringMatching(new RegExp(`^${i % 2 === 0 ? 'android' : 'ios'} DRAGON_UNSUPPORTED_VALUE <textarea> ${id} is an editable text control`))));
+    const b = boxes(compile('ta-host-edits', css, body, BASE, false, true));
+    // Chrome 145: an editable empty editor holds one line (15px for a 10px Ahem line at line-height 1.5); a readonly one is 0 tall.
+    expect([b.get('a::editor')?.height, b.get('e::editor')?.height, b.get('r::editor')?.height, b.get('a')?.height]).toEqual([15, 15, 0, 3 * 15 + 2 + 4]);
+  });
+
+  it('keeps :read-write and :read-only refused on an edited textarea, whose state is the host\'s', () => {
+    const css = 'textarea { display: block; font: inherit; resize: none; scrollbar-width: none; } textarea:read-write { color: #036; }';
+    expect(errors(compile('ta-read-write', css, '<textarea data-dragon-id="a">XX</textarea>', BASE, false, true)).filter((e) => e.includes(':read-write'))).not.toEqual([]);
   });
 
   it('accepts an editable search field in a Markless compile (textEditing: host) and refuses it in a plain native compile', () => {
