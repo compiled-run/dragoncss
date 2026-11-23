@@ -736,11 +736,11 @@ public func paintShadow_backdropAt(_ fills: JsArray<BackdropFill>, _ x: Double, 
   var b: Double = 255.0
   // ts: packages/layout/src/paint-shadow.ts:565
   do {
-    let _a235 = fills
-    var _i235 = 0
-    while _i235 < _a235.items.count {
-      let f: BackdropFill = _a235.items[_i235]
-      _i235 += 1
+    let _a237 = fills
+    var _i237 = 0
+    while _i237 < _a237.items.count {
+      let f: BackdropFill = _a237.items[_i237]
+      _i237 += 1
       // ts: packages/layout/src/paint-shadow.ts:566
       if (jsLength(f.radii) != 8.0) {
         throw JsError(message: jsConcat(S.s1024, jsNumberToString(jsLength(f.radii)), S.s178))
@@ -968,11 +968,11 @@ public func paintShadow_tileMaskAt(_ cache: JsArray<TileMask>, _ spread: ShadowS
   let j: Double = try paintDither_ccTileIndex(y, paintShadow_TILE)
   // ts: packages/layout/src/paint-shadow.ts:698
   do {
-    let _a236 = cache
-    var _i236 = 0
-    while _i236 < _a236.items.count {
-      let t: TileMask = _a236.items[_i236]
-      _i236 += 1
+    let _a238 = cache
+    var _i238 = 0
+    while _i238 < _a238.items.count {
+      let t: TileMask = _a238.items[_i238]
+      _i238 += 1
       // ts: packages/layout/src/paint-shadow.ts:698
       if ((t.i == i) && (t.j == j)) {
         return t.mask
@@ -1022,11 +1022,11 @@ public func paintShadow_outerLayer(_ left: Double, _ top: Double, _ right: Doubl
   var bounds: PaintBlur_IRect? = nil
   // ts: packages/layout/src/paint-shadow.ts:744
   do {
-    let _a237 = shadows
-    var _i237 = 0
-    while _i237 < _a237.items.count {
-      let sh: ShadowInput = _a237.items[_i237]
-      _i237 += 1
+    let _a239 = shadows
+    var _i239 = 0
+    while _i239 < _a239.items.count {
+      let sh: ShadowInput = _a239.items[_i239]
+      _i239 += 1
       let z: JsArray<Double> = try paintShadow_zoomed(sh, dpr, faults)
       let spread: ShadowShape = try paintShadow_spreadShape(left, top, right, bottom, border.radii, paintShadow_at(z, 3.0), faults)
       let shape: ShadowShape = try paintShadow_offsetShape(spread, paintShadow_at(z, 0.0), paintShadow_at(z, 1.0))
@@ -1162,11 +1162,11 @@ public func paintShadow_insetLayer(_ left: Double, _ top: Double, _ right: Doubl
     var m: A8Mask? = nil
     // ts: packages/layout/src/paint-shadow.ts:844
     do {
-      let _a238 = cache
-      var _i238 = 0
-      while _i238 < _a238.items.count {
-        let t: TileMask = _a238.items[_i238]
-        _i238 += 1
+      let _a240 = cache
+      var _i240 = 0
+      while _i240 < _a240.items.count {
+        let t: TileMask = _a240.items[_i240]
+        _i240 += 1
         // ts: packages/layout/src/paint-shadow.ts:844
         if ((t.i == i) && (t.j == j)) {
           m = t.mask
@@ -1236,11 +1236,11 @@ public func paintShadow_lineShadowMasks(_ ink: JsArray<GlyphInk>, _ baseline: Do
   let out: JsArray<A8Mask> = JsArray<A8Mask>([])
   // ts: packages/layout/src/paint-shadow.ts:922
   do {
-    let _a239 = ink
-    var _i239 = 0
-    while _i239 < _a239.items.count {
-      let g: GlyphInk = _a239.items[_i239]
-      _i239 += 1
+    let _a241 = ink
+    var _i241 = 0
+    while _i241 < _a241.items.count {
+      let g: GlyphInk = _a241.items[_i241]
+      _i241 += 1
       let x: Double = try (rtEasing_floorOf((paintShadow_f32((paintShadow_f32((g.left + paintShadow_at(z, 0.0))) + 0.125)) * 4.0)) / 4.0)
       let src: A8Mask = try paintShadow_glyphMask(x, (y - (baseline - g.top)), (x + (g.right - g.left)), (y + (g.bottom - baseline)))
       _ = try jsPush(out, (((sigma > 0.0) && (!paintBlur_hasNoBlur(sigma))) ? paintBlur_boxBlur(src, sigma, paintShadow_NO_BLUR) : src))
@@ -1270,11 +1270,11 @@ public func paintShadow_textShadowLayerOverTexts(_ cps: JsArray<Double>, _ xs: J
         }
         // ts: packages/layout/src/paint-shadow.ts:949
         do {
-          let _a240 = try paintShadow_lineShadowMasks(ink, baseline, sh, dpr, faults)
-          var _i240 = 0
-          while _i240 < _a240.items.count {
-            let m: A8Mask = _a240.items[_i240]
-            _i240 += 1
+          let _a242 = try paintShadow_lineShadowMasks(ink, baseline, sh, dpr, faults)
+          var _i242 = 0
+          while _i242 < _a242.items.count {
+            let m: A8Mask = _a242.items[_i242]
+            _i242 += 1
             _ = jsPush(masks, m)
             // ts: packages/layout/src/paint-shadow.ts:951
             if try ((paintShadow_width(m.bounds) > 0.0) && (paintShadow_height(m.bounds) > 0.0)) {
@@ -1296,11 +1296,11 @@ public func paintShadow_textShadowLayerOverTexts(_ cps: JsArray<Double>, _ xs: J
   let glyphInk: JsBytes = try jsBytesNew(((jsLength(under) == 0.0) ? 0.0 : (paintShadow_width(b) * paintShadow_height(b))))
   // ts: packages/layout/src/paint-shadow.ts:959
   do {
-    let _a241 = under
-    var _i241 = 0
-    while _i241 < _a241.items.count {
-      let u: TextLinePaint = _a241.items[_i241]
-      _i241 += 1
+    let _a243 = under
+    var _i243 = 0
+    while _i243 < _a243.items.count {
+      let u: TextLinePaint = _a243.items[_i243]
+      _i243 += 1
       // ts: packages/layout/src/paint-shadow.ts:960
       if try (((!paintShadow_isByte(u.r)) || (!paintShadow_isByte(u.g))) || (!paintShadow_isByte(u.b))) {
         throw JsError(message: jsConcat(S.s1027, jsNumberToString(u.r), S.s221, jsNumberToString(u.g), S.s221, jsNumberToString(u.b), S.s117))
