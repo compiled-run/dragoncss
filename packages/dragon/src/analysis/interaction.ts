@@ -707,8 +707,7 @@ export function hitUnmodelledFact(root: ResolvedElement, ua: UaDataset, compiles
     }
     if (hitRetargetsParts(el)) return null;
     for (const c of el.children) {
-      // A text field's UA shadow parts retarget to the field (Chrome), so their paint facts decide no hit.
-      if (c.kind !== 'element' || textFieldPartOf(c) !== undefined) continue;
+      if (c.kind !== 'element') continue;
       const found = visit(c);
       if (found !== null) return found;
     }

@@ -78,6 +78,13 @@ export const TEXT_AREA_UA_SHADOW: { readonly placeholder: readonly ShadowRule[];
   ],
 };
 
+/**
+ * A search field's cancel button, after the editor in its decoration container: the 1px inline start and 3px inline end margins
+ * Chrome 145 gives it on the reference platform (probed through CDP: the editor is the content box less the button's side and
+ * 4px at every font size). Its side is decided in layout from the font size (the engine's searchCancelButtonSize).
+ */
+export const SEARCH_CANCEL_BUTTON = { marginStart: 1, marginEnd: 3 } as const;
+
 /** HTML §4.10.11: a textarea's raw value is its child text content; its API value turns CRLF and lone CR into LF. */
 export function textAreaValue(children: readonly string[]): string {
   return children.join('').replace(/\r\n?/g, '\n');
@@ -91,13 +98,6 @@ export function shownTextAreaPlaceholder(value: string, placeholder: string | un
   if (value !== '' || placeholder === undefined || placeholder === '') return null;
   return placeholder.replace(/\r\n?/g, '\n');
 }
-
-/**
- * A search field's cancel button, after the editor in its decoration container: the 1px inline start and 3px inline end margins
- * Chrome 145 gives it on the reference platform (probed through CDP: the editor is the content box less the button's side and
- * 4px at every font size). Its side is decided in layout from the font size (the engine's searchCancelButtonSize).
- */
-export const SEARCH_CANCEL_BUTTON = { marginStart: 1, marginEnd: 3 } as const;
 
 const stripLineBreaks = (s: string): string => s.replace(/[\n\r]/g, '');
 const stripAsciiWhitespace = (s: string): string => s.replace(/^[\t\n\f\r ]+|[\t\n\f\r ]+$/g, '');

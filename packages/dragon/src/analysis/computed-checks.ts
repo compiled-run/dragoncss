@@ -1765,9 +1765,9 @@ function checkButton(el: ResolvedElement, parentDisplay: string | null, targets:
  * inner editor and placeholder (resolve.ts), and painted as CSS boxes once its used appearance is none (the devolve probe:
  * appearance: none, or an author background or border). Refused: a themed field; a password field (Chrome masks its text with
  * the font's bullet, which no fixture proves); an inline-level field (RF-INL); any display but block or flex; an absolutely
- * positioned one or a grid item; one whose font is Chrome's UA control font; on iOS and Android a right-to-left search field; and
- * on iOS and Android an editable field, as Dragon has no caret or keyboard input there yet (the FORM-b editing slice), unless the
- * host edits it (hostEdits: the compile's textEditing 'host'; never a textarea). A readonly field shows its value as drawn text.
+ * positioned one; one whose font is Chrome's UA control font; on iOS and Android a right-to-left search field; and on iOS and
+ * Android an editable field, as Dragon has no caret or keyboard input there yet (the FORM-b editing slice), unless the host edits
+ * a single-line field (hostEdits: the compile's textEditing 'host'). A readonly field shows its value as drawn text.
  */
 function checkTextField(el: ResolvedElement, parentDisplay: string | null, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, hostEdits: boolean): void {
   const address = el.element.address;
@@ -1820,7 +1820,7 @@ function checkTextField(el: ResolvedElement, parentDisplay: string | null, targe
     refuse(direction, 'search-rtl', `direction: rtl on <input type=search> ${address} is not supported: Chrome puts its cancel button at the inline end, which the engine lays out only for ltr`, `Set direction: ltr on <input> ${address}, or use type="text".`, 'DRAGON_UNSUPPORTED_VALUE', targets.filter((t) => t === 'ios' || t === 'android'));
   }
   if (state === 'search') checkSearchField(el, (v, what, message, manual) => refuse(v, what, message, manual, 'DRAGON_UNSUPPORTED_VALUE', targets.filter((t) => t === 'ios' || t === 'android')));
-  if ((tag === 'textarea' || !hostEdits) && !el.element.attributes.has('readonly')) {
+  if (!(hostEdits && tag === 'input') && !el.element.attributes.has('readonly')) {
     refuse(null, 'editing', `<${tag}> ${address} is an editable text control: Dragon draws its value but has no caret, selection or keyboard input on iOS and Android yet (the FORM-b editing slice)`, `Add readonly to <${tag}> ${address}, or target web only, until native text editing lands.`, 'DRAGON_UNSUPPORTED_VALUE', targets.filter((t) => t === 'ios' || t === 'android'));
   }
   if (tag === 'textarea') checkTextAreaChrome(el, targets, refuse);

@@ -96,12 +96,6 @@ export function textFieldInlineSize(measurer: TextMeasurer, c: Extract<ControlKi
   return ceilFloatToWholePx(floatMul(rounded > avg ? rounded : avg, float32(c.size)));
 }
 
-/** FORM-b: a textarea's default content inline size, cols x the float advance of 0, rounded up to a whole px. */
-export function textAreaInlineSize(measurer: TextMeasurer, c: Extract<ControlKind, { kind: 'text-area' }>): LU {
-  const zero = measurer.lengths({ family: c.font.family, size: c.font.size, letterSpacing: 0, wordSpacing: 0, smallCaps: false }).zeroWidth;
-  return ceilFloatToWholePx(floatMul(zero, float32(c.cols)));
-}
-
 /**
  * FORM-b: the side of a search field's cancel button in zoomed px, lroundf(clamp(9 x size / 13, 5, 21)) of its zoomed font size
  * rounded to a whole px (Chromium's LayoutThemeDefault::AdjustSearchFieldCancelButtonStyle; Chrome 145 under Ahem probed at 1x,
@@ -114,6 +108,12 @@ export function searchCancelButtonSize(c: Extract<ControlKind, { kind: 'text-fie
 /** FORM-b: the inline size a search field's cancel button and its margins take from the editor's line, in LU. */
 export function searchDecorationInlineSize(c: Extract<ControlKind, { kind: 'text-field' }>, cancel: CancelButton): LU {
   return add(fromCssPx(searchCancelButtonSize(c)), add(fromCssPx(cancel.marginStart), fromCssPx(cancel.marginEnd)));
+}
+
+/** FORM-b: a textarea's default content inline size, cols x the float advance of 0, rounded up to a whole px. */
+export function textAreaInlineSize(measurer: TextMeasurer, c: Extract<ControlKind, { kind: 'text-area' }>): LU {
+  const zero = measurer.lengths({ family: c.font.family, size: c.font.size, letterSpacing: 0, wordSpacing: 0, smallCaps: false }).zeroWidth;
+  return ceilFloatToWholePx(floatMul(zero, float32(c.cols)));
 }
 
 /** FORM-b: the offset of a field's editor from its content box top: (content box block size - editor block size) / 2, unclamped. */
