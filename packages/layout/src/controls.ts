@@ -43,6 +43,14 @@ export function controlOf(box: LayoutBox | ControlBox): ControlKind | null {
   return box.kind === 'control' ? box.control : null;
 }
 
+/**
+ * css-sizing-3 §5.2.2: a select or text field is compressible, so a percentage width resolves against zero in its min-content
+ * contribution; Chrome 145 compresses neither a button's width nor any control's percentage max-width (grid-controls, select-compress).
+ */
+export function compressesPercentWidth(box: LayoutBox | ControlBox): boolean {
+  return box.kind === 'control' && (box.control.kind === 'text-field' || box.control.kind === 'select-menulist');
+}
+
 /** The plain box of a box or control box. */
 export function plainBox(box: LayoutBox | ControlBox): LayoutBox {
   return box.kind === 'control' ? controlAsBox(box) : box;

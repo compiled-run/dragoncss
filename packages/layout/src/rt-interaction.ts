@@ -151,7 +151,7 @@ export function focusTarget(t: InteractionTables, e: number, faults: Interaction
   return -1;
 }
 
-/** Pointer focus on the nearest focusable inclusive ancestor of hit: focus-visible only for keyboard input (R8, P5, P6). */
+/** Pointer focus on the nearest focusable inclusive ancestor of hit: focus-visible only where keyboardInput says (a text field, a textarea or a select; R8, P5, P6). */
 function pointerFocus(t: InteractionTables, s: InteractionPointer, hit: number, faults: InteractionFaults): InteractionPointer {
   const f = focusTarget(t, hit, faults);
   const visible: boolean = f >= 0 && (faults.focusVisibleOnPointer || (t.keyboardInput[f] as boolean));

@@ -1,0 +1,18 @@
+{
+  "case": "ms-button-disabled#1",
+  "chrome": "145.0.7632.6",
+  "version": "dragon.hit-capture/2",
+  "viewport": {
+    "width": 400,
+    "height": 300
+  },
+  "direction": "ltr",
+  "points": 135,
+  "gridSha256": "490f3c36b86fce54fc172cdf125c6f386a569c37582fa86353b530df04420854",
+  "ids": [
+    "app/bar",
+    "app/button/button",
+    "html"
+  ],
+  "runs": [[0,26],[1,6],[0,5],[1,6],[0,5],[1,6],[0,6],[1,6],[0,6],[1,6],[0,5],[1,6],[0,40],[2,6]]
+}
