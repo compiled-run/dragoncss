@@ -188,7 +188,7 @@ describe('statically empty pseudo-elements (R5)', () => {
   });
   it('a host is refused at the pseudo-element: a [popover] for ::backdrop, a number input for ::-webkit-inner-spin-button', () => {
     const popover = compile(PREFLIGHT, (r) => [el(r, 'd', 'div', [], [], [attr(r, 'popover')])]);
-    expect(messages(popover).filter((m) => m.startsWith('DRAGON_UNSUPPORTED_SELECTOR'))).toEqual([expect.stringMatching(/^DRAGON_UNSUPPORTED_SELECTOR null ::backdrop is accepted only when no element can host it, but d may: a \[popover\]/), expect.stringMatching(/::file-selector-button .*FORM\)$/)]);
+    expect(messages(popover).filter((m) => m.startsWith('DRAGON_UNSUPPORTED_SELECTOR'))).toEqual([expect.stringMatching(/^DRAGON_UNSUPPORTED_SELECTOR null ::backdrop is accepted only when no element can host it, but d may: a \[popover\]/)]);
     const input = (css: string) => inputFor(`${FONT} ${css}`, (r) => [el(r, 'f', 'input', [], [], [attr(r, 'type', 'number')])]);
     const i = input('::-webkit-inner-spin-button { color: red; }');
     const c = project().compile(i);
@@ -196,6 +196,14 @@ describe('statically empty pseudo-elements (R5)', () => {
     expect(spanTextOf(i, d)).toBe('::-webkit-inner-spin-button');
     // The planted fault staticEmptyIgnoresHost accepts it.
     expect(project({ ...NO_FAULTS, staticEmptyIgnoresHost: true }).compile(i).diagnostics.filter((x) => x.code === 'DRAGON_UNSUPPORTED_SELECTOR')).toEqual([]);
+  });
+  it('each pseudo-element is refused only by an element that hosts it: a search input hosts neither ::backdrop nor ::file-selector-button', () => {
+    const typed = (type: string) => compile(PREFLIGHT, (r) => [el(r, 'f', 'input', [], [], [attr(r, 'type', type)])]);
+    const refused = (type: string) => messages(typed(type)).filter((m) => m.startsWith('DRAGON_UNSUPPORTED_SELECTOR'));
+    expect(refused('search')).toEqual([]);
+    expect(refused('file')).toEqual([expect.stringMatching(/^DRAGON_UNSUPPORTED_SELECTOR null ::file-selector-button is accepted only when no element can host it, but f may: <input type=file>/)]);
+    const decoration = messages(compile('::-webkit-search-decoration { color: red; }', (r) => [el(r, 'f', 'input', [], [], [attr(r, 'type', 'search')])]));
+    expect(decoration.filter((m) => m.startsWith('DRAGON_UNSUPPORTED_SELECTOR'))).toEqual([expect.stringMatching(/::-webkit-search-decoration is accepted only when no element can host it, but f may: <input type=search>/)]);
   });
 });
 

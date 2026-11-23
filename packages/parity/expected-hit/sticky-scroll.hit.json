@@ -1,0 +1,21 @@
+{
+  "case": "sticky-scroll",
+  "chrome": "145.0.7632.6",
+  "version": "dragon.hit-capture/2",
+  "viewport": {
+    "width": 400,
+    "height": 300
+  },
+  "direction": "ltr",
+  "points": 90,
+  "gridSha256": "66be1b9d1fbef38d192b7828e93fa2f758fa855d5d450bff842b9e12fad2666c",
+  "ids": [
+    "bar",
+    "body",
+    "foot",
+    "r1",
+    "sec",
+    "tab"
+  ],
+  "runs": [[0,8],[1,10],[4,10],[5,12],[4,12],[2,32],[3,6]]
+}
