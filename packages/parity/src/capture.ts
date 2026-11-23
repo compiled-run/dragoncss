@@ -302,9 +302,11 @@ async function withTextFieldParts(page: Page, f: (cdp: CDPSession, fields: reado
       if (container !== undefined && viewPort === undefined) throw new Error(`${id}: CDP exposed a decoration container without an editing view port`);
       const editor = viewPort !== undefined ? viewPort.children?.find((k) => k.nodeName === 'DIV') : kids.find((k) => k !== placeholder);
       if (editor === undefined) throw new Error(`${id}: CDP exposed no user-agent shadow inner editor`);
+      const cancel = container?.children?.find((k) => (k.attributes ?? []).includes('-webkit-search-cancel-button'));
+      if (container !== undefined && cancel === undefined) throw new Error(`${id}: CDP exposed a decoration container without a cancel button`);
       // Chrome keeps a hidden placeholder (display: none) while the value is not empty; Dragon leaves it out of the tree.
       const shown = placeholder !== undefined && (await computedDisplay(cdp, `${id}::placeholder`, placeholder)) !== 'none';
-      fields.push({ id, parts: [...(shown ? [['placeholder', placeholder] as const] : []), ['editor', editor] as const] });
+      fields.push({ id, parts: [...(shown ? [['placeholder', placeholder] as const] : []), ['editor', editor] as const, ...(cancel === undefined ? [] : [['cancel', cancel] as const])] });
     }
     await f(cdp, fields);
   } finally {

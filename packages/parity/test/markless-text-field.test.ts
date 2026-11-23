@@ -22,6 +22,7 @@ describe('editable search fields in a Markless export', () => {
         const text = (id: string): string | null => a.nodes.find((n) => n.id === id)?.text ?? null;
         expect([ids.has('h1::placeholder'), text('h1::placeholder:text0'), ids.has('h1::editor:text0')], `${t} empty field`).toEqual([true, 'Search notes', false]);
         expect([ids.has('h2::placeholder'), text('h2::editor:text0')], `${t} fixed value`).toEqual([false, 'Groceries']);
+        expect(['h1', 'h2', 'h3'].map((h) => ids.has(`${h}::cancel`)), `${t} cancel boxes`).toEqual([true, true, true]);
         const query = a.values[cell] as string;
         expect([ids.has('h3::placeholder'), text('h3::editor:text0')], `${t} ${query}`).toEqual(query === '' ? [true, null] : [false, query]);
       }

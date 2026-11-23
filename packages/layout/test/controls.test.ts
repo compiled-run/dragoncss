@@ -404,13 +404,18 @@ describe('FORM-a control boxes: what the engine and the validator refuse', () =>
     expect(codes(under(field([placeholder, empty])))).toEqual([]);
     expect(codes(under(field([])))).toEqual(['$.root.children[0].children a text field control holds exactly one text-editor control']);
     expect(codes(under(field([box('d', {})])))).toEqual([
-      '$.root.children[0].children[0] a text field control holds only its text-editor control and at most one text-placeholder control',
+      '$.root.children[0].children[0] a text field control holds only its text-editor control, at most one text-placeholder control and, for a search field, its empty cancel-button box',
       '$.root.children[0].children a text field control holds exactly one text-editor control',
     ]);
     expect(codes(under(field([editor, { ...empty, id: 'e2' }])))).toEqual(['$.root.children[0].children a text field control holds exactly one text-editor control']);
     expect(codes(under(field([placeholder, { ...placeholder, id: 'p2', children: [], strut: null }, editor])))).toEqual(['$.root.children[0].children a text field control holds at most one text-placeholder control']);
     expect(codes(under(box('d', {}, [editor])))).toEqual(['$.root.children[0].children[0].control a text-editor control is a part of a text field control: its parent is one']);
     expect(codes(under(field([{ ...empty, strut: null }])))).toEqual(['$.root.children[0].children[0].strut an empty text-editor control has a strut, whose one empty line it lays out']);
+    const search = (children: (LayoutBox | ControlBox)[]): ControlBox => ({ ...field(children), control: { kind: 'text-field', size: 20, font: ahemFont(10), lineHeight: { kind: 'normal' }, cancelButton: { marginStart: 1, marginEnd: 3 } } });
+    const cancel: LayoutBox = { ...box('t::cancel', {}), boxType: 'anonymous' };
+    expect(codes(under(search([editor, cancel])))).toEqual([]);
+    expect(codes(under(search([editor])))).toEqual(['$.root.children[0].children a search field control holds exactly one cancel-button box']);
+    expect(codes(under(field([editor, cancel])))).toContainEqual('$.root.children[0].children[1] a text field control holds only its text-editor control, at most one text-placeholder control and, for a search field, its empty cancel-button box');
     // The engine's own guard names the validator, which now rejects that input.
     expect(() => layout(under(field([box('d', {})])), ahemMeasurer)).toThrow('validateLayoutInput rejects this input');
     const area = (children: (LayoutBox | ControlBox)[]): ControlBox => control('t', { kind: 'text-area', cols: 20, rows: 2, font: ahemFont(10), lineHeight: { kind: 'normal' } }, {}, children);
