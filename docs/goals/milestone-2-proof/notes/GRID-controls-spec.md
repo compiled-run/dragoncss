@@ -23,3 +23,13 @@ Who needs it: the Markless notes form. Its `label.field` is `display: grid`, so 
 - **Ledger, not fixed here:** `intrinsic.ts` `inlineContribution`, which block and flex intrinsic sizing use, still treats a text field's percentage width as auto, not compressed. That gap predates this change. Next: probe a `width: 100%` text field in a shrink-to-fit block and a flex item against Chrome, and fix it or refuse it by name.
 - **Follow-up:** `<textarea>` as a grid item comes with #575.
 - **Directions:** `grid-controls` (buttons and selects) runs in both directions. The text fields moved to `grid-controls-fields`, ltr only, because Dragon refuses an rtl text field's preserved editor text (#571). Measured locally, both match live Chrome in every direction they run in, at DPR 1 and 3.
+
+## Textarea in the notes form (2026-11-22)
+
+This brings in the #575 follow-up, on the branch that merges `cw/form-textarea` (#631) into `cw/form-select-width`.
+
+- **Grid:** `gridPlacesControl` also places a `text-area`. A textarea is laid out by its control kind, as in block flow.
+- **Compressible:** css-sizing-3 §5.2.2 lists textarea as compressible. Its percentage `width` or `max-width` resolves against zero in its grid min-content contribution, as a text field's does. Chrome confirms it: without the rule, a `width: 100%` textarea in the one-column grid widens the auto track by 6 px, and every item in it misses Chrome by that much.
+- **Hit table:** `hitModelsControl` and `hitControlBox` model a textarea as one box with no children, since Chrome retargets its editor and placeholder parts to it. `hitUnmodelledControl` no longer refuses a textarea. `hitRetargetsParts` already covered it, because `textFieldPartOf` returns `part: null` for a textarea host.
+- **Compiler:** the textarea goes through `checkTextField`, which never refused a grid item. `refuseGridItem` still refuses only a range and a fieldset.
+- **Proof:** `grid-controls-fields` (ltr only) now holds a readonly `rows="3"` `width: 100%` textarea in the one-column grid, and a `rows="1" cols="3"` `width: 50%` one in the narrow overflowing grid. Measured locally against live Chrome at DPR 1 and 3, all 24 element boxes are within 0.02 device px.

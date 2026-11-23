@@ -2195,9 +2195,9 @@ function logicalBsp(pad: Edges, bor: Edges, rtl: boolean): Edges {
   return { top: add(bor.top, pad.top), right: rtl ? left : right, bottom: add(bor.bottom, pad.bottom), left: rtl ? right : left };
 }
 
-/** FORM: the controls the grid places as items, laid out by their kind as in block flow and flex: a block button, a select and a text field. */
+/** FORM: the controls the grid places as items, laid out by their kind as in block flow and flex: a block button, a select, a text field and a textarea. */
 function gridPlacesControl(c: ControlBox): boolean {
-  return c.control.kind === 'button-block' || c.control.kind === 'select-menulist' || c.control.kind === 'text-field';
+  return c.control.kind === 'button-block' || c.control.kind === 'select-menulist' || c.control.kind === 'text-field' || c.control.kind === 'text-area';
 }
 
 /** Builds the items, their placement and the two track collections of a grid container. */
