@@ -6,11 +6,11 @@ import { createHash } from 'node:crypto';
 import { posix } from 'node:path';
 import { brotliDecompressSync } from 'node:zlib';
 import type { BrotliDecompress, ClassSymbol, Condition, FontMap, FrontEndResult, NativeStyles, NativeStylesConfig, NativeStyleTarget, Rgba8, SourceFile, TreeNode } from 'dragon';
-import { BAND_KEY, compiledCases, compileNativeStylesWith, decodeFontFile, isTreeNodeId, LISTED_OPTIONS_ATTRIBUTE, nativeBands, parseStylesheet, resolvedTextTransforms, TREE_SCHEMA_REVISION } from 'dragon';
+import { BAND_KEY, compiledCases, compileNativeStylesWith, decodeFontFile, isTreeNodeId, LISTED_OPTIONS_ATTRIBUTE, nativeBands, parseStylesheet, resolvedInteractionTextTransforms, resolvedTextTransforms, TREE_SCHEMA_REVISION } from 'dragon';
 import type { rtBand } from '@dragon/layout';
 import { textDecoration } from '@dragon/layout';
 import { FONT_REFERENCE_MAP } from './font-reference.ts';
-import { checkPlan, HEIGHT_FEATURES, heightDependence, hexBits, PLAN_HEIGHTS, slottedLayout } from './markless-plan.ts';
+import { checkPlan, HEIGHT_FEATURES, heightDependence, hexBits, PLAN_HEIGHTS, planStateProgram, slottedLayout } from './markless-plan.ts';
 import type { MarklessPlan } from './markless-plan.ts';
 import { withFontMapAssets } from './fixture-groups/fonts.ts';
 import { DOCUMENT_ID, PROJECT_ID } from './fixture-reader.ts';
@@ -726,6 +726,8 @@ export function marklessStyleExport(inputText: string, inputPath: string, readFo
     return got;
   });
   const targets = Object.fromEntries(Object.entries(done.exported.targets).map(([t, x]) => {
+    // The slot bindings cover the program's assignments only; a pressed or focused state would lay out at the initial slot values.
+    if (x.interaction !== undefined) fail(`${parsed.component} has style values that follow state (slots ${slots.map((s) => s.id).join(', ')}) and interaction states (:hover, :active, :focus) together, which a phone does not apply yet`);
     const plan = x.plan;
     const per = bindings[t as NativeStyleTarget];
     if (plan === undefined || per === undefined) return fail(`${t}: no plan to carry the slots in`);
@@ -760,7 +762,7 @@ export function marklessTextHeightProof(inputText: string, inputPath: string, re
   const out: { [T in NativeStyleTarget]?: string | null } = {};
   for (const t of ['ios', 'android'] as const) {
     const o = styles.targets[t];
-    if (o?.kind === 'emitted') out[t] = heightDependence(o.program, (o.bands?.table.atoms ?? []).map((a) => a.feature));
+    if (o?.kind === 'emitted') out[t] = heightDependence(planStateProgram(o.program, o.interaction), (o.bands?.table.atoms ?? []).map((a) => a.feature));
   }
   return out;
 }
@@ -816,9 +818,12 @@ function withTransformed(plan: MarklessPlan, compiled: object): MarklessPlan {
     for (const c of compiledCases(compiled)) {
       const transforms = resolvedTextTransforms(compiled, c.assignment, band);
       if (transforms === null) return fail(`a case did not resolve in band ${band}`);
-      for (const [address, transform] of transforms) {
-        elements.add(address);
-        if (transform !== 'none') on.add(address);
+      // An interaction state's own text-transform counts too: the phone lays that state's text out as the plan recorded it.
+      for (const map of [transforms, ...(resolvedInteractionTextTransforms(compiled, c.assignment, band) ?? [])]) {
+        for (const [address, transform] of map) {
+          elements.add(address);
+          if (transform !== 'none') on.add(address);
+        }
       }
     }
   }
@@ -833,12 +838,19 @@ function withTransformed(plan: MarklessPlan, compiled: object): MarklessPlan {
 }
 
 
+/** Each Dragon id an assignment's plan geometry names, with the input's id for it, where they differ. */
+const planNamesOf = (a: ExportAssignment, rename: (id: string) => string): (readonly [string, string])[] => a.nodes.map((n) => [n.id, rename(n.id)] as const).filter(([d, m]) => d !== m);
+
+/** Every interaction state's assignment of a target, in level order. */
+const interactionStates = (x: NativeStyleExport['targets'][NativeStyleTarget] & object): readonly ExportAssignment[] => x.interaction?.levels.flatMap((l) => l.states) ?? [];
+
 function exportMarkless(parsed: MarklessStyleInput, inputText: string, inputPath: string, fonts: readonly MarklessFontFile[], mode: MarklessFonts, at: MarklessAtSize | undefined, plan: boolean): { readonly input: FrontEndResult; readonly styles: NativeStyles; readonly exported: MarklessStyleExport; readonly decoded: readonly { readonly file: string; readonly bytes: Uint8Array }[] } {
   const { input, styles, compiled, devices } = compileMarkless(parsed, inputText, inputPath, fonts, mode, at);
   const raw = nativeStyleExport(styles, parsed.component, inputPath, devices, fonts.map((f) => ({ id: f.id, file: f.sfntFile, bytes: f.sfnt })), mode === 'system' ? systemFontsFor : null, plan);
   const rekey = cellKey(parsed);
   const cellValues = (a: ExportAssignment): Record<string, unknown> => Object.fromEntries(Object.entries(a.values).map(([k, v]) => [rekey(k), v]));
   const dragonIds = dragonNodeIds(parsed);
+  const rowOfNode = new Map(parsed.nodes.flatMap((n) => (n.row === undefined ? [] : [[n.id, n.row] as const])));
   const renameIn = (a: ExportAssignment): ((id: string) => string) => marklessNodeId(parsed, (id) => dragonIds.get(id) as string, cellValues(a));
   const renamed = (a: ExportAssignment): ExportAssignment => {
     const rename = renameIn(a);
@@ -849,14 +861,31 @@ function exportMarkless(parsed: MarklessStyleInput, inputText: string, inputPath
     targets: Object.fromEntries(Object.entries(raw.targets).map(([t, x]) => [t, {
       ...x,
       assignments: x.assignments.map(renamed),
+      // An interaction state is laid out under its assignment's values, so it takes that assignment's names.
+      ...(x.interaction === undefined ? {} : { interaction: { levels: x.interaction.levels.map((l, i) => {
+        const rename = renameIn(x.assignments[i] as ExportAssignment);
+        const one = (id: string | null): string | null => (id === null ? null : rename(id));
+        const addresses = l.addresses.map(rename);
+        return {
+          ...l,
+          addresses,
+          // A list row's node is the template a phone copies per row: the state applies to the copy the touch or focus is in.
+          rows: Object.fromEntries(addresses.flatMap((id) => {
+            const row = rowOfNode.get(id);
+            return row === undefined ? [] : [[id, row] as const];
+          })),
+          states: l.states.map((st) => ({ ...st, nodes: st.nodes.map((n) => ({ ...n, id: rename(n.id), parent: n.parent === null ? null : rename(n.parent) })) })),
+          matches: l.matches.map((m) => ({ hover: m.hover.map(rename), active: m.active.map(rename), focus: one(m.focus), focusVisible: one(m.focusVisible), force: m.force.map((f) => ({ ...f, address: rename(f.address) })) })),
+        };
+      }) } }),
       // The plan lays out Dragon's own ids; a host names each assignment's geometry with the input's, by the export's rule.
-      ...(x.plan === undefined ? {} : { plan: withTransformed(x.plan, compiled), planNames: x.assignments.map((a) => {
-        const rename = renameIn(a);
-        return a.nodes.map((n) => [n.id, rename(n.id)] as const).filter(([d, m]) => d !== m);
-      }), planRepeats: planRepeats(parsed, dragonIds) }),
+      ...(x.plan === undefined ? {} : { plan: withTransformed(x.plan, compiled), planNames: [
+        ...x.assignments.map((a) => planNamesOf(a, renameIn(a))),
+        ...(x.interaction?.levels.flatMap((l, i) => l.states.map((st) => planNamesOf(st, renameIn(x.assignments[i] as ExportAssignment)))) ?? []),
+      ], planRepeats: planRepeats(parsed, dragonIds) }),
     }])),
   };
-  for (const [t, x] of Object.entries(exported.targets)) for (const a of x.assignments) {
+  for (const [t, x] of Object.entries(exported.targets)) for (const a of [...x.assignments, ...interactionStates(x)]) {
     const have = new Set(a.nodes.map((n) => n.id));
     if (have.size !== a.nodes.length) fail(`${t}: the export names ${a.nodes.length - have.size} node(s) by an id another node has`);
   }
@@ -897,12 +926,13 @@ function exportMarkless(parsed: MarklessStyleInput, inputText: string, inputPath
     return { ...a, nodes: [...a.nodes, ...added] };
   };
   for (const x of Object.values(exported.targets)) {
-    const shown = new Set(x.assignments.flatMap((a) => a.nodes.map((n) => n.id)));
+    const shown = new Set([...x.assignments, ...interactionStates(x)].flatMap((a) => a.nodes.map((n) => n.id)));
     (x as { assignments: unknown }).assignments = x.assignments.map((a) => boxless(a, shown));
+    if (x.interaction !== undefined) (x as { interaction: unknown }).interaction = { levels: x.interaction.levels.map((l) => ({ ...l, states: l.states.map((st) => boxless(st, shown)) })) };
   }
   const byId = new Map(parsed.nodes.map((n) => [n.id, n]));
   const inSelectList = (n: MarklessStyleInput['nodes'][number]): boolean => inSelectOptions(byId, n);
-  for (const [t, x] of Object.entries(exported.targets)) for (const a of x.assignments) {
+  for (const [t, x] of Object.entries(exported.targets)) for (const a of [...x.assignments, ...interactionStates(x)]) {
     const have = new Set(a.nodes.map((n) => n.id));
     const values = cellValues(a);
     const boxless = (n: MarklessStyleInput['nodes'][number]): boolean => n.kind === 'element' && n.boxless === true;
@@ -926,6 +956,15 @@ function exportMarkless(parsed: MarklessStyleInput, inputText: string, inputPath
         colorScheme: (schemes[i] as UsedScheme).colorScheme,
         ...rootPaint(a.nodes, `${t} assignment ${i}`, bandScheme(x.bands, a.values[BAND_KEY]), schemes[i] as UsedScheme),
       })),
+      ...(x.interaction === undefined ? {} : { interaction: { levels: x.interaction.levels.map((l, i) => ({
+        ...l,
+        states: l.states.map((a, k) => ({
+          ...a,
+          values: cellValues(a),
+          colorScheme: (schemes[i] as UsedScheme).colorScheme,
+          ...rootPaint(a.nodes, `${t} assignment ${i} interaction state ${k}`, bandScheme(x.bands, a.values[BAND_KEY]), schemes[i] as UsedScheme),
+        })),
+      })) } }),
     }];
   }));
   const decoded = [...new Map(fonts.filter((f) => f.sfntFile !== f.file).map((f) => [f.sfntFile, { file: f.sfntFile, bytes: f.sfnt }])).values()];
@@ -1189,7 +1228,8 @@ export function checkMarklessExport(exported: NativeStyleExport): MarklessStyleE
   const o = exported as unknown as Record<string, unknown>;
   if (o['fontMode'] !== 'system' && o['fontMode'] !== 'pinned') throw new Error(`the export's fontMode ${JSON.stringify(o['fontMode'] ?? null)} is neither system nor pinned`);
   for (const [t, x] of Object.entries(exported.targets)) {
-    for (const [i, a] of (x?.assignments ?? []).entries()) {
+    const states = (x?.interaction?.levels ?? []).flatMap((l, i) => l.states.map((a, k) => [`${i} interaction state ${k}`, a] as const));
+    for (const [i, a] of [...(x?.assignments ?? []).entries(), ...states]) {
       const p = a as unknown as Record<string, unknown>;
       if (!isRgba8(p['canvas'])) throw new Error(`${t} assignment ${i}: canvas ${JSON.stringify(p['canvas'] ?? null)} is not a colour`);
       if (p['bodyBackground'] !== null && !isRgba8(p['bodyBackground'])) throw new Error(`${t} assignment ${i}: bodyBackground ${JSON.stringify(p['bodyBackground'])} is not a colour or null`);
