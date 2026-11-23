@@ -51,6 +51,8 @@ export function engineRoots(files: readonly string[]): { file: string; name: str
     { file: at('layout.ts'), name: 'layout' },
     { file: at('layout.ts'), name: 'layoutWithFaults' },
     { file: at('layout.ts'), name: 'absoluteRects' },
+    { file: at('layout.ts'), name: 'stickyConstraints' },
+    { file: at('layout.ts'), name: 'stickyShift' },
     { file: at('platform.ts'), name: 'measurerFor' },
     { file: at('text.ts'), name: 'ahemMeasurer' },
     // R4: a host scopes its shaped measurer to Latin text as platform.ts shapedMeasurerFor does (the harness's replay included).
@@ -150,7 +152,7 @@ export function lowerAll(): Lowered {
   if (el.violations.length > 0) throw new TranslateError(el.violations);
   const hFiles = [...files, HARNESS_FILE];
   const hProgram = createProgram([...hFiles, HOST_FILE]);
-  const hl = new Lowerer(hProgram, { files: hFiles, hostFile: HOST_FILE, root: ROOT, collect: true, roots: [...roots, { file: HARNESS_FILE, name: 'runEngineCase' }, { file: HARNESS_FILE, name: 'runUnitsCase' }, { file: HARNESS_FILE, name: 'runLibraryCase' }, { file: HARNESS_FILE, name: 'runSnapCase' }, { file: HARNESS_FILE, name: 'runMarklessLayout' }, { file: HARNESS_FILE, name: 'runMarklessRowsLayout' }, { file: HARNESS_FILE, name: 'runMarklessAnimation' }] });
+  const hl = new Lowerer(hProgram, { files: hFiles, hostFile: HOST_FILE, root: ROOT, collect: true, roots: [...roots, { file: HARNESS_FILE, name: 'runEngineCase' }, { file: HARNESS_FILE, name: 'runUnitsCase' }, { file: HARNESS_FILE, name: 'runLibraryCase' }, { file: HARNESS_FILE, name: 'runSnapCase' }, { file: HARNESS_FILE, name: 'runMarklessLayout' }, { file: HARNESS_FILE, name: 'runMarklessRowsLayout' }, { file: HARNESS_FILE, name: 'runMarklessAnimation' }, { file: HARNESS_FILE, name: 'runMarklessSticky' }] });
   const harness = hl.lower();
   if (hl.violations.length > 0) throw new TranslateError(hl.violations);
   // The harness may use only the engine as translated for the roots: no extra engine declaration, no new union of engine classes.
