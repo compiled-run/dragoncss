@@ -102,7 +102,7 @@ public func inlineBox_atomicBaseline(_ ctx: Ctx, _ box: LayoutBox, _ frag: Frag,
   }
   // ts: packages/layout/src/inline-box.ts:107
   if (lastFlex != S.s0) {
-    try unsupported_unsupported(S.s_flex_baseline, lastFlex, S.s339, jsConcat(S.s1196, lastFlex, S.s204, box.id))
+    try unsupported_unsupported(S.s_flex_baseline, lastFlex, S.s341, jsConcat(S.s1200, lastFlex, S.s205, box.id))
   }
   return last
 }
