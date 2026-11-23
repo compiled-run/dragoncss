@@ -1,0 +1,24 @@
+{
+  "case": "controls-text-field-search",
+  "dpr": 3,
+  "texts": [
+    {"id":"s1::placeholder:text0","lines":[[0,2]]},
+    {"id":"s2::editor:text0","lines":[[0,2]]},
+    {"id":"s3::placeholder:text0","lines":[[0,4]]},
+    {"id":"s4::editor:text0","lines":[[0,1]]},
+    {"id":"s5::placeholder:text0","lines":[[0,1]]},
+    {"id":"s6::editor:text0","lines":[[0,5]]},
+    {"id":"s7::editor:text0","lines":[[0,11]]},
+    {"id":"s8::editor:text0","lines":[[0,1]]},
+    {"id":"s9::placeholder:text0","lines":[[0,2]]},
+    {"id":"s10::editor:text0","lines":[[0,2]]},
+    {"id":"s11::editor:text0","lines":[[0,2]]},
+    {"id":"s12::placeholder:text0","lines":[[0,2]]},
+    {"id":"s13::placeholder:text0","lines":[[0,12]]},
+    {"id":"s14::editor:text0","lines":[[0,6]]},
+    {"id":"s15::editor:text0","lines":[[0,2]]},
+    {"id":"s16::placeholder:text0","lines":[[0,2]]},
+    {"id":"f1::editor:text0","lines":[[0,2]]},
+    {"id":"f2::placeholder:text0","lines":[[0,2]]}
+  ]
+}

@@ -862,6 +862,8 @@ public final class DragonTree {
   /// css-env-1 env(safe-area-inset-*): the root view's insets in CSS px, measured from its container (dragonSafeArea) by a host
   /// before apply, which then replace the case input's own; nil keeps the input's (a mount's machine puts its insets there).
   public var safeArea: SafeAreaInsets? = nil
+  /// D3: whether the root scroller has a scroll range after the last layout, so Chrome composites its sticky boxes.
+  public private(set) var rootScrolls = false
   public init() {}
 
   /// Hosting (PNT1): node id's view is added to host's container instead of its DOM parent's; frames stay absolute from the
@@ -978,6 +980,7 @@ public final class DragonTree {
       // Chrome's scroll origin is a whole point (ToFlooredPoint of the overflow's offset negated): the layer starts at the ceiling.
       rootX = (rootX / lu).rounded(.up) * lu + 0
     }
+    rootScrolls = dragonViewportScrolls(boxes.map { r in (r.id.description, r.parent?.description, abs.get(r.id).map { [$0.x, $0.y, $0.x + $0.width, $0.y + $0.height] }) }, { id in zStyles[id]?.position.description == "fixed" }, { id in (views[id] as? DragonBoxView)?.dragonClipView != nil }, rtl: zoomed.root.style.direction.description == "rtl", width: input.viewport.width, height: input.viewport.height, lu: lu, scale: scale)
     root.frame = CGRect(x: 0, y: 0, width: CGFloat(input.viewport.width), height: CGFloat(input.viewport.height))
     var edges: [String: [Double]] = [:]
     var borders: [String: [Double]] = [:]
@@ -1305,6 +1308,29 @@ public final class DragonTree {
 /// A view's layout rect in root's coordinates with every layer transform ignored (PNT2): the dump's frames are the engine's
 /// untransformed boxes, and a transform is paint, proven by the pixel lane and Chrome's content quads. Without transforms it equals
 /// convert(bounds, to: root).
+/// D3: whether the root scroller has a scroll range (Chrome's pixel-snapped scroll size past its client size): a box or line that
+/// no clipping box below body holds and no fixed box carries reaches past the viewport's end edges, or its start edge in rtl.
+func dragonViewportScrolls(_ boxes: [(String, String?, [Double]?)], _ fixed: (String) -> Bool, _ clips: (String) -> Bool, rtl: Bool, width: Double, height: Double, lu: Double, scale: Double) -> Bool {
+  var parentOf: [String: String] = [:]
+  for (id, p, _) in boxes { if let p { parentOf[id] = p } }
+  func depth(_ id: String) -> Int { var d = 0; var p = parentOf[id]; while let q = p { d += 1; p = parentOf[q] }; return d }
+  // The engine's rects are in device px already (the input carries the scale); the viewport is in CSS px.
+  func px(_ v: Double) -> Double { return (v / lu + 0.5).rounded(.down) }
+  func snap(_ css: Double) -> Double { return (css * scale + 0.5).rounded(.down) }
+  for (id, _, rect) in boxes {
+    if fixed(id) { continue }
+    var out = false
+    var p = parentOf[id]
+    while let q = p, !out {
+      if fixed(q) || (depth(q) >= 2 && clips(q)) { out = true }
+      p = parentOf[q]
+    }
+    guard !out, let r = rect else { continue }
+    if px(r[3]) > snap(height) || (rtl ? px(-r[0]) > 0 : px(r[2]) > snap(width)) { return true }
+  }
+  return false
+}
+
 public func dragonLayoutRect(_ v: UIView, in root: UIView) -> CGRect {
   var x = v.center.x - v.bounds.width * v.layer.anchorPoint.x
   var y = v.center.y - v.bounds.height * v.layer.anchorPoint.y
@@ -2297,6 +2323,9 @@ class DragonTree(val context: Context) {
    * before apply, which then replace the case input's own; null keeps the input's (a mount's machine puts its insets there).
    */
   var safeArea: SafeAreaInsets? = null
+  /** D3: whether the root scroller has a scroll range after the last layout, so Chrome composites its sticky boxes. */
+  var rootScrolls = false
+    private set
 
   /**
    * Hosting (PNT1): node id's view is added to host's container instead of its DOM parent's; frames stay absolute from the
@@ -2420,6 +2449,7 @@ class DragonTree(val context: Context) {
       // Chrome's scroll origin is a whole point (ToFlooredPoint of the overflow's offset negated): the layer starts at the ceiling.
       rootX = kotlin.math.ceil(rootX / lu) * lu + 0.0
     }
+    rootScrolls = dragonViewportScrolls(boxes.map { Pair(it.id, it.parent) }, { id -> abs.get(id)?.let { doubleArrayOf(it.x, it.y, it.x + it.width, it.y + it.height) } }, { id -> zStyles[id]?.position == "fixed" }, { id -> (views[id] as? DragonBoxView)?.dragonClipView != null }, zoomed.root.style.direction == "rtl", input.viewport.width, input.viewport.height, lu, scale)
     setFrame(root.dragonFrame, 0.0, 0.0, kotlin.math.ceil(input.viewport.width * scale), kotlin.math.ceil(input.viewport.height * scale), "root")
     val edges = HashMap<String, DoubleArray>()
     val borders = HashMap<String, DoubleArray>()
@@ -2775,6 +2805,32 @@ class DragonTree(val context: Context) {
  * untransformed boxes, and a transform is paint, proven by the pixel lane and Chrome's content quads. Without transforms it equals
  * getLocationInWindow(view) minus getLocationInWindow(root).
  */
+/**
+ * D3: whether the root scroller has a scroll range (Chrome's pixel-snapped scroll size past its client size): a box or line that
+ * no clipping box below body holds and no fixed box carries reaches past the viewport's end edges, or its start edge in rtl.
+ */
+fun dragonViewportScrolls(boxes: List<Pair<String, String?>>, rect: (String) -> DoubleArray?, fixed: (String) -> Boolean, clips: (String) -> Boolean, rtl: Boolean, width: Double, height: Double, lu: Double, scale: Double): Boolean {
+  val parentOf = HashMap<String, String>()
+  for ((id, p) in boxes) if (p != null) parentOf[id] = p
+  fun depth(id: String): Int { var d = 0; var p = parentOf[id]; while (p != null) { d++; p = parentOf[p] }; return d }
+  // The engine's rects are in device px already (the input carries the scale); the viewport is in CSS px.
+  fun px(v: Double): Double = kotlin.math.floor(v / lu + 0.5)
+  fun snap(css: Double): Double = kotlin.math.floor(css * scale + 0.5)
+  for ((id, _) in boxes) {
+    if (fixed(id)) continue
+    var out = false
+    var p = parentOf[id]
+    while (p != null && !out) {
+      if (fixed(p) || (depth(p) >= 2 && clips(p))) out = true
+      p = parentOf[p]
+    }
+    val r = rect(id)
+    if (out || r == null) continue
+    if (px(r[3]) > snap(height) || (if (rtl) px(-r[0]) > 0 else px(r[2]) > snap(width))) return true
+  }
+  return false
+}
+
 fun dragonLayoutOffset(v: android.view.View, root: android.view.View): IntArray {
   var x = 0
   var y = 0
@@ -3353,17 +3409,19 @@ export function inputFunctions(lang: Lang, root: import('@dragon/layout').Layout
           ? `ControlKind_buttonBlock(${str('button-block')})`
           : c.kind === 'text-field'
             ? `ControlKind_textField(${str('text-field')}, ${doubleLit(c.size)}, ${fontSpecValue(lang, c.font)}, ${lineHeightValue(lang, c.lineHeight)}, ${c.cancelButton === null ? none : `CancelButton(${doubleLit(c.cancelButton.marginStart)}, ${doubleLit(c.cancelButton.marginEnd)})`})`
-            : c.kind === 'text-editor'
-              ? `ControlKind_textEditor(${str('text-editor')})`
-              : c.kind === 'text-placeholder'
-                ? `ControlKind_textPlaceholder(${str('text-placeholder')})`
-                : c.kind === 'fieldset'
-                  ? `ControlKind_fieldset(${str('fieldset')})`
-                  : c.kind === 'legend'
-                    ? `ControlKind_legend(${str('legend')})`
-                    : c.kind === 'select-menulist'
-                      ? `ControlKind_selectMenulist(${str('select-menulist')}, ${fontSpecValue(lang, c.font)}, ${lineHeightValue(lang, c.lineHeight)}, ${doubleLit(c.arrowWidth)})`
-                      : `ControlKind_selectInner(${str('select-inner')})`;
+            : c.kind === 'text-area'
+              ? `ControlKind_textArea(${str('text-area')}, ${doubleLit(c.cols)}, ${doubleLit(c.rows)}, ${fontSpecValue(lang, c.font)}, ${lineHeightValue(lang, c.lineHeight)})`
+              : c.kind === 'text-editor'
+                ? `ControlKind_textEditor(${str('text-editor')})`
+                : c.kind === 'text-placeholder'
+                  ? `ControlKind_textPlaceholder(${str('text-placeholder')})`
+                  : c.kind === 'fieldset'
+                    ? `ControlKind_fieldset(${str('fieldset')})`
+                    : c.kind === 'legend'
+                      ? `ControlKind_legend(${str('legend')})`
+                      : c.kind === 'select-menulist'
+                        ? `ControlKind_selectMenulist(${str('select-menulist')}, ${fontSpecValue(lang, c.font)}, ${lineHeightValue(lang, c.lineHeight)}, ${doubleLit(c.arrowWidth)}, ${lang === 'swift' ? `JsArray<TextLeaf>([${c.options.map(inline).join(', ')}])` : `jsArrayOf<TextLeaf>(${c.options.map(inline).join(', ')})`})`
+                        : `ControlKind_selectInner(${str('select-inner')})`;
   const visit = (b: import('@dragon/layout').LayoutBox | import('@dragon/layout').ControlBox): string => {
     const name = `${prefix}Box${n++}`;
     const kids = b.children.map((c) => (c.kind === 'box' || c.kind === 'control' ? `${visit(c)}()` : c.kind === 'replaced' ? replaced(c) : inline(c)));
