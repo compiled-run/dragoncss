@@ -4009,7 +4009,7 @@ export function checkMarklessPlan(line: string): string {
  * nodeId, detail]; per box and text node [id, [x, y, width, height] relative to its parent, borderWidths [top, right, bottom,
  * left] or null, lines or null, borderOps or null, scrollRange or null]; on a slotted page ("slots" given), then the slot
  * writes; with a menulist-button select, ["menulist-arrows", [[id, strokeWidth, segments]]], each arrow in device px from
- * its select's snapped border box; with a checkbox, last, ["checkbox-marks", marks] (checkboxesJson); when asked ("sticky": true), ["sticky", rows] (stickyJson); when asked ("textAreas": true), ["text-areas", [[id, pitch, above], ...]] (textAreasJson).
+ * its select's snapped border box; with a checkbox, last, ["checkbox-marks", marks] (checkboxesJson); when asked ("sticky": true), ["sticky", rows] (stickyJson); when asked ("textAreas": true), ["text-areas", [[id, pitch, above, [top, right, bottom, left] padding], ...]] (textAreasJson).
  */
 export function runMarklessLayout(line: string): string {
   try {
@@ -4434,7 +4434,7 @@ function textAreasJson(rows: readonly TextAreaRow[]): string {
   if (rows.length === 0) return '';
   let out = ',["text-areas",[';
   rows.forEach((r, i) => {
-    out += `${i === 0 ? '' : ','}[${q(r.id)},${h(r.pitch / LU_PER_PX)},${h(r.above / LU_PER_PX)}]`;
+    out += `${i === 0 ? '' : ','}[${q(r.id)},${h(r.pitch / LU_PER_PX)},${h(r.above / LU_PER_PX)},[${h(r.insets.top / LU_PER_PX)},${h(r.insets.right / LU_PER_PX)},${h(r.insets.bottom / LU_PER_PX)},${h(r.insets.left / LU_PER_PX)}]]`;
   });
   return `${out}]]`;
 }

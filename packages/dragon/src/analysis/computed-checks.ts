@@ -1857,10 +1857,47 @@ function checkTextField(el: ResolvedElement, layoutParent: ResolvedElement | nul
     refuse(direction, 'search-rtl', `direction: rtl on <input type=search> ${address} is not supported: Chrome puts its cancel button at the inline end, which the engine lays out only for ltr`, `Set direction: ltr on <input> ${address}, or use type="text".`, 'DRAGON_UNSUPPORTED_VALUE', targets.filter((t) => t === 'ios' || t === 'android'));
   }
   if (state === 'search') checkSearchField(el, (v, what, message, manual) => refuse(v, what, message, manual, 'DRAGON_UNSUPPORTED_VALUE', targets.filter((t) => t === 'ios' || t === 'android')));
+  if (hostEdits && tag === 'textarea' && !el.element.attributes.has('readonly')) checkHostEditedTextArea(el, (v, what, message, manual) => refuse(v, what, message, manual, 'DRAGON_UNSUPPORTED_VALUE', targets.filter((t) => t === 'ios' || t === 'android')));
   if (!hostEdits && !el.element.attributes.has('readonly')) {
     refuse(null, 'editing', `<${tag}> ${address} is an editable text control: Dragon draws its value but has no caret, selection or keyboard input on iOS and Android yet (the FORM-b editing slice)`, `Add readonly to <${tag}> ${address}, or target web only, until native text editing lands.`, 'DRAGON_UNSUPPORTED_VALUE', targets.filter((t) => t === 'ios' || t === 'android'));
   }
   if (tag === 'textarea') checkTextAreaChrome(el, targets, refuse);
+}
+
+/** The text longhands a host-edited textarea must leave at the textarea's defaults: the host's own text view lays its text out from the exported font, colour, pitch and baseline only. */
+const HOST_EDITED_TEXT: readonly (readonly [Longhand, (v: CssValue, rtl: boolean) => boolean])[] = [
+  ['letter-spacing', (v) => (v.kind === 'keyword' && v.value === 'normal') || (v.kind === 'length' && v.value === 0)],
+  ['word-spacing', (v) => (v.kind === 'keyword' && v.value === 'normal') || (v.kind === 'length' && v.value === 0)],
+  ['text-indent', (v) => (v.kind === 'length' || v.kind === 'percentage') && v.value === 0],
+  ['text-align', (v, rtl) => v.kind === 'keyword' && (v.value === 'start' || v.value === (rtl ? 'right' : 'left'))],
+  ['text-transform', (v) => v.kind === 'keyword' && v.value === 'none'],
+  ['text-decoration-line', (v) => v.kind === 'keyword' && v.value === 'none'],
+  ['white-space-collapse', (v) => v.kind === 'keyword' && v.value === 'preserve'],
+  ['text-wrap-mode', (v) => v.kind === 'keyword' && v.value === 'wrap'],
+  ['overflow-wrap', (v) => v.kind === 'keyword' && v.value === 'break-word'],
+  ['word-break', (v) => v.kind === 'keyword' && v.value === 'normal'],
+  ['unicode-bidi', (v) => v.kind === 'keyword' && v.value === 'normal'],
+  ['direction', (v) => v.kind === 'keyword' && v.value === 'ltr'],
+  ['font-kerning', (v) => v.kind === 'keyword' && v.value === 'auto'],
+  ['font-feature-settings', (v) => v.kind === 'keyword' && v.value === 'normal'],
+  ...(['font-variant-caps', 'font-variant-ligatures', 'font-variant-numeric', 'font-variant-east-asian', 'font-variant-alternates', 'font-variant-position'] as const).map((p): readonly [Longhand, (v: CssValue) => boolean] => [p, (v) => v.kind === 'keyword' && v.value === 'normal']),
+];
+
+/**
+ * A textarea the host edits: every text longhand HOST_EDITED_TEXT names at its default, and padding as lengths, the text insets
+ * the host view takes; otherwise the host's lines would differ from Chrome's, and move when editing starts.
+ */
+function checkHostEditedTextArea(el: ResolvedElement, refuse: (v: ResolvedValue | null, what: string, message: string, manual: string) => void): void {
+  const address = el.element.address;
+  const rtl = keywordOf(el.props.get('direction') as ResolvedValue) === 'rtl';
+  for (const [p, isDefault] of HOST_EDITED_TEXT) {
+    const v = el.props.get(p) as ResolvedValue;
+    if (!isDefault(v.value, rtl)) refuse(v, `edit-${p}`, `${p}: ${valueToString(v.value)} on <textarea> ${address}, which the host edits in its own text view, laid out from the exported font, pitch and baseline only`, `Remove ${p} from <textarea> ${address}.`);
+  }
+  for (const side of ['padding-top', 'padding-right', 'padding-bottom', 'padding-left'] as const) {
+    const pad = el.props.get(side) as ResolvedValue;
+    if (pad.value.kind !== 'length') refuse(pad, `edit-${side}`, `${side}: ${valueToString(pad.value)} on <textarea> ${address}, which the host edits with its padding as text insets in px`, `Give <textarea> ${address} a ${side} in px.`);
+  }
 }
 
 /**

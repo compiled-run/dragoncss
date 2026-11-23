@@ -125,6 +125,57 @@
   },
   {
    "kind": "element",
+   "id": "h8",
+   "element": "textarea",
+   "parent": "h0",
+   "attributes": {
+    "class": "body",
+    "rows": "2",
+    "name": "spaces"
+   }
+  },
+  {
+   "kind": "text",
+   "id": "h8:text0",
+   "parent": "h8",
+   "text": "Milk   and eggs and bread   "
+  },
+  {
+   "kind": "element",
+   "id": "h9",
+   "element": "textarea",
+   "parent": "h0",
+   "attributes": {
+    "class": "body",
+    "rows": "2",
+    "name": "word"
+   }
+  },
+  {
+   "kind": "text",
+   "id": "h9:text0",
+   "parent": "h9",
+   "text": "Abcdefghijklmnopqrstuvwxyzabcdefghij"
+  },
+  {
+   "kind": "element",
+   "id": "h10",
+   "element": "textarea",
+   "parent": "h0",
+   "attributes": {
+    "class": "body",
+    "rows": "2",
+    "name": "crlf"
+   }
+  },
+  {
+   "kind": "text",
+   "id": "h10:text0",
+   "parent": "h10",
+   "text": "Milk\r\nEggs"
+  },
+  {
+   "kind": "element",
    "id": "h5",
    "element": "p",
    "parent": "h0",

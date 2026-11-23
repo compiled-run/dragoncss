@@ -161,6 +161,17 @@ describe('FORM-b text fields', () => {
     expect([b.get('a::editor')?.height, b.get('e::editor')?.height, b.get('r::editor')?.height, b.get('a')?.height]).toEqual([15, 15, 0, 3 * 15 + 2 + 4]);
   });
 
+  it('refuses on an edited textarea each text style the host view does not lay out, and none at the textarea defaults', () => {
+    const base = 'textarea { display: block; font: inherit; resize: none; scrollbar-width: none; }';
+    const body = '<textarea data-dragon-id="a" rows="3">XX</textarea>';
+    const refusals = (css: string, host = true): string[] => errors(compile('ta-host-styles', `${base} textarea { ${css} }`, body, BASE, false, host)).filter((e) => e.includes('which the host edits'));
+    expect(refusals('text-indent: 0%; letter-spacing: 0px; text-align: left; overflow-wrap: break-word')).toEqual([]);
+    const each: readonly string[] = ['letter-spacing: 1px', 'word-spacing: 2px', 'text-indent: 3px', 'text-align: center', 'text-align: justify', 'text-transform: uppercase', 'text-decoration-line: underline', 'white-space: pre', 'white-space: nowrap', 'white-space: normal', 'overflow-wrap: normal', 'word-break: break-all', 'unicode-bidi: plaintext', 'direction: rtl', 'font-kerning: none', 'font-feature-settings: "liga" 0', 'font-variant-ligatures: none', 'padding-left: 10%'];
+    for (const css of each) expect(refusals(css).length, css).toBeGreaterThan(0);
+    // A readonly textarea and a compile without host editing are drawn by Dragon itself, so these do not apply.
+    expect(errors(compile('ta-host-styles-ro', `${base} textarea { letter-spacing: 1px; }`, '<textarea data-dragon-id="a" rows="3" readonly="">XX</textarea>', BASE, false, true)).filter((e) => e.includes('which the host edits'))).toEqual([]);
+  });
+
   it('keeps :read-write and :read-only refused on an edited textarea, whose state is the host\'s', () => {
     const css = 'textarea { display: block; font: inherit; resize: none; scrollbar-width: none; } textarea:read-write { color: #036; }';
     expect(errors(compile('ta-read-write', css, '<textarea data-dragon-id="a">XX</textarea>', BASE, false, true)).filter((e) => e.includes(':read-write'))).not.toEqual([]);

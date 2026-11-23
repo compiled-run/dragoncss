@@ -42,8 +42,8 @@ export type Frag = {
   readonly inflow: AreaRect | null;
   readonly lines: TextAreaLines | null;
 };
-/** A textarea's line pitch (the line height its lines are apart) and the baseline's offset from a line's top, in LU. */
-export type TextAreaLines = { readonly pitch: LU; readonly above: LU };
+/** A textarea's line pitch (the line height its lines are apart), the baseline's offset from a line's top and its padding (the host's text insets), in LU. */
+export type TextAreaLines = { readonly pitch: LU; readonly above: LU; readonly insets: Edges };
 export type Placed = { readonly frag: Frag; readonly x: LU; readonly y: LU };
 
 /** A point in LU. */

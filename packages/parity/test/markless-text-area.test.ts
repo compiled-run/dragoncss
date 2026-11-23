@@ -60,10 +60,10 @@ describe('editable textareas in a Markless export', () => {
       const asked = JSON.parse(runMarklessLayout(JSON.stringify({ ...line, textAreas: true }))) as unknown[];
       expect(before[0], t).toBe('ok');
       expect(asked.slice(0, -1), `${t}: an older host is answered as before`).toEqual(before);
-      const tag = asked[asked.length - 1] as [string, [string, string, string][]];
+      const tag = asked[asked.length - 1] as [string, [string, string, string, string[]][]];
       expect(tag[0], t).toBe('text-areas');
-      const rows = new Map(tag[1].map(([id, pitch, above]) => [id, { pitch: hexBits(pitch), above: hexBits(above) }]));
-      expect([...rows.keys()], t).toEqual(['h1', 'h2', 'h3', 'h4', 'h6', 'h7']);
+      const rows = new Map(tag[1].map(([id, pitch, above, insets]) => [id, { pitch: hexBits(pitch), above: hexBits(above), insets: insets.map(hexBits) }]));
+      expect([...rows.keys()], t).toEqual(['h1', 'h2', 'h3', 'h4', 'h6', 'h7', 'h8', 'h9', 'h10']);
       const browser = await launchChrome(x.dpr);
       try {
         const cap = await captureMarklessAssignment(browser, input, x, x.assignments[0]!.values, 'light');
@@ -78,6 +78,12 @@ describe('editable textareas in a Markless export', () => {
           // Ahem's ascent is 0.8em, rounded to a whole device px as Blink rounds font metrics: the baseline is the glyph top plus it.
           const ascent = Math.round(0.8 * 16 * x.dpr);
           expect(Math.abs(tops[0]! - editor.y * x.dpr + ascent - row.above), `${t} ${id} baseline`).toBeLessThan(1 / 128);
+          // The insets are the padding Chrome puts between the textarea's border (whole device px) and its editor, at its top and inline start.
+          const box = at(id)!;
+          const border = x.assignments[0]!.nodes.find((n) => n.id === id)!.borderWidths!;
+          expect(Math.abs((editor.y - box.y) * x.dpr - Math.round(border['top']!) - row.insets[0]!), `${t} ${id} top inset`).toBeLessThan(1 / 128);
+          expect(Math.abs((editor.x - box.x) * x.dpr - Math.round(border['left']!) - row.insets[3]!), `${t} ${id} left inset`).toBeLessThan(1 / 128);
+          expect([row.insets[1], row.insets[2]], `${t} ${id} right and bottom insets`).toEqual([row.insets[3], row.insets[0]]);
           expect(Math.round(glyph - ascent), `${t} ${id} descent`).toBe(Math.round(0.2 * 16 * x.dpr));
         }
         // The pitch is the engine's line height on the LU grid: 1.45 x 16px is not 23.2 css px exactly, so an unsnapped pitch misses.
