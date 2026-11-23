@@ -460,6 +460,28 @@ describe('FORM-a control boxes: what the engine and the validator refuse', () =>
     expect(codes({ ...env, root: box('root', {}, [{ ...button, strut: null }]) })).toContain('$.root.children[0].strut a box with inline content has a strut');
   });
 
+  it('an inline-block text field is an atomic inline on its line, with the baseline of its editor line; its parts stay block containers', () => {
+    const env = { viewport: { width: 400, height: 300 }, ...neutralEnvironment({ width: 400, height: 300 }), devicePixelRatio: 1 };
+    const strut = { font: ahemFont(10), lineHeight: { kind: 'normal' } } as const;
+    const edges = { borderTopWidth: px(2), borderRightWidth: px(2), borderBottomWidth: px(2), borderLeftWidth: px(2), paddingTop: px(1), paddingRight: px(2), paddingBottom: px(1), paddingLeft: px(2) };
+    const editor = control('t::editor', { kind: 'text-editor' }, { overflowX: 'clip', overflowY: 'clip' }, [text('t::editor:text0', 'X')]);
+    const field = (display: 'inline-block' | 'block', parts: ControlBox = editor): ControlBox => control('t', { kind: 'text-field', size: 3, font: ahemFont(10), lineHeight: { kind: 'normal' }, cancelButton: null }, { ...edges, display, marginBottom: px(4) }, [parts]);
+    const input = (f: ControlBox): LayoutInput => ({ ...env, root: box('root', {}, [text('root:text0', 'XX '), f], strut) });
+    expect(codes(input(field('inline-block')))).toEqual([]);
+    const r = layout(input(field('inline-block')), ahemMeasurer);
+    if (r.kind !== 'ok') throw new Error(JSON.stringify(r));
+    const at = (id: string): Rect => {
+      const b = r.boxes.find((x) => x.id === id);
+      if (b === undefined) throw new Error(`no box ${id}`);
+      return [b.x, b.y, b.width, b.height];
+    };
+    // The field's baseline is 2 + 1 + 8px below its top, 3px below the strut's ascent; its 4px bottom margin deepens the line to 20px.
+    expect([at('t'), at('root:text0'), at('root')[3]]).toEqual([[30 * 64, 0, 38 * 64, 16 * 64], [0, 3 * 64, 30 * 64, 10 * 64], 20 * 64]);
+    expect(codes(input(field('inline-block', { ...editor, style: { ...editor.style, display: 'inline-block' } })))).toEqual(['$.root.children[1].children[0].style.display the parts of a text field are block containers']);
+    // A block-level field among inline content is a box beside it, which the compiler wraps in anonymous boxes.
+    expect(codes(input(field('block')))).toContain('$.root.children a box has either inline-level children or box children; wrap the inline content in anonymous boxes');
+  });
+
   it('the engine throws on a block button control with display flex, which the validator rejects', () => {
     const input: LayoutInput = { viewport: { width: 400, height: 300 }, ...neutralEnvironment({ width: 400, height: 300 }), devicePixelRatio: 1, root: { ...box('root', {}), children: [control('b', { kind: 'button-block' }, { display: 'flex' })] } };
     expect(() => layout(input, ahemMeasurer)).toThrow('validateLayoutInput rejects this input');

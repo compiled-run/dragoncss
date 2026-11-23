@@ -9,7 +9,7 @@ import type { Browser } from 'playwright';
 import { hitFacts, programInput, svgScenes } from 'dragon';
 import type { ControlBox, LayoutBox } from '../../layout/src/input.ts';
 import type { HitFaults, HitTable, HitTableFaults } from '../../layout/src/rt-hit.ts';
-import { activationTarget, hitAt, hitGrid as rtHitGrid, hitRefusal as inputHitRefusal, hitRuns, hitTableOf, hitTest, hitTransformRefusal, NO_HIT_FAULTS, NO_HIT_TABLE_FAULTS, prepareHit } from '../../layout/src/rt-hit.ts';
+import { activationTarget, hitAt, hitGrid as rtHitGrid, hitFactsRefusal, hitRefusal as inputHitRefusal, hitRuns, hitTableOf, hitTest, hitTransformRefusal, NO_HIT_FAULTS, NO_HIT_TABLE_FAULTS, prepareHit } from '../../layout/src/rt-hit.ts';
 import { CHROME_VERSION, injectHarness, launchArgsOf, openPage } from './chrome.ts';
 import { type MemoStats, memoizedJson } from './chrome-memo.ts';
 import type { NativeCase } from './native-host.ts';
@@ -232,7 +232,8 @@ export function hitRefusal(n: NativeCase): string | null {
   const marked = textMarkerItems(input.root);
   if (marked.length > 0) return `outside text marker on ${marked.join(', ')}: Chrome hits a list item through its outside ::marker box, which rt-hit.ts does not model yet (GEN-c)`;
   // INL1a and FORM-a: hitTableOf refuses an inline box, a <br> or a form control by name (rt-hit.ts), so such a case is left out with that reason.
-  return inputHitRefusal(input);
+  // INL2c: hitTableOf also refuses an atomic inline its hit facts make a stacking context (rt-hit.ts hitFactsRefusal).
+  return inputHitRefusal(input) ?? (facts === null ? null : hitFactsRefusal(input, facts));
 }
 
 /** The ids of the boxes under root, in tree order, that carry an outside text marker. */

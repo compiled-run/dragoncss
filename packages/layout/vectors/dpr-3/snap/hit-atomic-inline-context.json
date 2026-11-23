@@ -1,0 +1,178 @@
+{
+ "platform": "darwin-arm64",
+ "devicePixelRatio": 3,
+ "input": [
+  {
+   "id": "html",
+   "parent": null,
+   "x": 0,
+   "y": 0,
+   "width": 76800,
+   "height": 4992
+  },
+  {
+   "id": "body",
+   "parent": "html",
+   "x": 0,
+   "y": 0,
+   "width": 76800,
+   "height": 4992
+  },
+  {
+   "id": "w",
+   "parent": "body",
+   "x": 0,
+   "y": 0,
+   "width": 38400,
+   "height": 4992
+  },
+  {
+   "id": "blk",
+   "parent": "w",
+   "x": 0,
+   "y": 0,
+   "width": 38400,
+   "height": 1152
+  },
+  {
+   "id": "w:anon0",
+   "parent": "w",
+   "x": 0,
+   "y": 1152,
+   "width": 38400,
+   "height": 3840
+  },
+  {
+   "id": "w:text0",
+   "parent": "w:anon0",
+   "x": 0,
+   "y": 960,
+   "width": 3840,
+   "height": 1920
+  },
+  {
+   "id": "w:text0:line0",
+   "parent": "w:text0",
+   "x": 0,
+   "y": 0,
+   "width": 3840,
+   "height": 1920
+  },
+  {
+   "id": "ib",
+   "parent": "w:anon0",
+   "x": 3840,
+   "y": 960,
+   "width": 3840,
+   "height": 1536
+  },
+  {
+   "id": "w:text1",
+   "parent": "w:anon0",
+   "x": 7680,
+   "y": 960,
+   "width": 3840,
+   "height": 1920
+  },
+  {
+   "id": "w:text1:line0",
+   "parent": "w:text1",
+   "x": 0,
+   "y": 0,
+   "width": 3840,
+   "height": 1920
+  }
+ ],
+ "output": [
+  {
+   "id": "html",
+   "left": 0,
+   "top": 0,
+   "right": 1200,
+   "bottom": 78,
+   "width": 1200,
+   "height": 78
+  },
+  {
+   "id": "body",
+   "left": 0,
+   "top": 0,
+   "right": 1200,
+   "bottom": 78,
+   "width": 1200,
+   "height": 78
+  },
+  {
+   "id": "w",
+   "left": 0,
+   "top": 0,
+   "right": 600,
+   "bottom": 78,
+   "width": 600,
+   "height": 78
+  },
+  {
+   "id": "blk",
+   "left": 0,
+   "top": 0,
+   "right": 600,
+   "bottom": 18,
+   "width": 600,
+   "height": 18
+  },
+  {
+   "id": "w:anon0",
+   "left": 0,
+   "top": 18,
+   "right": 600,
+   "bottom": 78,
+   "width": 600,
+   "height": 60
+  },
+  {
+   "id": "w:text0",
+   "left": 0,
+   "top": 33,
+   "right": 60,
+   "bottom": 63,
+   "width": 60,
+   "height": 30
+  },
+  {
+   "id": "w:text0:line0",
+   "left": 0,
+   "top": 33,
+   "right": 60,
+   "bottom": 63,
+   "width": 60,
+   "height": 30
+  },
+  {
+   "id": "ib",
+   "left": 60,
+   "top": 33,
+   "right": 120,
+   "bottom": 57,
+   "width": 60,
+   "height": 24
+  },
+  {
+   "id": "w:text1",
+   "left": 120,
+   "top": 33,
+   "right": 180,
+   "bottom": 63,
+   "width": 60,
+   "height": 30
+  },
+  {
+   "id": "w:text1:line0",
+   "left": 120,
+   "top": 33,
+   "right": 180,
+   "bottom": 63,
+   "width": 60,
+   "height": 30
+  }
+ ]
+}

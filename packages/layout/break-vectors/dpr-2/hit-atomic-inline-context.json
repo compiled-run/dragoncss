@@ -1,0 +1,8 @@
+{
+  "case": "hit-atomic-inline-context",
+  "dpr": 2,
+  "texts": [
+    {"id":"w:text0","lines":[[0,2]]},
+    {"id":"w:text1","lines":[[0,2]]}
+  ]
+}

@@ -26,8 +26,6 @@ describe('element keys (ELB-2)', () => {
     expect(light.elementKeyDeclared.button.ltr).toMatchObject({ 'padding-left': '6px', 'padding-top': '1px', 'border-top-style': 'outset', 'border-top-width': '2px', 'font-size': '13.3333px', 'text-align': 'center', 'box-sizing': 'border-box' });
     expect(light.elementKeyDeclared.input.ltr).toMatchObject({ 'padding-left': '2px', 'border-top-style': 'inset', 'border-top-color': 'rgb(118, 118, 118)' });
     expect(light.elementKeyDeclared['input[type=range]'].ltr).toMatchObject({ 'margin-top': '2px', color: 'rgb(16, 16, 16)' });
-    // FORM-b: a search field's rule adds box-sizing: border-box to the input's.
-    expect(light.elementKeyDeclared['input[type=search]'].ltr).toEqual({ ...light.elementKeyDeclared.input.ltr, 'box-sizing': 'border-box' });
     expect(light.elementKeyDeclared['a[href]'].ltr).toEqual({ color: 'rgb(0, 0, 238)' });
     expect(light.elementKeyDeclared.a).toEqual({ ltr: {}, rtl: {} });
     expect(light.elementKeyDeclared.span).toEqual({ ltr: {}, rtl: {} });

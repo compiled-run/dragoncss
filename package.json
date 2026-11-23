@@ -68,6 +68,7 @@
     "parity:decoration-capture": "node --conditions=dragon-internal packages/parity/src/cli/decoration-capture.ts",
     "parity:pixel-capture": "node --conditions=dragon-internal packages/parity/src/cli/pixel-capture.ts",
     "parity:scroll-capture": "node --conditions=dragon-internal packages/parity/src/cli/scroll-capture.ts",
+    "parity:sticky-scroll-capture": "node --conditions=dragon-internal packages/parity/src/cli/sticky-scroll-capture.ts",
     "parity:glyph-calibration": "node --conditions=dragon-internal packages/parity/src/cli/glyph-calibration.ts",
     "parity:glyph-b3": "node --conditions=dragon-internal packages/parity/src/cli/glyph-b3.ts",
     "native:devices": "node --conditions=dragon-internal packages/parity/src/cli/native-devices.ts",
