@@ -403,7 +403,7 @@ public func block_withBlockInInlineLines(_ frag: Frag, _ firstLine: Double, _ en
   let start: Double = ((direction == S.s_rtl) ? frag.width : units_ZERO)
   // ts: packages/layout/src/block.ts:391
   func line(_ j: Double, _ x: Double, _ y: Double, _ width: Double, _ height: Double) throws -> Box_Placed {
-    return Box_Placed(Frag(jsConcat(frag.id, S.s276, jsNumberToString(j)), width, height, nil, JsArray<Box_Placed>([]), JsArray<OutOfFlow>([]), nil), x, y)
+    return Box_Placed(Frag(jsConcat(frag.id, S.s283, jsNumberToString(j)), width, height, nil, JsArray<Box_Placed>([]), JsArray<OutOfFlow>([]), nil), x, y)
   }
   let lines: JsArray<Box_Placed> = try JsArray<Box_Placed>([line(0.0, start, firstLine, units_ZERO, units_ZERO), line(1.0, units_ZERO, units_ZERO, frag.width, frag.height), line(2.0, start, units_add(frag.height, block_collapsed(end)), units_ZERO, units_ZERO)])
   return Frag(frag.id, frag.width, frag.height, frag.baseline, jsConcatArrays([frag.children, lines]), frag.outOfFlow, frag.inflow)
@@ -435,7 +435,7 @@ public func block_layoutOwnContents(_ ctx: Ctx, _ node: any U_ControlBox_LayoutB
   let s: LayoutStyle = box.style
   // ts: packages/layout/src/block.ts:416
   if ((s.containSize == S.s_size) && ((s.display != S.s_block) || (!s.containLayout))) {
-    try unsupported_unsupported(S.s_size_containment, box.id, S.s685, jsConcat(S.s1083, box.id, S.s4, s.display, (s.containLayout ? S.s0 : S.s231), S.s203))
+    try unsupported_unsupported(S.s_size_containment, box.id, S.s693, jsConcat(S.s1097, box.id, S.s4, s.display, (s.containLayout ? S.s0 : S.s237), S.s209))
   }
   try position_checkOutOfFlowSiblings(ctx, box)
   // ts: packages/layout/src/block.ts:421
@@ -460,7 +460,7 @@ public func block_layoutOwnContents(_ ctx: Ctx, _ node: any U_ControlBox_LayoutB
   if (s.display == S.s_flex) {
     // ts: packages/layout/src/block.ts:443
     if try (((control).map { $0 as! any U_ControlKind_8138f05ff9af365b } != nil) && ((jsUnwrap(control) as! any U_ControlKind_8138f05ff9af365b).kind == S.s_button_block)) {
-      throw JsError(message: jsConcat(box.id, S.s86))
+      throw JsError(message: jsConcat(box.id, S.s87))
     }
     let r: FlexResult = try flex_layoutFlexContainer(ctx, box, FlexArgs(pad, bor, contentWidth, ((fixedBorderBox == nil) ? (nil as Double?) : (box_contentBox(jsUnwrap(fixedBorderBox), vbp) as Double?)), MinMax(box_contentBox(minMax.min, vbp), ((minMax.max == nil) ? (nil as Double?) : (box_contentBox(jsUnwrap(minMax.max), vbp) as Double?))), childBasis, ((a.forcedBorderBoxHeight != nil) && (!a.forcedHeightDefinite))))
     let height: Double = try ((fromRatio != nil) ? ratio_ratioFinalBlockSize(box, jsUnwrap(fromRatio), units_add(r.contentHeight, vbp), minMax) : ((fixedBorderBox != nil) ? jsUnwrap(fixedBorderBox) : box_constrain(units_add(r.contentHeight, vbp), minMax)))
@@ -544,7 +544,7 @@ public func block_layoutTextField(_ box: LayoutBox, _ flow: JsArray<Box_Placed>,
 })
   // ts: packages/layout/src/block.ts:543
   if (editor == nil) {
-    throw JsError(message: jsConcat(box.id, S.s94))
+    throw JsError(message: jsConcat(box.id, S.s95))
   }
   let height: Double = try ((fixedBorderBox != nil) ? jsUnwrap(fixedBorderBox) : box_constrain(units_add(jsUnwrap(editor).frag.height, vbp), minMax))
   let editorY: Double = try units_add(contentTop, controls_textEditorShift(box_contentBox(height, vbp), jsUnwrap(editor).frag.height))
@@ -576,7 +576,7 @@ public func block_layoutTextArea(_ box: LayoutBox, _ flow: JsArray<Box_Placed>, 
 })
   // ts: packages/layout/src/block.ts:562
   if (editor == nil) {
-    throw JsError(message: jsConcat(box.id, S.s95))
+    throw JsError(message: jsConcat(box.id, S.s96))
   }
   let rtl: Bool = (box.style.direction == S.s_rtl)
   let placed: JsArray<Box_Placed> = try jsMap(flow, { (p: Box_Placed) throws -> Box_Placed in
@@ -709,7 +709,7 @@ public func block_blockLevelInlineSize(_ ctx: Ctx, _ node: any U_ControlBox_Layo
     }
     // ts: packages/layout/src/block.ts:711
     if try ratio_hasAspectRatio(s) {
-      try unsupported_unsupported(S.s_intrinsic_size_keyword, box.id, S.s704, jsConcat(k, S.s184))
+      try unsupported_unsupported(S.s_intrinsic_size_keyword, box.id, S.s712, jsConcat(k, S.s190))
     }
     // ts: packages/layout/src/block.ts:713
     if (k == S.s_stretch) {
@@ -788,7 +788,7 @@ public func block_placeWithMargins(_ m: InlineMargins, _ container: InlineContai
   } else if m.end.auto {
     try usedEnd = units_sub(units_sub(available, width), usedStart)
   }
-  let webkit: Double = try ((((!m.start.auto) && (!m.end.auto)) && (container.textAlign == S.s236)) ? units_divInt(units_clampNegativeToZero(units_sub(m.cbInline, units_add(width, inlineSum))), 2.0) : units_ZERO)
+  let webkit: Double = try ((((!m.start.auto) && (!m.end.auto)) && (container.textAlign == S.s242)) ? units_divInt(units_clampNegativeToZero(units_sub(m.cbInline, units_add(width, inlineSum))), 2.0) : units_ZERO)
   var bfcLineOffset: Double
   // ts: packages/layout/src/block.ts:803
   if container.newFormattingContext {
@@ -815,7 +815,7 @@ public func block_markerPlaced(_ marker: MarkerBox, _ y: Double?, _ borderBoxWid
   let children: JsArray<Box_Placed> = JsArray<Box_Placed>([])
   // ts: packages/layout/src/block.ts:867
   if (t != nil) {
-    let line: Box_Placed = try Box_Placed(Frag(jsConcat(jsUnwrap(t).id, S.s277), marker.width, jsUnwrap(t).height, nil, JsArray<Box_Placed>([]), JsArray<OutOfFlow>([]), nil), units_ZERO, units_ZERO)
+    let line: Box_Placed = try Box_Placed(Frag(jsConcat(jsUnwrap(t).id, S.s284), marker.width, jsUnwrap(t).height, nil, JsArray<Box_Placed>([]), JsArray<OutOfFlow>([]), nil), units_ZERO, units_ZERO)
     _ = try jsPush(children, Box_Placed(Frag(jsUnwrap(t).id, marker.width, jsUnwrap(t).height, nil, JsArray<Box_Placed>([line]), JsArray<OutOfFlow>([]), nil), units_ZERO, jsUnwrap(t).top))
   }
   return try Box_Placed(Frag(marker.id, marker.width, marker.height, nil, children, JsArray<OutOfFlow>([]), nil), marker_markerX(marker, borderBoxWidth, direction), ((y == nil) ? units_ZERO : jsUnwrap(y)))
@@ -831,7 +831,7 @@ public func block_layoutBlockFlow(_ ctx: Ctx, _ box: LayoutBox, _ a: FlowArgs) t
   let kids: JsArray<any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf> = box.children
   // ts: packages/layout/src/block.ts:882
   if ((box.style.multicol != nil) && (((box.strut == nil) && (jsLength(kids) > 0.0)) || (a.marker != nil))) {
-    try unsupported_unsupported(S.s_multicol, box.id, S.s696, jsConcat(S.s1170, box.id, S.s3, ((a.marker != nil) ? S.s856 : S.s824), S.s221))
+    try unsupported_unsupported(S.s_multicol, box.id, S.s704, jsConcat(S.s1184, box.id, S.s3, ((a.marker != nil) ? S.s864 : S.s832), S.s227))
   }
   // ts: packages/layout/src/block.ts:885
   if (box.strut != nil) {
@@ -849,11 +849,11 @@ public func block_layoutBlockFlow(_ ctx: Ctx, _ box: LayoutBox, _ a: FlowArgs) t
   if try jsSome(kids, { (k: any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf) throws -> Bool in
     return (((k.kind != S.s_box) && ((k as! any U_ControlBox_InlineBox_LineBreak_ReplacedLeaf_TextLeaf).kind != S.s_control)) && ((k as! any U_InlineBox_LineBreak_ReplacedLeaf_TextLeaf).kind != S.s_replaced))
 }) {
-    throw JsError(message: jsConcat(box.id, S.s265))
+    throw JsError(message: jsConcat(box.id, S.s272))
   }
   // ts: packages/layout/src/block.ts:898
   if ((box.style.textBoxTrim != nil) && (jsLength(kids) > 0.0)) {
-    try unsupported_unsupported(S.s_text_box_trim, box.id, S.s695, jsConcat(S.s1136, box.id, S.s219))
+    try unsupported_unsupported(S.s_text_box_trim, box.id, S.s703, jsConcat(S.s1150, box.id, S.s225))
   }
   let direction: JsString = try block_directionOf(ctx, box)
   let placed: JsArray<Box_Placed> = JsArray<Box_Placed>([])
@@ -897,7 +897,7 @@ public func block_layoutBlockFlow(_ ctx: Ctx, _ box: LayoutBox, _ a: FlowArgs) t
         if try float_isFloat(ctx, kid) {
           // ts: packages/layout/src/block.ts:938
           if (kid.kind == S.s_control) {
-            try unsupported_unsupported(S.s_float, (kid as! ControlBox).id, S.s325, jsConcat(S.s550, (kid as! ControlBox).id))
+            try unsupported_unsupported(S.s_float, (kid as! ControlBox).id, S.s332, jsConcat(S.s558, (kid as! ControlBox).id))
           }
           let top: Double = try (((!seen) && a.canCollapseTop) ? units_ZERO : units_add(cursor, block_collapsed(strut)))
           let f: FloatLayout = try float_layoutFloat(ctx, (kid as! any U_LayoutBox_ReplacedLeaf), a.contentWidth, a.childBasis)
@@ -920,7 +920,7 @@ public func block_layoutBlockFlow(_ ctx: Ctx, _ box: LayoutBox, _ a: FlowArgs) t
           try inline = block_blockLevelInlineSize(ctx, (kid as! any U_ControlBox_LayoutBox), a.contentWidth, direction, container)
           // ts: packages/layout/src/block.ts:965
           if ((clampLeft > 0.0) && ((kid as! any U_ControlBox_LayoutBox).kind == S.s_control)) {
-            try unsupported_unsupported(S.s_line_clamp, (kid as! ControlBox).id, S.s699, jsConcat((kid as! ControlBox).id, S.s78, box.id, S.s91))
+            try unsupported_unsupported(S.s_line_clamp, (kid as! ControlBox).id, S.s707, jsConcat((kid as! ControlBox).id, S.s79, box.id, S.s92))
           }
           let clamp: ClampedChild? = try (((clampLeft > 0.0) && ((kid as! any U_ControlBox_LayoutBox).kind == S.s_box)) ? (lineClamp_clampChild(ctx, box, (kid as! LayoutBox), inline.borderBoxWidth, a.contentWidth, clampLeft, jsSlice(kids, (k + 1.0))) as ClampedChild?) : (nil as ClampedChild?))
           // ts: packages/layout/src/block.ts:967
@@ -1031,7 +1031,7 @@ public func block_inlineMarkerY(_ box: LayoutBox, _ marker: MarkerBox, _ content
   let aligned: MarkerAlignment = try marker_alignMarker(marker, contentTop, first)
   // ts: packages/layout/src/block.ts:1073
   if (aligned.push != units_ZERO) {
-    throw JsError(message: jsConcat(box.id, S.s274))
+    throw JsError(message: jsConcat(box.id, S.s281))
   }
   return aligned.y
 }

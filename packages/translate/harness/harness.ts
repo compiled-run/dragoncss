@@ -190,8 +190,8 @@ import { bitsHex, fromCodePoints, hexBits, parseNumber } from './host.ts';
 import { symbolCoverage } from '../../layout/src/paint-marker.ts';
 import type { RadiusFaults, RadiusLength } from '../../layout/src/paint-radius.ts';
 import { borderDoubleRings, constrainCornerRadii, doubleStripeWidth, hasRoundedCorner, innerCornerRadii, outlineOffsetPx, outlineRings, outlineWidthPx, radiiRenderable, radiusComponent, resolveCornerRadii, roundedShape } from '../../layout/src/paint-radius.ts';
-import type { BackdropFill, ShadowFaults, ShadowInput, ShadowLayer, ShadowShape } from '../../layout/src/paint-shadow.ts';
-import { backdropAt, blurredCoverage, encodeOver, insetShadowLayer, insetShadowLayerOver, outerShadowLayer, outerShadowLayerOver, platformOver, shapeCoverage, shapeType, spreadShape, textShadowLayerOver } from '../../layout/src/paint-shadow.ts';
+import type { BackdropFill, ShadowFaults, ShadowInput, ShadowLayer, ShadowShape, ShadowTransform } from '../../layout/src/paint-shadow.ts';
+import { backdropAt, blurredCoverage, encodeOver, insetShadowLayer, insetShadowLayerOver, outerShadowLayer, outerShadowLayerMapped, outerShadowLayerOver, outerShadowLayerOverMapped, platformOver, shadowTransform, shapeCoverage, shapeType, spreadShape, textShadowLayerOver } from '../../layout/src/paint-shadow.ts';
 
 /** A malformed case line; the native decoders reject exactly what this decoder rejects. */
 export class HarnessError extends Error {
@@ -1915,6 +1915,11 @@ function readByte(b: Uint8Array, i: number): number {
   return v === undefined ? -1 : v;
 }
 
+/** A shadow transform from arguments i (sx, sy, tx, ty, then layered as 0 or 1). */
+function shadowTransformArg(a: readonly JsonValue[], i: number): ShadowTransform {
+  return { sx: arg(a, i), sy: arg(a, i + 1), tx: arg(a, i + 2), ty: arg(a, i + 3), layered: arg(a, i + 4) !== 0 };
+}
+
 /** A shape result: its edges then its eight radii. */
 function shapeResult(s: ShadowShape): string {
   const xs: number[] = [s.left, s.top, s.right, s.bottom];
@@ -2006,6 +2011,16 @@ function paintResult(name: string, a: readonly JsonValue[]): string | null {
   if (name === 'paint:shadow:outerShadowLayer') return layerResult(outerShadowLayer(arg(a, 1), arg(a, 2), arg(a, 3), arg(a, 4), argList(a, 5, 8), arg(a, 13) !== 0, shadowInputs(a, 14), arg(a, 15 + 9 * arg(a, 14)), shadowFaults(a, 16 + 9 * arg(a, 14))));
   if (name === 'paint:shadow:insetShadowLayer') return layerResult(insetShadowLayer(arg(a, 1), arg(a, 2), arg(a, 3), arg(a, 4), argList(a, 5, 4), argList(a, 9, 8), shadowInputs(a, 17), arg(a, 18 + 9 * arg(a, 17)), shadowFaults(a, 19 + 9 * arg(a, 17))));
   if (name === 'paint:shadow:outerShadowLayerOver') return layerResult(outerShadowLayerOver(arg(a, 1), arg(a, 2), arg(a, 3), arg(a, 4), argList(a, 5, 8), arg(a, 13) !== 0, shadowInputs(a, 14), arg(a, 15 + 9 * arg(a, 14)), shadowFaults(a, 16 + 9 * arg(a, 14)), backdropFills(a, 19 + 9 * arg(a, 14))));
+  if (name === 'paint:shadow:outerShadowLayerMapped') return layerResult(outerShadowLayerMapped(arg(a, 1), arg(a, 2), arg(a, 3), arg(a, 4), argList(a, 5, 8), arg(a, 13) !== 0, shadowInputs(a, 14), arg(a, 15 + 9 * arg(a, 14)), shadowFaults(a, 16 + 9 * arg(a, 14)), shadowTransformArg(a, 19 + 9 * arg(a, 14))));
+  if (name === 'paint:shadow:outerShadowLayerOverMapped') {
+    const n = arg(a, 14);
+    const fills = 19 + 9 * n;
+    return layerResult(outerShadowLayerOverMapped(arg(a, 1), arg(a, 2), arg(a, 3), arg(a, 4), argList(a, 5, 8), arg(a, 13) !== 0, shadowInputs(a, 14), arg(a, 15 + 9 * n), shadowFaults(a, 16 + 9 * n), backdropFills(a, fills), shadowTransformArg(a, fills + 1 + 16 * arg(a, fills))));
+  }
+  if (name === 'paint:shadow:shadowTransform') {
+    const m = shadowTransform(decodeOps(item(a, 1, '$'), '$[1]'), decodeOrigin(item(a, 2, '$'), '$[2]'), arg(a, 3), arg(a, 4), arg(a, 5), arg(a, 6), arg(a, 7), tableTrig(item(a, 8, '$'), '$[8]'));
+    return numList([m.sx, m.sy, m.tx, m.ty, m.layered ? 1 : 0]);
+  }
   if (name === 'paint:shadow:insetShadowLayerOver') return layerResult(insetShadowLayerOver(arg(a, 1), arg(a, 2), arg(a, 3), arg(a, 4), argList(a, 5, 4), argList(a, 9, 8), shadowInputs(a, 17), arg(a, 18 + 9 * arg(a, 17)), shadowFaults(a, 19 + 9 * arg(a, 17)), backdropFills(a, 22 + 9 * arg(a, 17))));
   if (name === 'paint:shadow:textShadowLayerOver') {
     // A glyph count n, n code points, n pen xs, size, baseline, the shadows, dpr, the faults and the backdrop.
@@ -2822,8 +2837,9 @@ function rtAnimationsResult(a: readonly JsonValue[]): string {
 
 // ---------------------------------------------------------------- hit suite (SELD-R1b, T047 RT-9)
 
-const HIT_TABLE_CLEAN: HitTableFaults = { pointerEventsNotInherited: false };
+const HIT_TABLE_CLEAN: HitTableFaults = { pointerEventsNotInherited: false, transformIgnored: false, contextNotLayered: false };
 const HIT_CLEAN: HitFaults = { ignorePointerEventsNone: false, reversedOrder: false };
+const HIT_NO_ORIGIN: TransformOrigin = { x: { kind: 'px', px: 0, percent: 0 }, y: { kind: 'px', px: 0, percent: 0 } };
 
 /** A hit read: [op, platform, input, facts] -> the run-length encoded answers at every point of the input's derived grid. */
 function rtHitResult(a: readonly JsonValue[]): string {
@@ -2834,14 +2850,18 @@ function rtHitResult(a: readonly JsonValue[]): string {
   arr(item(a, 3, '$'), '$[3]').forEach((f, i) => {
     const path = `$[3][${i.toString(16)}]`;
     const g = arr(f, path);
-    if (g.length !== 5) return fail(`${path}: expected [id, pointerEvents, inherited, activation, radii]`);
+    if (g.length !== 5 && g.length !== 8) return fail(`${path}: expected [id, pointerEvents, inherited, activation, radii] or those and [context, transform, origin]`);
     const pe = str(item(g, 1, path), path);
     if (pe !== 'auto' && pe !== 'none') return fail(`${path}: pointer-events ${pe} is not auto or none`);
     const rs = arr(item(g, 4, path), `${path}[4]`);
     if (rs.length !== 0 && rs.length !== 8) return fail(`${path}[4]: ${rs.length} radius components, not 0 or 8`);
     const radii: RadiusLength[] = [];
     for (let k = 0; k < rs.length; k++) radii.push(factRadius(item(rs, k, `${path}[4]`), `${path}[4][${k}]`));
-    facts.set(str(item(g, 0, path), path), { pointerEvents: pe, inherited: bool(item(g, 2, path), path), activation: bool(item(g, 3, path), path), radii });
+    const painted = g.length === 8;
+    const context = painted ? bool(item(g, 5, path), `${path}[5]`) : false;
+    const transform = painted ? decodeOps(item(g, 6, path), `${path}[6]`) : [];
+    const origin = painted ? decodeOrigin(item(g, 7, path), `${path}[7]`) : HIT_NO_ORIGIN;
+    facts.set(str(item(g, 0, path), path), { pointerEvents: pe, inherited: bool(item(g, 2, path), path), activation: bool(item(g, 3, path), path), radii, context, transform, origin });
   });
   const m = measurerFor(platform);
   if (m.kind !== 'ok') return fail(`rt-hit: no measurer for ${platform}`);

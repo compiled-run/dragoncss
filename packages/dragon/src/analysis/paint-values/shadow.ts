@@ -10,7 +10,9 @@ import { authored, diagnostic } from '../../diagnostics/catalogue.ts';
 import type { ResolvedValue } from '../computed.ts';
 import { containsDescendants } from '../containment.ts';
 import { isReplacedTag } from '../elements/replaced.ts';
-import type { ResolvedElement } from '../resolve.ts';
+import type { ResolvedElement, ResolvedText } from '../resolve.ts';
+import { blockInInlineChild } from '../resolve.ts';
+import { stackingContextOf } from '../text-shadow.ts';
 import { elementTransform, elementWillChange, hasPerspective } from './transform.ts';
 import type { PaintCheck, PaintValueContext, PaintValues } from './types.ts';
 
@@ -35,15 +37,22 @@ function shadowDeclaration(el: ResolvedElement): ResolvedValue | null {
   return shadows !== null && shadows.length > 0 ? v : null;
 }
 
-/**
- * A composited group in Chrome (cc raster of its own): a transform, a perspective (a layer item drawn as an identity transform), or
- * will-change naming transform or opacity.
- */
-function groupOf(el: ResolvedElement): string | null {
-  if (elementTransform(el).length > 0) return 'a transform';
+/** What makes the box composited apart from a plain transform: a perspective (a layer item drawn as an identity transform), or will-change naming transform or opacity. */
+function compositedOf(el: ResolvedElement): string | null {
   if (hasPerspective(el)) return 'a perspective';
   const w = elementWillChange(el).find((f) => f === 'transform' || f === 'opacity');
   return w === undefined ? null : `will-change: ${w}`;
+}
+
+/** A group whose descendants' shadows Chrome blits under its transform or into its own raster: a transform, or compositedOf. */
+function groupOf(el: ResolvedElement): string | null {
+  return elementTransform(el).length > 0 ? 'a transform' : compositedOf(el);
+}
+
+/** The first transform function that is not a translate or a scale by positive factors, which the mapped shadow layer cannot draw. */
+function unmappedFunction(el: ResolvedElement): string | null {
+  const f = elementTransform(el).find((x) => !(x.kind === 'translate' || (x.kind === 'scale' && x.sx > 0 && x.sy > 0)));
+  return f === undefined ? null : f.text;
 }
 
 /** Why a shadowed element is refused on a native target, with its fix, or null: what PNT1 does not draw as Chrome does. */
@@ -62,9 +71,39 @@ function unshadowed(el: ResolvedElement, t: string): { readonly what: string; re
   // css-contain-2 §3.2, §3.4: a layout- or paint-contained box is a stacking context Chrome paints in its context's z-index 0 layer,
   // the same re-hosted layer item as a positioned box.
   if (containsDescendants(el)) return { what: 'contained', message: `${address} has a box-shadow and contain: layout or paint; Chrome paints it after the in-flow content of its stacking context, and ${t} keeps its shadow at its tree place until the stacking sort lands`, manual: `Put the shadow on a wrapper element around ${address}, or remove its layout and paint containment.` };
-  const group = groupOf(el);
-  if (group !== null) return { what: 'group', message: `${address} has a box-shadow and ${group}; ${t} draws the outer shadows in a companion view that the box's transform and compositing group do not cover`, manual: `Put the shadow on a wrapper element around ${address}.` };
+  const group = compositedOf(el);
+  if (group !== null) return { what: 'group', message: `${address} has a box-shadow and ${group}; ${t} draws the outer shadows in a companion view that the box's compositing group does not cover`, manual: `Put the shadow on a wrapper element around ${address}.` };
+  if (elementTransform(el).length === 0) return null;
+  // Chrome draws the shadow under the box's transform; the companion view holds it rastered at the mapped scale and translate.
+  const fn = unmappedFunction(el);
+  if (fn !== null) return { what: 'transform', message: `${address} has a box-shadow and the transform function ${fn}; ${t} draws the outer shadows of a transformed box at its scale and translate only, so a rotation, a matrix or a scale that flips or collapses the box is refused`, manual: `Put the shadow on a wrapper element around ${address}, or transform it with translate and positive scale only.` };
+  if ((shadowsOf((el.props.get('box-shadow') as ResolvedValue).value) ?? []).some((s) => s.inset)) return { what: 'transform-inset', message: `${address} has an inset box-shadow and a transform; ${t} draws inset shadows in the box view, which the platform resamples by the transform where Chrome draws them at the mapped geometry`, manual: `Put the inset shadow on a child element of ${address}, or remove its transform.` };
   return null;
+}
+
+/** Whether a child paints anything: an element that generates a box, or text that is not blank. */
+const paints = (k: ResolvedElement | ResolvedText): boolean => {
+  if (k.kind === 'element') return keyword(k, 'display') !== 'none';
+  const c = blockInInlineChild(k);
+  return !(c.kind === 'text' && c.blank);
+};
+
+/**
+ * The transformed shadowed boxes with paint after them in their stacking context, in tree order: Chrome paints such a box, shadow
+ * included, after that paint (CSS 2.1 Appendix E), where the companion view stays at the box's tree place.
+ */
+function transformedBeneathLaterPaint(root: ResolvedElement): ResolvedElement[] {
+  const out: ResolvedElement[] = [];
+  const visit = (el: ResolvedElement, later: boolean): void => {
+    el.children.forEach((k, i) => {
+      if (k.kind !== 'element' || keyword(k, 'display') === 'none') return;
+      const after = later || el.children.slice(i + 1).some(paints);
+      if (shadowDeclaration(k) !== null && elementTransform(k).length > 0 && after) out.push(k);
+      visit(k, stackingContextOf(k) !== null || keyword(k, 'position') !== 'static' ? false : after);
+    });
+  };
+  visit(root, false);
+  return out;
 }
 
 /** The shadowed elements below el that generate boxes, in tree order. */
@@ -80,8 +119,8 @@ function shadowedBelow(el: ResolvedElement): ResolvedElement[] {
 
 /**
  * A shadow the native targets cannot draw as Chrome does is refused there at its box-shadow declaration: on html and body, on a
- * replaced element, on an inline box, on a positioned or layout- or paint-contained box, on a box with a transform or a compositing
- * will-change, and inside such a box (Chrome blits the shadow into the group's own raster, not onto the page backdrop paint-shadow.ts composites over). The web
+ * replaced element, on an inline box, on a positioned or layout- or paint-contained box, on a box with a perspective or a compositing
+ * will-change, on a box whose transform is not a translate and positive scale or that has an inset shadow, and inside a transformed or composited box (Chrome blits the shadow into the group's own raster, not onto the page backdrop paint-shadow.ts composites over). The web
  * target draws all of them itself.
  */
 const checkShadowedElement: PaintCheck = (el, targets, diagnostics, reported) => {
@@ -100,6 +139,11 @@ const checkShadowedElement: PaintCheck = (el, targets, diagnostics, reported) =>
     }
   };
   refuse(el, (t) => unshadowed(el, t));
+  if (el.element.tag === 'html') {
+    for (const s of transformedBeneathLaterPaint(el)) {
+      refuse(s, (t) => (unshadowed(s, t) !== null ? null : { what: 'transform-order', message: `${s.element.address} has a box-shadow and a transform, and content paints after it in its stacking context; Chrome paints the transformed box and its shadow over that content, and ${t} keeps its shadow at its tree place until the stacking sort lands`, manual: `Put the shadow on an untransformed element, or make ${s.element.address} the last content of its stacking context.` }));
+    }
+  }
   const group = groupOf(el);
   if (group === null) return;
   for (const s of shadowedBelow(el)) {
