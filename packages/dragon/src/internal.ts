@@ -213,7 +213,7 @@ export function resolvedColors(compiled: object, assignment: Assignment, state: 
   }
   // FORM-b: a search field's cancel button box inherits the field's color, with its initial background and currentcolor borders.
   for (const [address, el] of items) {
-    if (textFieldPartOf(el)?.part !== null || inputTypeState(el.element.attributes.get('type')) !== 'search') continue;
+    if (el.element.tag !== 'input' || textFieldPartOf(el)?.part !== null || inputTypeState(el.element.attributes.get('type')) !== 'search') continue;
     const color = usedColors(el).color;
     out.set(`${address}::cancel`, { color, 'background-color': TRANSPARENT, 'border-top-color': color, 'border-right-color': color, 'border-bottom-color': color, 'border-left-color': color });
   }
