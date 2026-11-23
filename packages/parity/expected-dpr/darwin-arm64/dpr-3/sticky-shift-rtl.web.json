@@ -396,7 +396,7 @@
         "text-underline-offset": "auto",
         "text-underline-position": "auto",
         "text-decoration-skip-ink": "auto",
-        "background-color": "rgba(0, 0, 0, 0)",
+        "background-color": "rgb(248, 249, 250)",
         "grid-template-columns": "none",
         "grid-template-rows": "none",
         "grid-template-areas": "none",
