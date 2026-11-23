@@ -1799,8 +1799,8 @@ function checkButton(el: ResolvedElement, parentDisplay: string | null, targets:
  * appearance: none, or an author background or border). Refused: a themed field; a password field (Chrome masks its text with
  * the font's bullet, which no fixture proves); any display but block or inline-block; an inline-block field off the baseline
  * or right to left (checkInlineTextField); an absolutely positioned one or a grid item; one whose font is Chrome's UA control
- * font; on iOS and Android an input or textarea outside Ahem whose used width may read its intrinsic width (checkFieldWidth), and a
- * search field outside Ahem whatever its width; on iOS and Android a right-to-left search field; and on iOS and Android an
+ * font; on iOS and Android an input (a search field among them) or textarea outside Ahem whose used width may read its intrinsic
+ * width (checkFieldWidth); on iOS and Android a right-to-left search field; and on iOS and Android an
  * editable field, as Dragon has no caret or keyboard input there yet (the FORM-b editing slice), unless the host edits a
  * single-line field (hostEdits: the compile's textEditing 'host'). A readonly field shows its value as drawn text.
  */
@@ -1849,9 +1849,8 @@ function checkTextField(el: ResolvedElement, layoutParent: ResolvedElement | nul
   }
   const native = targets.filter((t) => t === 'ios' || t === 'android');
   if (family.origin !== 'user-agent' && native.length > 0 && textFieldAvgChar(family.value) === 'unmeasured') {
-    if (state === 'search') {
-      refuse(family, 'search-font', `<input type=search> ${address} is in font-family: ${valueToString(family.value)}: a search field's cancel button in a font other than Ahem is not proven yet (FORM-search)`, `Draw <input> ${address} in Ahem, use type="text", or target web only.`, 'DRAGON_UNSUPPORTED_FONT', native);
-    } else if (!faults.fieldWidthAnyContext) {
+    // A search field's cancel button is sized from the font size alone; controls-text-font matches Chrome at its ::cancel box in Roboto and Inter.
+    if (!faults.fieldWidthAnyContext) {
       checkFieldWidth(el, parentDisplay, chain, (v, what, message, manual) => refuse(v, what, message, manual, 'DRAGON_UNSUPPORTED_FONT', native));
     }
   }

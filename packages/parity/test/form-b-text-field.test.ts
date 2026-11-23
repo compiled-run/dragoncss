@@ -308,13 +308,16 @@ describe('FIELD-font-width FW1: a field outside Ahem is accepted natively only w
     expect(errors(lato('fw-rtl', 'input { width: 100%; }', field, dragon.NO_FAULTS, 'rtl'))).toContainEqual(expect.stringMatching(/^all DRAGON_UNSUPPORTED_BIDI t::editor:text0 keeps its white space/));
   });
 
-  it('refuses a set-width search field in Lato on iOS and Android only, as its cancel button is proven only in Ahem, and accepts the text field', () => {
+  it('accepts a set-width search field in Lato under the field-width guard, as controls-text-font matches Chrome at its ::cancel box in Roboto and Inter', () => {
     const search = lato('fw-search', 'input { width: 120px; }', '<input data-dragon-id="t" readonly="" type="search" value="Hello">');
-    expect(errors(search)).toEqual([
-      expect.stringMatching(/^android DRAGON_UNSUPPORTED_FONT <input type=search> t is in font-family: Lato: a search field's cancel button in a font other than Ahem is not proven yet \(FORM-search\)$/),
-      expect.stringMatching(/^ios DRAGON_UNSUPPORTED_FONT <input type=search> t is in font-family: Lato: a search field's cancel button/),
+    expect(errors(search)).toEqual([]);
+    const p = dragon.iosLayoutProjection(search, ENVIRONMENT, []);
+    if (p.kind !== 'ready') throw new Error(p.reason);
+    expect(engineLayout(p.input, referenceShapedMeasurer()).kind).toBe('ok');
+    expect(avg(lato('fw-search-auto', '', '<input data-dragon-id="t" readonly="" type="search" value="Hello">'))).toEqual([
+      expect.stringMatching(/^android DRAGON_UNSUPPORTED_FONT width: auto on <input> t is not supported here/),
+      expect.stringMatching(/^ios DRAGON_UNSUPPORTED_FONT width: auto on <input> t is not supported here/),
     ]);
-    expect(errors(lato('fw-text', 'input { width: 120px; }', '<input data-dragon-id="t" readonly="" type="text" value="Hello">'))).toEqual([]);
   });
 });
 

@@ -102,6 +102,19 @@ What follows (css-flexbox-1 §9.4, steps 8 and 11):
   `margin-left: auto`, `align-self: self-start`, `margin-inline-start: auto` (read as `margin-left`), `align-self: stretch` with
   `margin-inline-end: auto` (read as `margin-right`), and an `inline-flex` column.
 
+## Search fields in a real face (separate commit)
+
+#665 (3770dc8c49) refuses every non-Ahem `<input type=search>` on iOS and Android "until a fixture proves its cancel button in a
+real face" (`FIELD-font-width-spec.md`, "Search fields stay Ahem-only"). 63e91f502f did not lift it. `controls-text-font` holds
+two search fields (Roboto at line-height 1.45, Inter at 1, `width: 100%`, placeholder, ltr). Its Chrome 145 captures, retaken
+live for this check, are byte-identical to the committed ones at DPR 1, 2, 2.625 and 3, and the engine matches them at every
+node, `s1::cancel` and `s2::cancel` included (11 × 11 at x 351, y 39.09 and 586.63 at DPR 1). Moving `s1::cancel` 2px in the
+capture fails the layout test, so the box is compared. The engine sizes the button from the font size alone
+(`controls.ts` searchCancelButtonSize: lroundf(clamp(9 × size / 13, 5, 21))) and centres it on the editor's line, whose height
+comes from the face's measured ascent and descent. The search-font refusal is lifted: a search field now goes through
+`checkFieldWidth` like any input, and an rtl search field stays refused. Not proven by a fixture: a search field with a value
+in a real face (its cancel box is the same box, now shown).
+
 ## Judge amendments (applied)
 
 1. Rule 3 no longer claims a length item is refused under wrap.
