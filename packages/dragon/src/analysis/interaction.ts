@@ -25,7 +25,8 @@ import type { InteractionProbe, InteractionState } from './match.ts';
 import { NO_INTERACTION } from './match.ts';
 import type { ResolvedElement } from './resolve.ts';
 import { selectPartOf, textFieldPartOf } from './resolve.ts';
-import { propagatedFrom } from './computed-checks.ts';
+import { holdsAtomicLine, lineAtomics, propagatedFrom } from './computed-checks.ts';
+import { hitFactContext } from '../lower/paint/stacking.ts';
 import { matrixParts, TRANSFORM_LIST_TYPE, transformFunctionsOf } from '../css/properties/transform.ts';
 
 /** R7: the distinct reachable interaction states one app assignment compiles; more are refused (package SELD-R2s). */
@@ -651,17 +652,33 @@ export function hitUnmodelledControl(root: ResolvedElement): string | null {
   return null;
 }
 
+/** The kinds of box hitUnmodelledBox names, with the package each waits for. */
+export type HitUnmodelledBox = {
+  readonly address: string;
+  readonly kind: 'float' | 'inline-grid box' | 'block with percentage padding around atomic inlines' | 'atomic inline forming a stacking context';
+  readonly pkg: 'FLT' | 'G-INL' | 'INL2a' | 'INL2c';
+};
+
 /**
  * The first box of a resolved tree the hit table does not model whose value compiles, in preorder, or null: a float in block flow
- * (FLT), which rt-hit.ts refuses in a block or inline-block container. No Chrome hit capture has them yet. A sticky or fixed box is hit
- * where the layout places it at scroll offset 0 (layout.ts), as a positioned layer.
+ * (FLT), which rt-hit.ts refuses in a block or inline-block container, and a block container of an atomic inline's line with
+ * percentage padding (INL2a), whose lines rt-hit.ts places over a content box it does not resolve percentages for. No Chrome hit
+ * capture has a float yet. A sticky or fixed box is hit where the layout places it at scroll offset 0 (layout.ts), as a positioned layer.
  */
-export function hitUnmodelledBox(root: ResolvedElement, compiles: (v: ResolvedValue) => boolean = () => true): { readonly address: string; readonly kind: 'float' | 'inline-grid box'; readonly pkg: 'FLT' | 'G-INL' } | null {
+export function hitUnmodelledBox(root: ResolvedElement, compiles: (v: ResolvedValue) => boolean = () => true): HitUnmodelledBox | null {
   const key = (el: ResolvedElement, p: 'display' | 'float' | 'position'): string => {
     const v = el.props.get(p);
     return v !== undefined && v.value.kind === 'keyword' ? v.value.value : '';
   };
-  const visit = (el: ResolvedElement): { address: string; kind: 'float' | 'inline-grid box'; pkg: 'FLT' | 'G-INL' } | null => {
+  const percent = (v: ResolvedValue): boolean => v.value.kind === 'percentage' || (v.value.kind === 'other' && v.value.text.includes('%'));
+  const visit = (el: ResolvedElement): HitUnmodelledBox | null => {
+    if (holdsAtomicLine(el)) {
+      for (const p of ['padding-top', 'padding-right', 'padding-bottom', 'padding-left'] as const) {
+        const v = el.props.get(p);
+        if (v !== undefined && percent(v) && compiles(v)) return { address: el.element.address, kind: 'block with percentage padding around atomic inlines', pkg: 'INL2a' };
+      }
+    }
+    for (const a of lineAtomics(el)) if (hitFactContext(a)) return { address: a.element.address, kind: 'atomic inline forming a stacking context', pkg: 'INL2c' };
     const block = key(el, 'display') === 'block' || key(el, 'display') === 'inline-block';
     for (const c of el.children) {
       if (c.kind !== 'element') continue;
