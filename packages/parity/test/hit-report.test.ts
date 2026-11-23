@@ -41,7 +41,7 @@ describe('the host hit lane', () => {
 
   it('has a capture of every layout case, on the grid its hit table derives', () => {
     // Derived-count pin: every layout case, including the 10 hit-* cases.
-    expect(cases.filter((n) => n.case.id.startsWith('hit-')).map((n) => n.case.id)).toEqual(['hit-line-strip-a', 'hit-line-strip-a-rtl', 'hit-line-strip-b', 'hit-line-strip-b-rtl', 'hit-order', 'hit-order-rtl', 'hit-pointer-events', 'hit-pointer-events-rtl', 'hit-atomic-inline', 'hit-atomic-inline-rtl']);
+    expect(cases.filter((n) => n.case.id.startsWith('hit-')).map((n) => n.case.id)).toEqual(['hit-line-strip-a', 'hit-line-strip-a-rtl', 'hit-line-strip-b', 'hit-line-strip-b-rtl', 'hit-order', 'hit-order-rtl', 'hit-pointer-events', 'hit-pointer-events-rtl', 'hit-atomic-inline', 'hit-atomic-inline-rtl', 'hit-atomic-inline-context', 'hit-atomic-inline-context-rtl', 'hit-atomic-inline-context-nest', 'hit-atomic-inline-context-nest-rtl', 'hit-atomic-inline-notes', 'hit-atomic-inline-notes-rtl']);
     for (const n of cases) {
       const c = committedHits(n.case.id);
       const grid = hitGrid(caseHitTable(n), n.case.environment.viewport);
@@ -109,7 +109,8 @@ describe('the host hit lane at a fractional device DPR', () => {
   it('names Chrome\'s element at every point of every DPR capture, on the grid its table derives at that DPR', () => {
     const byId = new Map(cases.map((n) => [n.case.id, n]));
     const fieldIds = ['controls-textarea', 'grid-controls-fields'];
-    expect(HIT_DPR_CAPTURES.map((d) => [d.dpr, d.ids])).toEqual([[2, fieldIds], [2.625, ['interaction-combo', 'interaction-combo-rtl', 'radius-basic', 'radius-clip', 'transform-hit-scale', 'transform-hit-subpixel', 'transform-hit-snap', 'opacity-group-transform', ...fieldIds]], [3, fieldIds]]);
+    const contextIds = ['hit-atomic-inline-context', 'hit-atomic-inline-context-rtl', 'hit-atomic-inline-context-nest', 'hit-atomic-inline-context-nest-rtl', 'hit-atomic-inline-notes', 'hit-atomic-inline-notes-rtl'];
+    expect(HIT_DPR_CAPTURES.map((d) => [d.dpr, d.ids])).toEqual([[2, [...contextIds, ...fieldIds]], [2.625, ['interaction-combo', 'interaction-combo-rtl', 'radius-basic', 'radius-clip', 'transform-hit-scale', 'transform-hit-subpixel', 'transform-hit-snap', 'opacity-group-transform', ...contextIds, ...fieldIds]], [3, [...contextIds, ...fieldIds]]]);
     for (const { dpr, ids } of HIT_DPR_CAPTURES) {
       const mismatches: string[] = [];
       for (const id of ids) {
@@ -134,6 +135,25 @@ describe('the host hit lane at a fractional device DPR', () => {
         expect(row.filter(([, , h]) => h !== 'c'), id).toEqual([]);
       }
       expect(mismatches).toEqual([]);
+    }
+  });
+
+  it('captures every row of the HIT-INL2c fixtures at DPR 1, 2, 2.625 and 3, ltr and rtl: Chrome names each element but the pointer-events: none one', () => {
+    const rows: Record<string, string[]> = {
+      'hit-atomic-inline-context': ['a', 'a1', 'b', 'b0', 'b01', 'b1', 'blk', 'body', 'c', 'c1', 'c2', 'd', 'd1', 'd2', 'e', 'e1', 'f', 'f1', 'g', 'g1', 'h', 'html', 'i', 'i1', 'i2', 'ib', 'w'],
+      'hit-atomic-inline-context-nest': ['body', 'html', 'l', 'l1', 'm', 'm1', 'n', 'n1', 'n2', 'o', 'o1', 'o2'],
+      'hit-atomic-inline-notes': ['html', 'p', 'p1', 'p2', 'q', 'q1', 'q2'],
+    };
+    for (const [fixture, ids] of Object.entries(rows)) {
+      for (const id of [fixture, `${fixture}-rtl`]) {
+        const n = cases.find((x) => x.case.id === id);
+        if (n === undefined) throw new Error(`${id} is not a hit case`);
+        for (const dpr of [1, 2, 2.625, 3]) {
+          const c = dpr === 1 ? committedHits(id) : committedHitsAt(id, dpr);
+          expect([id, dpr, [...new Set(capturedIds(c))].sort()]).toEqual([id, dpr, ids]);
+          if (dpr === 1) expect(compareHits(n, c).mismatches, id).toEqual([]);
+        }
+      }
     }
   });
 
@@ -176,10 +196,10 @@ describe('planted hit faults (T047 §3.3 item 12, host half)', () => {
     return cases.filter((n) => count(n, { ...NO_HIT_TABLE_FAULTS, ...tableFaults }) > count(n, NO_HIT_TABLE_FAULTS)).map((n) => n.case.id);
   };
   it('transformIgnored fails exactly the scale and translate transform cases', () => {
-    expect(beyondClean({ transformIgnored: true })).toEqual(['opacity-group-transform', 'opacity-group-transform-rtl', 'opacity-group-sticky', 'opacity-group-sticky-rtl', 'opacity-group-sticky-short', 'opacity-group-sticky-short-rtl', 'opacity-group-after-sticky', 'opacity-group-after-sticky-rtl', 'opacity-group-after-sticky-short', 'opacity-group-after-sticky-short-rtl', 'opacity-group-button', 'opacity-group-button-rtl', 'opacity-group-modal', 'opacity-group-modal-rtl', 'opacity-group-modal-sticky', 'opacity-group-modal-sticky-rtl', 'shadow-transform', 'shadow-transform-rtl', 'shadow-transform-order', 'shadow-transform-order-rtl', 'transform-translate', 'transform-hit-scale', 'transform-hit-subpixel', 'transform-hit-snap']);
+    expect(beyondClean({ transformIgnored: true })).toEqual(['hit-atomic-inline-context', 'hit-atomic-inline-context-rtl', 'hit-atomic-inline-notes', 'hit-atomic-inline-notes-rtl', 'opacity-group-transform', 'opacity-group-transform-rtl', 'opacity-group-sticky', 'opacity-group-sticky-rtl', 'opacity-group-sticky-short', 'opacity-group-sticky-short-rtl', 'opacity-group-after-sticky', 'opacity-group-after-sticky-rtl', 'opacity-group-after-sticky-short', 'opacity-group-after-sticky-short-rtl', 'opacity-group-button', 'opacity-group-button-rtl', 'opacity-group-modal', 'opacity-group-modal-rtl', 'opacity-group-modal-sticky', 'opacity-group-modal-sticky-rtl', 'shadow-transform', 'shadow-transform-rtl', 'shadow-transform-order', 'shadow-transform-order-rtl', 'transform-translate', 'transform-hit-scale', 'transform-hit-subpixel', 'transform-hit-snap']);
   });
   it('contextNotLayered fails exactly the cases where a stacking context overlaps later flow content', () => {
-    expect(beyondClean({ contextNotLayered: true })).toEqual(['opacity-basic', 'opacity-basic-rtl', 'opacity-cascade', 'opacity-cascade-rtl', 'opacity-web', 'opacity-web-rtl', 'opacity-fold', 'opacity-fold-rtl', 'opacity-group-text', 'opacity-group-text-rtl', 'opacity-group-border', 'opacity-group-border-rtl', 'opacity-group-border-only', 'opacity-group-border-only-rtl', 'opacity-group-over-rects', 'opacity-group-over-rects-rtl', 'opacity-group-over-group', 'opacity-group-over-group-rtl', 'opacity-group-nested', 'opacity-group-nested-rtl', 'opacity-group-translucent', 'opacity-group-translucent-rtl', 'opacity-group-rounded', 'opacity-group-rounded-rtl', 'filter-matrix-text', 'filter-matrix-text-rtl', 'filter-matrix-over-rects', 'filter-matrix-over-rects-rtl', 'transform-hit-scale', 'transform-hit-subpixel']);
+    expect(beyondClean({ contextNotLayered: true })).toEqual(['hit-atomic-inline-context', 'hit-atomic-inline-context-rtl', 'hit-atomic-inline-context-nest', 'hit-atomic-inline-context-nest-rtl', 'opacity-basic', 'opacity-basic-rtl', 'opacity-cascade', 'opacity-cascade-rtl', 'opacity-web', 'opacity-web-rtl', 'opacity-fold', 'opacity-fold-rtl', 'opacity-group-text', 'opacity-group-text-rtl', 'opacity-group-border', 'opacity-group-border-rtl', 'opacity-group-border-only', 'opacity-group-border-only-rtl', 'opacity-group-over-rects', 'opacity-group-over-rects-rtl', 'opacity-group-over-group', 'opacity-group-over-group-rtl', 'opacity-group-nested', 'opacity-group-nested-rtl', 'opacity-group-translucent', 'opacity-group-translucent-rtl', 'opacity-group-rounded', 'opacity-group-rounded-rtl', 'filter-matrix-text', 'filter-matrix-text-rtl', 'filter-matrix-over-rects', 'filter-matrix-over-rects-rtl', 'transform-hit-scale', 'transform-hit-subpixel']);
   });
 });
 
