@@ -643,13 +643,10 @@ function checkNode(value: unknown, path: string, errors: ValidationError[], ids:
     const search = controlKind === 'text-field' && isRecord(value['control']) && value['control']['cancelButton'] !== null;
     children.forEach((child: unknown, i: number) => {
       const part = fieldPart(child);
-      // An input's empty editor lays out one empty line in its strut; a textarea's empty editor has no line (Chrome 145: 0 tall).
+      // An input's empty editor lays out one empty line in its strut; a textarea's has one only while editable (a null strut: 0 tall).
       const empty = part === 'text-editor' && isRecord(child) && Array.isArray(child['children']) && child['children'].length === 0;
       if (empty && controlKind === 'text-field' && child['strut'] === null) {
         errors.push({ path: `${path}.children[${i}].strut`, code: 'strut', message: 'an empty text-editor control has a strut, whose one empty line it lays out' });
-      }
-      if (empty && controlKind === 'text-area' && child['strut'] !== null) {
-        errors.push({ path: `${path}.children[${i}].strut`, code: 'strut', message: "a text area control's empty text-editor control has a null strut: it has no line" });
       }
       if (part === 'text-editor') editors++;
       else if (part === 'text-placeholder') placeholders++;
