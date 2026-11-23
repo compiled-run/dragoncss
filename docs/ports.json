@@ -1025,7 +1025,8 @@
       ],
       "dragon": [
         { "file": "packages/dragon/src/forms/text-field.ts", "symbol": null, "use": "port" },
-        { "file": "packages/layout/src/environment.ts", "symbol": "editorLineHeightIsNormal", "use": "port" }
+        { "file": "packages/layout/src/environment.ts", "symbol": "editorLineHeightIsNormal", "use": "port" },
+        { "file": "packages/dragon/src/project.ts", "symbol": "checkTextFieldLineGap", "use": "reference" }
       ]
     },
     {
