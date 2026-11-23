@@ -1286,7 +1286,7 @@ const FAULT_KEYS: readonly string[] = [
   'orderHalfEven', 'orderUnclamped', 'gutterReserved', 'overflowIgnoresPadding', 'ellipsisInTextFont', 'noDotsFallback', 'truncateChangesBlockSize',
   'preservedSpaceCollapsed', 'trailingPreWrapNotHanging', 'breakSpacesHanging', 'indentEveryLine', 'indentAfterBr', 'indentPercentInIntrinsic', 'indentRtlFromLeft',
   'anywhereMinContentIgnored', 'breakWordShrinksMinContent', 'breakAnywhereAlways', 'emergencyBreakBeforeOpportunity', 'wordBreakBreakWordIgnored', 'breakAllIgnored',
-  'clampHeightIncludesHiddenLines', 'clampEllipsisMissingWhenLineFits', 'clampEllipsisOnExactLastLine', 'containedContentSized', 'menuListShownLabelOnly', 'containerJoinsFlow', 'wrapStyleGreedy', 'textBoxTrimIgnored',
+  'clampHeightIncludesHiddenLines', 'clampEllipsisMissingWhenLineFits', 'clampEllipsisOnExactLastLine', 'containedContentSized', 'menuListShownLabelOnly', 'containerJoinsFlow', 'wrapStyleGreedy', 'textBoxTrimIgnored', 'searchCancelIgnored',
   'inlineBlockFirstBaseline', 'overflowBaselineIgnored', 'inlineFlexLastBaseline', 'atomicMarginExcluded', 'noBreakAroundAtomic', 'atomicShrinkToFitIgnored',
   'inlineGridLastItemBaseline',
 ];
@@ -1382,6 +1382,7 @@ function decodeFaults(v: JsonValue): EngineFaults {
     containerJoinsFlow: b('containerJoinsFlow'),
     wrapStyleGreedy: b('wrapStyleGreedy'),
     textBoxTrimIgnored: b('textBoxTrimIgnored'),
+    searchCancelIgnored: b('searchCancelIgnored'),
   };
 }
 
