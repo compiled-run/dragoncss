@@ -545,29 +545,30 @@ function computedRgba(text: string | undefined): Rgba8 | null {
 }
 
 /**
- * An interaction state's pressed paint against Chrome forced into the state: each node whose background colour the state changes
- * from its assignment, the export's colour against Chrome's computed one. A changed write of another kind is a failing row naming it.
+ * An interaction state's paint against Chrome forced into the state. Every element of the state but html and body (whose
+ * backgrounds the canvas rows compare): its background colour, or transparent where the export writes none, against Chrome's
+ * computed one, so a state that misses a change Chrome makes fails too. A write of another kind the state changes from its
+ * assignment is a failing row naming it, as this comparison does not read it from Chrome yet.
  */
 export function interactionPaintRows(target: string, state: string, base: ExportAssignment, a: ExportAssignment, captured: readonly CapturedNode[]): CompareRow[] {
   const rows: CompareRow[] = [];
   const before = new Map(base.nodes.map((n) => [n.id, n]));
   const chrome = new Map(captured.filter((c) => c.kind === 'element').map((c) => [c.id, c]));
+  const byKind = (writes: ExportNode['writes']): Map<string, string> => new Map(writes.map((w) => [String(w['kind']), JSON.stringify(w)]));
+  const TRANSPARENT = { r: 0, g: 0, b: 0, alpha: 0 };
   for (const n of a.nodes) {
-    const was = before.get(n.id);
-    if (was === undefined || JSON.stringify(was.writes) === JSON.stringify(n.writes)) continue;
-    const byKind = (writes: ExportNode['writes']): Map<string, string> => new Map(writes.map((w) => [String(w['kind']), JSON.stringify(w)]));
+    if (n.kind !== 'element' || n.id === 'html' || n.id === 'body') continue;
     const now = byKind(n.writes);
-    const then = byKind(was.writes);
-    const kinds = [...new Set([...now.keys(), ...then.keys()])].filter((k) => now.get(k) !== then.get(k));
-    for (const kind of kinds) {
-      if (kind !== 'background-color') {
-        rows.push({ target, values: a.values, state, id: n.id, maxDeltaDevicePx: null, pass: false, problem: `the state changes its ${kind} write, which this comparison does not read from Chrome yet` });
-        continue;
-      }
-      const exported = n.writes.find((w) => w['kind'] === 'background-color')?.['color'];
-      const got = computedRgba(chrome.get(n.id)?.computed?.['background-color']);
-      rows.push({ target, values: a.values, state, id: n.id, maxDeltaDevicePx: null, pass: got !== null && JSON.stringify(got) === JSON.stringify(exported), ...(got !== null && JSON.stringify(got) === JSON.stringify(exported) ? {} : { problem: `background-color ${JSON.stringify(exported ?? null)} in the export, ${JSON.stringify(got)} in Chrome` }) });
+    const then = byKind(before.get(n.id)?.writes ?? []);
+    for (const kind of [...new Set([...now.keys(), ...then.keys()])].filter((k) => k !== 'background-color' && now.get(k) !== then.get(k))) {
+      rows.push({ target, values: a.values, state, id: n.id, maxDeltaDevicePx: null, pass: false, problem: `the state changes its ${kind} write, which this comparison does not read from Chrome yet` });
     }
+    const c = chrome.get(n.id);
+    if (c === undefined || !c.hasBox) continue;
+    const exported = (n.writes.find((w) => w['kind'] === 'background-color')?.['color'] as Rgba8 | undefined) ?? TRANSPARENT;
+    const got = computedRgba(c.computed?.['background-color']);
+    const pass = got !== null && JSON.stringify(got) === JSON.stringify(exported);
+    rows.push({ target, values: a.values, state, id: n.id, maxDeltaDevicePx: null, pass, ...(pass ? {} : { problem: `background-color ${JSON.stringify(exported)} in the export, ${JSON.stringify(got)} in Chrome` }) });
   }
   return rows;
 }

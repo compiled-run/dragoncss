@@ -227,6 +227,23 @@ export function resolvedTextTransforms(compiled: object, assignment: Assignment,
   return out;
 }
 
+/** resolvedTextTransforms of each interaction state of the case in the band, in its partition's state order. */
+export function resolvedInteractionTextTransforms(compiled: object, assignment: Assignment, band: number): readonly ReadonlyMap<string, TextTransform>[] | null {
+  const record = internalRecord(compiled);
+  if (record === undefined) return null;
+  const c = record.bands === null ? (band === 0 ? caseByAssignment(record, assignment) : undefined) : record.bands.cases[band]?.find((x) => x.key === keyOfAssignment(assignment));
+  if (c === undefined) return null;
+  return c.interaction.map((i) => {
+    const out = new Map<string, TextTransform>();
+    const walk = (el: ResolvedElement): void => {
+      out.set(el.element.address, textTransformOf(el.props));
+      for (const ch of el.children) if (ch.kind === 'element') walk(ch);
+    };
+    walk(i.resolved);
+    return out;
+  });
+}
+
 /** SVG-a1: the scene of every rendered <svg> of a case, in document order (analysis/elements/svg.ts). */
 export function svgScenes(compiled: object, assignment: Assignment): readonly SvgScene[] | null {
   const c = caseOf(compiled, assignment);

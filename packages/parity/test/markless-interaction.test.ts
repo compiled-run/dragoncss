@@ -103,16 +103,27 @@ describe('interaction states in the Markless style export', () => {
     expect(compared).toBeGreaterThan(0);
   });
 
-  it("fails a state whose pressed colour is not Chrome's, and names a changed write it cannot read from Chrome", () => {
+  it("fails a state whose pressed colour is not Chrome's or is missing, and names a changed write it cannot read", () => {
     const node = (writes: ExportNode['writes']): ExportNode => ({ id: 'h5', parent: 'body', kind: 'element', native: 'DragonBoxView', text: null, frame: { x: 0, y: 0, width: 10, height: 10 }, borderWidths: null, writes });
     const at = (writes: ExportNode['writes']): ExportAssignment => ({ values: {}, pageScroll: null, nodes: [node(writes)] });
-    const base = at([{ kind: 'background-color', color: { r: 241, g: 250, b: 238, alpha: 255 } }]);
+    const resting = [{ kind: 'background-color', color: { r: 241, g: 250, b: 238, alpha: 255 } }];
+    const base = at(resting);
     const chrome = [{ id: 'h5', kind: 'element' as const, hasBox: true, x: 0, y: 0, width: 10, height: 10, computed: { 'background-color': 'rgb(42, 157, 143)' } }];
-    expect(interactionPaintRows('ios', '0-state0', base, at([{ kind: 'background-color', color: PRESSED }]), chrome).map((r) => r.pass)).toEqual([true]);
-    const wrong = interactionPaintRows('ios', '0-state0', base, at([{ kind: 'background-color', color: { r: 230, g: 57, b: 70, alpha: 255 } }]), chrome);
-    expect(wrong.map((r) => [r.pass, r.problem])).toEqual([[false, 'background-color {"r":230,"g":57,"b":70,"alpha":255} in the export, {"r":42,"g":157,"b":143,"alpha":255} in Chrome']]);
-    const other = interactionPaintRows('ios', '0-state0', base, at([...base.nodes[0]!.writes, { kind: 'opacity', value: 0.85 }]), chrome);
-    expect(other.map((r) => [r.pass, r.problem])).toEqual([[false, 'the state changes its opacity write, which this comparison does not read from Chrome yet']]);
+    const failed = (a: ExportAssignment) => interactionPaintRows('ios', '0-state0', base, a, chrome).filter((r) => !r.pass).map((r) => r.problem);
+    expect(failed(at([{ kind: 'background-color', color: PRESSED }]))).toEqual([]);
+    expect(failed(at([{ kind: 'background-color', color: { r: 230, g: 57, b: 70, alpha: 255 } }]))).toEqual(['background-color {"r":230,"g":57,"b":70,"alpha":255} in the export, {"r":42,"g":157,"b":143,"alpha":255} in Chrome']);
+    // The export missed the press: the state is its assignment, and Chrome shows the pressed colour.
+    expect(failed(at(resting))).toEqual(['background-color {"r":241,"g":250,"b":238,"alpha":255} in the export, {"r":42,"g":157,"b":143,"alpha":255} in Chrome']);
+    expect(failed(at([{ kind: 'background-color', color: PRESSED }, { kind: 'opacity', value: 0.85 }]))).toEqual(['the state changes its opacity write, which this comparison does not read from Chrome yet']);
+  });
+
+  it('records a text-transform only a state sets, so the phone keeps that text as the plan laid it out', () => {
+    const { exported } = marklessStyleExport(withCss('.cell:active { text-transform: uppercase; }'), FLUID, undefined, 'system', undefined, true);
+    expect(exported.targets.ios!.plan!.transformed?.length).toBeGreaterThan(0);
+  });
+
+  it('refuses interaction states together with transitions, whose tables cover only the assignments', () => {
+    expect(() => marklessStyleExport(withCss('.cell { transition: background-color 200ms; } .cell:active { background: #2a9d8f; }'), FLUID, undefined, 'system', undefined, true)).toThrow(/transitions or animations and interaction states together, which a host does not run yet/);
   });
 
   it("names a pressed node inside a list row as its row's template, so a phone presses the copy the touch is in", () => {

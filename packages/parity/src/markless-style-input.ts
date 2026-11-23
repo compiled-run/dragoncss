@@ -6,7 +6,7 @@ import { createHash } from 'node:crypto';
 import { posix } from 'node:path';
 import { brotliDecompressSync } from 'node:zlib';
 import type { BrotliDecompress, ClassSymbol, Condition, FontMap, FrontEndResult, NativeStyles, NativeStylesConfig, NativeStyleTarget, Rgba8, SourceFile, TreeNode } from 'dragon';
-import { BAND_KEY, compiledCases, compileNativeStylesWith, decodeFontFile, isTreeNodeId, nativeBands, parseStylesheet, resolvedTextTransforms, TREE_SCHEMA_REVISION } from 'dragon';
+import { BAND_KEY, compiledCases, compileNativeStylesWith, decodeFontFile, isTreeNodeId, nativeBands, parseStylesheet, resolvedInteractionTextTransforms, resolvedTextTransforms, TREE_SCHEMA_REVISION } from 'dragon';
 import type { rtBand } from '@dragon/layout';
 import { textDecoration } from '@dragon/layout';
 import { FONT_REFERENCE_MAP } from './font-reference.ts';
@@ -723,6 +723,8 @@ export function marklessStyleExport(inputText: string, inputPath: string, readFo
     return got;
   });
   const targets = Object.fromEntries(Object.entries(done.exported.targets).map(([t, x]) => {
+    // The slot bindings cover the program's assignments only; a pressed or focused state would lay out at the initial slot values.
+    if (x.interaction !== undefined) fail(`${parsed.component} has style values that follow state (slots ${slots.map((s) => s.id).join(', ')}) and interaction states (:hover, :active, :focus) together, which a phone does not apply yet`);
     const plan = x.plan;
     const per = bindings[t as NativeStyleTarget];
     if (plan === undefined || per === undefined) return fail(`${t}: no plan to carry the slots in`);
@@ -797,9 +799,12 @@ function withTransformed(plan: MarklessPlan, compiled: object): MarklessPlan {
     for (const c of compiledCases(compiled)) {
       const transforms = resolvedTextTransforms(compiled, c.assignment, band);
       if (transforms === null) return fail(`a case did not resolve in band ${band}`);
-      for (const [address, transform] of transforms) {
-        elements.add(address);
-        if (transform !== 'none') on.add(address);
+      // An interaction state's own text-transform counts too: the phone lays that state's text out as the plan recorded it.
+      for (const map of [transforms, ...(resolvedInteractionTextTransforms(compiled, c.assignment, band) ?? [])]) {
+        for (const [address, transform] of map) {
+          elements.add(address);
+          if (transform !== 'none') on.add(address);
+        }
       }
     }
   }

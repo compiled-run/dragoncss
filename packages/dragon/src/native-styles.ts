@@ -205,6 +205,8 @@ function targetOutput(compiled: Compiled<NativeStyleTarget>, t: NativeStyleTarge
       return s;
     });
     const anim = animated ? animProgramOf(compiled, program.assignments.map((a) => a.assignment)) : null;
+    // The animator's tables cover the program's assignments only, so a state would run with no tables for it.
+    if (interactive && animated) return { kind: 'blocked', reason: `the ${t} output has transitions or animations and interaction states together, which a host does not run yet` };
     const interaction = interactive ? interactionProgramOf(compiled, program, backend) : null;
     if (typeof interaction === 'string') return { kind: 'blocked', reason: interaction };
     if (!sources) return { kind: 'emitted', backend, program, files: [], readiness: compiled.outputs[t], bands, schemes, ...(anim === null ? {} : { anim }), ...(interaction === null ? {} : { interaction: interaction.program, interactionValues: interaction.values }) };
