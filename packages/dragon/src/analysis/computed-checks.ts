@@ -1920,21 +1920,23 @@ function checkFieldWidth(el: ResolvedElement, parentDisplay: string | null, chai
   for (const [p, v] of [['min-width', minWidth], ['max-width', maxWidth]] as const) {
     if (INTRINSIC_SIZES.has(keywordOf(v))) refuse(v, `${p}-font`, `${p}: ${keywordOf(v)} on <${tag}> ${address} is not supported here: ${why}`, `Give <${tag}> ${address} a ${p} in px or %, or remove it.`);
   }
-  // A column flex item's automatic minimum is on the main axis, its height (Chrome 145: 412px in Roboto, Inter and Ahem alike).
-  const item = rowItem || parentDisplay === 'grid' || parentDisplay === 'inline-grid';
-  if (item && keywordOf(minWidth) === 'auto') refuse(minWidth, 'min-width-font', `<${tag}> ${address} is a ${parentDisplay} item with min-width: auto, whose automatic minimum Chrome takes from the field's intrinsic width: ${why}`, `Set min-width (0 is fine) on <${tag}> ${address}.`);
-  if (rowItem && (b === 'content' || INTRINSIC_SIZES.has(b))) refuse(basis, 'flex-basis-font', `flex-basis: ${b} on <${tag}> ${address} is not supported: Chrome takes it from the field's intrinsic width, and ${why}`, `Give <${tag}> ${address} a flex-basis in px, or a width and flex-basis: auto.`);
   // Chrome compresses only a percentage width's min-content contribution; a length width with a percentage min-width or max-width
   // contributes the length (measured: a 120px field with max-width: 100% in a 100px-wide float is 128px with its border and padding).
   const relative = width.value.kind !== 'keyword' && hasPercentage(width) ? 'width' : rowItem && b === '' && hasPercentage(basis) ? 'flex-basis' : null;
   const grid = chain.filter((a) => !isContents(a)).at(-1);
-  if (relative === 'width' && grid !== undefined && (parentDisplay === 'grid' || parentDisplay === 'inline-grid') && !singleStretchColumn(grid)) {
+  const gridItem = grid !== undefined && (parentDisplay === 'grid' || parentDisplay === 'inline-grid');
+  // A column flex item's automatic minimum is on the main axis, its height; a compressed field's in a stretched column is its border and padding.
+  const item = rowItem || (gridItem && !(relative === 'width' && singleStretchColumn(grid as ResolvedElement)));
+  if (item && keywordOf(minWidth) === 'auto') refuse(minWidth, 'min-width-font', `<${tag}> ${address} is a ${parentDisplay} item with min-width: auto, whose automatic minimum Chrome takes from the field's intrinsic width: ${why}`, `Set min-width (0 is fine) on <${tag}> ${address}.`);
+  if (rowItem && (b === 'content' || INTRINSIC_SIZES.has(b))) refuse(basis, 'flex-basis-font', `flex-basis: ${b} on <${tag}> ${address} is not supported: Chrome takes it from the field's intrinsic width, and ${why}`, `Give <${tag}> ${address} a flex-basis in px, or a width and flex-basis: auto.`);
+  if (relative === 'width' && gridItem && !singleStretchColumn(grid as ResolvedElement)) {
     refuse(width, 'width-grid-font', `width: ${valueToString(width.value)} on <${tag}> ${address} is not supported here: it is a grid item of <${grid.element.tag}> ${grid.element.address}, whose column is not its whole content box, so Chrome sizes the column with the field's intrinsic width, and ${why}`, `Give <${grid.element.tag}> ${grid.element.address} one auto-placed column (no grid-template-columns), or give <${tag}> ${address} a width in px.`);
   }
-  if (relative === null || sized === null) return;
+  const through = relative === 'width' ? contentSizedAncestor(chain, true) : sized;
+  if (relative === null || through === null) return;
   const v = relative === 'width' ? width : basis;
-  const at = `<${sized.box.element.tag}> ${sized.box.element.address}`;
-  refuse(v, 'width-content-font', `${relative}: ${valueToString(v.value)} on <${tag}> ${address} is not supported here: ${at} takes its width from its content (${sized.why}), which Chrome measures with the field's intrinsic width, and ${why}`, `${contentSizedFix(at, sized.why)} Or give <${tag}> ${address} a ${relative} in px.`);
+  const at = `<${through.box.element.tag}> ${through.box.element.address}`;
+  refuse(v, 'width-content-font', `${relative}: ${valueToString(v.value)} on <${tag}> ${address} is not supported here: ${at} takes its width from its content (${through.why}), which Chrome measures with the field's intrinsic width, and ${why}`, `${contentSizedFix(at, through.why)} Or give <${tag}> ${address} a ${relative} in px.`);
 }
 
 /**
@@ -1999,8 +2001,9 @@ function widthShape(v: ResolvedValue): 'intrinsic' | 'auto' | 'percent' | 'fixed
 /**
  * Where box's used width comes from, for a descendant whose min-content and max-content contributions it may read: fixed (its own
  * width, or a containing block its content cannot widen), parent (its layout parent's width), or why Chrome sizes it from its content.
+ * compressed: the descendant is a percentage-width field, whose min-content contribution is its border and padding.
  */
-function widthSource(box: ResolvedElement, parent: ResolvedElement | null): 'fixed' | 'parent' | string {
+function widthSource(box: ResolvedElement, parent: ResolvedElement | null, compressed = false): 'fixed' | 'parent' | string {
   if (parent === null) return 'fixed';
   const kw = (p: Longhand): string => keywordOf(box.props.get(p) as ResolvedValue);
   const width = widthShape(box.props.get('width') as ResolvedValue);
@@ -2015,7 +2018,15 @@ function widthSource(box: ResolvedElement, parent: ResolvedElement | null): 'fix
   const tag = box.element.tag;
   if (tag === 'button' || (tag === 'legend' && parent.element.tag === 'fieldset')) return step(tag === 'button' ? 'a button with an auto width' : 'a fieldset legend with an auto width');
   const pd = keywordOf(parent.props.get('display') as ResolvedValue);
-  if (pd === 'grid' || pd === 'inline-grid') return width === 'fixed' ? 'fixed' : 'a grid item';
+  if (pd === 'grid' || pd === 'inline-grid') {
+    // A stretched column sized at least by its items' min-content contributions, which read no intrinsic width when the field compresses.
+    if (width === 'fixed') return 'fixed';
+    if (!compressed) return 'a grid item';
+    const margin = (['margin-left', 'margin-right'] as const).find((m) => kw(m) === 'auto');
+    if (!singleStretchColumn(parent)) return 'a grid item in a grid whose column is not its whole content box';
+    if (!stretchesInline(box, parent)) return `a grid item with justify-self: ${kw('justify-self') === 'auto' ? `auto (justify-items: ${keywordOf(parent.props.get('justify-items') as ResolvedValue)})` : kw('justify-self')}`;
+    return margin === undefined ? step('parent') : `a grid item with ${margin}: auto`;
+  }
   if (pd === 'flex' || pd === 'inline-flex') {
     if (keywordOf(parent.props.get('flex-direction') as ResolvedValue).startsWith('column')) {
       const self = kw('align-self') === 'auto' ? keywordOf(parent.props.get('align-items') as ResolvedValue) : kw('align-self');
@@ -2065,7 +2076,10 @@ function singleStretchColumn(grid: ResolvedElement): boolean {
   if (keywordOr(grid, 'grid-auto-flow', 'row') !== 'row') return false;
   const distribution = keywordOr(grid, 'justify-content', 'normal');
   if (distribution !== 'normal' && distribution !== 'stretch') return false;
-  return grid.children.every((c) => c.kind !== 'element' || (keywordOr(c as ResolvedElement, 'grid-column-start', 'auto') === 'auto' && keywordOr(c as ResolvedElement, 'grid-column-end', 'auto') === 'auto'));
+  // A row-locked item adds an implicit column beside another (Chrome 145: 232.48, 242.03 and 284px in Roboto, Inter and Ahem).
+  const autoPlaced = (c: ResolvedElement): boolean => (['grid-column-start', 'grid-column-end', 'grid-row-start', 'grid-row-end'] as const).every((p) => keywordOr(c, p, 'auto') === 'auto');
+  const items = (box: ResolvedElement): ResolvedElement[] => box.children.flatMap((c) => (c.kind !== 'element' ? [] : isContents(c as ResolvedElement) ? items(c as ResolvedElement) : [c as ResolvedElement]));
+  return items(grid).every(autoPlaced);
 }
 
 /** How to clear a refusal whose content-sized box is at, by why widthSource named it. */
@@ -2077,11 +2091,11 @@ function contentSizedFix(at: string, why: string): string {
 }
 
 /** The first box from the select's layout parent outward whose width Chrome takes from its content, with why, or null. */
-function contentSizedAncestor(chain: readonly ResolvedElement[]): { readonly box: ResolvedElement; readonly why: string } | null {
+function contentSizedAncestor(chain: readonly ResolvedElement[], compressed = false): { readonly box: ResolvedElement; readonly why: string } | null {
   const boxes = chain.filter((a) => !isContents(a));
   for (let i = boxes.length - 1; i >= 0; i--) {
     const box = boxes[i] as ResolvedElement;
-    const source = widthSource(box, boxes[i - 1] ?? null);
+    const source = widthSource(box, boxes[i - 1] ?? null, compressed);
     if (source === 'fixed') return null;
     if (source !== 'parent') return { box, why: source };
   }

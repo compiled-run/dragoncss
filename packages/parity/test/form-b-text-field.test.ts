@@ -215,6 +215,7 @@ describe('FIELD-font-width FW1: a field outside Ahem is accepted natively only w
   const inBox = (box: string, css: string): readonly [string, string] => [`.wrap { ${box.startsWith('position') ? 'position: relative; height: 60px; ' : ''}width: 300px; } .w { ${box} } ${css}`, `<div data-dragon-id="wrap" class="wrap"><div data-dragon-id="w" class="w">${field}</div></div>`];
 
   const inColumn = `<div data-dragon-id="c" class="c"><div data-dragon-id="i" class="i">${field}</div></div>`;
+  const inForm = `<div data-dragon-id="f" class="f"><label data-dragon-id="l" class="l">${field}</label></div>`;
   const ACCEPTED: readonly (readonly [string, string, string])[] = [
     ['fw-px', 'input { width: 40px; }', field],
     ['fw-pct', 'input { width: 100%; max-width: 50px; min-width: 10%; }', field],
@@ -231,6 +232,11 @@ describe('FIELD-font-width FW1: a field outside Ahem is accepted natively only w
     ['fw-col-center-pct', '.c { display: flex; flex-direction: column; align-items: center; } input { width: 100%; }', `<div data-dragon-id="c" class="c">${field}</div>`],
     ['fw-col-reverse-item', '.c { display: flex; flex-direction: column-reverse; } input { width: 100%; }', inColumn],
     ['fw-col-self-stretch', '.c { display: flex; flex-direction: column; align-items: center; } .i { align-self: stretch; } input { width: 100%; }', inColumn],
+    // FORM-text-font grid (Chrome 145: 320px at 362px, and the captions' min-content when wider, in Roboto, Inter and Ahem alike).
+    ['fw-grid-notes', '.f { display: grid; gap: 18px; padding: 20px; } .l { display: grid; gap: 6px; } input { width: 100%; }', inForm],
+    ['fw-grid-narrow', '.f { display: grid; width: 40px; } .l { display: grid; } input { width: 100%; }', inForm],
+    ['fw-grid-direct', '.g { display: grid; } input { width: 100%; }', `<div data-dragon-id="g" class="g">${field}</div>`],
+    ['fw-grid-col-flex', '.f { display: grid; width: 40px; } .l { display: flex; flex-direction: column; } input { width: 100%; }', inForm],
     ['fw-col-notes', '.c { min-height: 100vh; display: flex; flex-direction: column; } .i { width: 100%; max-width: 880px; margin: 0 auto; padding: 20px; } input { width: 100%; }', inColumn],
   ];
   for (const [id, css, body] of ACCEPTED) {
@@ -239,7 +245,8 @@ describe('FIELD-font-width FW1: a field outside Ahem is accepted natively only w
       expect(errors(c)).toEqual([]);
       const p = dragon.iosLayoutProjection(c, ENVIRONMENT, []);
       if (p.kind !== 'ready') throw new Error(p.reason);
-      expect(engineLayout(p.input, referenceShapedMeasurer()).kind).toBe('ok');
+      const r = engineLayout(p.input, referenceShapedMeasurer());
+      expect(r.kind === 'unsupported' ? `${r.unsupported.code} at ${r.unsupported.nodeId}` : r.kind).toBe('ok');
     });
   }
 
@@ -266,6 +273,15 @@ describe('FIELD-font-width FW1: a field outside Ahem is accepted natively only w
     ['fw-col-item-logical-margin', '.c { display: flex; flex-direction: column; } .i { align-self: stretch; margin-inline-end: auto; } input { width: 100%; }', inColumn, 'width: 100% on <input> t is not supported here: <div> i takes its width from its content (a column flex item with margin-right: auto and an auto width)'],
     ['fw-col-item-self-start', '.c { display: flex; flex-direction: column; } .i { align-self: self-start; } input { width: 100%; }', inColumn, 'width: 100% on <input> t is not supported here: <div> i takes its width from its content (a column flex item with align-self: self-start and an auto width)'],
     ['fw-col-item-inline-start', '.c { display: flex; flex-direction: column; } .i { margin-inline-start: auto; } input { width: 100%; }', inColumn, 'width: 100% on <input> t is not supported here: <div> i takes its width from its content (a column flex item with margin-left: auto and an auto width)'],
+    ['fw-grid-item-start', '.f { display: grid; } .l { justify-self: start; } input { width: 100%; }', inForm, 'width: 100% on <input> t is not supported here: <label> l takes its width from its content (a grid item with justify-self: start)'],
+    ['fw-grid-items-start', '.f { display: grid; justify-items: center; } input { width: 100%; }', inForm, 'width: 100% on <input> t is not supported here: <label> l takes its width from its content (a grid item with justify-self: auto (justify-items: center))'],
+    ['fw-grid-item-margin', '.f { display: grid; } .l { margin-right: auto; } input { width: 100%; }', inForm, 'width: 100% on <input> t is not supported here: <label> l takes its width from its content (a grid item with margin-right: auto)'],
+    ['fw-grid-two-cols', '.f { display: grid; grid-template-columns: auto auto; } input { width: 100%; }', inForm, 'width: 100% on <input> t is not supported here: <label> l takes its width from its content (a grid item in a grid whose column is not its whole content box)'],
+    ['fw-grid-justify-content', '.f { display: grid; justify-content: start; } input { width: 100%; }', inForm, 'width: 100% on <input> t is not supported here: <label> l takes its width from its content (a grid item in a grid whose column is not its whole content box)'],
+    ['fw-grid-row-locked', '.f { display: grid; } .l, .s { grid-row: 1; } input { width: 100%; }', `<div data-dragon-id="f" class="f"><label data-dragon-id="l" class="l">${field}</label><div data-dragon-id="s" class="s">X</div></div>`, 'width: 100% on <input> t is not supported here: <label> l takes its width from its content (a grid item in a grid whose column is not its whole content box)'],
+    ['fw-grid-contents-col2', '.f { display: grid; } .k { display: contents; } .s { grid-column: 2; } input { width: 100%; }', `<div data-dragon-id="f" class="f"><label data-dragon-id="l" class="l">${field}</label><div data-dragon-id="k" class="k"><div data-dragon-id="s" class="s">X</div></div></div>`, 'width: 100% on <input> t is not supported here: <label> l takes its width from its content (a grid item in a grid whose column is not its whole content box)'],
+    ['fw-grid-before-row', '.f { display: grid; } .f::before { content: "X"; grid-row: 1; } .l { grid-row: 1; } input { width: 100%; }', inForm, 'width: 100% on <input> t is not supported here: <label> l takes its width from its content (a grid item in a grid whose column is not its whole content box)'],
+    ['fw-grid-flex-basis', '.f { display: grid; width: 40px; } .l { display: flex; } input { flex: 1 1 0px; min-width: 0; }', inForm, 'width: auto on <input> t is not supported here'],
     ['fw-col-inline-flex', '.c { display: inline-flex; flex-direction: column; } input { width: 100%; }', inColumn, 'width: 100% on <input> t is not supported here: <div> c takes its width from its content (display: inline-flex with an auto width)'],
   ];
   for (const [id, css, body, prefix, thrown = 'text-field-avg-char'] of REFUSED) {
@@ -297,6 +313,16 @@ describe('FIELD-font-width FW1: a field outside Ahem is accepted natively only w
       expect(errors(c).filter((e) => e.startsWith('web ') || e.startsWith('all '))).toEqual([]);
     });
   }
+
+  it("keeps a min-content grid's spanning items reading the growth limits of the span group before them (Chrome 145: 225px, columns 30, 120 and 75px)", () => {
+    const c = compile('fw-grid-span-min', '.g { display: grid; width: min-content; grid-template-columns: auto auto auto; } .a { grid-column: 1; } .b { grid-column: 1 / 3; } .c { grid-column: 2 / 4; }', '<div data-dragon-id="g" class="g"><div data-dragon-id="a" class="a">X X</div><div data-dragon-id="b" class="b">XXXXXXXXXXXXXXX</div><div data-dragon-id="c" class="c">XXXXXXXXXXXXXXX</div></div>');
+    expect(errors(c)).toEqual([]);
+    const p = dragon.iosLayoutProjection(c, ENVIRONMENT, []);
+    if (p.kind !== 'ready') throw new Error(p.reason);
+    const r = engineLayout(p.input, ahemMeasurer);
+    if (r.kind !== 'ok') throw new Error(r.kind);
+    expect(r.boxes.find((b) => b.id === 'g')?.width).toBe(225 * 64);
+  });
 
   it('reads the first listed family with its case: only Ahem first is measured', () => {
     const auto = (id: string, family: string): number => avg(compile(id, `input { font-family: ${family}; }`, field, BASE, true)).length;
