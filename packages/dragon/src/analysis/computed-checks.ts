@@ -1780,10 +1780,11 @@ function checkButton(el: ResolvedElement, parentDisplay: string | null, targets:
  * inner editor and placeholder (resolve.ts), and painted as CSS boxes once its used appearance is none (the devolve probe:
  * appearance: none, or an author background or border). Refused: a themed field; a password field (Chrome masks its text with
  * the font's bullet, which no fixture proves); an inline-level field (RF-INL); any display but block or flex; an absolutely
- * positioned one; one whose font is Chrome's UA control font; and on iOS and Android an editable field, as
- * Dragon has no caret or keyboard input there yet (the FORM-b editing slice). A readonly field shows its value as drawn text.
+ * positioned one; one whose font is Chrome's UA control font; on iOS and Android a right-to-left search field; and on iOS and
+ * Android an editable field, as Dragon has no caret or keyboard input there yet (the FORM-b editing slice), unless the host edits
+ * a single-line field (hostEdits: the compile's textEditing 'host'). A readonly field shows its value as drawn text.
  */
-function checkTextField(el: ResolvedElement, parentDisplay: string | null, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+function checkTextField(el: ResolvedElement, parentDisplay: string | null, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, hostEdits: boolean): void {
   const address = el.element.address;
   const tag = el.element.tag;
   const state = inputTypeState(el.element.attributes.get('type'));
@@ -1829,7 +1830,12 @@ function checkTextField(el: ResolvedElement, parentDisplay: string | null, targe
   if (family.origin !== 'user-agent' && first !== 'ahem') {
     refuse(family, 'width-font', `<${tag}> ${address} is in font-family: ${valueToString(family.value)}: Chrome sizes a text control by the face's average character width, which Dragon proves only for Ahem`, `Draw <${tag}> ${address} in Ahem, or target web only, until real faces are measured for text controls.`, 'DRAGON_UNSUPPORTED_FONT', targets.filter((t) => t === 'ios' || t === 'android'));
   }
-  if (!el.element.attributes.has('readonly')) {
+  const direction = el.props.get('direction') as ResolvedValue;
+  if (state === 'search' && keywordOf(direction) === 'rtl') {
+    refuse(direction, 'search-rtl', `direction: rtl on <input type=search> ${address} is not supported: Chrome puts its cancel button at the inline end, which the engine lays out only for ltr`, `Set direction: ltr on <input> ${address}, or use type="text".`, 'DRAGON_UNSUPPORTED_VALUE', targets.filter((t) => t === 'ios' || t === 'android'));
+  }
+  if (state === 'search') checkSearchField(el, (v, what, message, manual) => refuse(v, what, message, manual, 'DRAGON_UNSUPPORTED_VALUE', targets.filter((t) => t === 'ios' || t === 'android')));
+  if (!(hostEdits && tag === 'input') && !el.element.attributes.has('readonly')) {
     refuse(null, 'editing', `<${tag}> ${address} is an editable text control: Dragon draws its value but has no caret, selection or keyboard input on iOS and Android yet (the FORM-b editing slice)`, `Add readonly to <${tag}> ${address}, or target web only, until native text editing lands.`, 'DRAGON_UNSUPPORTED_VALUE', targets.filter((t) => t === 'ios' || t === 'android'));
   }
   if (tag === 'textarea') checkTextAreaChrome(el, targets, refuse);
@@ -1861,6 +1867,36 @@ function checkTextAreaChrome(el: ResolvedElement, targets: readonly string[], re
     refuse(el.props.get(ox === 'visible' ? 'overflow-x' : 'overflow-y') as ResolvedValue, 'overflow', `overflow: visible on <textarea> ${address}, which Chrome makes auto, is not modelled`, `Leave overflow at auto, or set hidden, on <textarea> ${address}.`, 'DRAGON_UNSUPPORTED_VALUE', native);
   } else if (keywordOf(scrollbarWidth) !== 'none' && ((oy !== 'hidden' && oy !== 'clip') || ox === 'scroll')) {
     refuse(scrollbarWidth, 'gutter', `<textarea> ${address} reserves a scrollbar gutter in its default size (scrollbar-width: ${valueToString(scrollbarWidth.value)}), whose thickness is the platform's`, `Set scrollbar-width: none (or overflow: hidden) on <textarea> ${address}.`, 'DRAGON_UNSUPPORTED_VALUE', native);
+  }
+}
+
+/**
+ * FORM-search (notes/FORM-search-spec.md R5): the cancel button narrows a search field's editor and placeholder at their inline
+ * end, which no fixture measures under a text-align that moves text off the inline start, or under an author ::placeholder margin.
+ * refuse refuses on the native targets only: on the web Chrome lays the field out itself.
+ */
+function checkSearchField(el: ResolvedElement, refuse: (v: ResolvedValue | null, what: string, message: string, manual: string) => void): void {
+  const address = el.element.address;
+  const align = el.props.get('text-align') as ResolvedValue;
+  const rtl = keywordOf(el.props.get('direction') as ResolvedValue) === 'rtl';
+  // controls-search measures start alignment and controls-text-field-search end alignment in ltr (an rtl search field is refused).
+  const startAligned = (v: ResolvedValue): boolean => {
+    const a = keywordOf(v);
+    return a === 'start' || (a === 'left' && !rtl) || (a === 'right' && rtl) || (!rtl && (a === 'end' || a === 'right'));
+  };
+  if (!startAligned(align)) {
+    refuse(align, 'search-align', `text-align: ${valueToString(align.value)} on the search field ${address} is not supported: its cancel button narrows the editor, which moves centred text in a way no fixture measures yet`, `Keep text-align: start on <input type=search> ${address}.`);
+  }
+  for (const c of el.children) {
+    if (c.kind !== 'element') continue;
+    const part = textFieldPartOf(c as ResolvedElement);
+    if (part === undefined || part.part !== 'placeholder') continue;
+    const own = (c as ResolvedElement).props.get('text-align') as ResolvedValue;
+    if (startAligned(align) && !startAligned(own)) refuse(own, 'search-placeholder-align', `text-align: ${valueToString(own.value)} on the placeholder of the search field ${address} is not supported: the cancel button narrows the placeholder's box, which moves centred text in a way no fixture measures yet`, `Keep text-align: start on the ::placeholder of <input type=search> ${address}.`);
+    for (const side of ['margin-left', 'margin-right'] as const) {
+      const m = (c as ResolvedElement).props.get(side) as ResolvedValue;
+      if (valueToString(m.value) !== '0px') refuse(m, `search-placeholder-${side}`, `${side}: ${valueToString(m.value)} on the placeholder of the search field ${address} is not supported: the cancel button takes the placeholder's inline end, which no fixture measures with an author margin`, `Remove the ::placeholder ${side} for <input type=search> ${address}.`);
+    }
   }
 }
 
@@ -2425,7 +2461,7 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
       checkSelect(el, parentDisplay, chain, targets, diagnostics, reported, environmentOf(root).ua);
       checkInline(el, targets, diagnostics, reported, shapedAt, environmentOf(root).ua);
     } else if (!here && ((el.element.tag === 'input' && isTextFieldType(el.element.attributes.get('type'))) || el.element.tag === 'textarea')) {
-      checkTextField(el, parentDisplay, targets, diagnostics, reported);
+      checkTextField(el, parentDisplay, targets, diagnostics, reported, environmentOf(root).hostTextEditing === true);
       checkInline(el, targets, diagnostics, reported, shapedAt, environmentOf(root).ua);
     } else if (!here && el.element.tag === 'input' && isCheckboxType(el.element.attributes.get('type'))) {
       checkCheckbox(el, parentDisplay, chain, targets, diagnostics, reported);

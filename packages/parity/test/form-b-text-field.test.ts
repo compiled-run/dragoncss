@@ -1,9 +1,12 @@
 // FORM-b: single-line text fields (text, email, url, tel and an unknown type) compile as Chrome 145's UA shadow tree, an inner
 // editor holding the value and a placeholder while the value is empty, laid out by the engine (controls.ts) and written for the
-// web with ::placeholder. Refused: a themed field, a password field, an inline-level one, and on iOS and Android an editable one.
+// web with ::placeholder. Refused: a themed field, a password field, an inline-level one, and on iOS and Android an editable one
+// unless the host edits text fields (compileNativeStyles textEditing: 'host', as the Markless export compiles).
 import { describe, expect, it } from 'vitest';
-import type { Compiled, Diagnostic } from 'dragon';
+import type { Compiled, Diagnostic, NativeStylesConfig } from 'dragon';
 import * as dragon from 'dragon';
+import { marklessFrontEnd, parseMarklessStyleInput } from '../src/markless-style-input.ts';
+import { PROJECT_ID } from '../src/fixture-reader.ts';
 import { ahemMeasurer, layout as engineLayout } from '@dragon/layout';
 import { fixtureToInput } from '../src/fixture-reader.ts';
 import { withFontMapAssets } from '../src/fixture-groups/fonts.ts';
@@ -28,8 +31,8 @@ ${body}
 /** Every field here devolves to CSS by its author border, except where a test passes its own base rule. */
 const BASE = 'input { display: block; font: inherit; appearance: none; margin: 0; border: 2px solid #036; padding: 1px 2px; }';
 
-function compile(id: string, css: string, body: string, base = BASE, fonts = false): Compiled<'ios' | 'android' | 'web'> {
-  const project = dragon.createProjectWith({ projectId: 'dragon-parity', targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} }, ...(fonts ? { fonts: FONT_REFERENCE_MAP } : {}) }, { faults: dragon.NO_FAULTS, profiles: 'derive', direction: 'ltr', rootFont: 'ahem' });
+function compile(id: string, css: string, body: string, base = BASE, fonts = false, hostTextEditing = false): Compiled<'ios' | 'android' | 'web'> {
+  const project = dragon.createProjectWith({ projectId: 'dragon-parity', targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} }, ...(fonts ? { fonts: FONT_REFERENCE_MAP } : {}) }, { faults: dragon.NO_FAULTS, profiles: 'derive', direction: 'ltr', rootFont: 'ahem', ...(hostTextEditing ? { hostTextEditing } : {}) });
   const input = fixtureToInput(id, page(css, body, base));
   return project.compile(fonts ? withFontMapAssets(input, FONT_REFERENCE_MAP) : input);
 }
@@ -103,5 +106,73 @@ describe('FORM-b text fields', () => {
     expect(errors(compile('tf-float', 'input { float: left; }', '<input data-dragon-id="t" readonly="">'))).toContainEqual(expect.stringMatching(/float: left on <input> t is not supported on a text control/));
     expect(errors(compile('tf-font', 'input { font-family: Lato; }', '<input data-dragon-id="t" readonly="">', BASE, true))).toContainEqual(expect.stringMatching(/^ios DRAGON_UNSUPPORTED_FONT <input> t is in font-family: Lato: Chrome sizes a text control by the face's average character width/));
     expect(errors(compile('tf-font-width', 'input { font-family: Lato; width: 40px; }', '<input data-dragon-id="t" readonly="">', BASE, true)).filter((e) => e.includes('average character width'))).toHaveLength(2);
+  });
+
+  it('lays out a search field with its cancel button at the end of the editor\'s line, as Chrome 145 does', () => {
+    // The button's side is lroundf(clamp(9 x font size / 13, 5, 21)) between a 1px and a 3px margin; the field is border-box.
+    const css = '.h41 { height: 41px; } .f4 { font-size: 4px; } .h20 { height: 20px; } .f16 { font-size: 16px; } .w50 { width: 50px; text-align: right; }';
+    const c = compile('tf-search', css, [
+      '<input data-dragon-id="a" readonly="" type="search" placeholder="PP">',
+      '<input data-dragon-id="b" readonly="" type="search" class="h41" placeholder="PP">',
+      '<input data-dragon-id="c" readonly="" type="search" class="f4" value="X">',
+      '<input data-dragon-id="d" readonly="" type="search" class="f4 h20" placeholder="P">',
+      '<input data-dragon-id="e" readonly="" type="search" size="3" value="X">',
+      '<input data-dragon-id="f" readonly="" type="search" class="f16" value="X">',
+      '<input data-dragon-id="g" readonly="" type="search" class="w50" value="XX XX">',
+    ].join('\n'));
+    expect(errors(c)).toEqual([]);
+    const b = boxes(c);
+    const at = (id: string): number[] => { const r = b.get(id); return r === undefined ? [] : [r.x, r.y, r.width, r.height]; };
+    expect(at('a')).toEqual([0, 0, 208, 16]);
+    expect([at('a::placeholder'), at('a::editor')]).toEqual([[4, 3, 189, 10], [4, 3, 189, 10]]);
+    // border-box: a 41px field has a 35px content box, the editor centred in it.
+    expect([at('b')[3], at('b::editor')[1], at('b::placeholder')[1]]).toEqual([41, 15.5, 15.5]);
+    // A 5px button beside a 4px editor: the 5px container is centred in the 4px content box and the editor in the container.
+    expect([at('c'), at('c::editor')]).toEqual([[0, 57, 88, 10], [4, 3, 71, 4]]);
+    expect([at('d::editor'), at('d::placeholder')]).toEqual([[4, 8, 71, 4], [4, 8, 71, 4]]);
+    expect([at('e')[2], at('e::editor')[2], at('f')[2], at('f::editor')[2], at('g::editor')[2]]).toEqual([38, 19, 328, 305, 31]);
+  });
+
+  it('refuses a right-to-left search field on iOS and Android, where the engine puts the cancel button only at the right', () => {
+    expect(errors(compile('tf-search-rtl', 'input { direction: rtl; }', '<input data-dragon-id="t" readonly="" type="search" value="XX">')).filter((e) => e.includes('type=search'))).toEqual([
+      expect.stringMatching(/^android DRAGON_UNSUPPORTED_VALUE direction: rtl on <input type=search> t is not supported/),
+      expect.stringMatching(/^ios DRAGON_UNSUPPORTED_VALUE direction: rtl on <input type=search> t is not supported/),
+    ]);
+  });
+
+  it('lays out an editable field when the host edits text fields, and a compile without that still refuses it', () => {
+    const body = '<input data-dragon-id="t" type="search" placeholder="PP">\n<input data-dragon-id="v" value="XX">';
+    expect(errors(compile('tf-host-edits', '', body, BASE, false, true))).toEqual([]);
+    expect(errors(compile('tf-not-host', '', body)).filter((e) => e.includes('is an editable text control'))).toHaveLength(4);
+    const b = boxes(compile('tf-host-edits', '', body, BASE, false, true));
+    expect([b.get('t::placeholder')?.width, b.get('t::editor')?.width, b.get('v::editor')?.width]).toEqual([189, 189, 200]);
+    // The host's clear control, in the field's frame: from the editor's inline end to the 200px content box's, a 7px button (10px font) and its 1px and 3px margins.
+    const clearRegion = (id: string): number => 2 + 2 + 200 - ((b.get(`${id}::editor`)?.x ?? 0) + (b.get(`${id}::editor`)?.width ?? 0));
+    expect([clearRegion('t'), clearRegion('v')]).toEqual([7 + 1 + 3, 0]);
+  });
+
+  it('still refuses a textarea when the host edits single-line fields', () => {
+    const refused = errors(compile('tf-host-textarea', '', '<textarea data-dragon-id="a">XX</textarea>', BASE, false, true)).filter((e) => e.includes('is an editable text control'));
+    expect(refused).toEqual([expect.stringMatching(/^android DRAGON_UNSUPPORTED_VALUE <textarea> a is an editable text control/), expect.stringMatching(/^ios DRAGON_UNSUPPORTED_VALUE <textarea> a is an editable text control/)]);
+  });
+
+  it('accepts an editable search field in a Markless compile (textEditing: host) and refuses it in a plain native compile', () => {
+    const text = JSON.stringify({
+      version: 'markless.native-style-input/0',
+      component: 'Search',
+      nodes: [
+        { kind: 'element', id: 'h0', element: 'main', parent: null, attributes: {} },
+        { kind: 'element', id: 'h1', element: 'input', parent: 'h0', attributes: { class: 'search', type: 'search', placeholder: 'Search notes' } },
+      ],
+      css: 'main { font-family: Ahem; font-size: 16px; } .search { display: block; font: inherit; width: 100%; padding: 12px 16px; border: 1px solid #ccc; border-radius: 999px; }',
+      states: [],
+    });
+    const parsed = parseMarklessStyleInput(text);
+    const input = withFontMapAssets(marklessFrontEnd(parsed, text, 'search.native-style-input.json'), FONT_REFERENCE_MAP);
+    const config: NativeStylesConfig = { projectId: PROJECT_ID, name: 'Search', targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 } }, fonts: FONT_REFERENCE_MAP, viewport: { width: 402, height: 874 }, support: 'lanes', output: 'program' };
+    const refusals = (c: NativeStylesConfig): string[] => dragon.compileNativeStyles(c, input).diagnostics.filter((d) => d.severity === 'error').map((d) => `${d.target ?? 'all'} ${d.message}`);
+    expect(refusals({ ...config, textEditing: 'host' })).toEqual([]);
+    expect(refusals(config)).toEqual([expect.stringMatching(/^android <input> h1 is an editable text control/), expect.stringMatching(/^ios <input> h1 is an editable text control/)]);
+    expect(() => dragon.compileNativeStyles({ ...config, textEditing: 'device' as 'host' }, input)).toThrow("textEditing \"device\" is not 'host'");
   });
 });

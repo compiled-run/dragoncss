@@ -24,7 +24,7 @@ public func ratio_ratioInline(_ s: LayoutStyle) throws -> Double {
   let r: any U_AspectRatioValue_autoRatio_AspectRatioValue_ratio_Auto = s.aspectRatio
   // ts: packages/layout/src/ratio.ts:41
   if (r.kind == S.s_auto) {
-    throw JsError(message: S.s1172)
+    throw JsError(message: S.s1162)
   }
   return (r as! any U_AspectRatioValue_autoRatio_AspectRatioValue_ratio).width
 }
@@ -34,7 +34,7 @@ public func ratio_ratioBlock(_ s: LayoutStyle) throws -> Double {
   let r: any U_AspectRatioValue_autoRatio_AspectRatioValue_ratio_Auto = s.aspectRatio
   // ts: packages/layout/src/ratio.ts:47
   if (r.kind == S.s_auto) {
-    throw JsError(message: S.s1172)
+    throw JsError(message: S.s1162)
   }
   return (r as! any U_AspectRatioValue_autoRatio_AspectRatioValue_ratio).height
 }
@@ -119,7 +119,7 @@ public func ratio_initialBlockSize(_ ctx: Ctx, _ box: LayoutBox, _ basis: any U_
 public func ratio_noPercentBasis(_ box: LayoutBox) throws -> any U_HeightBasis_definite_HeightBasis_flexDependent_HeightBasis_indefinite {
   // ts: packages/layout/src/ratio.ts:120
   if try ratio_blockLengthsHavePercent(box.style) {
-    throw JsError(message: jsConcat(box.id, S.s44))
+    throw JsError(message: jsConcat(box.id, S.s43))
   }
   return HeightBasis_indefinite(S.s_indefinite)
 }
