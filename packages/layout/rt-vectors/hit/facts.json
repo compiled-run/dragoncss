@@ -1140,6 +1140,7 @@
     "controls-range-block-rtl": "r1 is a form control, which the hit table does not model yet (FORM-a; Chrome retargets its parts to the control, no Chrome hit capture)",
     "controls-range-flex": "a1 is a form control, which the hit table does not model yet (FORM-a; Chrome retargets its parts to the control, no Chrome hit capture)",
     "controls-range-flex-rtl": "a1 is a form control, which the hit table does not model yet (FORM-a; Chrome retargets its parts to the control, no Chrome hit capture)",
+    "controls-text-field-inline": "n1 is an atomic inline, which the hit table does not model yet (INL2a and G-INL: inline-block, inline-flex and inline-grid on their lines; no Chrome hit capture)",
     "controls-select-natural-width": "mt is an atomic inline, which the hit table does not model yet (INL2a and G-INL: inline-block, inline-flex and inline-grid on their lines; no Chrome hit capture)",
     "controls-select-natural-width-rtl": "mt is an atomic inline, which the hit table does not model yet (INL2a and G-INL: inline-block, inline-flex and inline-grid on their lines; no Chrome hit capture)",
     "display-contents": "a2 is an inline box, which the hit table does not model yet (INL1a; no Chrome hit capture)",
