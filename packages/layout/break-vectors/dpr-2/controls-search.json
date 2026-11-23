@@ -1,0 +1,19 @@
+{
+  "case": "controls-search",
+  "dpr": 2,
+  "texts": [
+    {"id":"s1::placeholder:text0","lines":[[0,5]]},
+    {"id":"s2::editor:text0","lines":[[0,5]]},
+    {"id":"s3::editor:text0","lines":[[0,18]]},
+    {"id":"t3::editor:text0","lines":[[0,18]]},
+    {"id":"s4::editor:text0","lines":[[0,2]]},
+    {"id":"t4::editor:text0","lines":[[0,2]]},
+    {"id":"s5::placeholder:text0","lines":[[0,2]]},
+    {"id":"s6::editor:text0","lines":[[0,2]]},
+    {"id":"s7::editor:text0","lines":[[0,2]]},
+    {"id":"s8::editor:text0","lines":[[0,2]]},
+    {"id":"s9::editor:text0","lines":[[0,2]]},
+    {"id":"s10::editor:text0","lines":[[0,2]]},
+    {"id":"s11::editor:text0","lines":[[0,6]]}
+  ]
+}

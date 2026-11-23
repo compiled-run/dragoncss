@@ -257,7 +257,7 @@ export type InternalBands = {
 };
 
 /** @internal One case in one band. */
-export type InternalBandCase = { readonly key: string; readonly resolved: ResolvedElement | null; readonly nativeLowered: LayoutBox | null; readonly partition: InteractionPartition | null };
+export type InternalBandCase = { readonly key: string; readonly resolved: ResolvedElement | null; readonly nativeLowered: LayoutBox | null; readonly partition: InteractionPartition | null; readonly interaction: readonly InternalInteraction[] };
 
 const records = new WeakMap<object, InternalRecord>();
 
@@ -1227,7 +1227,13 @@ function hitModelRefusals(cases: readonly CaseResult[], rules: readonly Rule[], 
           ? `Keep ${fact.property} at its initial value in a document with :${pseudo} rules, or style the state with a component state until SELD-R2b.`
           : control !== null
             ? `Style the state with a component state in a document with a form control until control hit testing is built.`
-            : `Keep ${unmodelled?.address} in flow in a document with :${pseudo} rules, or style the state with a component state until its hit testing is built.`;
+            : unmodelled?.pkg === 'INL2a'
+              ? `Use lengths for the padding of ${unmodelled.address} in a document with :${pseudo} rules, or style the state with a component state.`
+              : unmodelled?.pkg === 'INL2c'
+                ? `Keep ${unmodelled.address} from forming a stacking context (opacity, transform, containment, isolation and the like) in a document with :${pseudo} rules, or style the state with a component state.`
+                : unmodelled?.pkg === 'INL2d'
+                  ? `Make ${unmodelled.address} block-level, or put it outside a line of text, in a document with :${pseudo} rules, or style the state with a component state.`
+                  : `Keep ${unmodelled?.address} in flow in a document with :${pseudo} rules, or style the state with a component state until its hit testing is built.`;
         diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_SELECTOR', { origin, target: t, message, manual }));
       }
     }
@@ -1928,7 +1934,10 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
         conditions: bands.partition.bands.map((b) => b.condition),
         initial: nativeBand,
         container: containerQueries,
-        cases: bandCases.map((r, k) => r.cases.map((c) => ({ key: c.key, resolved: c.resolved, nativeLowered: nativeChecked ? ((loweredByBand[k] as Map<string, LayoutBox>).get(c.key) ?? null) : null, partition: c.partition }))),
+        cases: bandCases.map((r, k) => r.cases.map((c) => {
+          const band = loweredByBand[k] as Map<string, LayoutBox>;
+          return { key: c.key, resolved: c.resolved, nativeLowered: nativeChecked ? (band.get(c.key) ?? null) : null, partition: c.partition, interaction: c.interaction.map((i) => ({ value: i.value, resolved: i.resolved, nativeLowered: nativeChecked ? (band.get(interactionKey(c.key, i.value)) ?? null) : null })) };
+        })),
       },
       laneOnlyNative,
       focusReachable: focusable,
