@@ -54,6 +54,8 @@ const SWIFT_MEMBERS = String.raw`  /// The transform the program wrote (PNT2): t
     dragonTransformOps = ops
     dragonTransformOrigin = origin
     dragonApplyTransform(self, dragonShape, dragonScale)
+    // The outer shadows are rastered at the mapped geometry.
+    if !dragonShadows.isEmpty { dragonAfterLayoutShadow(self, dragonShape, dragonScale) }
   }
   /// UIKit leaves frame undefined under a non-identity transform, so a frame write lifts the transform around it.
   public override var frame: CGRect {
@@ -123,6 +125,8 @@ const KOTLIN_MEMBERS = String.raw`  /** The transform the program wrote (PNT2): 
     dragonTransformOps = ops
     dragonTransformOrigin = origin
     dragonApplyTransform(this, dragonShape, dragonTransformScale)
+    // The outer shadows are rastered at the mapped geometry.
+    if (dragonShadows.isNotEmpty()) dragonAfterLayoutShadow(this, dragonShape, dragonShadowScale)
   }
   /** The device scale of the last layout (density), for the runtime writer. */
   var dragonTransformScale = 1.0

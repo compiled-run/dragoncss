@@ -4,9 +4,10 @@
 // whatever the shadow's colour alpha), where no other box's layers paint and no other box (ancestors aside) comes within
 // SAMPLE_INSET_DEVICE_PX, and at least SAMPLE_INSET_DEVICE_PX clear of the box's own border box or inside its padding box; they
 // compare at the shadow allowance (allowances/shadow.ts). A base colour point a shadow layer paints over is suppressed, since its
-// colour is the platform's composite of the shadow, which only the shadow rule's allowance covers.
-import { insetShadowLayer, NO_SHADOW_FAULTS, outerShadowLayer } from '@dragon/layout';
-import type { ShadowInput, ShadowLayer } from '@dragon/layout';
+// colour is the platform's composite of the shadow, which only the shadow rule's allowance covers. A box with its own scale and
+// translate has its outer layers drawn under it (paint-shadow.ts shadowTransform), and its points keep clear of its mapped box.
+import { IDENTITY_SHADOW_TRANSFORM, insetShadowLayer, mapPoint, NO_SHADOW_FAULTS, outerShadowLayerMapped, paintTransformMatrix, shadowTransform } from '@dragon/layout';
+import type { Matrix2D, ShadowInput, ShadowLayer, ShadowTransform, TransformOp, TransformOrigin } from '@dragon/layout';
 import type { NativeProgram } from 'dragon';
 import type { SampleBox, SamplePoint } from '../samples.ts';
 import { ruleKind, SAMPLE_INSET_DEVICE_PX } from '../samples.ts';
@@ -35,7 +36,42 @@ function opaqueBackground(program: NativeProgram, id: string): boolean {
   return w !== undefined && w.kind === 'background-color' && w.color.alpha === 255;
 }
 
-/** A box's outer and inset layers, and the coverage of each of its shadows alone (drawn opaque black) for the smoothness test. */
+/** The scale and translate of a box from its transform facts (dragon lower/paint/transform.ts), or the identity without one. */
+export function ownShadowTransform(program: NativeProgram, id: string, left: number, top: number, right: number, bottom: number, dpr: number): ShadowTransform {
+  const f = program.nodes.find((n) => n.id === id)?.facts['transform'] as TransformFacts | undefined;
+  if (f === undefined || f.ops.length === 0) return IDENTITY_SHADOW_TRANSFORM;
+  return shadowTransform(f.ops, f.origin, left, top, right, bottom, dpr, { sin: Math.sin, cos: Math.cos });
+}
+
+type TransformFacts = { readonly ops: readonly TransformOp[]; readonly origin: TransformOrigin };
+
+/** Where a box paints: the bounds of its box mapped by its own and its ancestors' transforms (each about its origin, in device px). */
+function deviceBounds(ctx: PaintSampleContext, b: SampleBox): SampleBox {
+  const nodes = new Map(ctx.program.nodes.map((n) => [n.id, n]));
+  const boxes = new Map(ctx.boxes.map((x) => [x.id, x]));
+  let corners = [[b.left, b.top], [b.right, b.top], [b.right, b.bottom], [b.left, b.bottom]];
+  for (let id: string | null = b.id; id !== null; id = nodes.get(id)?.parent ?? null) {
+    const f = nodes.get(id)?.facts['transform'] as TransformFacts | undefined;
+    const o = boxes.get(id);
+    if (f === undefined || f.ops.length === 0 || o === undefined) continue;
+    const m = paintTransformMatrix(f.ops, f.origin, (o.right - o.left) / ctx.dpr, (o.bottom - o.top) / ctx.dpr, { sin: Math.sin, cos: Math.cos });
+    const d: Matrix2D = { full: true, a: m.a, b: m.b, c: m.c, d: m.d, e: o.left + m.e * ctx.dpr - m.a * o.left - m.c * o.top, f: o.top + m.f * ctx.dpr - m.b * o.left - m.d * o.top };
+    corners = corners.map(([x, y]) => { const p = mapPoint(d, x as number, y as number); return [p.x, p.y]; });
+  }
+  const xs = corners.map((c) => c[0] as number);
+  const ys = corners.map((c) => c[1] as number);
+  return { ...b, left: Math.min(...xs), top: Math.min(...ys), right: Math.max(...xs), bottom: Math.max(...ys) };
+}
+
+/** A box mapped by a scale and translate. */
+function mappedBox(b: SampleBox, m: ShadowTransform): SampleBox {
+  return { ...b, left: m.sx * b.left + m.tx, top: m.sy * b.top + m.ty, right: m.sx * b.right + m.tx, bottom: m.sy * b.bottom + m.ty, border: { top: m.sy * b.border.top, right: m.sx * b.border.right, bottom: m.sy * b.border.bottom, left: m.sx * b.border.left } };
+}
+
+/**
+ * A box's outer and inset layers, and the coverage of each of its shadows alone (drawn opaque black) for the smoothness test; box is
+ * where the box paints (its layout box mapped by its own scale and translate).
+ */
 export type BoxShadowLayers = { readonly box: SampleBox; readonly outer: ShadowLayer; readonly inset: ShadowLayer; readonly coverage: readonly ShadowLayer[] };
 
 const cache = new WeakMap<PaintSampleContext, readonly BoxShadowLayers[]>();
@@ -53,13 +89,15 @@ export function shadowLayers(ctx: PaintSampleContext): readonly BoxShadowLayers[
     const innerRadii = r === null ? [0, 0, 0, 0, 0, 0, 0, 0] : r.slice(8, 16);
     const opaque = opaqueBackground(ctx.program, b.id);
     const borders = [b.border.top, b.border.right, b.border.bottom, b.border.left];
+    const map = ownShadowTransform(ctx.program, b.id, b.left, b.top, b.right, b.bottom, ctx.dpr);
     const layerOf = (list: readonly ShadowInput[]): ShadowLayer[] => [
-      outerShadowLayer(b.left, b.top, b.right, b.bottom, outerRadii, opaque, list, ctx.dpr, NO_SHADOW_FAULTS),
+      outerShadowLayerMapped(b.left, b.top, b.right, b.bottom, outerRadii, opaque, list, ctx.dpr, NO_SHADOW_FAULTS, map),
       insetShadowLayer(b.left, b.top, b.right, b.bottom, borders, innerRadii, list, ctx.dpr, NO_SHADOW_FAULTS),
     ];
     const [outer, inset] = layerOf(shadows) as [ShadowLayer, ShadowLayer];
+    if (map !== IDENTITY_SHADOW_TRANSFORM && shadows.some((x) => x.inset)) throw new Error(`${b.id}: an inset shadow on a transformed box, which the compiler refuses`);
     const coverage = shadows.flatMap((s) => layerOf([{ ...s, r: 0, g: 0, b: 0, a: 255 }]));
-    out.push({ box: b, outer, inset, coverage });
+    out.push({ box: mappedBox(b, map), outer, inset, coverage });
   }
   cache.set(ctx, out);
   return out;
@@ -103,7 +141,11 @@ export function clearShadowPixel(ctx: PaintSampleContext, s: BoxShadowLayers, x:
   const all = shadowLayers(ctx);
   if (all.some((o) => o !== s && (layerAlpha(o.outer, x, y) > 0 || layerAlpha(o.inset, x, y) > 0))) return false;
   if (!coverageSmooth(s, x, y)) return false;
-  return ctx.boxes.every((b) => b.id === s.box.id || ancestor(ctx.program, b.id, s.box.id) || x + 1 <= b.left - I || x >= b.right + I || y + 1 <= b.top - I || y >= b.bottom + I);
+  return ctx.boxes.every((o) => {
+    if (o.id === s.box.id || ancestor(ctx.program, o.id, s.box.id)) return true;
+    const b = deviceBounds(ctx, o);
+    return x + 1 <= b.left - I || x >= b.right + I || y + 1 <= b.top - I || y >= b.bottom + I;
+  });
 }
 
 const clearOutsideBox = (b: SampleBox, x: number, y: number): boolean => x + 1 <= b.left - I || x >= b.right + I || y + 1 <= b.top - I || y >= b.bottom + I;

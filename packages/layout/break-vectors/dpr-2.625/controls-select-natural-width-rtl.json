@@ -1,0 +1,24 @@
+{
+  "case": "controls-select-natural-width-rtl",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"a::inner:text0","lines":[[0,2]]},
+    {"id":"c::inner:text0","lines":[[0,2]]},
+    {"id":"d::inner:text0","lines":[[0,2]]},
+    {"id":"e::inner:text0","lines":[[0,2]]},
+    {"id":"i::inner:text0","lines":[[0,2]]},
+    {"id":"j::inner:text0","lines":[[0,2]]},
+    {"id":"k::inner:text0","lines":[[0,2]]},
+    {"id":"l::inner:text0","lines":[[0,6]]},
+    {"id":"r2:text0","lines":[[0,1]]},
+    {"id":"m::inner:text0","lines":[[0,2]]},
+    {"id":"u::inner:text0","lines":[[0,6]]},
+    {"id":"g2:text0","lines":[[0,1]]},
+    {"id":"v:text0","lines":[[0,3]]},
+    {"id":"x::inner:text0","lines":[[0,4]]},
+    {"id":"y::inner:text0","lines":[[0,2]]},
+    {"id":"y2::inner:text0","lines":[[0,6]]},
+    {"id":"z::inner:text0","lines":[[0,8]]},
+    {"id":"o::inner:text0","lines":[[0,4]]}
+  ]
+}
