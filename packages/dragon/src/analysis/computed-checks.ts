@@ -1768,7 +1768,7 @@ function checkButton(el: ResolvedElement, parentDisplay: string | null, targets:
  * appearance: none, or an author background or border). Refused: a themed field; a password field (Chrome masks its text with
  * the font's bullet, which no fixture proves); an inline-level field (RF-INL); any display but block or flex; an absolutely
  * positioned one; one whose font is Chrome's UA control font; on iOS and Android an input outside Ahem whose used
- * width may read its intrinsic width (checkFieldWidth), and a textarea outside Ahem whatever its width; on iOS and Android a
+ * width may read its intrinsic width (checkFieldWidth), and a textarea or search field outside Ahem whatever its width; on iOS and Android a
  * right-to-left search field; and on iOS and Android an editable field, as Dragon has no caret or keyboard input there yet (the
  * FORM-b editing slice), unless the host edits a single-line field (hostEdits: the compile's textEditing 'host'). A readonly field
  * shows its value as drawn text.
@@ -1815,6 +1815,8 @@ function checkTextField(el: ResolvedElement, parentDisplay: string | null, chain
   if (family.origin !== 'user-agent' && native.length > 0 && textFieldAvgChar(family.value) === 'unmeasured') {
     if (tag === 'textarea') {
       refuse(family, 'width-font', `<${tag}> ${address} is in font-family: ${valueToString(family.value)}: Chrome sizes a text control by the face's average character width, which Dragon proves only for Ahem`, `Draw <${tag}> ${address} in Ahem, or target web only, until real faces are measured for text controls.`, 'DRAGON_UNSUPPORTED_FONT', native);
+    } else if (state === 'search') {
+      refuse(family, 'search-font', `<input type=search> ${address} is in font-family: ${valueToString(family.value)}: a search field's cancel button in a font other than Ahem is not proven yet (FORM-search)`, `Draw <input> ${address} in Ahem, use type="text", or target web only.`, 'DRAGON_UNSUPPORTED_FONT', native);
     } else if (!faults.fieldWidthAnyContext) {
       checkFieldWidth(el, parentDisplay, chain, (v, what, message, manual) => refuse(v, what, message, manual, 'DRAGON_UNSUPPORTED_FONT', native));
     }
