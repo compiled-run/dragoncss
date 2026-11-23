@@ -50,7 +50,7 @@ export type HitNode = {
   readonly layer: boolean;
   /** position absolute: its containing block is the nearest layer ancestor. */
   readonly absolute: boolean;
-  /** position fixed: its containing block is the viewport, or its nearest transformed ancestor (css-transforms-1 §2). */
+  /** position fixed: its containing block is the viewport (a transformed ancestor's containing block is refused). */
   readonly fixed: boolean;
   /** Painted atomically (a flex item): all its phases are tested together, in the parent's foreground phase. */
   readonly atomic: boolean;
@@ -510,9 +510,9 @@ function allPhases(ctx: HitCtx, i: number): number {
 function containingParent(ctx: HitCtx, i: number): number {
   const n = node(ctx, i);
   if (n.fixed) {
-    let up = n.parent;
-    while (up >= 0 && !node(ctx, up).transformed) up = node(ctx, up).parent;
-    return up < 0 ? 0 : up;
+    // The compiler refuses every box that would be a fixed box's containing block (a transform, a filter, will-change), so it is the viewport.
+    for (let up = n.parent; up >= 0; up = node(ctx, up).parent) if (node(ctx, up).transformed) throw new HitError(`hit node ${i} is fixed inside a transformed box, whose containing block the hit table does not model`);
+    return 0;
   }
   if (!n.absolute) return n.parent;
   let at = n.parent;
@@ -1037,7 +1037,7 @@ function boxNodes(s: TableState, b: LayoutBox, parent: number, orders: Map<strin
     kind: 'box', parent, target: own, x: r.x, y: r.y, width: r.width, height: r.height, clips: clipsBothAxes(b.style),
     borderTop: border.top, borderRight: border.right, borderBottom: border.bottom, borderLeft: border.left, layer: b.style.position !== 'static',
     absolute: b.style.position === 'absolute', fixed: b.style.position === 'fixed', atomic: orders !== null, order: order === undefined ? 0 : order,
-    layerOrder: orders !== null && b.style.position !== 'absolute' ? b.style.order : 0, line: -1,
+    layerOrder: orders !== null && b.style.position !== 'absolute' && b.style.position !== 'fixed' ? b.style.order : 0, line: -1,
     inkLeft: 0, inkTop: 0, inkRight: 0, inkBottom: 0, pointerEvents: pe, radii: roundedOf(r.x, r.y, r.width, r.height, border, lengths, s.dpr, snapX0, snapY0),
     context: paint.context, transformed: paint.transformed, scaleX: paint.scaleX, scaleY: paint.scaleY, offsetX: paint.offsetX, offsetY: paint.offsetY,
   }, b.id, act);
@@ -1087,7 +1087,7 @@ function replacedNode(s: TableState, c: ReplacedLeaf, parent: number, orders: Ma
     kind: 'box', parent, target: s.nodes.length, x: r.x, y: r.y, width: r.width, height: r.height, clips: c.style.overflowX === 'hidden',
     borderTop: border.top, borderRight: border.right, borderBottom: border.bottom, borderLeft: border.left, layer: c.style.position !== 'static',
     absolute: c.style.position === 'absolute', fixed: c.style.position === 'fixed', atomic: orders !== null, order: order === undefined ? 0 : order,
-    layerOrder: orders !== null && c.style.position !== 'absolute' ? c.style.order : 0, line: -1,
+    layerOrder: orders !== null && c.style.position !== 'absolute' && c.style.position !== 'fixed' ? c.style.order : 0, line: -1,
     inkLeft: 0, inkTop: 0, inkRight: 0, inkBottom: 0, pointerEvents: pe, radii: roundedOf(r.x, r.y, r.width, r.height, border, f.radii, s.dpr, paint.transformed && !(paint.scaleX === 1 && paint.scaleY === 1) ? r.x : sox, paint.transformed && !(paint.scaleX === 1 && paint.scaleY === 1) ? r.y : soy),
     context: paint.context, transformed: paint.transformed, scaleX: paint.scaleX, scaleY: paint.scaleY, offsetX: paint.offsetX, offsetY: paint.offsetY,
   }, c.id, f.activation);

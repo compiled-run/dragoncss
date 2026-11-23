@@ -80,7 +80,7 @@ describe('paint order', () => {
     expect(at([root, clip, held], 10, 50)).toBe(0);
   });
 
-  it('lets a fixed box escape every clipping ancestor but a transformed one, as its containing block is the viewport', () => {
+  it('lets a fixed box escape every clipping ancestor, as its containing block is the viewport, and refuses one inside a transformed box', () => {
     const root = box(-1, 0, 0, 0, 400, 300);
     const clipLayer = box(0, 1, 0, 0, 50, 20, { clips: true, layer: true });
     const fixed = box(1, 2, 0, 0, 100, 100, { layer: true, fixed: true });
@@ -88,7 +88,7 @@ describe('paint order', () => {
     const absolute = box(1, 2, 0, 0, 100, 100, { layer: true, absolute: true });
     expect(at([root, clipLayer, absolute], 10, 50)).toBe(0);
     const turned = box(0, 1, 0, 0, 50, 20, { clips: true, layer: true, context: true, transformed: true });
-    expect(at([root, turned, fixed], 10, 50)).toBe(0);
+    expect(() => at([root, turned, fixed], 10, 50)).toThrow('is fixed inside a transformed box');
   });
 });
 
