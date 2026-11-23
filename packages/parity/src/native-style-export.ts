@@ -273,8 +273,8 @@ export const valuesOf = (a: Assignment): Record<string, Scalar> => Object.fromEn
 export const exportBands = (o: { readonly bands: { readonly table: { readonly atoms: readonly unknown[]; readonly bands: readonly (readonly boolean[])[] }; readonly conditions: readonly string[] } | null }): Pick<ExportTarget, 'bands'> =>
   o.bands === null ? {} : { bands: { atoms: o.bands.table.atoms, bands: o.bands.table.bands, conditions: o.bands.conditions } };
 
-/** The export of every emitted target; a blocked target throws, naming its reason, since an export without it would drop styles. */
-export function nativeStyleExport(styles: NativeStyles, component: string, source: string, devices: { readonly [T in NativeStyleTarget]: ExportDevice } = EXPORT_DEVICES, inputFonts: readonly { readonly id: string; readonly file: string; readonly bytes: Uint8Array }[] = [], systemFonts: ((t: NativeStyleTarget, dpr: number) => SystemFonts) | null = null, plan = false): NativeStyleExport {
+/** The export of every emitted target; a blocked target throws, naming its reason, since an export without it would drop styles. A slot `sample` needs no animator tables. */
+export function nativeStyleExport(styles: NativeStyles, component: string, source: string, devices: { readonly [T in NativeStyleTarget]: ExportDevice } = EXPORT_DEVICES, inputFonts: readonly { readonly id: string; readonly file: string; readonly bytes: Uint8Array }[] = [], systemFonts: ((t: NativeStyleTarget, dpr: number) => SystemFonts) | null = null, plan = false, sample = false): NativeStyleExport {
   const inputFaces = new Map(inputFonts.map((f) => [registerFace(f.bytes), f.file]));
   const systemUsed = new Map<string, Record<string, unknown>>();
   if (!styles.ok) throw new Error(`${component}: no export: ${Object.entries(styles.targets).map(([t, o]) => `${t} ${o.kind === 'blocked' ? o.reason : 'emitted'}`).join('; ')}`);
@@ -369,7 +369,7 @@ export function nativeStyleExport(styles: NativeStyles, component: string, sourc
     if (r.kind === 'blocked') throw new Error(`${component}: ${t} is emitted but its output state is blocked`);
     const readiness = r.kind === 'ready' ? { kind: 'ready' as const } : { kind: 'analysis-only' as const, reason: r.reason };
     if (plan && systemFonts === null) throw new Error(`${component}: a layout plan records the text a target's system fonts shape, and the export was given no system fonts`);
-    if (o.anim !== undefined && !plan) throw new Error(`${component}: ${t} has transitions or animations, which a phone runs only with a layout plan`);
+    if (o.anim !== undefined && !plan && !sample) throw new Error(`${component}: ${t} has transitions or animations, which a phone runs only with a layout plan`);
     const animated = plan && o.anim !== undefined ? { anim: animTablesOf(o.anim) } : {};
     const laidOut = plan && systemFonts !== null ? { plan: marklessPlan(t, sp, (dpr) => systemFonts(t, dpr), [...inputFaces.keys()], new Map(inputFonts.map((f) => [registerFace(f.bytes), f.bytes])), d.viewport.height, o.interaction, recorded.get(t), checksHeights(o)) } : {};
     targets[t] = { backend: o.backend, viewport: d.viewport, dpr: d.dpr, readiness, states: sp.states.map((s) => ({ key: s.key, domain: s.domain })), initial: sp.initial, assignments, next: sp.next, ...exportBands(o), ...laidOut, ...animated, ...interaction };

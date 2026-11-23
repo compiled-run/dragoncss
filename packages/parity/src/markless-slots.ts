@@ -2,7 +2,8 @@
 // into an element's style attribute while it runs. Dragon compiles the input at sample values of each slot, finds every engine-input
 // style field and write number the slot moves, and fits each piece of it (below zero, zero and up, not finite) to one rule, checked
 // exactly at every sample; the device writes the rule's value in and lays out again (harness.ts runMarklessLayout).
-import type { NativeStyleTarget, StateProgram } from 'dragon';
+import type { AnimProgram, ElementMotion, NativeStyleTarget, StateProgram } from 'dragon';
+import { admittedAnimation, animationKind } from 'dragon';
 
 /** A number the app computes while it runs, at its initial state; `integer` when the app writes whole numbers only. */
 export type MarklessSlot = { readonly id: string; readonly initial: number; readonly integer?: true };
@@ -149,8 +150,85 @@ function fitRule(samples: readonly (readonly [number, number])[], piece: 0 | 1 |
 
 /** One compile of the input with its slots filled at `values`: per target and assignment, each box's engine-input style by Dragon id and each export node's writes by the input's id. */
 export type SlotSample = {
-  readonly [T in NativeStyleTarget]?: readonly { readonly styles: ReadonlyMap<string, Readonly<Record<string, unknown>>>; readonly writes: ReadonlyMap<string, readonly Readonly<Record<string, unknown>>[]>; readonly frames: ReadonlyMap<string, { readonly x: number; readonly y: number; readonly width: number; readonly height: number } | null>; readonly other: string }[];
+  readonly [T in NativeStyleTarget]?: readonly { readonly styles: ReadonlyMap<string, Readonly<Record<string, unknown>>>; readonly writes: ReadonlyMap<string, readonly Readonly<Record<string, unknown>>[]>; readonly frames: ReadonlyMap<string, { readonly x: number; readonly y: number; readonly width: number; readonly height: number } | null>; readonly other: string; readonly motion?: SlotMotion }[];
 };
+/**
+ * With transitions or animations: each element's computed values, listings and keyframed longhands by the input's id; the animation
+ * program's part for this assignment as JSON; and each colour closure write [node, longhand, source node, source longhand].
+ */
+export type SlotMotion = { readonly elements: ReadonlyMap<string, ElementMotion>; readonly anim: string; readonly closure: readonly (readonly [string, string, string, string])[] };
+
+/** Planted faults of the SLOT-transitions check, for its tests only. */
+export type SlotTransitionFaults = {
+  readonly slotTransitionDelayIgnored?: boolean;
+  readonly slotTransitionOwnElementOnly?: boolean;
+  readonly slotTransitionAdmittedOnly?: boolean;
+  readonly slotTransitionAnyBorder?: boolean;
+  readonly slotAnimProgramInvarianceSkipped?: boolean;
+};
+
+/** An animation program's part for assignment i, as JSON: what the phone builds once, at the slots' initial values. */
+export const animProgramAt = (p: AnimProgram, i: number): string => JSON.stringify({
+  slots: p.slots.map((x) => [x.node, x.property, x.kind, x.range, x.values[i], x.listings[i]]),
+  animations: p.animations.map((x) => [x.node, x.lists[i]]),
+  keyframes: p.keyframes,
+  rendered: p.rendered.map((x) => [x.node, x.values[i]]),
+  bases: p.bases.map((x) => [x.node, x.property, x.values[i]]),
+  closure: p.closure,
+  origins: p.origins.map((x) => [x.node, x.values[i]]),
+});
+
+const CURRENTCOLOR = JSON.stringify({ kind: 'keyword', value: 'currentcolor' });
+
+/**
+ * SLOT-transitions: a pair (element, longhand) whose computed value differs between the base and a sample of the slot is refused when
+ * Chrome would run a transition or animation on it as the app writes the slot: a listing (in the base or any sample, as Chrome reads
+ * the after-change one) with a combined duration above 0 on a property that interpolates, keyframes that set it, or a colour closure
+ * write the animator makes each frame. Then every sample's animation program must be the base's, as the phone builds it once.
+ */
+function refuseSlotMotion(where: string, slot: string, b: SlotMotion, all: readonly (readonly [number, { readonly motion?: SlotMotion }])[], assignments: readonly { readonly motion?: SlotMotion }[], faults: SlotTransitionFaults): void {
+  const valueOf = (m: ElementMotion, p: string): string | undefined => {
+    const v = m.values.get(p);
+    return faults.slotTransitionAnyBorder === true && v === CURRENTCOLOR && p !== 'color' ? m.values.get('color') : v;
+  };
+  const moved = new Map<string, readonly [string, string]>();
+  const motions = [b];
+  for (const [s, a] of all) {
+    const motion = a.motion ?? fail(`${where}: ${slot} at ${String(s)} has no transitions or animations where its base has`);
+    motions.push(motion);
+    for (const [node, m] of motion.elements) {
+      const was = b.elements.get(node) ?? fail(`${where}: ${slot} at ${String(s)} changes which elements there are`);
+      for (const p of m.values.keys()) if (valueOf(m, p) !== valueOf(was, p)) moved.set(JSON.stringify([node, p]), [node, p]);
+    }
+  }
+  const transitionMessage = (p: string, node: string, l: { readonly duration: number; readonly delay: number }): string => `${where}: ${p} of ${node} follows ${slot} and has a transition (${l.duration}s, delay ${l.delay}s), which Chrome runs when the app writes a new value, and the phone writes the new value at once`;
+  const keyframesMessage = (p: string, node: string, name: string): string => `${where}: ${p} of ${node} follows ${slot} and is set by the keyframes of animation ${name}, which Chrome interpolates from the value the app writes, and the phone does not`;
+  const runs = (p: string, l: { readonly mode: string; readonly duration: number; readonly delay: number } | undefined): l is { readonly mode: string; readonly duration: number; readonly delay: number } => {
+    if (l === undefined || l.mode !== 'listed') return false;
+    if (!(faults.slotTransitionDelayIgnored === true ? l.duration > 0 : Math.max(l.duration, 0) + l.delay > 0)) return false;
+    return faults.slotTransitionAdmittedOnly === true ? admittedAnimation(animationKind(p as never)) : animationKind(p as never).kind !== 'discrete';
+  };
+  for (const key of [...moved.keys()].sort()) {
+    const [node, p] = moved.get(key)!;
+    for (const m of motions) {
+      const l = m.elements.get(node)?.listings.get(p as never);
+      if (runs(p, l)) fail(transitionMessage(p, node, l));
+    }
+    for (const m of motions) {
+      const k = m.elements.get(node)?.keyframed.find((x) => x.longhands.includes(p));
+      if (k !== undefined) fail(keyframesMessage(p, node, k.name));
+    }
+    for (const m of motions) for (const [cn, cp, sn, sp] of m.closure) {
+      if (cn !== node || cp !== p) continue;
+      const source = assignments.flatMap((a) => (a.motion === undefined ? [] : [a.motion.elements.get(sn)]));
+      const l = source.map((e) => e?.listings.get(sp as never)).find((x) => runs(sp, x));
+      const k = source.flatMap((e) => e?.keyframed ?? []).find((x) => x.longhands.includes(sp));
+      fail(l === undefined && k !== undefined ? keyframesMessage(p, node, k.name) : transitionMessage(p, node, l ?? { duration: 0, delay: 0 }));
+    }
+  }
+  if (faults.slotAnimProgramInvarianceSkipped === true) return;
+  for (const [s, a] of all) if (a.motion?.anim !== b.anim) fail(`${where}: ${slot} at ${String(s)} changes the page's animation program (a keyframe, a timing or a transform-origin that follows the slot), which the phone builds once at the slots' initial values`);
+}
 
 /** The engine-input boxes of a state program's assignment, by id, each with its style; `other` is the rest of the tree with no style. */
 export function engineStyles(sp: StateProgram, i: number): { readonly styles: Map<string, Readonly<Record<string, unknown>>>; readonly other: string } {
@@ -175,7 +253,7 @@ export function engineStyles(sp: StateProgram, i: number): { readonly styles: Ma
  * slot whose piece is refused stays at its initial value), which must be what the slots' bindings give together. Refused by name: a
  * slot that moves anything other than a box's style fields and write numbers, a number that follows no rule, a field two slots move.
  */
-export function slotBindings(slots: readonly MarklessSlot[], base: SlotSample, sample: (slot: number, s: number) => SlotSample | { readonly refused: string }, together: (values: readonly number[]) => SlotSample): { readonly [T in NativeStyleTarget]?: readonly SlotBindings[] } {
+export function slotBindings(slots: readonly MarklessSlot[], base: SlotSample, sample: (slot: number, s: number) => SlotSample | { readonly refused: string }, together: (values: readonly number[]) => SlotSample, faults: SlotTransitionFaults = {}): { readonly [T in NativeStyleTarget]?: readonly SlotBindings[] } {
   const out: { [T in NativeStyleTarget]?: SlotBindings[] } = {};
   const compiled = slots.map((slot, k) => (slot.integer === true ? SLOT_SAMPLES.integer : SLOT_SAMPLES.number).map((piece) => piece.map((s) => [s, sample(k, s)] as const)));
   const refused: SlotRefusal[] = [];
@@ -216,6 +294,7 @@ export function slotBindings(slots: readonly MarklessSlot[], base: SlotSample, s
         };
         const pieces = samples[k]!.map((piece) => piece?.map(([s, x]) => [s, at(x, String(s))] as const) ?? null);
         const all = pieces.flatMap((p) => p ?? []);
+        if (b.motion !== undefined) refuseSlotMotion(`${t} assignment ${i}`, slot.id, b.motion, all, assignments, faults);
         const moved = new Set<string>();
         for (const [, a] of all) for (const [id, style] of a.styles) {
           const was = b.styles.get(id) as Record<string, unknown>;

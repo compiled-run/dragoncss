@@ -501,6 +501,39 @@ export function animProgramOf(compiled: object, assignments: readonly Assignment
   return lowerAnimProgram(record.animation, cases);
 }
 
+/** One element in one assignment: each longhand's computed value as JSON, its transition listings, and each animation's keyframed longhands. */
+export type ElementMotion = {
+  readonly values: ReadonlyMap<string, string>;
+  readonly listings: ReadonlyMap<string, import('./analysis/animations.ts').Listing>;
+  readonly keyframed: readonly { readonly name: string; readonly longhands: readonly string[] }[];
+};
+
+/** Per assignment, each element's ElementMotion by address; null when the compile has no transitions or animations. */
+export function motionFactsOf(compiled: object, assignments: readonly Assignment[]): readonly ReadonlyMap<string, ElementMotion>[] | null {
+  const record = internalRecord(compiled);
+  if (record === undefined || record.animation === null) return null;
+  const analysis = record.animation;
+  return assignments.map((a) => {
+    const c = caseOf(compiled, a);
+    if (typeof c === 'string' || c.resolved === null) throw new Error(`no resolved case for the assignment ${JSON.stringify(a)}`);
+    const elements = analysis.cases.find((x) => x.key === c.key)?.elements;
+    if (elements === undefined) throw new Error(`case ${c.key} has no animation analysis`);
+    const out = new Map<string, ElementMotion>();
+    const walk = (el: ResolvedElement): void => {
+      const ea = elements.get(el.element.address);
+      out.set(el.element.address, {
+        values: new Map([...el.props].map(([p, v]) => [p, JSON.stringify(v.value)])),
+        listings: ea?.listings ?? new Map(),
+        keyframed: (ea?.animations ?? []).filter((e) => e.hasKeyframes).map((e) => ({ name: e.name, longhands: [...new Set(analysis.keyframes.get(e.name)?.blocks.flatMap((b) => b.values.map((v) => v.property)) ?? [])] })),
+      });
+      for (const ch of el.children) if (ch.kind === 'element') walk(ch);
+    };
+    walk(c.resolved);
+    return out;
+  });
+}
+export { admitted as admittedAnimation } from './css/animation-kinds.ts';
+
 /** The animation features a compile uses (the support gate's keys in the animation context), sorted. */
 export function animationFeatures(compiled: object): readonly string[] {
   const record = internalRecord(compiled);
