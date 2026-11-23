@@ -1801,7 +1801,58 @@ function checkButton(el: ResolvedElement, parentDisplay: string | null, targets:
  * and on iOS and Android an editable field, as Dragon has no caret or keyboard input there yet (the FORM-b editing slice),
  * unless the host edits it (hostEdits: the compile's textEditing 'host'). A readonly field shows its value as drawn text.
  */
-function checkTextField(el: ResolvedElement, layoutParent: ResolvedElement | null, parentDisplay: string | null, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, hostEdits: boolean): void {
+/** A width that names no intrinsic size: a length or a percentage. */
+const sizedWithoutContent = (v: ResolvedValue | undefined): boolean => v !== undefined && (v.value.kind === 'length' || v.value.kind === 'percentage');
+
+/** A grid container laying out its items in one stretching column: no column template, row flow, items stretched. */
+function singleStretchColumn(grid: ResolvedElement): boolean {
+  const template = grid.props.get('grid-template-columns') as ResolvedValue;
+  const flow = keywordOf(grid.props.get('grid-auto-flow') as ResolvedValue);
+  const justify = keywordOf(grid.props.get('justify-items') as ResolvedValue);
+  return keywordOf(template) === 'none' && flow !== 'column' && (justify === 'normal' || justify === 'stretch' || justify === 'legacy');
+}
+
+/**
+ * FORM-text-font: why a text control's inline size can read its face's average character width, or null when it cannot. Chrome 145
+ * measured: a field with a length width, or a percentage width whose containing block's width does not depend on content, is the
+ * same size in Roboto, Inter and Ahem; with no width, or a percentage width in a float, an inline-block, a max-content box, an
+ * auto-width absolute box or a multi-column grid, it is not (197, 217 and 350px for one field).
+ */
+function avgWidthReader(el: ResolvedElement, chain: readonly ResolvedElement[]): string | null {
+  const width = el.props.get('width') as ResolvedValue;
+  if (!sizedWithoutContent(width)) return `its width is ${valueToString(width.value)}`;
+  const minWidth = el.props.get('min-width') as ResolvedValue;
+  if (keywordOf(minWidth) !== 'auto' && !sizedWithoutContent(minWidth)) return `its min-width is ${valueToString(minWidth.value)}`;
+  const maxWidth = el.props.get('max-width') as ResolvedValue;
+  if (keywordOf(maxWidth) !== 'none' && !sizedWithoutContent(maxWidth)) return `its max-width is ${valueToString(maxWidth.value)}`;
+  const sizing = el.props.get('field-sizing') as ResolvedValue | undefined;
+  if (sizing !== undefined && keywordOf(sizing) !== 'fixed') return `its field-sizing is ${valueToString(sizing.value)}`;
+  if (width.value.kind === 'length') return null;
+  // A percentage resolves against the containing block: every box up to one with a definite width must not size by content.
+  const boxes = chain.filter((a) => !isContents(a));
+  let child: ResolvedElement = el;
+  for (let i = boxes.length - 1; i >= 0; i--) {
+    const box = boxes[i] as ResolvedElement;
+    const display = displayKeyword(box);
+    if (display === 'flex' || display === 'inline-flex') return `${child.element.address} is a flex item of ${box.element.address}, sized by its content`;
+    if ((display === 'grid' || display === 'inline-grid') && !singleStretchColumn(box)) return `${child.element.address} is a grid item of ${box.element.address}, whose columns are not one stretching column`;
+    if (box.element.tag === 'html') return null;
+    const w = box.props.get('width') as ResolvedValue;
+    if (w.value.kind === 'length') return null;
+    const position = keywordOf(box.props.get('position') as ResolvedValue);
+    const float = keywordOf(box.props.get('float') as ResolvedValue);
+    if (w.value.kind !== 'percentage') {
+      if (keywordOf(w) !== 'auto') return `${box.element.address} has width: ${valueToString(w.value)}`;
+      if (display !== 'block' && display !== 'flow-root' && display !== 'list-item' && display !== 'grid' && display !== 'flex') return `${box.element.address} is display: ${display} with an auto width, sized by its content`;
+      if (float !== 'none') return `${box.element.address} floats with an auto width, sized by its content`;
+      if (position === 'absolute' || position === 'fixed') return `${box.element.address} is position: ${position} with an auto width, sized by its content`;
+    }
+    child = box;
+  }
+  return null;
+}
+
+function checkTextField(el: ResolvedElement, layoutParent: ResolvedElement | null, parentDisplay: string | null, chain: readonly ResolvedElement[], targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, hostEdits: boolean): void {
   const address = el.element.address;
   const tag = el.element.tag;
   const state = inputTypeState(el.element.attributes.get('type'));
@@ -1844,13 +1895,12 @@ function checkTextField(el: ResolvedElement, layoutParent: ResolvedElement | nul
   if (family.origin === 'user-agent') {
     refuse(family, 'font', `<${tag}> ${address} uses Chrome's user-agent control font (${valueToString(family.value)}), which the font map does not pin`, `Set font: inherit (or a font-family) on <${tag}> ${address}.`, 'DRAGON_UNSUPPORTED_FONT');
   }
-  // Chrome sizes a field's intrinsic inline size by the primary face's OS/2 average character width unless that is invalid for
-  // the face (Blink's HasValidAvgCharWidth, in an LGPL file), and by the advance of 0 otherwise. The engine uses the advance of 0,
-  // proven only for Ahem, where both are 1em; any width, min-width, flex or shrink-to-fit sizing may read it, so a field in
-  // another face is refused natively whatever its width.
+  // FORM-text-font: a field's no-width size reads the face's average character width, proven only for Ahem; a field whose inline
+  // size cannot read it (avgWidthReader) compiles in any face the measurer loads.
   const first = valueToString(family.value).split(',')[0]?.trim().replace(/^["']|["']$/g, '').toLowerCase();
-  if (family.origin !== 'user-agent' && first !== 'ahem') {
-    refuse(family, 'width-font', `<${tag}> ${address} is in font-family: ${valueToString(family.value)}: Chrome sizes a text control by the face's average character width, which Dragon proves only for Ahem`, `Draw <${tag}> ${address} in Ahem, or target web only, until real faces are measured for text controls.`, 'DRAGON_UNSUPPORTED_FONT', targets.filter((t) => t === 'ios' || t === 'android'));
+  const reader = family.origin !== 'user-agent' && first !== 'ahem' ? avgWidthReader(el, chain) : null;
+  if (reader !== null) {
+    refuse(family, 'width-font', `<${tag}> ${address} is in font-family: ${valueToString(family.value)}, and ${reader}: Chrome then sizes it by the face's average character width, which Dragon proves only for Ahem`, `Give <${tag}> ${address} a length or percentage width in a box whose width does not depend on its content, or draw it in Ahem.`, 'DRAGON_UNSUPPORTED_FONT', targets.filter((t) => t === 'ios' || t === 'android'));
   }
   const direction = el.props.get('direction') as ResolvedValue;
   if (state === 'search' && keywordOf(direction) === 'rtl') {
@@ -2503,7 +2553,7 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
       checkSelect(el, parentDisplay, chain, targets, diagnostics, reported, environmentOf(root).ua);
       checkInline(el, targets, diagnostics, reported, shapedAt, environmentOf(root).ua);
     } else if (!here && ((el.element.tag === 'input' && isTextFieldType(el.element.attributes.get('type'))) || el.element.tag === 'textarea')) {
-      checkTextField(el, layoutParent, parentDisplay, targets, diagnostics, reported, environmentOf(root).hostTextEditing === true);
+      checkTextField(el, layoutParent, parentDisplay, chain, targets, diagnostics, reported, environmentOf(root).hostTextEditing === true);
       checkInline(el, targets, diagnostics, reported, shapedAt, environmentOf(root).ua);
     } else if (!here && el.element.tag === 'input' && isCheckboxType(el.element.attributes.get('type'))) {
       checkCheckbox(el, parentDisplay, chain, targets, diagnostics, reported);

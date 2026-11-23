@@ -27,7 +27,7 @@ import { buttonContentShift, controlOf, plainBox, searchCancelButtonSize, search
 import { layoutFlexContainer } from './flex.ts';
 import type { GridFaults } from './grid.ts';
 import { gridOutOfFlow, layoutGridContainer } from './grid.ts';
-import { layoutInline, metricsOf } from './inline.ts';
+import { fontMetricsOf, layoutInline, metricsOf } from './inline.ts';
 import type { MarkerAlignment, MarkerBox } from './marker.ts';
 import { alignMarker, layoutMarker, markerX } from './marker.ts';
 import { intrinsicContentInlineSize } from './intrinsic.ts';
@@ -512,7 +512,7 @@ function layoutOwnContents(ctx: Ctx, node: LayoutBox | ControlBox, a: ContentsAr
   const height = fromRatio !== null
     ? ratioFinalBlockSize(box, fromRatio, add(a.formattingContextRoot || bor.bottom !== 0 || pad.bottom !== 0 ? intrinsic : r.cursor, vbp), minMax)
     : fixedBorderBox !== null ? fixedBorderBox : constrain(add(intrinsic, vbp), minMax);
-  if (control !== null && control.kind === 'text-field') return layoutTextField(box, control, r.placed, add(bor.top, pad.top), a.borderBoxWidth, fixedBorderBox, minMax, vbp);
+  if (control !== null && control.kind === 'text-field') return layoutTextField(ctx, box, control, r.placed, add(bor.top, pad.top), a.borderBoxWidth, fixedBorderBox, minMax, vbp);
   if (control !== null && control.kind === 'text-area') {
     const lines = metricsOf(ctx, box.id, control.font, control.lineHeight, false);
     return layoutTextArea(box, r.placed, add(bor.top, pad.top), a.borderBoxWidth, fixedBorderBox !== null ? fixedBorderBox : constrain(add(mulInt(add(lines.above, lines.below), control.rows), vbp), minMax));
@@ -543,7 +543,12 @@ function layoutOwnContents(ctx: Ctx, node: LayoutBox | ControlBox, a: ContentsAr
  * search field centres its decoration container (the editor beside the cancel button, as tall as the taller) instead, and the
  * editor in it (align-items: center).
  */
-function layoutTextField(box: LayoutBox, field: Extract<ControlKind, { kind: 'text-field' }>, flow: readonly Placed[], contentTop: LU, width: LU, fixedBorderBox: LU | null, minMax: MinMax, vbp: LU): ContentsResult {
+function layoutTextField(ctx: Ctx, box: LayoutBox, field: Extract<ControlKind, { kind: 'text-field' }>, flow: readonly Placed[], contentTop: LU, width: LU, fixedBorderBox: LU | null, minMax: MinMax, vbp: LU): ContentsResult {
+  // FORM-text-font: below its face's ascent + descent a field's line height becomes normal (as Chrome 145 grows the field to the
+  // glyphs: Roboto 16px at line-height 1 and 0.8 is 19 tall); measured only for faces without a line gap, where the two agree.
+  const lineBox = metricsOf(ctx, box.id, field.font, field.lineHeight, false);
+  const face = fontMetricsOf(ctx, box.id, field.font);
+  if (face.lineGap !== 0 && add(lineBox.above, lineBox.below) < add(face.ascent, face.descent)) unsupported('text-field-line-height', box.id, 'css-ui-4 §6', `${box.id} has a line height below its face's ascent and descent in a face with a line gap, which Chrome's field height is not measured for; give it a line height of at least its font's height`);
   let editorId = '';
   for (const k of box.children) if (k.kind === 'control' && k.control.kind === 'text-editor') editorId = k.id;
   const editor = flow.find((p) => p.frag.id === editorId);

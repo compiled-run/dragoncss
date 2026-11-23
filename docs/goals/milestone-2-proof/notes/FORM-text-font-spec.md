@@ -1,6 +1,6 @@
 # FORM-text-font: a text control in a real face, when its size cannot read the face's average character width
 
-Status: spec, awaiting the Judge. Base: `cw/notes-batch-6` (#680, 3bd1c18a2b).
+Status: Judge APPROVED WITH AMENDMENTS (all five applied below); built. Base: `cw/notes-batch-6` (#680, 3bd1c18a2b).
 
 ## The refusal today
 
@@ -42,32 +42,45 @@ What follows:
 5. **No author width** (or a `width` keyword `auto`, `min-content`, `max-content` or `fit-content`, or shrink-to-fit sizing) reads
    the average width: 174 against 328. This stays refused.
 
-## The slice
+## Judge amendments, measured (Chrome 145, DPR 1, Roboto and Inter from vendor/fonts, and Ahem, 16px)
 
-Lift `width-font` for a text field or textarea in a face Dragon loads, only when the control's inline size cannot read the
-average character width:
-- its `width` is a definite length, or a percentage;
-- its `min-width` is `auto` (fact 2), a length or a percentage, and its `max-width` is `none`, a length or a percentage, with no
-  intrinsic keyword on any of the three;
-- it is not a flex item whose `flex-basis` is `content`, or `auto` with an intrinsic width;
-- its `line-height` is a number or a length. `normal` stays refused until the field's normal line height is measured in real
-  faces.
+1. **Cyclic percentages.** A `width: 100%` field takes its natural width, 197 in Roboto, 217 in Inter and 350 in Ahem, in:
+   - a float;
+   - an inline-block;
+   - a `width: max-content` wrapper;
+   - an auto-width absolutely positioned box;
+   - a `grid-template-columns: auto auto` grid (244.5 / 254.1 / 284).
 
-Everything else keeps the refusal, with the message naming which size reads the average width. The search field's cancel box
-(#645/#666) is unaffected: its side is font size × DPR (FORM-search), not the average width.
+   All are refused, each with its own reason (reject fixtures `reject-controls-text-font-{float,inline-block,max-content,absolute,grid-columns}`), as is a flex parent.
+2. **`field-sizing` and writing mode.** `field-sizing` other than `fixed` is refused. Vertical writing modes are already refused everywhere: `writing-mode` is not a longhand Dragon accepts.
+3. **Line height.** A single-line field's editor is at least the face's ascent + descent tall: at line-height 1 and 0.8 the field is 45 (Roboto), 46 (Inter) and 42 (Ahem), 26 of it padding and border. The engine already gives such a field line-height `normal` (FORM-b, `tf-centre`), which equals ascent + descent for these faces, since neither has a line gap. For a face with a line gap, the engine refuses a line height below ascent + descent (`text-field-line-height`), because there `normal` exceeds the glyphs and Chrome's height is unmeasured. A textarea has no such floor: rows × line-height (58 and 51.59 at 1 and 0.8, in every face).
+4. **A second face.** Inter, whose ascent and descent differ from Roboto's (content height 20 against 19), runs in the same fixture at line-height 1.
 
-## Proof plan
+## The slice (built)
 
-- A parity fixture `controls-text-font`: the notes field and search CSS in a bundled real face, at three widths, plus a
-  `min-content` wrapper. Chrome layout captures at DPR 1, 2, 2.625 and 3 must equal the engine's boxes, in ltr and rtl. The
-  fixture registers the face the way existing web-font fixtures do.
-- A reject fixture: the same face with no author width, with `width: fit-content`, and with `line-height: normal`, each refused
-  with its named reason.
-- A unit test pinning that the lifted case compiles and the intrinsic cases refuse.
+`computed-checks.ts` `avgWidthReader` lifts `width-font` for a text field or textarea when its inline size cannot read the average width:
+- `width` is a length or a percentage;
+- `min-width` is `auto`, a length or a percentage, and `max-width` is `none`, a length or a percentage;
+- `field-sizing` is `fixed`;
+- for a percentage, every box from the control up to the first with a length width or the root keeps a width that is independent of its content:
+  - a block-level, in-flow, non-floating box with an auto or percentage width;
+  - no flex container on the way;
+  - a grid container only with one implicit stretching column.
+
+Otherwise the refusal names the box and why. Letter-spacing and text-indent keep their current handling.
+
+## Proof
+
+- **`controls-text-font`** (text-latin group, with each part's face checked in Chrome). It holds the notes title, body and search fields at their real widths (a 362px column) and styles, in Roboto at line-height 1.45 and in Inter at line-height 1, with values and placeholders, ltr. Its Chrome captures at DPR 1, 2, 2.625 and 3 match the engine at every node (`parity.test.ts`, `dpr.test.ts`). Faces are checked through each control's host and, for a textarea, its shadow editor (`font-reference.ts`).
+- **The fixture differs from the notes app in two places:**
+  - its textarea has `resize: none`, no radius and `scrollbar-width: none`, since `resize`, a rounded scroll container and the scrollbar gutter stay refused (checkTextAreaChrome);
+  - its labels are blocks, since text directly in a grid item has no declared-face profile proof yet.
+- **Reject fixtures** for the five cyclic cases, plus compile tests (`form-b-text-field.test.ts`) for those, a flex parent, an intrinsic `min-width` and the lifted length and percentage cases.
+- **Phones:** a screenshot proof of the placeholder and value baselines in the face is still to run, through a ladder rung on the shared runner, once the native profile rows exist. The native lanes need the batch regen to write the declared-face profile rows for this fixture.
 
 ## Outside this slice
 
-- **Editing:** a `<textarea>` stays refused for editing natively. Host text editing (#645/#646, `textEditing: 'host'`) lifts
+- **Editing:** a `<textarea>` stays refused for editing natively; it needs its own textarea editing slice. Host text editing (#645/#646, `textEditing: 'host'`) lifts
   the editing refusal for `<input>` only (`computed-checks.ts`: `!(hostEdits && tag === 'input')`). The notes body textarea
   therefore still needs a textarea editing slice.
 - **Textarea chrome:** `resize: vertical`, a rounded scroll container and the scrollbar gutter on the notes textarea stay refused

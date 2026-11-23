@@ -5,6 +5,7 @@ export type UnsupportedCode =
   | 'percent-gap'
   | 'text-align'
   | 'text-glyph'
+  | 'text-field-line-height'
   | 'text-script'
   | 'bidi-neutral'
   | 'abspos-in-inline'
