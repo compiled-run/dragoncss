@@ -1910,6 +1910,16 @@ function checkHostEditedText(el: ResolvedElement, refuse: (v: ResolvedValue | nu
     if (v.origin === 'inherited' && FORM_CONTROL_RESETS.has(p)) refuse(v, `edit-${p}`, `<${tag}> ${address} inherits ${p}: ${valueToString(v.value)}, which Chrome resets on a form control and Dragon does not model; the host edits it in its own text view`, `Set ${p} back to its initial value on <${tag}> ${address}, or move it off the ancestor.`);
     else refuse(v, `edit-${p}`, `${p}: ${valueToString(v.value)} on <${tag}> ${address}, which the host edits in its own text view, laid out from the exported font, pitch and baseline only`, `Remove ${p} from <${tag}> ${address}.`);
   }
+  // The host draws the placeholder too, in its box's font and colour only, so a rule on ::placeholder itself is held to the same list.
+  for (const c of el.children) {
+    if (c.kind !== 'element' || textFieldPartOf(c as ResolvedElement)?.part !== 'placeholder') continue;
+    for (const [p, isDefault] of HOST_EDITED_TEXT) {
+      if (tag === 'input' && SINGLE_LINE_IGNORES.has(p)) continue;
+      const v = (c as ResolvedElement).props.get(p);
+      if (v === undefined || v.origin === 'inherited' || isDefault(v.value)) continue;
+      refuse(v, `edit-placeholder-${p}`, `${p}: ${valueToString(v.value)} on the ::placeholder of <${tag}> ${address}, which the host draws in its own text view from the exported font and colour only`, `Remove ${p} from the ::placeholder rule of <${tag}> ${address}.`);
+    }
+  }
   // A textarea's padding is the host view's text insets; a field's host view sits on the editor box Dragon lays out.
   if (tag === 'textarea') for (const side of ['padding-top', 'padding-right', 'padding-bottom', 'padding-left'] as const) {
     const pad = el.props.get(side) as ResolvedValue;

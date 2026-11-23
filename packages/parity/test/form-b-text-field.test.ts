@@ -180,6 +180,11 @@ describe('FORM-b text fields', () => {
     const refusals = (css: string): string[] => errors(compile('tf-host-styles', `input { ${css} }`, body, BASE, false, true)).filter((e) => e.includes('which the host edits'));
     expect(refusals('white-space: pre; overflow-wrap: anywhere; word-break: break-all; padding: 10%')).toEqual([]);
     for (const css of ['text-transform: uppercase', 'letter-spacing: 1px', 'text-decoration-line: underline', 'font-feature-settings: "liga" 0']) expect(refusals(css).length, css).toBeGreaterThan(0);
+    // A ::placeholder rule of its own is held to the same list: the host draws the placeholder from its font and colour only.
+    const placeholder = (css: string, b: string): string[] => errors(compile('tf-host-placeholder', css, b, BASE, false, true)).filter((e) => e.includes('on the ::placeholder of'));
+    expect(placeholder('input::placeholder { text-transform: uppercase; }', body).length).toBeGreaterThan(0);
+    expect(placeholder('textarea { display: block; font: inherit; resize: none; scrollbar-width: none; } textarea::placeholder { letter-spacing: 2px; }', '<textarea data-dragon-id="a" rows="3" placeholder="PP"></textarea>').length).toBeGreaterThan(0);
+    expect(placeholder('input::placeholder { color: #888; }', body)).toEqual([]);
     expect(errors(compile('tf-host-styles-ro', 'input { text-transform: uppercase; }', '<input data-dragon-id="v" value="XX" readonly="">', BASE, false, true)).filter((e) => e.includes('which the host edits'))).toEqual([]);
   });
 
