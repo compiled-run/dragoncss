@@ -5,7 +5,7 @@ import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, renameSync } from 'node:fs';
 import { join } from 'node:path';
-import { Worker } from 'node:worker_threads';
+import { threadId, Worker } from 'node:worker_threads';
 import { repoPath } from '../paths.ts';
 
 export const CORETEXT_HELPER_SOURCE = new URL('./coretext-helper.swift', import.meta.url);
@@ -44,7 +44,7 @@ export function coreTextHelper(): string {
   const binary = join(dir, 'coretext-helper');
   if (existsSync(binary)) return binary;
   mkdirSync(dir, { recursive: true });
-  const scratch = `${binary}.${process.pid}`;
+  const scratch = `${binary}.${process.pid}-${threadId}`;
   try {
     execFileSync('xcrun', ['swiftc', '-O', CORETEXT_HELPER_SOURCE.pathname, '-o', scratch], { stdio: ['ignore', 'pipe', 'pipe'] });
   } catch (e) {

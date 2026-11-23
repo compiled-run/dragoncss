@@ -101,7 +101,7 @@ import { checkInlineLevel } from './blockify.ts';
 import { isTopLayer, topLayerAncestorsOf } from './top-layer.ts';
 import { uaTagOf } from './elements.ts';
 import { isDisabled } from './match.ts';
-import { buttonAppearance, inputTypeState, isControlTag, isRangeType, isTextFieldType, selectAppearance, textFieldAppearance } from './elements/controls.ts';
+import { buttonAppearance, inputTypeState, isCheckboxType, isControlTag, isRangeType, isTextFieldType, selectAppearance, textAreaAppearance, textFieldAppearance } from './elements/controls.ts';
 import { isReplacedTag } from './elements/replaced.ts';
 import { isSvgShapeTag, shapeOf, svgGeometryOf, type SvgGeometryProperty, svgPaintRefusal, svgPercentageRefusal, svgShapePainted, svgZeroLengthSubpath } from './elements/svg.ts';
 import { colorMatrixFilters } from '../css/properties/filter.ts';
@@ -114,7 +114,7 @@ import { serializeFontStyle, serializeFontWeight } from '../fonts/weight.ts';
 import type { ResolvedElement, ResolvedText, ResolvedValue } from './resolve.ts';
 import { PAINT_VALUES } from './paint-values/index.ts';
 import { blockInInlineChild, environmentOf, generatedPseudoOf, isInitialByProvenance, rangePartOf, refusedGenerationOf, selectOptionsOf, textFieldPartOf, valueToString } from './resolve.ts';
-import { selectDisplaySize } from '../forms/select.ts';
+import { LISTED_OPTIONS_ATTRIBUTE, selectDisplaySize } from '../forms/select.ts';
 import { blockInInlineBlocker, isBlockInInline } from './block-in-inline.ts';
 import type { Rgba8 } from '../css/color.ts';
 import { parseComputedColor, serializeColor } from '../css/color.ts';
@@ -870,8 +870,10 @@ function checkPreservedText(el: ResolvedElement, t: ResolvedText, refuse: (at: R
   if (keywordOf(t.props.get('letter-spacing') as ResolvedValue) !== 'normal') refuse(el, 'letter-spacing', `letter-spacing on ${t.node.address}, whose white-space-collapse is ${mode}: spaced preserved white space is not laid out yet`, `Remove the letter-spacing or the white-space declaration that reaches ${t.node.address}.`);
   // Blink adds word spacing to every preserved space, the first included (WordSpacingWhiteSpacePre), which no Chrome case covers yet.
   if (wordSpaced(t.props.get('word-spacing') as ResolvedValue)) refuse(el, 'word-spacing', `word-spacing on ${t.node.address}, whose white-space-collapse is ${mode}: spaced preserved white space is not laid out yet`, `Remove the word-spacing or the white-space declaration that reaches ${t.node.address}.`);
-  // TXT2-a with TXT2-c: how Blink breaks preserved spaces at grapheme boundaries has no Chrome comparison yet (inline.ts buildIfc).
-  const breaks = (['overflow-wrap', 'word-break'] as const).filter((p) => keywordOf(t.props.get(p) as ResolvedValue) !== 'normal');
+  // TXT2-a with TXT2-c: how Blink breaks preserved spaces at grapheme boundaries has no Chrome comparison yet (inline.ts buildIfc),
+  // but for overflow-wrap: break-word with word-break: normal over preserve, a textarea's (FORM-b, the controls-textarea fixture).
+  const breakWord = mode === 'preserve' && keywordOf(t.props.get('overflow-wrap') as ResolvedValue) === 'break-word' && keywordOf(t.props.get('word-break') as ResolvedValue) === 'normal';
+  const breaks = breakWord ? [] : (['overflow-wrap', 'word-break'] as const).filter((p) => keywordOf(t.props.get(p) as ResolvedValue) !== 'normal');
   if (breaks.length > 0) refuse(el, 'preserved-break', `${breaks.map((p) => `${p}: ${keywordOf(t.props.get(p) as ResolvedValue)}`).join(' and ')} on ${t.node.address}, whose white-space-collapse is ${mode}: breaking preserved white space inside words is not laid out yet`, `Remove the ${breaks.join(' and ')} or the white-space declaration that reaches ${t.node.address}.`);
   if (/^[ \t\n]*$/.test(t.text)) refuse(el, 'preserved-blank', `${t.node.address} is only white space kept by white-space-collapse: ${mode} (css-text-4 §4.1.1), which Dragon does not lay out yet`, `Remove the white space of ${t.node.address}, or the white-space declaration that reaches it.`);
 }
@@ -1673,7 +1675,7 @@ function refuseOn(el: ResolvedElement, v: ResolvedValue | null, what: string, co
 /** FORM-a: on a native target a button or range is drawn but not interactive, and its view has no control accessibility role yet. */
 function noteStaticOnNative(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
   const tag = el.element.tag;
-  const what = tag === 'button' ? `<button> ${el.element.address} needs the app to handle its activation, and screen readers read its label as static text` : tag === 'select' ? `<select> ${el.element.address} shows its compiled option with no picker, and screen readers read its label as static text` : `<input type=range> ${el.element.address} shows its compiled value with no thumb drag, and screen readers do not see an adjustable control`;
+  const what = tag === 'button' ? `<button> ${el.element.address} needs the app to handle its activation, and screen readers read its label as static text` : tag === 'select' ? `<select> ${el.element.address} shows its compiled option with no picker, and screen readers read its label as static text` : isCheckboxType(el.element.attributes.get('type')) ? `<input type=checkbox> ${el.element.address} needs the app to toggle it (dragonSetCheckboxChecked), and screen readers do not see a checkbox` : `<input type=range> ${el.element.address} shows its compiled value with no thumb drag, and screen readers do not see an adjustable control`;
   for (const t of targets.filter((x) => x === 'ios' || x === 'android')) {
     const id = `${t}|control-static|${el.element.address}`;
     if (reported.has(id)) continue;
@@ -1682,7 +1684,7 @@ function noteStaticOnNative(el: ResolvedElement, targets: readonly string[], dia
   }
 }
 
-/** A range or fieldset as a grid item: the engine places neither in a grid (grid-control); a block or flex button is a grid item. */
+/** A range or fieldset as a grid item: the engine places a block or flex button, a select, a text field and a textarea in a grid (grid-control). */
 function refuseGridItem(el: ResolvedElement, parentDisplay: string | null, refuse: (v: ResolvedValue | null, what: string, message: string, manual: string) => void): void {
   if (parentDisplay !== 'grid' && parentDisplay !== 'inline-grid') return;
   const tag = el.element.tag;
@@ -1765,12 +1767,15 @@ function checkButton(el: ResolvedElement, parentDisplay: string | null, targets:
  * inner editor and placeholder (resolve.ts), and painted as CSS boxes once its used appearance is none (the devolve probe:
  * appearance: none, or an author background or border). Refused: a themed field; a password field (Chrome masks its text with
  * the font's bullet, which no fixture proves); an inline-level field (RF-INL); any display but block or flex; an absolutely
- * positioned one or a grid item; one whose font is Chrome's UA control font; on iOS and Android a field outside Ahem whose used
- * width may read its intrinsic width (checkFieldWidth); and on iOS and Android an editable field, as Dragon has no caret or
- * keyboard input there yet (the FORM-b editing slice). A readonly field shows its value as drawn text.
+ * positioned one; one whose font is Chrome's UA control font; on iOS and Android an input outside Ahem whose used
+ * width may read its intrinsic width (checkFieldWidth), and a textarea outside Ahem whatever its width; on iOS and Android a
+ * right-to-left search field; and on iOS and Android an editable field, as Dragon has no caret or keyboard input there yet (the
+ * FORM-b editing slice), unless the host edits a single-line field (hostEdits: the compile's textEditing 'host'). A readonly field
+ * shows its value as drawn text.
  */
-function checkTextField(el: ResolvedElement, parentDisplay: string | null, chain: readonly ResolvedElement[], targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, faults: FieldFontWidthFaults): void {
+function checkTextField(el: ResolvedElement, parentDisplay: string | null, chain: readonly ResolvedElement[], targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, hostEdits: boolean, faults: FieldFontWidthFaults): void {
   const address = el.element.address;
+  const tag = el.element.tag;
   const state = inputTypeState(el.element.attributes.get('type'));
   const refuse = (v: ResolvedValue | null, what: string, message: string, manual: string, code: 'DRAGON_UNSUPPORTED_VALUE' | 'DRAGON_UNSUPPORTED_FONT' = 'DRAGON_UNSUPPORTED_VALUE', on: readonly string[] = targets): void =>
     refuseOn(el, v, what, code, on, diagnostics, reported, message, manual);
@@ -1778,41 +1783,78 @@ function checkTextField(el: ResolvedElement, parentDisplay: string | null, chain
     const id = `input-type|${address}`;
     if (!reported.has(id)) {
       reported.add(id);
-      diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_ELEMENT', { origin: el.element.node.origin, message: `<input type=password> ${address} is not supported: Chrome masks its value with the font's bullet glyph, which no fixture proves yet`, manual: `Use a text input, or a div in place of <input> ${address}.` }));
+      diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_ELEMENT', { origin: el.element.node.origin, message: `<input type=password> ${address} is not supported: Chrome masks its value with the font's bullet glyph, which no fixture proves yet`, manual: `Use a text input, or a div in place of <${tag}> ${address}.` }));
     }
     return;
   }
   const appearance = el.props.get('appearance') as ResolvedValue;
-  if (textFieldAppearance(el.props) === 'theme') {
-    refuse(appearance, 'theme', `<input> ${address} with appearance: ${valueToString(appearance.value)} and no author background or border is painted by the platform theme (Blink LayoutTheme::IsControlStyled), which Dragon does not draw`, `Set appearance: none, or a background or border, on <input> ${address}.`);
+  if ((tag === 'textarea' ? textAreaAppearance(el.props) : textFieldAppearance(el.props)) === 'theme') {
+    refuse(appearance, 'theme', `<${tag}> ${address} with appearance: ${valueToString(appearance.value)} and no author background or border is painted by the platform theme (Blink LayoutTheme::IsControlStyled), which Dragon does not draw`, `Set appearance: none, or a background or border, on <${tag}> ${address}.`);
   }
   const display = el.props.get('display') as ResolvedValue;
   const d = valueToString(display.value);
   if (d === 'inline-block' || d === 'inline-flex' || d === 'inline-grid' || d === 'inline') {
-    refuse(display, 'inline', `display: ${d} on <input> ${address} makes it an inline-level control, which waits for the RF-INL package (atomic inlines)`, `Set display: block on <input> ${address}, or make it a flex item.`);
+    refuse(display, 'inline', `display: ${d} on <${tag}> ${address} makes it an inline-level control, which waits for the RF-INL package (atomic inlines)`, `Set display: block on <${tag}> ${address}, or make it a flex item.`);
   } else if (d !== 'block') {
-    refuse(display, 'display', `display: ${d} on <input> ${address} is not supported on a text field; only a block-level field is laid out`, `Set display: block on <input> ${address}.`);
+    refuse(display, 'display', `display: ${d} on <${tag}> ${address} is not supported on a text control; only a block-level field is laid out`, `Set display: block on <${tag}> ${address}.`);
   }
   const position = el.props.get('position') as ResolvedValue;
   const pos = keywordOf(position);
   if (pos === 'absolute' || pos === 'fixed') {
-    refuse(position, 'position', `position: ${pos} on <input> ${address} is not supported on a form control yet`, `Position a wrapper element and keep <input> ${address} in its flow.`);
+    refuse(position, 'position', `position: ${pos} on <${tag}> ${address} is not supported on a form control yet`, `Position a wrapper element and keep <${tag}> ${address} in its flow.`);
   }
-  refuseGridItem(el, parentDisplay, refuse);
   const float = el.props.get('float') as ResolvedValue;
   if (keywordOf(float) !== 'none') {
-    refuse(float, 'float', `float: ${valueToString(float.value)} on <input> ${address} is not supported on a text field: the engine lays out only an in-flow field`, `Float a wrapper element and keep <input> ${address} in its flow.`);
+    refuse(float, 'float', `float: ${valueToString(float.value)} on <${tag}> ${address} is not supported on a text control: the engine lays out only an in-flow field`, `Float a wrapper element and keep <${tag}> ${address} in its flow.`);
   }
   const family = el.props.get('font-family') as ResolvedValue;
   if (family.origin === 'user-agent') {
-    refuse(family, 'font', `<input> ${address} uses Chrome's user-agent control font (${valueToString(family.value)}), which the font map does not pin`, `Set font: inherit (or a font-family) on <input> ${address}.`, 'DRAGON_UNSUPPORTED_FONT');
+    refuse(family, 'font', `<${tag}> ${address} uses Chrome's user-agent control font (${valueToString(family.value)}), which the font map does not pin`, `Set font: inherit (or a font-family) on <${tag}> ${address}.`, 'DRAGON_UNSUPPORTED_FONT');
   }
   const native = targets.filter((t) => t === 'ios' || t === 'android');
-  if (family.origin !== 'user-agent' && native.length > 0 && !faults.fieldWidthAnyContext && textFieldAvgChar(family.value) === 'unmeasured') {
-    checkFieldWidth(el, parentDisplay, chain, (v, what, message, manual) => refuse(v, what, message, manual, 'DRAGON_UNSUPPORTED_FONT', native));
+  if (family.origin !== 'user-agent' && native.length > 0 && textFieldAvgChar(family.value) === 'unmeasured') {
+    if (tag === 'textarea') {
+      refuse(family, 'width-font', `<${tag}> ${address} is in font-family: ${valueToString(family.value)}: Chrome sizes a text control by the face's average character width, which Dragon proves only for Ahem`, `Draw <${tag}> ${address} in Ahem, or target web only, until real faces are measured for text controls.`, 'DRAGON_UNSUPPORTED_FONT', native);
+    } else if (!faults.fieldWidthAnyContext) {
+      checkFieldWidth(el, parentDisplay, chain, (v, what, message, manual) => refuse(v, what, message, manual, 'DRAGON_UNSUPPORTED_FONT', native));
+    }
   }
-  if (!el.element.attributes.has('readonly')) {
-    refuse(null, 'editing', `<input> ${address} is an editable text field: Dragon draws its value but has no caret, selection or keyboard input on iOS and Android yet (the FORM-b editing slice)`, `Add readonly to <input> ${address}, or target web only, until native text editing lands.`, 'DRAGON_UNSUPPORTED_VALUE', targets.filter((t) => t === 'ios' || t === 'android'));
+  const direction = el.props.get('direction') as ResolvedValue;
+  if (state === 'search' && keywordOf(direction) === 'rtl') {
+    refuse(direction, 'search-rtl', `direction: rtl on <input type=search> ${address} is not supported: Chrome puts its cancel button at the inline end, which the engine lays out only for ltr`, `Set direction: ltr on <input> ${address}, or use type="text".`, 'DRAGON_UNSUPPORTED_VALUE', targets.filter((t) => t === 'ios' || t === 'android'));
+  }
+  if (!(hostEdits && tag === 'input') && !el.element.attributes.has('readonly')) {
+    refuse(null, 'editing', `<${tag}> ${address} is an editable text control: Dragon draws its value but has no caret, selection or keyboard input on iOS and Android yet (the FORM-b editing slice)`, `Add readonly to <${tag}> ${address}, or target web only, until native text editing lands.`, 'DRAGON_UNSUPPORTED_VALUE', targets.filter((t) => t === 'ios' || t === 'android'));
+  }
+  if (tag === 'textarea') checkTextAreaChrome(el, targets, refuse);
+}
+
+/**
+ * FORM-b: what a textarea adds to a text control's refusals, on iOS and Android, where the engine lays it out (an element child
+ * everywhere):
+ * - an element child (HTML parses a textarea's content as text, so only a producer could write one);
+ * - a resizer (resize other than none), whose grip Chrome draws in the corner and Dragon does not (checkResize refuses it);
+ * - a scrollbar gutter: Chrome adds the scrollbar's thickness to the default width when overflow-y is not hidden or clip, and to
+ *   the default height when overflow-x is scroll (probed in Chrome 145 on Linux: 15px for auto, 10px for thin), and that
+ *   thickness is the platform's, so only scrollbar-width: none or no gutter is laid out;
+ * - overflow: visible, which Chrome turns into auto on a textarea and Dragon does not model.
+ * At rest a textarea scrolls from offset 0 with hidden scrollbars, which the native lowering clips; overflowing text cannot be
+ * scrolled natively until FORM-b2.
+ */
+function checkTextAreaChrome(el: ResolvedElement, targets: readonly string[], refuse: (v: ResolvedValue | null, what: string, message: string, manual: string, code?: 'DRAGON_UNSUPPORTED_VALUE' | 'DRAGON_UNSUPPORTED_FONT', on?: readonly string[]) => void): void {
+  const address = el.element.address;
+  const native = targets.filter((t) => t === 'ios' || t === 'android');
+  if (el.element.children.some((c) => c.kind !== 'text')) {
+    refuse(null, 'textarea-child', `<textarea> ${address} has an element child; a textarea's content is its text`, `Write only text inside <textarea> ${address}.`, 'DRAGON_UNSUPPORTED_VALUE', targets);
+  }
+  // The resizer grip of resize: both (html.css) is refused natively by the scroll container check.
+  const ox = keywordOf(el.props.get('overflow-x') as ResolvedValue);
+  const oy = keywordOf(el.props.get('overflow-y') as ResolvedValue);
+  const scrollbarWidth = el.props.get('scrollbar-width') as ResolvedValue;
+  if (ox === 'visible' || oy === 'visible') {
+    refuse(el.props.get(ox === 'visible' ? 'overflow-x' : 'overflow-y') as ResolvedValue, 'overflow', `overflow: visible on <textarea> ${address}, which Chrome makes auto, is not modelled`, `Leave overflow at auto, or set hidden, on <textarea> ${address}.`, 'DRAGON_UNSUPPORTED_VALUE', native);
+  } else if (keywordOf(scrollbarWidth) !== 'none' && ((oy !== 'hidden' && oy !== 'clip') || ox === 'scroll')) {
+    refuse(scrollbarWidth, 'gutter', `<textarea> ${address} reserves a scrollbar gutter in its default size (scrollbar-width: ${valueToString(scrollbarWidth.value)}), whose thickness is the platform's`, `Set scrollbar-width: none (or overflow: hidden) on <textarea> ${address}.`, 'DRAGON_UNSUPPORTED_VALUE', native);
   }
 }
 
@@ -1929,6 +1971,10 @@ const SELECT_RESETS: readonly (readonly [Longhand, (v: CssValue, fieldText: Rgba
   ['text-shadow', (v) => v.kind === 'keyword' && v.value === 'none'],
 ];
 
+// Neither the closed menulist (the shown label in the select's style) nor Chrome's picker item (internal_popup_menu.cc reads an option's
+// colour, background, font, text-transform, direction, visibility and display) reads an option's box-sizing, as an app's * rule sets it.
+const OPTION_UNDRAWN: ReadonlySet<Longhand> = new Set<Longhand>(['box-sizing']);
+
 /**
  * FORM-b: a single select with appearance: none, or auto devolved to menulist-button (Chrome's menulist, resolve.ts); everything
  * else about one is refused by name.
@@ -1957,7 +2003,7 @@ function checkSelect(el: ResolvedElement, parentDisplay: string | null, chain: r
     }
   }
   for (const o of selectOptionsOf(el)) {
-    const styled = LONGHANDS.map((p) => [p, o.props.get(p) as ResolvedValue] as const).find(([, v]) => v.declaration !== null);
+    const styled = LONGHANDS.map((p) => [p, o.props.get(p) as ResolvedValue] as const).find(([p, v]) => v.declaration !== null && !OPTION_UNDRAWN.has(p));
     if (styled !== undefined) refuseOn(o, styled[1], 'option-style', 'DRAGON_UNSUPPORTED_VALUE', targets, diagnostics, reported, `${styled[0]} on <option> ${o.element.address} is not supported: Chrome draws only its label in the closed select, and Dragon writes no rule for an option`, `Style <select> ${address} instead of <option> ${o.element.address}.`);
   }
   const appearance = el.props.get('appearance') as ResolvedValue;
@@ -1982,36 +2028,39 @@ function checkSelect(el: ResolvedElement, parentDisplay: string | null, chain: r
   const float = el.props.get('float') as ResolvedValue;
   if (keywordOf(float) !== 'none') refuse(float, 'float', `float: ${valueToString(float.value)} on <select> ${address} is not supported: the engine lays out only an in-flow select`, `Float a wrapper element and keep <select> ${address} in its flow.`);
   const width = el.props.get('width') as ResolvedValue;
-  if (width.value.kind === 'keyword') refuse(width, 'width', `width: ${valueToString(width.value)} on <select> ${address} is not supported: Chrome sizes a select to its widest option, which Dragon does not measure`, `Give <select> ${address} a width (a length or percentage).`);
-  const item = parentDisplay === 'flex' || parentDisplay === 'inline-flex' || parentDisplay === 'grid' || parentDisplay === 'inline-grid';
-  const minWidth = el.props.get('min-width') as ResolvedValue;
-  if (item && keywordOf(minWidth) === 'auto') refuse(minWidth, 'min-width', `<select> ${address} is a ${parentDisplay} item with min-width: auto, whose automatic minimum Chrome takes from its widest option, which Dragon does not measure`, `Set min-width (0 is fine) on <select> ${address}.`);
-  // Blink LayoutBox::DefaultIntrinsicContentInlineSize: a menulist's min-content and max-content widths are its widest option's
-  // (MenuListIntrinsicInlineSize), and Dragon's inner element holds only the shown one, so every width that reads them is refused.
-  for (const p of ['min-width', 'max-width'] as const) {
-    const v = el.props.get(p) as ResolvedValue;
-    if (INTRINSIC_SIZES.has(keywordOf(v))) refuse(v, p, `${p}: ${keywordOf(v)} on <select> ${address} is not supported: Chrome sizes a select's content to its widest option, which Dragon does not measure`, `Give <select> ${address} a ${p} in px or %, or remove it.`);
-  }
-  const rowItem = (parentDisplay === 'flex' || parentDisplay === 'inline-flex') && !keywordOf((chain.filter((a) => !isContents(a)).at(-1) as ResolvedElement).props.get('flex-direction') as ResolvedValue).startsWith('column');
-  const basis = el.props.get('flex-basis') as ResolvedValue;
-  const b = keywordOf(basis);
-  if (rowItem && (b === 'content' || INTRINSIC_SIZES.has(b))) refuse(basis, 'flex-basis', `flex-basis: ${b} on <select> ${address} is not supported: Chrome takes it from the select's widest option, which Dragon does not measure`, `Give <select> ${address} a flex-basis in px, or a width and flex-basis: auto.`);
-  // Blink FlexLayoutAlgorithm::ComputeMinMaxSizeOfRowContainer: a row item's contribution is its content-based one (a percentage
-  // width is indefinite there) unless it cannot flex, so a length basis keeps a percentage width out of the walk only then.
-  const number = (p: Longhand): number => { const v = (el.props.get(p) as ResolvedValue).value; return v.kind === 'number' ? v.value : 1; };
-  const rigid = rowItem && b === '' && !hasPercentage(basis) && number('flex-grow') === 0 && number('flex-shrink') === 0;
-  const percentWidth = width.value.kind !== 'keyword' && hasPercentage(width) ? width : null;
-  const relative = rowItem && hasPercentage(basis) ? basis : rigid ? null : percentWidth;
-  if (relative !== null) {
-    const what = relative === basis ? 'flex-basis' : 'width';
-    const said = `${what}: ${valueToString(relative.value)} on <select> ${address} is not supported`;
-    const sized = contentSizedAncestor(chain);
-    if (parentDisplay === 'grid' || parentDisplay === 'inline-grid') {
-      refuse(relative, 'width-content', `${said} on a grid item: Chrome resolves it against the grid area, whose tracks can be sized from the select's widest option, which Dragon does not measure`, `Give <select> ${address} a ${what} in px.`);
-    } else if (sized !== null) {
-      const at = `<${sized.box.element.tag}> ${sized.box.element.address}`;
-      const own = relative === basis || !rowItem || b === 'auto' ? `give <select> ${address} a ${what} in px` : `give <select> ${address} a width in px, or flex-grow: 0 and flex-shrink: 0`;
-      refuse(relative, 'width-content', `${said} here: ${at} takes its width from its content (${sized.why}), which Chrome measures with the select's widest option, and Dragon does not measure that option`, `${contentSizedFix(at, sized.why)} Or ${own}.`);
+  // FORM-b S4: a menulist's min- and max-content widths are its widest option's (Blink MenuListIntrinsicInlineSize), which the engine
+  // measures from every option's label; a select whose options are a list's rows (LISTED_OPTIONS_ATTRIBUTE) has labels Dragon cannot
+  // read, so every width that reads them is refused for it.
+  if (el.element.attributes.has(LISTED_OPTIONS_ATTRIBUTE)) {
+    if (width.value.kind === 'keyword') refuse(width, 'width', `width: ${valueToString(width.value)} on <select> ${address} is not supported: Chrome sizes a select to its widest option, whose labels Dragon cannot read, as its options are rows of a list`, `Give <select> ${address} a width (a length or percentage).`);
+    const item = parentDisplay === 'flex' || parentDisplay === 'inline-flex' || parentDisplay === 'grid' || parentDisplay === 'inline-grid';
+    const minWidth = el.props.get('min-width') as ResolvedValue;
+    if (item && keywordOf(minWidth) === 'auto') refuse(minWidth, 'min-width', `<select> ${address} is a ${parentDisplay} item with min-width: auto, whose automatic minimum Chrome takes from its widest option, whose labels Dragon cannot read, as its options are rows of a list`, `Set min-width (0 is fine) on <select> ${address}.`);
+    for (const p of ['min-width', 'max-width'] as const) {
+      const v = el.props.get(p) as ResolvedValue;
+      if (INTRINSIC_SIZES.has(keywordOf(v))) refuse(v, p, `${p}: ${keywordOf(v)} on <select> ${address} is not supported: Chrome sizes a select's content to its widest option, whose labels Dragon cannot read, as its options are rows of a list`, `Give <select> ${address} a ${p} in px or %, or remove it.`);
+    }
+    const rowItem = (parentDisplay === 'flex' || parentDisplay === 'inline-flex') && !keywordOf((chain.filter((a) => !isContents(a)).at(-1) as ResolvedElement).props.get('flex-direction') as ResolvedValue).startsWith('column');
+    const basis = el.props.get('flex-basis') as ResolvedValue;
+    const b = keywordOf(basis);
+    if (rowItem && (b === 'content' || INTRINSIC_SIZES.has(b))) refuse(basis, 'flex-basis', `flex-basis: ${b} on <select> ${address} is not supported: Chrome takes it from the select's widest option, whose labels Dragon cannot read, as its options are rows of a list`, `Give <select> ${address} a flex-basis in px, or a width and flex-basis: auto.`);
+    // Blink FlexLayoutAlgorithm::ComputeMinMaxSizeOfRowContainer: a row item's contribution is its content-based one (a percentage
+    // width is indefinite there) unless it cannot flex, so a length basis keeps a percentage width out of the walk only then.
+    const number = (p: Longhand): number => { const v = (el.props.get(p) as ResolvedValue).value; return v.kind === 'number' ? v.value : 1; };
+    const rigid = rowItem && b === '' && !hasPercentage(basis) && number('flex-grow') === 0 && number('flex-shrink') === 0;
+    const percentWidth = width.value.kind !== 'keyword' && hasPercentage(width) ? width : null;
+    const relative = rowItem && hasPercentage(basis) ? basis : rigid ? null : percentWidth;
+    if (relative !== null) {
+      const what = relative === basis ? 'flex-basis' : 'width';
+      const said = `${what}: ${valueToString(relative.value)} on <select> ${address} is not supported`;
+      const sized = contentSizedAncestor(chain);
+      if (parentDisplay === 'grid' || parentDisplay === 'inline-grid') {
+        refuse(relative, 'width-content', `${said} on a grid item: Chrome resolves it against the grid area, whose tracks can be sized from the select's widest option, whose labels Dragon cannot read, as its options are rows of a list`, `Give <select> ${address} a ${what} in px.`);
+      } else if (sized !== null) {
+        const at = `<${sized.box.element.tag}> ${sized.box.element.address}`;
+        const own = relative === basis || !rowItem || b === 'auto' ? `give <select> ${address} a ${what} in px` : `give <select> ${address} a width in px, or flex-grow: 0 and flex-shrink: 0`;
+        refuse(relative, 'width-content', `${said} here: ${at} takes its width from its content (${sized.why}), which Chrome measures with the select's widest option, whose labels Dragon cannot read, as its options are rows of a list`, `${contentSizedFix(at, sized.why)} Or ${own}.`);
+      }
     }
   }
   const align = el.props.get('align-items') as ResolvedValue;
@@ -2027,7 +2076,12 @@ function checkSelect(el: ResolvedElement, parentDisplay: string | null, chain: r
   const padded = (['padding-top', 'padding-bottom'] as const).find((p) => !isZeroLength((el.props.get(p) as ResolvedValue).value));
   // Any flex item: a column item's main size and a stretched row item's cross size both come from its container.
   const flexItem = parentDisplay === 'flex' || parentDisplay === 'inline-flex';
-  const capped = keywordOf(el.props.get('height') as ResolvedValue) !== 'auto' || keywordOf(el.props.get('max-height') as ResolvedValue) !== 'none' || parentDisplay === 'grid' || parentDisplay === 'inline-grid' || flexItem;
+  // A grid item in implicit auto rows with min-height: auto is at least its content's height (the row's base size is its automatic
+  // minimum); with min-height: 0 a definite-height grid shrinks it below its label (Chrome 145: 10px in a 10px grid, not 20px).
+  const container = chain.filter((a) => !isContents(a)).at(-1);
+  const autoRows = container !== undefined && keywordOf(container.props.get('grid-template-rows') as ResolvedValue) === 'none' && keywordOf(container.props.get('grid-auto-rows') as ResolvedValue) === 'auto' && keywordOf(el.props.get('min-height') as ResolvedValue) === 'auto';
+  const gridItem = (parentDisplay === 'grid' || parentDisplay === 'inline-grid') && !autoRows;
+  const capped = keywordOf(el.props.get('height') as ResolvedValue) !== 'auto' || keywordOf(el.props.get('max-height') as ResolvedValue) !== 'none' || gridItem || flexItem;
   if (padded !== undefined && capped) {
     const v = el.props.get(padded) as ResolvedValue;
     refuse(v, 'padding-clip', `${padded}: ${valueToString(v.value)} on <select> ${address} is not supported where its height can be less than its label's line: Chrome clips the label to the select's content box, and Dragon clips it to the padding box`, `Remove the vertical padding from <select> ${address}, or leave its height auto outside a grid or flex container.`);
@@ -2097,6 +2151,82 @@ function checkRange(el: ResolvedElement, parentDisplay: string | null, targets: 
     if (v.declaration === null || isInitialByProvenance(v, p)) continue;
     refuse(v, `flex-${p}`, `${p}: ${valueToString(v.value)} on <input type=range> ${address} is not supported: the range's shadow tree is laid out as a flex container, which no fixture proves under it`, `Remove ${p} from <input> ${address}.`);
   }
+}
+
+/** The box longhands a themed checkbox's theme overrides (spec item 2), with whether a computed value is the one Chrome uses. */
+const CHECKBOX_THEMED_BOX: readonly (readonly [Longhand, (v: CssValue) => boolean])[] = [
+  ['box-sizing', (v) => v.kind === 'keyword' && v.value === 'border-box'],
+  ...(['padding-top', 'padding-right', 'padding-bottom', 'padding-left'] as const).map((p) => [p, (v: CssValue) => (v.kind === 'length' || v.kind === 'percentage') && v.value === 0] as const),
+  ...(['border-top-style', 'border-right-style', 'border-bottom-style', 'border-left-style'] as const).map((p) => [p, (v: CssValue) => v.kind === 'keyword' && (v.value === 'none' || v.value === 'hidden')] as const),
+];
+
+/**
+ * FORM-checkbox: an input[type=checkbox] with appearance: auto is laid out as a block box 13px square unless its width or height is
+ * set, and drawn as Chrome's light theme draws it (forms/checkbox.ts, layout controls.ts checkboxMarks). Refused: any other
+ * appearance, an inline-level or positioned checkbox, a grid item, author padding, border or content-box sizing (which Chrome's
+ * theme discards), a translucent accent-color, a disabled checkbox, and a zoom on it or an ancestor.
+ */
+function checkCheckbox(el: ResolvedElement, parentDisplay: string | null, chain: readonly ResolvedElement[], targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+  const address = el.element.address;
+  const refuse = (v: ResolvedValue | null, what: string, message: string, manual: string): void => refuseOn(el, v, what, 'DRAGON_UNSUPPORTED_VALUE', targets, diagnostics, reported, message, manual);
+  const appearance = el.props.get('appearance') as ResolvedValue;
+  if (keywordOf(appearance) !== 'auto') {
+    refuse(appearance, 'checkbox-appearance', `appearance: ${valueToString(appearance.value)} on <input type=checkbox> ${address} is not supported: only the themed checkbox (appearance: auto) is drawn`, `Remove appearance from <input> ${address}.`);
+  }
+  const display = el.props.get('display') as ResolvedValue;
+  const d = valueToString(display.value);
+  if (d === 'inline-block' || d === 'inline-flex' || d === 'inline-grid' || d === 'inline') {
+    refuse(display, 'inline', `display: ${d} on <input> ${address} makes it an inline-level control, which waits for the RF-INL package (atomic inlines)`, `Set display: block on <input> ${address}, or make it a flex item.`);
+  } else if (d !== 'block') {
+    refuse(display, 'display', `display: ${d} on <input type=checkbox> ${address} is not supported; only a block-level checkbox is laid out`, `Set display: block on <input> ${address}.`);
+  }
+  const position = el.props.get('position') as ResolvedValue;
+  const pos = keywordOf(position);
+  if (pos === 'absolute' || pos === 'fixed') {
+    refuse(position, 'position', `position: ${pos} on <input> ${address} is not supported on a form control yet`, `Position a wrapper element and keep <input> ${address} in its flow.`);
+  }
+  refuseGridItem(el, parentDisplay, refuse);
+  // The engine gives an auto size the 13px part size, but Chrome 145 stretches it as a natural size: an auto-width checkbox in a
+  // 100px column flex is 93px wide (controls-checkbox, refused case p).
+  const container = chain.filter((a) => !isContents(a)).at(-1);
+  if (container !== undefined && (parentDisplay === 'flex' || parentDisplay === 'inline-flex')) {
+    const column = (keywordOf(container.props.get('flex-direction') as ResolvedValue) ?? 'row').startsWith('column');
+    const self = keywordOf(el.props.get('align-self') as ResolvedValue);
+    const align = self === 'auto' || self === null ? keywordOf(container.props.get('align-items') as ResolvedValue) : self;
+    const cross = column ? 'width' : 'height';
+    const size = el.props.get(cross) as ResolvedValue;
+    if ((align === 'normal' || align === 'stretch') && keywordOf(size) === 'auto') {
+      refuse(size, 'checkbox-stretch', `<input type=checkbox> ${address} with ${cross}: auto is stretched by its flex container, as Chrome stretches a checkbox's natural size, which Dragon does not lay out yet`, `Give <input> ${address} a ${cross}, or set align-self: center on it.`);
+    }
+  }
+  for (const [p, used] of CHECKBOX_THEMED_BOX) {
+    const v = el.props.get(p) as ResolvedValue;
+    if (used(v.value)) continue;
+    refuse(v, `checkbox-${p}`, `${p}: ${valueToString(v.value)} on <input type=checkbox> ${address} is not supported: Chrome's theme discards a themed checkbox's padding and border, which no fixture pins`, `Remove ${p} from <input> ${address}.`);
+  }
+  const accent = el.props.get('accent-color') as ResolvedValue;
+  if (accent.value.kind === 'color' && accent.value.value.alpha !== 255) {
+    refuse(accent, 'checkbox-accent', `a translucent accent-color on <input type=checkbox> ${address} is not supported: Chrome blends it with the page, not with the checkbox, which no fixture pins`, `Use an opaque accent-color on <input> ${address}.`);
+  } else if (accent.value.kind !== 'color' && keywordOf(accent) !== 'auto') {
+    refuse(accent, 'checkbox-accent', `accent-color: ${valueToString(accent.value)} on <input type=checkbox> ${address} did not resolve to a colour`, `Use a colour for accent-color on <input> ${address}.`);
+  }
+  for (const p of ['width', 'height'] as const) {
+    const v = el.props.get(p) as ResolvedValue;
+    // Chrome draws a checkbox of 2 CSS px or less as a plain square without antialiasing, which the native draws do not match.
+    if (v.value.kind === 'length' && v.value.unit === 'px' && v.value.value <= 2) {
+      refuse(v, 'checkbox-tiny', `${p}: ${valueToString(v.value)} on <input type=checkbox> ${address} is not supported: Chrome draws a checkbox of 2px or less as a plain square without antialiasing, which Dragon does not draw yet`, `Give <input> ${address} a ${p} above 2px.`);
+    }
+  }
+  if (el.element.attributes.has('disabled')) {
+    refuse(null, 'checkbox-disabled', `a disabled <input type=checkbox> ${address} is not supported: its theme colours are not captured`, `Remove disabled from <input> ${address}, or draw a disabled state with a div.`);
+  }
+  for (const a of [...chain, el]) {
+    const z = a.props.get('zoom') as ResolvedValue | undefined;
+    if (z === undefined || (z.value.kind === 'number' && z.value.value === 1) || keywordOf(z) === 'normal') continue;
+    refuse(z, 'checkbox-zoom', `zoom: ${valueToString(z.value)} on ${a.element.address} zooms <input type=checkbox> ${address}, whose themed drawing Dragon draws at zoom 1 only`, `Remove zoom from ${a.element.address}.`);
+    break;
+  }
+  noteStaticOnNative(el, targets, diagnostics, reported);
 }
 
 /** A range shadow part of input el (resolve.ts), or null. */
@@ -2325,8 +2455,11 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
     } else if (!here && el.element.tag === 'select') {
       checkSelect(el, parentDisplay, chain, targets, diagnostics, reported, environmentOf(root).ua);
       checkInline(el, targets, diagnostics, reported, shapedAt, environmentOf(root).ua);
-    } else if (!here && el.element.tag === 'input' && isTextFieldType(el.element.attributes.get('type'))) {
-      checkTextField(el, parentDisplay, chain, targets, diagnostics, reported, faults);
+    } else if (!here && ((el.element.tag === 'input' && isTextFieldType(el.element.attributes.get('type'))) || el.element.tag === 'textarea')) {
+      checkTextField(el, parentDisplay, chain, targets, diagnostics, reported, environmentOf(root).hostTextEditing === true, faults);
+      checkInline(el, targets, diagnostics, reported, shapedAt, environmentOf(root).ua);
+    } else if (!here && el.element.tag === 'input' && isCheckboxType(el.element.attributes.get('type'))) {
+      checkCheckbox(el, parentDisplay, chain, targets, diagnostics, reported);
       checkInline(el, targets, diagnostics, reported, shapedAt, environmentOf(root).ua);
     } else if (!here && el.element.tag === 'input') {
       checkRange(el, parentDisplay, targets, diagnostics, reported);
