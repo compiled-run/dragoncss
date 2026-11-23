@@ -145,7 +145,7 @@ public func paintGroup_groupTileFolds(_ draws: JsArray<Double>, _ tileLeft: Doub
 public func paintGroup_groupFoldAlpha(_ ca: Double, _ opacity: Double) throws -> Double {
   // ts: packages/layout/src/paint-group.ts:154
   if (!((ca >= 0.0) && (ca <= 255.0))) {
-    throw JsError(message: jsConcat(S.s997, jsNumberToString(ca), S.s114))
+    throw JsError(message: jsConcat(S.s997, jsNumberToString(ca), S.s115))
   }
   let o: Double = try rtEasing_froundOf(((opacity < 0.0) ? 0.0 : ((opacity > 1.0) ? 1.0 : opacity)))
   let a: Double = try rtEasing_froundOf((rtEasing_froundOf((ca / 255.0)) * o))
@@ -192,7 +192,7 @@ public func paintGroup_colourRows(_ m0: Double, _ m1: Double, _ m2: Double, _ m4
 public func paintGroup_groupFilterMatrix(_ code: Double, _ amountIn: Double) throws -> JsArray<Double> {
   // ts: packages/layout/src/paint-group.ts:209
   if (!((amountIn >= 0.0) && (amountIn <= paintGroup_FLT_MAX))) {
-    throw JsError(message: jsConcat(S.s1000, jsNumberToString(amountIn), S.s120))
+    throw JsError(message: jsConcat(S.s1000, jsNumberToString(amountIn), S.s121))
   }
   // ts: packages/layout/src/paint-group.ts:210
   if ((((code >= 0.0) && (code <= 4.0)) && (code != 2.0)) && (amountIn > 1.0)) {

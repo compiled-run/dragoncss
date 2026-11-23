@@ -41,11 +41,11 @@ public func paintMenulist_collectArrowZooms(_ b: any U_ControlBox_LayoutBox, _ d
   }
   // ts: packages/layout/src/paint-menulist.ts:43
   do {
-    let _a231 = b.children
-    var _i231 = 0
-    while _i231 < _a231.items.count {
-      let k: any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a231.items[_i231]
-      _i231 += 1
+    let _a232 = b.children
+    var _i232 = 0
+    while _i232 < _a232.items.count {
+      let k: any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a232.items[_i232]
+      _i232 += 1
       // ts: packages/layout/src/paint-menulist.ts:44
       if ((k.kind == S.s_box) || ((k as! any U_ControlBox_InlineBox_LineBreak_ReplacedLeaf_TextLeaf).kind == S.s_control)) {
         try found = (found + paintMenulist_collectArrowZooms((k as! any U_ControlBox_LayoutBox), device, out))
@@ -76,11 +76,11 @@ public func paintMenulist_collectArrows(_ b: any U_ControlBox_LayoutBox, _ zoome
   }
   // ts: packages/layout/src/paint-menulist.ts:63
   do {
-    let _a232 = b.children
-    var _i232 = 0
-    while _i232 < _a232.items.count {
-      let k: any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a232.items[_i232]
-      _i232 += 1
+    let _a233 = b.children
+    var _i233 = 0
+    while _i233 < _a233.items.count {
+      let k: any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a233.items[_i233]
+      _i233 += 1
       // ts: packages/layout/src/paint-menulist.ts:64
       if ((k.kind == S.s_box) || ((k as! any U_ControlBox_InlineBox_LineBreak_ReplacedLeaf_TextLeaf).kind == S.s_control)) {
         try paintMenulist_collectArrows((k as! any U_ControlBox_LayoutBox), zoomedRatio, device, zooms, abs, out)

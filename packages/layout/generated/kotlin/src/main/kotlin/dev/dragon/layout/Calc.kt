@@ -23,11 +23,11 @@ fun calc_calcHasPercent(e: U_4133948d6cf9737b): Boolean {
     "sum", "product", "min", "max" -> {
       // ts: packages/layout/src/calc.ts:52
       run {
-        val _a9 = (e as U_CalcMax_CalcMin_CalcProduct_CalcSum).terms
-        var _i9 = 0
-        while (_i9 < _a9.size) {
-          val t: U_4133948d6cf9737b = _a9[_i9]
-          _i9++
+        val _a10 = (e as U_CalcMax_CalcMin_CalcProduct_CalcSum).terms
+        var _i10 = 0
+        while (_i10 < _a10.size) {
+          val t: U_4133948d6cf9737b = _a10[_i10]
+          _i10++
           // ts: packages/layout/src/calc.ts:52
           if (calc_calcHasPercent(t)) {
             return true
@@ -127,11 +127,11 @@ fun calc_evaluateCalc(e: U_4133948d6cf9737b, maxValue: Double, faults: EngineFau
       var m: Double = calc_evaluateCalc(jsUnwrap(jsAt((e as CalcMin).terms, 0.0)), maxValue, faults)
       // ts: packages/layout/src/calc.ts:114
       run {
-        val _a10 = (e as CalcMin).terms
-        var _i10 = 0
-        while (_i10 < _a10.size) {
-          val t: U_4133948d6cf9737b = _a10[_i10]
-          _i10++
+        val _a11 = (e as CalcMin).terms
+        var _i11 = 0
+        while (_i11 < _a11.size) {
+          val t: U_4133948d6cf9737b = _a11[_i11]
+          _i11++
           m = units_floatMin(m, calc_evaluateCalc(t, maxValue, faults))
         }
       }
@@ -141,11 +141,11 @@ fun calc_evaluateCalc(e: U_4133948d6cf9737b, maxValue: Double, faults: EngineFau
       var m: Double = calc_evaluateCalc(jsUnwrap(jsAt((e as CalcMax).terms, 0.0)), maxValue, faults)
       // ts: packages/layout/src/calc.ts:119
       run {
-        val _a11 = (e as CalcMax).terms
-        var _i11 = 0
-        while (_i11 < _a11.size) {
-          val t: U_4133948d6cf9737b = _a11[_i11]
-          _i11++
+        val _a12 = (e as CalcMax).terms
+        var _i12 = 0
+        while (_i12 < _a12.size) {
+          val t: U_4133948d6cf9737b = _a12[_i12]
+          _i12++
           m = units_floatMax(m, calc_evaluateCalc(t, maxValue, faults))
         }
       }

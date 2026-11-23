@@ -40,7 +40,7 @@ public func paintRadius_at(_ xs: JsArray<Double>, _ i: Double) throws -> Double 
   let v: Double? = jsAt(xs, i)
   // ts: packages/layout/src/paint-radius.ts:37
   if (v == nil) {
-    throw JsError(message: jsConcat(S.s1006, jsNumberToString(i), S.s134, jsNumberToString(jsLength(xs)), S.s171))
+    throw JsError(message: jsConcat(S.s1006, jsNumberToString(i), S.s135, jsNumberToString(jsLength(xs)), S.s171))
   }
   return try jsUnwrap(v)
 }
@@ -50,7 +50,7 @@ public func paintRadius_lengthAt(_ xs: JsArray<RadiusLength>, _ i: Double) throw
   let v: RadiusLength? = jsAt(xs, i)
   // ts: packages/layout/src/paint-radius.ts:43
   if (v == nil) {
-    throw JsError(message: jsConcat(S.s1006, jsNumberToString(i), S.s134, jsNumberToString(jsLength(xs)), S.s173))
+    throw JsError(message: jsConcat(S.s1006, jsNumberToString(i), S.s135, jsNumberToString(jsLength(xs)), S.s173))
   }
   return try jsUnwrap(v)
 }
