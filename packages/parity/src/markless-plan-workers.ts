@@ -27,6 +27,8 @@ export function planWorkers(): number {
 export function recordDensitiesInWorkers(jobs: readonly DensityJob[], workers: number): DensityResult[] {
   const results: DensityResult[] = new Array(jobs.length);
   const done = new Int32Array(new SharedArrayBuffer(4));
+  // Per worker: 0 while it runs, 1 once it has exited or thrown outside a recording; it then answers no job.
+  const gone = new Int32Array(new SharedArrayBuffer(4 * Math.max(1, Math.min(workers, jobs.length))));
   const pool: { readonly worker: Worker; readonly port: MessagePort; job: number }[] = [];
   let next = 0;
   let finished = 0;
@@ -37,7 +39,7 @@ export function recordDensitiesInWorkers(jobs: readonly DensityJob[], workers: n
   try {
     for (let i = 0; i < Math.min(workers, jobs.length); i++) {
       const { port1, port2 } = new MessageChannel();
-      const worker = new Worker(new URL(import.meta.url), { workerData: { port: port2, done }, transferList: [port2] });
+      const worker = new Worker(new URL(import.meta.url), { workerData: { port: port2, done, gone, index: i }, transferList: [port2] });
       worker.unref();
       const slot = { worker, port: port1, job: -1 };
       pool.push(slot);
@@ -54,7 +56,14 @@ export function recordDensitiesInWorkers(jobs: readonly DensityJob[], workers: n
         finished++;
         if (next < jobs.length) give(slot);
       }
-      if (!got && Atomics.wait(done, 0, seen, 600_000) === 'timed-out') throw new Error('a layout plan worker did not answer in 600 s');
+      if (got) continue;
+      // No timeout: a recording takes as long as the machine needs. A worker that exits or throws outside a recording says so.
+      for (const [i, slot] of pool.entries()) {
+        if (Atomics.load(gone, i) === 0 || results[slot.job] !== undefined) continue;
+        const job = jobs[slot.job] as DensityJob;
+        throw new Error(`a layout plan worker exited before recording ${job.t} at ${job.dpr}x`);
+      }
+      Atomics.wait(done, 0, seen);
     }
     return results;
   } finally {
@@ -63,11 +72,20 @@ export function recordDensitiesInWorkers(jobs: readonly DensityJob[], workers: n
 }
 
 if (!isMainThread && parentPort !== null && (workerData as { port?: MessagePort } | null)?.port !== undefined) {
-  const { port, done } = workerData as { readonly port: MessagePort; readonly done: Int32Array };
+  const { port, done, gone, index } = workerData as { readonly port: MessagePort; readonly done: Int32Array; readonly gone: Int32Array; readonly index: number };
+  const leave = (): void => {
+    Atomics.store(gone, index, 1);
+    Atomics.add(done, 0, 1);
+    Atomics.notify(done, 0);
+  };
+  process.on('exit', leave);
+  process.on('uncaughtException', leave);
   const { recordDensity } = await import('./markless-plan.ts');
   const { systemFontsFor } = await import('./system-fonts/provider.ts');
   const { registerFace } = await import('./text-shaper-host.ts');
   parentPort.on('message', (job: DensityJob) => {
+    // Planted fault for the pool's own test: the worker dies before it answers.
+    if (process.env['DRAGON_PLAN_WORKER_FAULT'] === 'exit') process.exit(1);
     let result: DensityResult;
     try {
       for (const [, bytes] of job.authorFiles) registerFace(bytes);

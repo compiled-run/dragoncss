@@ -145,6 +145,20 @@ describe('the layout plan of a Markless export', () => {
     }
   });
 
+  it('fails, naming the recording, when a plan worker exits before it answers, and waits on no timeout', () => {
+    const before = { workers: process.env['DRAGON_PLAN_WORKERS'], fault: process.env['DRAGON_PLAN_WORKER_FAULT'] };
+    try {
+      process.env['DRAGON_PLAN_WORKERS'] = '2';
+      process.env['DRAGON_PLAN_WORKER_FAULT'] = 'exit';
+      expect(() => marklessStyleExport(readFileSync(repoPath(FLUID), 'utf8'), FLUID, undefined, 'system', undefined, true)).toThrow(/^a layout plan worker exited before recording (ios|android) at [0-9.]+x$/);
+    } finally {
+      for (const [k, v] of [['DRAGON_PLAN_WORKERS', before.workers], ['DRAGON_PLAN_WORKER_FAULT', before.fault]] as const) {
+        if (v === undefined) delete process.env[k];
+        else process.env[k] = v;
+      }
+    }
+  });
+
   it('records every root width a phone from 320 to 1400 css px can have, in whole device and whole css px', () => {
     const w = planWidths(2.625);
     expect(w[0]).toBeCloseTo(320, 9);
