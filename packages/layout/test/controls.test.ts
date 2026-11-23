@@ -398,7 +398,7 @@ describe('FORM-a control boxes: what the engine and the validator refuse', () =>
     const editor = control('t::editor', { kind: 'text-editor' }, {}, [text('t::editor:text0', 'XX')]);
     const empty = control('t::editor', { kind: 'text-editor' }, {}, [], strut);
     const placeholder = control('t::placeholder', { kind: 'text-placeholder' }, {}, [text('t::placeholder:text0', 'PP')]);
-    const field = (children: (LayoutBox | ControlBox)[]): ControlBox => control('t', { kind: 'text-field', size: 20, font: ahemFont(10), lineHeight: { kind: 'normal' } }, {}, children);
+    const field = (children: (LayoutBox | ControlBox)[]): ControlBox => control('t', { kind: 'text-field', size: 20, font: ahemFont(10), lineHeight: { kind: 'normal' }, cancelButton: null }, {}, children);
     const under = (n: LayoutBox | ControlBox): LayoutInput => ({ ...range({}, []), root: { ...box('root', {}), children: [n] } });
     expect(codes(under(field([editor])))).toEqual([]);
     expect(codes(under(field([placeholder, empty])))).toEqual([]);

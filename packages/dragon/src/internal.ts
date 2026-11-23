@@ -438,7 +438,9 @@ export function hitFacts(compiled: object, assignment: Assignment, state: string
     const opacity = o === undefined ? 1 : opacityOf(o.value);
     if (opacity === null) throw new Error(`${el.element.address}: opacity did not compute to a number`);
     const transform = elementTransformWrite(el);
-    const context = opacity < 1 || transformedForStacking(el);
+    const pos = el.props.get('position');
+    // css-position-3 §3.4: a sticky box always makes a stacking context.
+    const context = opacity < 1 || transformedForStacking(el) || (pos !== undefined && pos.value.kind === 'keyword' && pos.value.value === 'sticky');
     out.set(el.element.address, { pointerEvents: v.value.value, inherited: v.origin === 'inherited', activation: activates(el.element.tag, el.element.attributes), radii: roundsAnyCorner(lengths) ? lengths : [], context, transform: transform === null ? [] : transform.ops, origin: transform === null ? NO_ORIGIN : transform.origin });
     for (const ch of el.children) if (ch.kind === 'element') walk(ch);
   };
