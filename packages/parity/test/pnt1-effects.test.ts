@@ -182,6 +182,8 @@ function rootScrolls(p: NativeProgram, viewport: { width: number; height: number
     for (let q = parentOf.get(id); q !== undefined; q = parentOf.get(q)) d++;
     return d;
   };
+  // The engine's rects are in device px already (the input carries the DPR); the viewport is in CSS px.
+  const px = (lu: number): number => Math.floor(lu / LU_PER_PX + 0.5);
   const snap = (css: number): number => Math.floor(css * dpr + 0.5);
   const rtl = input.root.style.direction === 'rtl';
   return out.boxes.some((r) => {
@@ -189,7 +191,7 @@ function rootScrolls(p: NativeProgram, viewport: { width: number; height: number
     for (let q = parentOf.get(r.id); q !== undefined; q = parentOf.get(q)) if (fixed.has(q) || (depth(q) >= 2 && clips.has(q))) return false;
     const a = abs.get(r.id);
     if (a === undefined) return false;
-    return snap((a.y + a.height) / LU_PER_PX) > snap(viewport.height) || (rtl ? snap(-a.x / LU_PER_PX) > 0 : snap((a.x + a.width) / LU_PER_PX) > snap(viewport.width));
+    return px(a.y + a.height) > snap(viewport.height) || (rtl ? px(-a.x) > 0 : px(a.x + a.width) > snap(viewport.width));
   });
 }
 
