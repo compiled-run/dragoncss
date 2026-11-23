@@ -14,7 +14,8 @@
     "xHeight": 1118,
     "capHeight": 1490,
     "zeroAdvance": 1292,
-    "ellipsisAdvance": 1770
+    "ellipsisAdvance": 1770,
+    "xAdvance": 1118
    },
    "hanKerning": {
     "hasAlternateSpacing": false,
@@ -36,7 +37,8 @@
     "xHeight": 1013,
     "capHeight": 1433,
     "zeroAdvance": 1160,
-    "ellipsisAdvance": 1500
+    "ellipsisAdvance": 1500,
+    "xAdvance": 996
    },
    "hanKerning": {
     "hasAlternateSpacing": false,

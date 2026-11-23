@@ -14,7 +14,8 @@
     "xHeight": 1118,
     "capHeight": 1490,
     "zeroAdvance": 1381,
-    "ellipsisAdvance": 2052
+    "ellipsisAdvance": 2052,
+    "xAdvance": 1188
    },
    "hanKerning": {
     "hasAlternateSpacing": false,
@@ -36,7 +37,8 @@
     "xHeight": 1118,
     "capHeight": 1490,
     "zeroAdvance": 1292,
-    "ellipsisAdvance": 1770
+    "ellipsisAdvance": 1770,
+    "xAdvance": 1118
    },
    "hanKerning": {
     "hasAlternateSpacing": false,
@@ -58,7 +60,8 @@
     "xHeight": 536,
     "capHeight": 714,
     "zeroAdvance": 600,
-    "ellipsisAdvance": 600
+    "ellipsisAdvance": 600,
+    "xAdvance": 600
    },
    "hanKerning": {
     "hasAlternateSpacing": false,
@@ -80,7 +83,8 @@
     "xHeight": 1026,
     "capHeight": 1446,
     "zeroAdvance": 1160,
-    "ellipsisAdvance": 1543
+    "ellipsisAdvance": 1543,
+    "xAdvance": 1044
    },
    "hanKerning": {
     "hasAlternateSpacing": false,
@@ -102,7 +106,8 @@
     "xHeight": 1118,
     "capHeight": 1490,
     "zeroAdvance": 1380,
-    "ellipsisAdvance": 2050
+    "ellipsisAdvance": 2050,
+    "xAdvance": 1188
    },
    "hanKerning": {
     "hasAlternateSpacing": false,
@@ -124,7 +129,8 @@
     "xHeight": 1118,
     "capHeight": 1490,
     "zeroAdvance": 1291,
-    "ellipsisAdvance": 1767
+    "ellipsisAdvance": 1767,
+    "xAdvance": 1118
    },
    "hanKerning": {
     "hasAlternateSpacing": false,
@@ -146,7 +152,8 @@
     "xHeight": 1013,
     "capHeight": 1433,
     "zeroAdvance": 1160,
-    "ellipsisAdvance": 1500
+    "ellipsisAdvance": 1500,
+    "xAdvance": 996
    },
    "hanKerning": {
     "hasAlternateSpacing": false,

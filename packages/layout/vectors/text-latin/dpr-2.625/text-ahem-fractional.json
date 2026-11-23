@@ -14,7 +14,8 @@
     "xHeight": 800,
     "capHeight": 800,
     "zeroAdvance": 1000,
-    "ellipsisAdvance": 1000
+    "ellipsisAdvance": 1000,
+    "xAdvance": 1000
    },
    "hanKerning": {
     "hasAlternateSpacing": false,
