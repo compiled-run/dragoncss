@@ -36,18 +36,18 @@ public func paintMarker_symbolCoverage(_ symbol: JsString, _ left: Double, _ top
   }
   // ts: packages/layout/src/paint-marker.ts:24
   if (symbol != S.s_disc) {
-    throw JsError(message: jsConcat(S.s544, symbol, S.s144))
+    throw JsError(message: jsConcat(S.s561, symbol, S.s153))
   }
   let b: PaintAa_IRect = PaintAa_IRect(left, top, right, bottom)
   let dev: Device = try paintAa_whiteDevice(b)
   try paintAa_antiFillPath(dev, paintAa_ovalPath(PaintAa_FRect(left, top, right, bottom)), b, paintAa_NO_AA_FAULTS)
   // ts: packages/layout/src/paint-marker.ts:29
   do {
-    let _a230 = try paintAa_devicePixels(dev)
-    var _i230 = 0
-    while _i230 < _a230.items.count {
-      let v: Double = _a230.items[_i230]
-      _i230 += 1
+    let _a231 = try paintAa_devicePixels(dev)
+    var _i231 = 0
+    while _i231 < _a231.items.count {
+      let v: Double = _a231.items[_i231]
+      _i231 += 1
       _ = jsPush(out, (255.0 - v))
     }
   }

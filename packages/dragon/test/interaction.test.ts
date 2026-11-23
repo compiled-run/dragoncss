@@ -603,6 +603,11 @@ describe('interaction states: hit model (R13)', () => {
     const wbody = (r: Parameters<Parameters<typeof inputFor>[1]>[0]) => [div(r, 'w', ['w'], [text(r, 'wt', 'aa'), div(r, 'ib', ['ib'])]), div(r, 'k', ['k'])];
     expect(otherErrors(compile({}, css, wbody, TARGETS, 'derive').diagnostics)).toEqual(['ios', 'android'].map((t) => `DRAGON_UNSUPPORTED_SELECTOR [${t}] :hover needs Dragon hit testing through the atomic inline forming a stacking context ib, which is not built yet (package INL2c hit model)`));
     expect(otherErrors(compile({}, css, wbody, { web: {} }, 'derive').diagnostics)).toEqual([]);
+    // Beside a block child the atomic's line sits in an anonymous box, which the table builds and refuses the same way.
+    const mixed = (r: Parameters<Parameters<typeof inputFor>[1]>[0]) => [div(r, 'w', ['w'], [div(r, 'blk', []), text(r, 'wt', 'aa'), div(r, 'ib', ['ib'])]), div(r, 'k', ['k'])];
+    expect(otherErrors(compile({}, css, mixed, TARGETS, 'derive').diagnostics)).toEqual(['ios', 'android'].map((t) => `DRAGON_UNSUPPORTED_SELECTOR [${t}] :hover needs Dragon hit testing through the atomic inline forming a stacking context ib, which is not built yet (package INL2c hit model)`));
+    const moved = css.replace('opacity: 0.5;', 'transform: translateX(2px);');
+    expect(otherErrors(compile({}, moved, mixed, TARGETS, 'derive').diagnostics)).toEqual(['ios', 'android'].map((t) => `DRAGON_UNSUPPORTED_SELECTOR [${t}] :hover needs Dragon hit testing through the atomic inline forming a stacking context ib, which is not built yet (package INL2c hit model)`));
   });
 
   it('catches the plant hitUnmodelledNotRefused', () => {

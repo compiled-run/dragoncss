@@ -427,6 +427,14 @@ export function atomicLineChildren(el: ResolvedElement): ResolvedElement[] {
   return out;
 }
 
+/** Every atomic inline on a line of el's inline formatting contexts, the anonymous blocks the compiler wraps inline content in included, in tree order. */
+export function lineAtomics(el: ResolvedElement): ResolvedElement[] {
+  if (isInlineBox(el) || isContents(el)) return [];
+  const out: ResolvedElement[] = [];
+  for (const run of inlineContexts(el, () => {})) for (const it of run) if (it.kind === 'atomic') out.push(it.el);
+  return out;
+}
+
 /** Whether el is a block container whose inline formatting context lays out a line: an atomic inline, or text other than collapsible white space. */
 function holdsInlineContent(el: ResolvedElement): boolean {
   if (isInlineBox(el)) return false;

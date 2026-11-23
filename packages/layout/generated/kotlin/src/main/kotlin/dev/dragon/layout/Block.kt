@@ -712,12 +712,12 @@ fun block_layoutBlockFlow(ctx: Ctx, box: LayoutBox, a: FlowArgs): FlowResult {
   // ts: packages/layout/src/block.ts:928
   run {
     var k: Double = 0.0
-    loop32@ while ((k < jsLength(kids))) {
-      loop32_body@ do {
+    loop33@ while ((k < jsLength(kids))) {
+      loop33_body@ do {
         val child: U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = jsUnwrap(jsAt(kids, k))
         // ts: packages/layout/src/block.ts:930
         if (((!jsStrEq(child.kind, "box") && !jsStrEq((child as U_ControlBox_InlineBox_LineBreak_ReplacedLeaf_TextLeaf).kind, "control")) && !jsStrEq((child as U_InlineBox_LineBreak_ReplacedLeaf_TextLeaf).kind, "replaced"))) {
-          break@loop32_body
+          break@loop33_body
         }
         var kid: U_ControlBox_LayoutBox_ReplacedLeaf = (child as U_ControlBox_LayoutBox_ReplacedLeaf)
         // ts: packages/layout/src/block.ts:932
@@ -725,7 +725,7 @@ fun block_layoutBlockFlow(ctx: Ctx, box: LayoutBox, a: FlowArgs): FlowResult {
           val rtl: Boolean = (jsStrEq(direction, "rtl") && (!ctx.faults.staticPosLtr))
           val sy: Double = (if (((!seen) && a.canCollapseTop)) units_ZERO else units_add(cursor, block_collapsed(strut)))
           jsPush(outOfFlow, OutOfFlow((kid as LayoutBox), (if (rtl) StaticAxis(units_add(a.origin.x, a.contentWidth), "far") else StaticAxis(a.origin.x, "near")), StaticAxis(units_add(a.origin.y, sy), "near"), null))
-          break@loop32_body
+          break@loop33_body
         }
         // ts: packages/layout/src/block.ts:945
         if (float_isFloat(ctx, kid)) {
@@ -738,7 +738,7 @@ fun block_layoutBlockFlow(ctx: Ctx, box: LayoutBox, a: FlowArgs): FlowResult {
           val area: FloatArea = float_placeFloat(floats, (kid as U_LayoutBox_ReplacedLeaf).style.float, units_add(units_add(f.marginLeft, f.frag.width), f.marginRight), units_add(units_add(f.marginTop, f.frag.height), f.marginBottom), top, a.contentWidth)
           jsPush(floats, area)
           jsPush(placed, Box_Placed(f.frag, units_add(units_add(a.origin.x, area.x), f.marginLeft), units_add(units_add(a.origin.y, area.y), f.marginTop)))
-          break@loop32_body
+          break@loop33_body
         }
         inflow = true
         var inline: BlockLevelInline

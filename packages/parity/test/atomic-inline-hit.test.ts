@@ -9,8 +9,9 @@ import { caseHitTable, hitRefusal } from '../src/hit-capture.ts';
 import { nativeCases } from '../src/native-host.ts';
 
 const ATOMIC_REFUSAL = / is an atomic inline outside an inline formatting context, | has percentage padding around atomic inlines, | is an atomic inline that forms a stacking context or is transformed, /;
-// Cases with an atomic inline that containment makes a stacking context: both sides refuse them, under INL2c.
-const CONTEXT_CASES = ['contain-intrinsic-ahem', 'containment-layout'];
+// Cases with an atomic inline that forms a stacking context (containment, or opacity on a line in an anonymous box): both sides
+// refuse them, under INL2c.
+const CONTEXT_CASES = ['contain-intrinsic-ahem', 'containment-layout', 'hit-atomic-inline-context'];
 const ATOMIC_DISPLAYS = ['inline-block', 'inline-flex', 'inline-grid'];
 
 /** Every element of a resolved tree in preorder. */

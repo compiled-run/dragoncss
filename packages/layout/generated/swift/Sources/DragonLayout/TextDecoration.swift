@@ -224,11 +224,11 @@ public func textDecoration_snap(_ line: JsString, _ y: Double, _ t: Double, _ in
 public func textDecoration_has(_ lines: JsArray<JsString>, _ line: JsString) throws -> Bool {
   // ts: packages/layout/src/text-decoration.ts:131
   do {
-    let _a379 = lines
-    var _i379 = 0
-    while _i379 < _a379.items.count {
-      let l: JsString = _a379.items[_i379]
-      _i379 += 1
+    let _a388 = lines
+    var _i388 = 0
+    while _i388 < _a388.items.count {
+      let l: JsString = _a388.items[_i388]
+      _i388 += 1
       // ts: packages/layout/src/text-decoration.ts:131
       if (l == line) {
         return true
@@ -276,11 +276,11 @@ public func textDecoration_skipInkClear(_ rect: DecorationRect, _ glyphs: JsArra
   let margin: Double = (1.0 / 64.0)
   // ts: packages/layout/src/text-decoration.ts:170
   do {
-    let _a380 = glyphs
-    var _i380 = 0
-    while _i380 < _a380.items.count {
-      let g: GlyphExtent = _a380.items[_i380]
-      _i380 += 1
+    let _a389 = glyphs
+    var _i389 = 0
+    while _i389 < _a389.items.count {
+      let g: GlyphExtent = _a389.items[_i389]
+      _i389 += 1
       // ts: packages/layout/src/text-decoration.ts:171
       if ((g.bottom > (bandTop - margin)) && (g.top < (bandBottom + margin))) {
         return false
@@ -334,11 +334,11 @@ public func textDecoration_skipInkClips(_ rect: DecorationRect, _ glyphs: JsArra
   let out: JsArray<Double> = JsArray<Double>([])
   // ts: packages/layout/src/text-decoration.ts:222
   do {
-    let _a381 = glyphs
-    var _i381 = 0
-    while _i381 < _a381.items.count {
-      let g: GlyphInk = _a381.items[_i381]
-      _i381 += 1
+    let _a390 = glyphs
+    var _i390 = 0
+    while _i390 < _a390.items.count {
+      let g: GlyphInk = _a390.items[_i390]
+      _i390 += 1
       // ts: packages/layout/src/text-decoration.ts:223
       if ((g.bottom > bandTop) && (g.top < bandBottom)) {
         _ = try jsPush(out, rtEasing_floorOf(((g.left - d) + 0.5)))

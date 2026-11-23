@@ -484,12 +484,12 @@ fun anchor_layoutAnchored(ctx: Ctx, box: LayoutBox, cb: ContainingBlock, staticX
   // ts: packages/layout/src/anchor.ts:431
   run {
     var i: Double = 0.0
-    loop31@ while ((i < tried)) {
-      loop31_body@ do {
+    loop32@ while ((i < tried)) {
+      loop32_body@ do {
         val p: Anchor_Placed = (if ((i == 0.0)) base else anchor_placeOption(ctx, box, jsUnwrap(jsAt(options, i)), jsUnwrap(a).anchor, cb, staticX, staticY, anchors))
         // ts: packages/layout/src/anchor.ts:433
         if (p.overflows) {
-          break@loop31_body
+          break@loop32_body
         }
         // ts: packages/layout/src/anchor.ts:434
         if (jsStrEq(jsUnwrap(a).order, "normal")) {

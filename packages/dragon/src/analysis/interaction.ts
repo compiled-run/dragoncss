@@ -25,7 +25,7 @@ import type { InteractionProbe, InteractionState } from './match.ts';
 import { NO_INTERACTION } from './match.ts';
 import type { ResolvedElement } from './resolve.ts';
 import { selectPartOf, textFieldPartOf } from './resolve.ts';
-import { atomicLineChildren, holdsAtomicLine, propagatedFrom } from './computed-checks.ts';
+import { holdsAtomicLine, lineAtomics, propagatedFrom } from './computed-checks.ts';
 import { hitFactContext } from '../lower/paint/stacking.ts';
 import { matrixParts, TRANSFORM_LIST_TYPE, transformFunctionsOf } from '../css/properties/transform.ts';
 
@@ -678,8 +678,8 @@ export function hitUnmodelledBox(root: ResolvedElement, compiles: (v: ResolvedVa
         const v = el.props.get(p);
         if (v !== undefined && percent(v) && compiles(v)) return { address: el.element.address, kind: 'block with percentage padding around atomic inlines', pkg: 'INL2a' };
       }
-      for (const a of atomicLineChildren(el)) if (hitFactContext(a)) return { address: a.element.address, kind: 'atomic inline forming a stacking context', pkg: 'INL2c' };
     }
+    for (const a of lineAtomics(el)) if (hitFactContext(a)) return { address: a.element.address, kind: 'atomic inline forming a stacking context', pkg: 'INL2c' };
     const block = key(el, 'display') === 'block' || key(el, 'display') === 'inline-block';
     for (const c of el.children) {
       if (c.kind !== 'element') continue;

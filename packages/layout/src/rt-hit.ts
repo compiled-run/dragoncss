@@ -778,7 +778,7 @@ type TableState = {
   /** Each atomic inline's ink overflow, by node index, set once its subtree is built. */
   readonly inks: Map<string, InkRect>;
   /** The ids of the boxes a block button lays out as, whose in-flow contents the engine moves down by buttonContentShift. */
-  readonly buttons: Set<string>;
+  readonly buttons: Map<string, boolean>;
   readonly ctx: EngineCtx;
   /** The input's device pixel ratio: the hit facts' px radii are CSS px, the rects device px (ctx's ratio is the zoomed input's 1). */
   readonly dpr: number;
@@ -1076,7 +1076,7 @@ function boxNodes(s: TableState, b: LayoutBox, parent: number, orders: Map<strin
       if (c.kind === 'box') boxNodes(s, c, i, childOrders, own, pe, sx, sy, snapX0, snapY0, -1);
       else if (c.kind === 'control') {
         const hb = hitControlBox(c);
-        if (c.control.kind === 'button-block') s.buttons.add(hb.id);
+        if (c.control.kind === 'button-block') s.buttons.set(hb.id, true);
         boxNodes(s, hb, i, childOrders, own, pe, sx, sy, snapX0, snapY0, -1);
       }
       else if (c.kind === 'replaced') replacedNode(s, c, i, childOrders, sx, sy, snapX0, snapY0, -1);
@@ -1405,7 +1405,8 @@ function hitZoomed(input: LayoutInput, measurer: TextMeasurer): LayoutInput {
 export function hitTableOf(input: LayoutInput, measurer: TextMeasurer, facts: ReadonlyMap<string, HitFact>, faults: HitTableFaults): HitTable {
   // The named refusal comes first, so a case is refused for what hitRefusal names, not for whatever the walk meets before it
   // (line-clamp-lines' walk meets l7's Ahem p glyphs over several lines first).
-  const refused = hitRefusal(input) ?? hitFactsRefusal(input, facts);
+  const named = hitRefusal(input);
+  const refused = named !== null ? named : hitFactsRefusal(input, facts);
   if (refused !== null) throw new HitError(refused);
   const out = layout(input, measurer);
   if (out.kind !== 'ok') throw new HitError(`the engine refused the input (${out.unsupported.code} at ${out.unsupported.nodeId})`);
@@ -1413,7 +1414,7 @@ export function hitTableOf(input: LayoutInput, measurer: TextMeasurer, facts: Re
   const zmap = new Map<string, LayoutBox>();
   const rmap = new Map<string, LayoutStyle>();
   indexZoomed(zmap, rmap, zoomed.root);
-  const s: TableState = { nodes: [], ids: [], activation: [], abs: absoluteRects(out.boxes), boxes: out.boxes, zoomed: zmap, zoomedReplaced: rmap, inks: new Map<string, InkRect>(), buttons: new Set<string>(), ctx: { measurer, devicePixelRatio: zoomed.devicePixelRatio, faults: NO_ENGINE_FAULTS, gridFaults: NO_GRID_FAULTS }, dpr: input.devicePixelRatio, facts, faults };
+  const s: TableState = { nodes: [], ids: [], activation: [], abs: absoluteRects(out.boxes), boxes: out.boxes, zoomed: zmap, zoomedReplaced: rmap, inks: new Map<string, InkRect>(), buttons: new Map<string, boolean>(), ctx: { measurer, devicePixelRatio: zoomed.devicePixelRatio, faults: NO_ENGINE_FAULTS, gridFaults: NO_GRID_FAULTS }, dpr: input.devicePixelRatio, facts, faults };
   boxNodes(s, input.root, -1, null, -1, 'auto', 0, 0, 0, 0, -1);
   const nodes: HitNode[] = [];
   for (let i = 0; i < s.nodes.length; i++) nodes.push(withInk(s, s.nodes[i] as HitNode, i));
