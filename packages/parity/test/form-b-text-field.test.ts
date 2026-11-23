@@ -146,9 +146,8 @@ describe('FORM-b text fields', () => {
     expect(errors(compile('tf-not-host', '', body)).filter((e) => e.includes('is an editable text control'))).toHaveLength(4);
     const b = boxes(compile('tf-host-edits', '', body, BASE, false, true));
     expect([b.get('t::placeholder')?.width, b.get('t::editor')?.width, b.get('v::editor')?.width]).toEqual([189, 189, 200]);
-    // The host's clear control, in the field's frame: from the editor's inline end to the 200px content box's, a 7px button (10px font) and its 1px and 3px margins.
-    const clearRegion = (id: string): number => 2 + 2 + 200 - ((b.get(`${id}::editor`)?.x ?? 0) + (b.get(`${id}::editor`)?.width ?? 0));
-    expect([clearRegion('t'), clearRegion('v')]).toEqual([7 + 1 + 3, 0]);
+    // The cancel button box the host draws its clear control in: 7px at a 10px font, 1px after the editor, centred on its 10px line.
+    expect([b.get('t::cancel'), b.get('v::cancel')]).toEqual([{ x: 4 + 189 + 1, y: 3 + 1.5, width: 7, height: 7 }, undefined]);
   });
 
   it('still refuses a textarea when the host edits single-line fields', () => {

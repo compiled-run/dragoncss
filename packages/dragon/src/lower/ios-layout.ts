@@ -1034,7 +1034,10 @@ function lowerBox(given: ResolvedElement, l: Lowerer, gridParent: GridContainer 
       const clip: LayoutStyle = { ...style, overflowX: 'clip', overflowY: 'clip' };
       return { kind: 'control', id, boxType: 'element', style: clip, control: { kind: 'text-area', cols: positiveIntegerAttribute(el.element.attributes.get('cols'), 20), rows: positiveIntegerAttribute(el.element.attributes.get('rows'), 2), font: own.font, lineHeight: own.lineHeight }, strut, children };
     }
-    return { kind: 'control', id, boxType: 'element', style, control: { kind: 'text-field', size: textFieldSize(el.element.attributes.get('size')), font: own.font, lineHeight: own.lineHeight, cancelButton: inputTypeState(el.element.attributes.get('type')) === 'search' ? SEARCH_CANCEL_BUTTON : null }, strut, children };
+    const search = inputTypeState(el.element.attributes.get('type')) === 'search';
+    // A search field's cancel button is a box of its own (<id>::cancel), which the engine sizes and places beside the editor.
+    const parts = search ? [...children, anonymousBox(el, `${id}::cancel`, [], l)] : children;
+    return { kind: 'control', id, boxType: 'element', style, control: { kind: 'text-field', size: textFieldSize(el.element.attributes.get('size')), font: own.font, lineHeight: own.lineHeight, cancelButton: search ? SEARCH_CANCEL_BUTTON : null }, strut, children: parts };
   }
   if (field !== undefined) {
     // An input's inner editor scrolls in Chrome (overflow: scroll, scrollbar-width: none) from offset 0 until the user edits; at
