@@ -126,7 +126,6 @@ import { checkTextTransform } from './text-transform.ts';
 import { checkFx } from './fx.ts';
 import { checkLineClamp, isLineClampContainer, lineClampOf } from './line-clamp.ts';
 import { parentsOf } from './text-shadow-apart.ts';
-import { checkResize } from './resize.ts';
 import { checkTouchAction, nativePanner, type NativePanner } from './touch-action.ts';
 
 const keywordOf = (v: ResolvedValue): string => (v.value.kind === 'keyword' ? v.value.value : '');
@@ -1867,7 +1866,6 @@ function checkTextField(el: ResolvedElement, layoutParent: ResolvedElement | nul
  * FORM-b: what a textarea adds to a text control's refusals, on iOS and Android, where the engine lays it out (an element child
  * everywhere):
  * - an element child (HTML parses a textarea's content as text, so only a producer could write one);
- * - a resizer (resize other than none), whose grip Chrome draws in the corner and Dragon does not (checkResize refuses it);
  * - a scrollbar gutter: Chrome adds the scrollbar's thickness to the default width when overflow-y is not hidden or clip, and to
  *   the default height when overflow-x is scroll (probed in Chrome 145 on Linux: 15px for auto, 10px for thin), and that
  *   thickness is the platform's, so only scrollbar-width: none or no gutter is laid out;
@@ -1881,7 +1879,7 @@ function checkTextAreaChrome(el: ResolvedElement, targets: readonly string[], re
   if (el.element.children.some((c) => c.kind !== 'text')) {
     refuse(null, 'textarea-child', `<textarea> ${address} has an element child; a textarea's content is its text`, `Write only text inside <textarea> ${address}.`, 'DRAGON_UNSUPPORTED_VALUE', targets);
   }
-  // The resizer grip of resize: both (html.css) is refused natively by the scroll container check.
+  // resize: both (html.css) compiles: a phone has no resizer, and Dragon accepts resize there and does nothing (css/properties/resize.ts).
   const ox = keywordOf(el.props.get('overflow-x') as ResolvedValue);
   const oy = keywordOf(el.props.get('overflow-y') as ResolvedValue);
   const scrollbarWidth = el.props.get('scrollbar-width') as ResolvedValue;
@@ -2467,7 +2465,6 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
     if (!here) checkStartOverflowBackground(el, propagated, targets.filter((t) => t === 'ios' || t === 'android'), diagnostics, reported);
     if (!here) checkRoundedScrollContainer(el, propagated, targets.filter((t) => t === 'ios' || t === 'android'), diagnostics, reported);
     if (!here) checkOverscrollChaining(el, around, targets.filter((t) => t === 'ios' || t === 'android'), diagnostics, reported);
-    if (!here) checkResize(el, propagated, targets.filter((t) => t === 'ios' || t === 'android'), diagnostics, reported);
     const self = nativePanner(el, propagated);
     const panners = self === null ? around : [...around, self];
     if (!here) checkTouchAction(el, panners, targets.filter((t) => t === 'ios' || t === 'android'), diagnostics, reported);
