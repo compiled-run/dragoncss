@@ -430,31 +430,31 @@ public func paintBlur_scanLine(_ plan: PlanGauss, _ src: JsArray<Double>, _ faul
   }
   // ts: packages/layout/src/paint-blur.ts:287
   do {
-    let _a216 = b0.cells
-    var _i216 = 0
-    while _i216 < _a216.items.count {
-      let c: PaintBlur_Cell = _a216.items[_i216]
-      _i216 += 1
+    let _a218 = b0.cells
+    var _i218 = 0
+    while _i218 < _a218.items.count {
+      let c: PaintBlur_Cell = _a218.items[_i218]
+      _i218 += 1
       c.v = 0.0
     }
   }
   // ts: packages/layout/src/paint-blur.ts:288
   do {
-    let _a217 = b1.cells
-    var _i217 = 0
-    while _i217 < _a217.items.count {
-      let c: PaintBlur_Cell = _a217.items[_i217]
-      _i217 += 1
+    let _a219 = b1.cells
+    var _i219 = 0
+    while _i219 < _a219.items.count {
+      let c: PaintBlur_Cell = _a219.items[_i219]
+      _i219 += 1
       c.v = 0.0
     }
   }
   // ts: packages/layout/src/paint-blur.ts:289
   do {
-    let _a218 = b2.cells
-    var _i218 = 0
-    while _i218 < _a218.items.count {
-      let c: PaintBlur_Cell = _a218.items[_i218]
-      _i218 += 1
+    let _a220 = b2.cells
+    var _i220 = 0
+    while _i220 < _a220.items.count {
+      let c: PaintBlur_Cell = _a220.items[_i220]
+      _i220 += 1
       c.v = 0.0
     }
   }
@@ -620,11 +620,11 @@ public func paintBlur_gaussFactors(_ sigma: Double) throws -> JsArray<Double> {
   let out: JsArray<Double> = JsArray<Double>([])
   // ts: packages/layout/src/paint-blur.ts:407
   do {
-    let _a219 = try paintBlur_gaussFilter(sigma)
-    var _i219 = 0
-    while _i219 < _a219.items.count {
-      let d: Double = _a219.items[_i219]
-      _i219 += 1
+    let _a221 = try paintBlur_gaussFilter(sigma)
+    var _i221 = 0
+    while _i221 < _a221.items.count {
+      let d: Double = _a221.items[_i221]
+      _i221 += 1
       _ = try jsPush(out, paintBlur_wrap16(rtEasing_roundOf((d * paintBlur_TWO_POW_16))))
     }
   }

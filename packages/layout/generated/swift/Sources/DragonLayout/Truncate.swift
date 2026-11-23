@@ -85,11 +85,11 @@ public func truncate_codePoints(_ text: JsString, _ start: Double, _ end: Double
   var k: Double = 0.0
   // ts: packages/layout/src/truncate.ts:49
   do {
-    let _a399 = jsCodePoints(text)
-    var _i399 = 0
-    while _i399 < _a399.items.count {
-      let ch: JsString = _a399.items[_i399]
-      _i399 += 1
+    let _a401 = jsCodePoints(text)
+    var _i401 = 0
+    while _i401 < _a401.items.count {
+      let ch: JsString = _a401.items[_i401]
+      _i401 += 1
       // ts: packages/layout/src/truncate.ts:50
       if ((k >= start) && (k < end)) {
         out += ch
@@ -142,18 +142,18 @@ public func truncate_offsetToFit(_ ctx: Ctx, _ nodeId: JsString, _ s: TruncSourc
   var clusterEnd: Double = 0.0
   // ts: packages/layout/src/truncate.ts:85
   do {
-    let _a400 = result.runs
-    var _i400 = 0
-    while _i400 < _a400.items.count {
-      let run: ShapingRun = _a400.items[_i400]
-      _i400 += 1
+    let _a402 = result.runs
+    var _i402 = 0
+    while _i402 < _a402.items.count {
+      let run: ShapingRun = _a402.items[_i402]
+      _i402 += 1
       // ts: packages/layout/src/truncate.ts:86
       do {
-        let _a401 = run.glyphs
-        var _i401 = 0
-        while _i401 < _a401.items.count {
-          let g: ShapingGlyph = _a401.items[_i401]
-          _i401 += 1
+        let _a403 = run.glyphs
+        var _i403 = 0
+        while _i403 < _a403.items.count {
+          let g: ShapingGlyph = _a403.items[_i403]
+          _i403 += 1
           let at: Double = (run.start + g.ci)
           // ts: packages/layout/src/truncate.ts:88
           if ((at < s.start) || (at >= s.end)) {
