@@ -30,7 +30,10 @@ export function intrinsicContentInlineSize(ctx: Ctx, node: LayoutBox | ControlBo
   }
   if (node.kind === 'control' && node.control.kind === 'select-menulist') return menuListNaturalInlineSize(ctx, node);
   // FORM-b: a textarea's is cols x the advance of 0, whatever its text (controls.ts textAreaInlineSize).
-  if (node.kind === 'control' && node.control.kind === 'text-area') return textAreaInlineSize(ctx.measurer, node.control);
+  if (node.kind === 'control' && node.control.kind === 'text-area') {
+    if (node.control.avgChar === 'unmeasured') unsupported('text-field-avg-char', node.id, 'css-sizing-3 §5.1', `the ${kind}-content size of the textarea ${node.id} reads its average character width, which is proven only for Ahem`);
+    return textAreaInlineSize(ctx.measurer, node.control);
+  }
   const box = plainBox(node);
   // css-contain-2 §3.2 and css-sizing-4 §5.2: a size-contained box sizes as if it had no content, or content of its
   // contain-intrinsic-width. An empty grid keeps its explicit tracks and gaps (Chrome 145: an inline-grid of 30px 40px columns with a

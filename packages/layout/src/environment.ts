@@ -273,7 +273,7 @@ function resolveControl(b: ControlBox, parent: Env): ControlBox {
   }
   if (c.kind === 'text-area') {
     const own = resolveStrut({ font: c.font, lineHeight: c.lineHeight }, env);
-    return { kind: 'control', id: b.id, boxType: b.boxType, style, control: { kind: 'text-area', cols: c.cols, rows: c.rows, font: own.font, lineHeight: own.lineHeight }, strut: resolveStrutOf(b, env), children: resolveChildren(b.children, env) };
+    return { kind: 'control', id: b.id, boxType: b.boxType, style, control: { kind: 'text-area', cols: c.cols, rows: c.rows, font: own.font, lineHeight: own.lineHeight, avgChar: c.avgChar }, strut: resolveStrutOf(b, env), children: resolveChildren(b.children, env) };
   }
   if (c.kind === 'select-menulist') {
     const own = resolveStrut({ font: c.font, lineHeight: c.lineHeight }, env);

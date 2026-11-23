@@ -110,9 +110,30 @@ describe('FORM-b text fields', () => {
     expect(errors(compile('tf-password', '', '<input data-dragon-id="t" readonly="" type="password" value="XX">'))).toEqual([expect.stringMatching(/^all DRAGON_UNSUPPORTED_ELEMENT <input type=password> t is not supported/)]);
     expect(errors(compile('tf-inline', 'input { display: inline-flex; }', '<div data-dragon-id="d"><input data-dragon-id="t" readonly=""></div>'))).toContainEqual(expect.stringMatching(/display: inline-flex on <input> t is not supported on a text field: an inline-level field is laid out only as inline-block/));
     expect(errors(compile('tf-float', 'input { float: left; }', '<input data-dragon-id="t" readonly="">'))).toContainEqual(expect.stringMatching(/float: left on <input> t is not supported on a text control/));
-    // FW1 measures an input's width guard; a textarea outside Ahem stays refused natively whatever its width.
-    expect(errors(compile('tf-textarea-font', 'textarea { font-family: Lato; }', '<textarea data-dragon-id="a" readonly=""></textarea>', BASE, true))).toContainEqual(expect.stringMatching(/^ios DRAGON_UNSUPPORTED_FONT <textarea> a is in font-family: Lato: Chrome sizes a text control by the face's average character width/));
-    expect(errors(compile('tf-textarea-font-width', 'textarea { font-family: Lato; width: 40px; }', '<textarea data-dragon-id="a" readonly=""></textarea>', BASE, true)).filter((e) => e.includes('average character width'))).toHaveLength(2);
+    // A textarea in a face Dragon does not measure takes #665's width guard, as an input does: its cols width is read only without one.
+    expect(errors(compile('tf-textarea-font', 'textarea { font-family: Lato; }', '<textarea data-dragon-id="a" readonly=""></textarea>', BASE, true)).filter((e) => e.includes('average character width'))).toHaveLength(2);
+    expect(errors(compile('tf-textarea-font-width', 'textarea { font-family: Lato; width: 40px; }', '<textarea data-dragon-id="a" readonly=""></textarea>', BASE, true)).filter((e) => e.includes('average character width'))).toEqual([]);
+  });
+
+  it("lifts the font refusal only where a field's width cannot read its face's average character width (FORM-text-font)", () => {
+    // Chrome 145: a length width, or a percentage width in boxes whose widths do not depend on content, is the same size in Roboto,
+    // Inter and Ahem; a percentage width in a float, an inline-block, a max-content box, an auto-width absolute box or a two-column
+    // grid is 197, 217 and 350px.
+    const font = (id: string, css: string, body: string): string[] => errors(compile(id, `input { font-family: Lato; } ${css}`, body, BASE, true)).filter((e) => e.includes('average character width'));
+    const field = '<input data-dragon-id="t" readonly="" class="f">';
+    expect(font('tf-font-length', '.f { width: 40px; }', field)).toEqual([]);
+    // #665's guard accepts a grid item only with min-width set (its automatic minimum would read the intrinsic width).
+    expect(font('tf-font-percent', '.f { width: 100%; min-width: 0; } .g { display: grid; }', `<div data-dragon-id="g" class="g">${field}</div>`)).toEqual([]);
+    const cyclic: readonly [string, string, RegExp][] = [
+      ['tf-font-float', '.w { float: left; }', /<div> d takes its width from its content \(float: left with an auto width\)/],
+      ['tf-font-ib', '.w { display: inline-block; }', /<div> d takes its width from its content \(display: inline-block with an auto width\)/],
+      ['tf-font-maxc', '.w { width: max-content; }', /<div> d takes its width from its content \(width: max-content\)/],
+      ['tf-font-abs', '.w { position: absolute; }', /<div> d takes its width from its content \(position: absolute with an auto width\)/],
+      ['tf-font-grid2', '.w { display: grid; grid-template-columns: auto auto; }', /<input> t is a grid item with min-width: auto, whose automatic minimum Chrome takes from the field's intrinsic width/],
+      ['tf-font-flex', '.w { display: flex; }', /<input> t is a flex item with min-width: auto, whose automatic minimum Chrome takes from the field's intrinsic width/],
+    ];
+    for (const [id, css, why] of cyclic) expect(font(id, `.f { width: 100%; } ${css}`, `<div data-dragon-id="d" class="w">${field}</div>`), id).toContainEqual(expect.stringMatching(why));
+    expect(font('tf-font-minc', '.f { width: 100%; min-width: min-content; }', field)).toContainEqual(expect.stringMatching(/min-width: min-content on <input> t is not supported here/));
   });
 
   it('lays out a search field with its cancel button at the end of the editor\'s line, as Chrome 145 does', () => {

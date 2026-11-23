@@ -1130,8 +1130,9 @@ function controlKind(v: JsonValue, path: string): ControlKind {
     return { kind: 'text-field', size: numField(o, 'size', path), font: fontSpec(field(o, 'font', path), `${path}.font`), lineHeight: lineHeightValue(field(o, 'lineHeight', path), `${path}.lineHeight`), avgChar, cancelButton: c === null ? null : { marginStart: numField(c, 'marginStart', `${path}.cancelButton`), marginEnd: numField(c, 'marginEnd', `${path}.cancelButton`) } };
   }
   if (k === 'text-area') {
-    const o = obj(v, ['kind', 'cols', 'rows', 'font', 'lineHeight'], path);
-    return { kind: 'text-area', cols: numField(o, 'cols', path), rows: numField(o, 'rows', path), font: fontSpec(field(o, 'font', path), `${path}.font`), lineHeight: lineHeightValue(field(o, 'lineHeight', path), `${path}.lineHeight`) };
+    const o = obj(v, ['kind', 'cols', 'rows', 'font', 'lineHeight', 'avgChar'], path);
+    const avgChar = lit(field(o, 'avgChar', path), ['ahem', 'unmeasured'], `${path}.avgChar`) === 'ahem' ? 'ahem' : 'unmeasured';
+    return { kind: 'text-area', cols: numField(o, 'cols', path), rows: numField(o, 'rows', path), font: fontSpec(field(o, 'font', path), `${path}.font`), lineHeight: lineHeightValue(field(o, 'lineHeight', path), `${path}.lineHeight`), avgChar };
   }
   if (k === 'text-editor') {
     obj(v, ['kind'], path);

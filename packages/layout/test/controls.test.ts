@@ -418,7 +418,7 @@ describe('FORM-a control boxes: what the engine and the validator refuse', () =>
     expect(codes(under(field([editor, cancel])))).toContainEqual('$.root.children[0].children[1] a text field control holds only its text-editor control, at most one text-placeholder control and, for a search field, its empty cancel-button box');
     // The engine's own guard names the validator, which now rejects that input.
     expect(() => layout(under(field([box('d', {})])), ahemMeasurer)).toThrow('validateLayoutInput rejects this input');
-    const area = (children: (LayoutBox | ControlBox)[]): ControlBox => control('t', { kind: 'text-area', cols: 20, rows: 2, font: ahemFont(10), lineHeight: { kind: 'normal' } }, {}, children);
+    const area = (children: (LayoutBox | ControlBox)[]): ControlBox => control('t', { kind: 'text-area', cols: 20, rows: 2, font: ahemFont(10), lineHeight: { kind: 'normal' }, avgChar: 'ahem' }, {}, children);
     expect(codes(under(area([placeholder, editor])))).toEqual([]);
     expect(codes(under(area([])))).toEqual(['$.root.children[0].children a text area control holds exactly one text-editor control']);
     // A textarea's empty editor has no line, so no strut, where the engine would lay out one empty line; an input's empty editor keeps one.

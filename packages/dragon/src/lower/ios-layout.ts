@@ -1041,7 +1041,7 @@ function lowerBox(given: ResolvedElement, l: Lowerer, gridParent: GridContainer 
       // A textarea scrolls (overflow auto, or hidden) from offset 0 with its scrollbars hidden: at rest it clips as overflow: clip
       // does. rows and cols are HTML §4.10.11's: a valid non-negative integer above zero, else 2 and 20.
       const clip: LayoutStyle = { ...style, overflowX: 'clip', overflowY: 'clip' };
-      return { kind: 'control', id, boxType: 'element', style: clip, control: { kind: 'text-area', cols: positiveIntegerAttribute(el.element.attributes.get('cols'), 20), rows: positiveIntegerAttribute(el.element.attributes.get('rows'), 2), font: own.font, lineHeight: own.lineHeight }, strut, children };
+      return { kind: 'control', id, boxType: 'element', style: clip, control: { kind: 'text-area', cols: positiveIntegerAttribute(el.element.attributes.get('cols'), 20), rows: positiveIntegerAttribute(el.element.attributes.get('rows'), 2), font: own.font, lineHeight: own.lineHeight, avgChar: textFieldAvgChar((el.props.get('font-family') as ResolvedValue).value) }, strut, children };
     }
     const search = inputTypeState(el.element.attributes.get('type')) === 'search';
     // A search field's cancel button is a box of its own (<id>::cancel), which the engine sizes and places beside the editor.

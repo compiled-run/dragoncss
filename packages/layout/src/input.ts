@@ -602,7 +602,8 @@ export type CancelButton = { readonly marginStart: number; readonly marginEnd: n
  *   the editor (controls.ts searchCancelButtonSize); null for any other field;
  * - text-area (FORM-b): a textarea, a block container of its placeholder (if any) and its inner editor, both at its content box
  *   start. Its intrinsic content inline size is cols x the advance of 0, rounded up to a whole px, and its auto content height is
- *   rows x its line height, whatever its text; font and lineHeight are the textarea's own;
+ *   rows x its line height, whatever its text; font and lineHeight are the textarea's own; avgChar as a text-field's, the cols width
+ *   read only when it is ahem;
  * - text-editor: the inner editor, a block container holding the value's text;
  * - text-placeholder: the placeholder, a block container holding the placeholder text, out of the field's flow;
  * - fieldset: a block fieldset, whose rendered legend sits in its block-start border and whose other contents flow in an anonymous
@@ -628,7 +629,7 @@ export type ControlKind =
   | { readonly kind: 'slider-thumb'; readonly ratio: number }
   | { readonly kind: 'button-block' }
   | { readonly kind: 'text-field'; readonly size: number; readonly font: FontSpec; readonly lineHeight: LineHeightValue; readonly avgChar: TextFieldAvgChar; readonly cancelButton: CancelButton | null }
-  | { readonly kind: 'text-area'; readonly cols: number; readonly rows: number; readonly font: FontSpec; readonly lineHeight: LineHeightValue }
+  | { readonly kind: 'text-area'; readonly cols: number; readonly rows: number; readonly font: FontSpec; readonly lineHeight: LineHeightValue; readonly avgChar: TextFieldAvgChar }
   | { readonly kind: 'text-editor' }
   | { readonly kind: 'text-placeholder' }
   | { readonly kind: 'fieldset' }

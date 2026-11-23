@@ -1799,8 +1799,8 @@ function checkButton(el: ResolvedElement, parentDisplay: string | null, targets:
  * appearance: none, or an author background or border). Refused: a themed field; a password field (Chrome masks its text with
  * the font's bullet, which no fixture proves); any display but block or inline-block; an inline-block field off the baseline
  * or right to left (checkInlineTextField); an absolutely positioned one or a grid item; one whose font is Chrome's UA control
- * font; on iOS and Android an input outside Ahem whose used width may read its intrinsic width (checkFieldWidth), and a textarea
- * or search field outside Ahem whatever its width; on iOS and Android a right-to-left search field; and on iOS and Android an
+ * font; on iOS and Android an input or textarea outside Ahem whose used width may read its intrinsic width (checkFieldWidth), and a
+ * search field outside Ahem whatever its width; on iOS and Android a right-to-left search field; and on iOS and Android an
  * editable field, as Dragon has no caret or keyboard input there yet (the FORM-b editing slice), unless the host edits a
  * single-line field (hostEdits: the compile's textEditing 'host'). A readonly field shows its value as drawn text.
  */
@@ -1849,9 +1849,7 @@ function checkTextField(el: ResolvedElement, layoutParent: ResolvedElement | nul
   }
   const native = targets.filter((t) => t === 'ios' || t === 'android');
   if (family.origin !== 'user-agent' && native.length > 0 && textFieldAvgChar(family.value) === 'unmeasured') {
-    if (tag === 'textarea') {
-      refuse(family, 'width-font', `<${tag}> ${address} is in font-family: ${valueToString(family.value)}: Chrome sizes a text control by the face's average character width, which Dragon proves only for Ahem`, `Draw <${tag}> ${address} in Ahem, or target web only, until real faces are measured for text controls.`, 'DRAGON_UNSUPPORTED_FONT', native);
-    } else if (state === 'search') {
+    if (state === 'search') {
       refuse(family, 'search-font', `<input type=search> ${address} is in font-family: ${valueToString(family.value)}: a search field's cancel button in a font other than Ahem is not proven yet (FORM-search)`, `Draw <input> ${address} in Ahem, use type="text", or target web only.`, 'DRAGON_UNSUPPORTED_FONT', native);
     } else if (!faults.fieldWidthAnyContext) {
       checkFieldWidth(el, parentDisplay, chain, (v, what, message, manual) => refuse(v, what, message, manual, 'DRAGON_UNSUPPORTED_FONT', native));
@@ -1907,6 +1905,7 @@ function checkTextAreaChrome(el: ResolvedElement, targets: readonly string[], re
  */
 function checkFieldWidth(el: ResolvedElement, parentDisplay: string | null, chain: readonly ResolvedElement[], refuse: (v: ResolvedValue, what: string, message: string, manual: string) => void): void {
   const address = el.element.address;
+  const tag = el.element.tag;
   const family = valueToString((el.props.get('font-family') as ResolvedValue).value);
   const why = `Chrome sizes a text field in font-family: ${family} from the face's average character width, which Dragon measures only for Ahem`;
   const width = el.props.get('width') as ResolvedValue;
@@ -1918,20 +1917,20 @@ function checkFieldWidth(el: ResolvedElement, parentDisplay: string | null, chai
   const sized = contentSizedAncestor(chain);
   // A row item's main size is its definite basis, clamped by a min-width and max-width that read no content, so its width is never used.
   const basisSized = rowItem && b === '' && !hasPercentage(basis) && keywordOf(minWidth) !== 'auto' && ['', 'none'].includes(keywordOf(maxWidth)) && sized === null;
-  if (width.value.kind === 'keyword' && !basisSized) refuse(width, 'width-font', `width: ${valueToString(width.value)} on <input> ${address} is not supported here: ${why}`, `Give <input> ${address} a width (a length or percentage), or draw it in Ahem.`);
+  if (width.value.kind === 'keyword' && !basisSized) refuse(width, 'width-font', `width: ${valueToString(width.value)} on <${tag}> ${address} is not supported here: ${why}`, `Give <${tag}> ${address} a width (a length or percentage), or draw it in Ahem.`);
   for (const [p, v] of [['min-width', minWidth], ['max-width', maxWidth]] as const) {
-    if (INTRINSIC_SIZES.has(keywordOf(v))) refuse(v, `${p}-font`, `${p}: ${keywordOf(v)} on <input> ${address} is not supported here: ${why}`, `Give <input> ${address} a ${p} in px or %, or remove it.`);
+    if (INTRINSIC_SIZES.has(keywordOf(v))) refuse(v, `${p}-font`, `${p}: ${keywordOf(v)} on <${tag}> ${address} is not supported here: ${why}`, `Give <${tag}> ${address} a ${p} in px or %, or remove it.`);
   }
   const item = parentDisplay === 'flex' || parentDisplay === 'inline-flex' || parentDisplay === 'grid' || parentDisplay === 'inline-grid';
-  if (item && keywordOf(minWidth) === 'auto') refuse(minWidth, 'min-width-font', `<input> ${address} is a ${parentDisplay} item with min-width: auto, whose automatic minimum Chrome takes from the field's intrinsic width: ${why}`, `Set min-width (0 is fine) on <input> ${address}.`);
-  if (rowItem && (b === 'content' || INTRINSIC_SIZES.has(b))) refuse(basis, 'flex-basis-font', `flex-basis: ${b} on <input> ${address} is not supported: Chrome takes it from the field's intrinsic width, and ${why}`, `Give <input> ${address} a flex-basis in px, or a width and flex-basis: auto.`);
+  if (item && keywordOf(minWidth) === 'auto') refuse(minWidth, 'min-width-font', `<${tag}> ${address} is a ${parentDisplay} item with min-width: auto, whose automatic minimum Chrome takes from the field's intrinsic width: ${why}`, `Set min-width (0 is fine) on <${tag}> ${address}.`);
+  if (rowItem && (b === 'content' || INTRINSIC_SIZES.has(b))) refuse(basis, 'flex-basis-font', `flex-basis: ${b} on <${tag}> ${address} is not supported: Chrome takes it from the field's intrinsic width, and ${why}`, `Give <${tag}> ${address} a flex-basis in px, or a width and flex-basis: auto.`);
   // Chrome compresses only a percentage width's min-content contribution; a length width with a percentage min-width or max-width
   // contributes the length (measured: a 120px field with max-width: 100% in a 100px-wide float is 128px with its border and padding).
   const relative = width.value.kind !== 'keyword' && hasPercentage(width) ? 'width' : rowItem && b === '' && hasPercentage(basis) ? 'flex-basis' : null;
   if (relative === null || sized === null) return;
   const v = relative === 'width' ? width : basis;
   const at = `<${sized.box.element.tag}> ${sized.box.element.address}`;
-  refuse(v, 'width-content-font', `${relative}: ${valueToString(v.value)} on <input> ${address} is not supported here: ${at} takes its width from its content (${sized.why}), which Chrome measures with the field's intrinsic width, and ${why}`, `${contentSizedFix(at, sized.why)} Or give <input> ${address} a ${relative} in px.`);
+  refuse(v, 'width-content-font', `${relative}: ${valueToString(v.value)} on <${tag}> ${address} is not supported here: ${at} takes its width from its content (${sized.why}), which Chrome measures with the field's intrinsic width, and ${why}`, `${contentSizedFix(at, sized.why)} Or give <${tag}> ${address} a ${relative} in px.`);
 }
 
 /**
