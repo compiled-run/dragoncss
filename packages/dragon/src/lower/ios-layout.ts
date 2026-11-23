@@ -59,7 +59,7 @@ import type { CssValue } from '../css/stylesheet.ts';
 import { exactLayoutRatio, MATH_VALUE_FUNCTIONS } from '../css/values.ts';
 import { FONT_METRIC_LAYOUT_UNITS } from '../css/units.ts';
 import type { ResolvedElement, ResolvedText, ResolvedValue } from '../analysis/resolve.ts';
-import { droppedTextsOf, initialValue, isInitialByProvenance, textSourceOf, valueToString } from '../analysis/resolve.ts';
+import { droppedTextsOf, environmentOf, initialValue, isInitialByProvenance, textSourceOf, valueToString } from '../analysis/resolve.ts';
 import { lineClampOf } from '../analysis/line-clamp.ts';
 import type { ListItemMarker } from '../analysis/markers.ts';
 import { listItemMarkers } from '../analysis/markers.ts';
@@ -762,7 +762,7 @@ const isInlineLevel = (c: ResolvedElement | ResolvedText): boolean => c.kind ===
  * propagated is the element whose overflow the viewport took (viewportOverflow), which uses visible. zoom is the zoom chain of the
  * element whose content is being lowered: the one its text and anonymous boxes take, and the parent chain of its children.
  */
-type Lowerer = { readonly anchors: Map<string, AnchorFacts>; readonly faults: CompilerFaults; readonly ua: UaDataset; readonly rootFontSize: number | null; readonly images: ImageNaturals; readonly mode: LowerMode; readonly propagated: string | null; readonly markers: ReadonlyMap<string, ListItemMarker>; readonly zoom: readonly number[]; readonly texts: LoweredTextFacts; readonly container: TextContainer };
+type Lowerer = { readonly anchors: Map<string, AnchorFacts>; readonly faults: CompilerFaults; readonly ua: UaDataset; readonly rootFontSize: number | null; readonly images: ImageNaturals; readonly mode: LowerMode; readonly propagated: string | null; readonly markers: ReadonlyMap<string, ListItemMarker>; readonly zoom: readonly number[]; readonly texts: LoweredTextFacts; readonly container: TextContainer; readonly hostEdits: boolean };
 
 /** The block container whose inline formatting context the content being lowered is in, and the strut it has with inline content. */
 type TextContainer = { readonly id: string; readonly strut: () => LineStrut | null };
@@ -918,7 +918,7 @@ export function lowerTree(root: ResolvedElement, faults: CompilerFaults, ua: UaD
   const anchors = new Map<string, AnchorFacts>();
   const texts: LoweredTextFacts = { sources: [], dropped: [] };
   const container: TextContainer = { id: root.element.address, strut: () => null };
-  const box = lowerBox(root, { anchors, faults, ua, rootFontSize: rootFontSizeOf(root), images, mode, propagated: viewportOverflow(root, faults).source, markers, zoom: [], texts, container }, null);
+  const box = lowerBox(root, { anchors, faults, ua, rootFontSize: rootFontSizeOf(root), images, mode, propagated: viewportOverflow(root, faults).source, markers, zoom: [], texts, container, hostEdits: environmentOf(root).hostTextEditing === true }, null);
   if (box.kind !== 'box') throw new LoweringError(root.element.address, 'display', `the root element ${root.element.address} lowered to a control box`);
   try {
     const lowered = lowerAnchors(box, anchors);
@@ -1129,9 +1129,10 @@ function lowerBox(given: ResolvedElement, l: Lowerer, gridParent: GridContainer 
     // An input's inner editor scrolls in Chrome (overflow: scroll, scrollbar-width: none) from offset 0 until the user edits; at
     // rest it clips its text as overflow: clip does. A textarea's editor and every placeholder keep their computed overflow.
     const clipped: LayoutStyle = field.part === 'editor' && field.host.tag === 'input' ? { ...style, overflowX: 'clip', overflowY: 'clip' } : style;
-    // An input's empty editor still lays out one line of its own font (the engine's block.ts), so it carries its strut; but a
-    // textarea's empty editor has no line, with or without a placeholder (Chrome 145: 0 tall), so it gives the textarea no baseline.
-    const lineless = field.part === 'editor' && field.host.tag === 'textarea' && children.length === 0;
+    // An input's empty editor still lays out one line of its own font (the engine's block.ts), so it carries its strut; so does an
+    // edited textarea's (Chrome 145: an editable empty editor is one line tall), but a readonly textarea's has no line (0 tall).
+    const editable = l.hostEdits && !field.host.attributes.has('readonly');
+    const lineless = field.part === 'editor' && field.host.tag === 'textarea' && children.every((c) => c.kind === 'text' && c.text === '') && !editable;
     const own = lineless ? null : field.part === 'editor' ? (strut ?? strutOf(el, true, l.mode, zoom)) : strut;
     return { kind: 'control', id, boxType: 'element', style: clipped, control: { kind: field.part === 'editor' ? 'text-editor' : 'text-placeholder' }, strut: own, children };
   }

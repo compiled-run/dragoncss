@@ -182,11 +182,11 @@ fun rtBand_atomHolds(atom: BandAtom, width: Double, height: Double, env: BandEnv
     }
     // ts: packages/layout/src/rt-band.ts:129
     run {
-      val _a280 = atom.comparisons
-      var _i280 = 0
-      while (_i280 < _a280.size) {
-        val c: BandComparison = _a280[_i280]
-        _i280++
+      val _a282 = atom.comparisons
+      var _i282 = 0
+      while (_i282 < _a282.size) {
+        val c: BandComparison = _a282[_i282]
+        _i282++
         val holds: Boolean = (if ((c.num == 1.0)) rtBand_compareScale(rtBand_twoDecimals(actual), rtBand_twoDecimals(c.value), c.op) else rtBand_compareScale(actual, c.value, c.op))
         // ts: packages/layout/src/rt-band.ts:131
         if ((!holds)) {
@@ -209,11 +209,11 @@ fun rtBand_atomHolds(atom: BandAtom, width: Double, height: Double, env: BandEnv
     }
     // ts: packages/layout/src/rt-band.ts:139
     run {
-      val _a281 = atom.comparisons
-      var _i281 = 0
-      while (_i281 < _a281.size) {
-        val c: BandComparison = _a281[_i281]
-        _i281++
+      val _a283 = atom.comparisons
+      var _i283 = 0
+      while (_i283 < _a283.size) {
+        val c: BandComparison = _a283[_i283]
+        _i283++
         // ts: packages/layout/src/rt-band.ts:139
         if ((!rtBand_compareMedia(actual, c.value, c.op, faults))) {
           return false
@@ -238,11 +238,11 @@ fun rtBand_atomHolds(atom: BandAtom, width: Double, height: Double, env: BandEnv
   }
   // ts: packages/layout/src/rt-band.ts:151
   run {
-    val _a282 = atom.comparisons
-    var _i282 = 0
-    while (_i282 < _a282.size) {
-      val c: BandComparison = _a282[_i282]
-      _i282++
+    val _a284 = atom.comparisons
+    var _i284 = 0
+    while (_i284 < _a284.size) {
+      val c: BandComparison = _a284[_i284]
+      _i284++
       // ts: packages/layout/src/rt-band.ts:151
       if ((!rtBand_compareMedia((w * c.den), (h * c.num), c.op, faults))) {
         return false
@@ -257,11 +257,11 @@ fun rtBand_truthVector(table: BandTable, width: Double, height: Double, env: Ban
   val out: JsArray<Boolean> = jsArrayOf<Boolean>()
   // ts: packages/layout/src/rt-band.ts:158
   run {
-    val _a283 = table.atoms
-    var _i283 = 0
-    while (_i283 < _a283.size) {
-      val a: BandAtom = _a283[_i283]
-      _i283++
+    val _a285 = table.atoms
+    var _i285 = 0
+    while (_i285 < _a285.size) {
+      val a: BandAtom = _a285[_i285]
+      _i285++
       jsPush(out, rtBand_atomHolds(a, width, height, env, faults))
     }
   }
@@ -302,11 +302,11 @@ fun rtBand_bandIndex(table: BandTable, width: Double, height: Double, env: BandE
   var bits: String = ""
   // ts: packages/layout/src/rt-band.ts:173
   run {
-    val _a284 = v
-    var _i284 = 0
-    while (_i284 < _a284.size) {
-      val x: Boolean = _a284[_i284]
-      _i284++
+    val _a286 = v
+    var _i286 = 0
+    while (_i286 < _a286.size) {
+      val x: Boolean = _a286[_i286]
+      _i286++
       bits += (if (x) "1" else "0")
     }
   }
@@ -345,11 +345,11 @@ fun rtBand_androidPointerReadings(sources: JsArray<Double>, faults: BandFaults):
   var anyHover: Boolean = false
   // ts: packages/layout/src/rt-band.ts:221
   run {
-    val _a285 = sources
-    var _i285 = 0
-    while (_i285 < _a285.size) {
-      val s: Double = _a285[_i285]
-      _i285++
+    val _a287 = sources
+    var _i287 = 0
+    while (_i287 < _a287.size) {
+      val s: Double = _a287[_i287]
+      _i287++
       // ts: packages/layout/src/rt-band.ts:222
       if ((((rtBand_hasSource(s, rtBand_SOURCE_MOUSE) || rtBand_hasSource(s, rtBand_SOURCE_STYLUS)) || rtBand_hasSource(s, rtBand_SOURCE_TOUCHPAD)) || rtBand_hasSource(s, rtBand_SOURCE_TRACKBALL))) {
         anyFine = true

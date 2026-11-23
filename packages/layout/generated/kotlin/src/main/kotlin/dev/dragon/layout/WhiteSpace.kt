@@ -42,22 +42,22 @@ fun whiteSpace_collapseInlineContext(runs: JsArray<String?>): JsArray<String?> {
   var run: Double = 0.0
   // ts: packages/layout/src/white-space.ts:37
   run {
-    val _a404 = runs
-    var _i404 = 0
-    while (_i404 < _a404.size) {
-      val t: String? = _a404[_i404]
-      _i404++
+    val _a406 = runs
+    var _i406 = 0
+    while (_i406 < _a406.size) {
+      val t: String? = _a406[_i406]
+      _i406++
       // ts: packages/layout/src/white-space.ts:38
       if ((t == null)) {
         jsPush(chars, RunChar("", -1.0))
       } else {
         // ts: packages/layout/src/white-space.ts:39
         run {
-          val _a405 = jsCodePoints(jsUnwrap(t))
-          var _i405 = 0
-          while (_i405 < _a405.size) {
-            val ch: String = _a405[_i405]
-            _i405++
+          val _a407 = jsCodePoints(jsUnwrap(t))
+          var _i407 = 0
+          while (_i407 < _a407.size) {
+            val ch: String = _a407[_i407]
+            _i407++
             jsPush(chars, RunChar(ch, run))
           }
         }
@@ -114,11 +114,11 @@ fun whiteSpace_collapseInlineContext(runs: JsArray<String?>): JsArray<String?> {
   var i: Double = 0.0
   // ts: packages/layout/src/white-space.ts:76
   run {
-    val _a406 = runs
-    var _i406 = 0
-    while (_i406 < _a406.size) {
-      val t: String? = _a406[_i406]
-      _i406++
+    val _a408 = runs
+    var _i408 = 0
+    while (_i408 < _a408.size) {
+      val t: String? = _a408[_i408]
+      _i408++
       // ts: packages/layout/src/white-space.ts:77
       if ((t == null)) {
         jsPush(texts, null)
@@ -137,18 +137,18 @@ fun whiteSpace_preserveBreaksContext(runs: JsArray<String>, keepSpaceBeforeNewli
   var run: Double = 0.0
   // ts: packages/layout/src/white-space.ts:93
   run {
-    val _a407 = runs
-    var _i407 = 0
-    while (_i407 < _a407.size) {
-      val t: String = _a407[_i407]
-      _i407++
+    val _a409 = runs
+    var _i409 = 0
+    while (_i409 < _a409.size) {
+      val t: String = _a409[_i409]
+      _i409++
       // ts: packages/layout/src/white-space.ts:94
       run {
-        val _a408 = jsCodePoints(t)
-        var _i408 = 0
-        while (_i408 < _a408.size) {
-          val ch: String = _a408[_i408]
-          _i408++
+        val _a410 = jsCodePoints(t)
+        var _i410 = 0
+        while (_i410 < _a410.size) {
+          val ch: String = _a410[_i410]
+          _i410++
           jsPush(chars, RunChar(ch, run))
         }
       }
