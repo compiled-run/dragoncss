@@ -47,3 +47,28 @@ describe('editable search fields in a Markless export', () => {
     expect(report.paint.filter((r) => !r.pass)).toEqual([]);
   });
 });
+
+// The notes page's search field, which sets no display: an inline-block field alone in its line, between a heading and a paragraph.
+describe('an inline-block search field alone in its line in a Markless export', () => {
+  const path = 'examples/markless-styles/input/text-field-inline.native-style-input.json';
+  const text = readFileSync(repoPath(path), 'utf8');
+  const notes = parseMarklessStyleInput(text);
+  const { exported: out } = marklessStyleExport(text, path);
+
+  it('lays out the field in an anonymous line of its parent, with its placeholder or value', () => {
+    for (const t of ['ios', 'android'] as const) {
+      for (const a of out.targets[t]!.assignments) {
+        const query = a.values[notes.states[0]!.cell] as string;
+        const text = (id: string): string | null => a.nodes.find((n) => n.id === id)?.text ?? null;
+        expect([text('h2::placeholder:text0'), text('h2::editor:text0')], `${t} ${query}`).toEqual(query === '' ? ['Search notes', null] : [null, query]);
+      }
+    }
+  });
+
+  it('places every box of both assignments where Chrome does, within 1 device px', async () => {
+    const report = await compareMarklessExport(notes, out);
+    expect(report.compared).toBeGreaterThan(20);
+    expect(report.rows.filter((r) => !r.pass)).toEqual([]);
+    expect(report.paint.filter((r) => !r.pass)).toEqual([]);
+  });
+});

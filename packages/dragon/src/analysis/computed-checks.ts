@@ -1764,12 +1764,13 @@ function checkButton(el: ResolvedElement, parentDisplay: string | null, targets:
  * FORM-b: a single-line text field (text, email, url, tel and an unknown or missing type) is laid out as its UA shadow tree, the
  * inner editor and placeholder (resolve.ts), and painted as CSS boxes once its used appearance is none (the devolve probe:
  * appearance: none, or an author background or border). Refused: a themed field; a password field (Chrome masks its text with
- * the font's bullet, which no fixture proves); an inline-level field (RF-INL); any display but block or flex; an absolutely
- * positioned one; one whose font is Chrome's UA control font; on iOS and Android a right-to-left search field; and on iOS and
- * Android an editable field, as Dragon has no caret or keyboard input there yet (the FORM-b editing slice), unless the host edits
- * a single-line field (hostEdits: the compile's textEditing 'host'). A readonly field shows its value as drawn text.
+ * the font's bullet, which no fixture proves); any display but block or inline-block; an inline-block field off the baseline
+ * or right to left (checkInlineTextField); an absolutely positioned one or a grid item; one whose font is Chrome's UA control
+ * font; on iOS and Android a right-to-left search field;
+ * and on iOS and Android an editable field, as Dragon has no caret or keyboard input there yet (the FORM-b editing slice),
+ * unless the host edits it (hostEdits: the compile's textEditing 'host'). A readonly field shows its value as drawn text.
  */
-function checkTextField(el: ResolvedElement, parentDisplay: string | null, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, hostEdits: boolean): void {
+function checkTextField(el: ResolvedElement, layoutParent: ResolvedElement | null, parentDisplay: string | null, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, hostEdits: boolean): void {
   const address = el.element.address;
   const tag = el.element.tag;
   const state = inputTypeState(el.element.attributes.get('type'));
@@ -1789,11 +1790,16 @@ function checkTextField(el: ResolvedElement, parentDisplay: string | null, targe
   }
   const display = el.props.get('display') as ResolvedValue;
   const d = valueToString(display.value);
-  if (d === 'inline-block' || d === 'inline-flex' || d === 'inline-grid' || d === 'inline') {
+  if (tag === 'textarea' && (d === 'inline-block' || d === 'inline-flex' || d === 'inline-grid' || d === 'inline')) {
     refuse(display, 'inline', `display: ${d} on <${tag}> ${address} makes it an inline-level control, which waits for the RF-INL package (atomic inlines)`, `Set display: block on <${tag}> ${address}, or make it a flex item.`);
-  } else if (d !== 'block') {
+  } else if (tag === 'textarea' && d !== 'block') {
     refuse(display, 'display', `display: ${d} on <${tag}> ${address} is not supported on a text control; only a block-level field is laid out`, `Set display: block on <${tag}> ${address}.`);
+  } else if (d === 'inline-flex' || d === 'inline-grid' || d === 'inline') {
+    refuse(display, 'inline', `display: ${d} on <input> ${address} is not supported on a text field: an inline-level field is laid out only as inline-block, its default`, `Remove display from <input> ${address}, or set display: block.`);
+  } else if (d !== 'block' && d !== 'inline-block') {
+    refuse(display, 'display', `display: ${d} on <input> ${address} is not supported on a text field; only a block-level or inline-block field is laid out`, `Set display: block on <input> ${address}.`);
   }
+  if (tag === 'input' && d === 'inline-block') checkInlineTextField(el, layoutParent, refuse);
   const position = el.props.get('position') as ResolvedValue;
   const pos = keywordOf(position);
   if (pos === 'absolute' || pos === 'fixed') {
@@ -1882,6 +1888,26 @@ function checkSearchField(el: ResolvedElement, refuse: (v: ResolvedValue | null,
       const m = (c as ResolvedElement).props.get(side) as ResolvedValue;
       if (valueToString(m.value) !== '0px') refuse(m, `search-placeholder-${side}`, `${side}: ${valueToString(m.value)} on the placeholder of the search field ${address} is not supported: the cancel button takes the placeholder's inline end, which no fixture measures with an author margin`, `Remove the ::placeholder ${side} for <input type=search> ${address}.`);
     }
+  }
+}
+
+/**
+ * An inline-block text field sits on its line as an atomic inline whose baseline is its editor line's (Blink
+ * TextFieldInputType::AdjustStyle, BlockLayoutAlgorithm::PropagateBaselineFromBlockChild), proven only on the baseline of a
+ * left-to-right line. Inside an inline box, or beside text in a real face, checkInline's atomic rules refuse it (INL2c).
+ */
+function checkInlineTextField(el: ResolvedElement, layoutParent: ResolvedElement | null, refuse: (v: ResolvedValue | null, what: string, message: string, manual: string) => void): void {
+  const address = el.element.address;
+  const va = el.props.get('vertical-align') as ResolvedValue;
+  if (keywordOf(va) !== 'baseline') {
+    refuse(va, 'inline-vertical-align', `vertical-align: ${valueToString(va.value)} on the inline-block <input> ${address} is not supported: an inline-level text field is laid out only on its line's baseline`, `Remove vertical-align from <input> ${address}, or set display: block on it.`);
+  }
+  const own = el.props.get('direction') as ResolvedValue;
+  const line = layoutParent === null ? null : (layoutParent.props.get('direction') as ResolvedValue);
+  if (layoutParent !== null && line !== null && keywordOf(line) === 'rtl') {
+    refuse(line, 'inline-rtl-line', `the inline-block <input> ${address} is on a right-to-left line of ${layoutParent.element.address}: an inline-level text field is laid out only in a left-to-right line`, `Set display: block on <input> ${address}, or wrap it in a block with direction: ltr.`);
+  } else if (keywordOf(own) === 'rtl') {
+    refuse(own, 'inline-rtl', `direction: rtl on the inline-block <input> ${address} is not supported: an inline-level text field is laid out only left to right`, `Set display: block on <input> ${address}, or remove its direction.`);
   }
 }
 
@@ -2446,7 +2472,7 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
       checkSelect(el, parentDisplay, chain, targets, diagnostics, reported, environmentOf(root).ua);
       checkInline(el, targets, diagnostics, reported, shapedAt, environmentOf(root).ua);
     } else if (!here && ((el.element.tag === 'input' && isTextFieldType(el.element.attributes.get('type'))) || el.element.tag === 'textarea')) {
-      checkTextField(el, parentDisplay, targets, diagnostics, reported, environmentOf(root).hostTextEditing === true);
+      checkTextField(el, layoutParent, parentDisplay, targets, diagnostics, reported, environmentOf(root).hostTextEditing === true);
       checkInline(el, targets, diagnostics, reported, shapedAt, environmentOf(root).ua);
     } else if (!here && el.element.tag === 'input' && isCheckboxType(el.element.attributes.get('type'))) {
       checkCheckbox(el, parentDisplay, chain, targets, diagnostics, reported);
