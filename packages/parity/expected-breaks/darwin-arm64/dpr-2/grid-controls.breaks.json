@@ -1,0 +1,20 @@
+{
+  "case": "grid-controls",
+  "chrome": "145.0.7632.6",
+  "dpr": 2,
+  "texts": [
+    {"id":"b1:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"b2:text0","data":"XXX","lines":1,"units":[0,0,0],"blank":[]},
+    {"id":"b3:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"s1-o0:text0","data":"XX","lines":0,"units":[-1,-1],"blank":[]},
+    {"id":"s2-o0:text0","data":"XXX","lines":0,"units":[-1,-1,-1],"blank":[]},
+    {"id":"b4:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"b5:text0","data":"XXXXXX","lines":1,"units":[0,0,0,0,0,0],"blank":[]},
+    {"id":"b6:text0","data":"XXXXXXXX","lines":1,"units":[0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"s3-o0:text0","data":"XX","lines":0,"units":[-1,-1],"blank":[]},
+    {"id":"b7:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"s1::inner:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"s2::inner:text0","data":"XXX","lines":1,"units":[0,0,0],"blank":[]},
+    {"id":"s3::inner:text0","data":"XX","lines":1,"units":[0,0],"blank":[]}
+  ]
+}

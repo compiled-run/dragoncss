@@ -1,0 +1,9 @@
+{
+  "case": "opacity-group-after-sticky-rtl",
+  "dpr": 2,
+  "texts": [
+    {"id":"bar:text0","lines":[[0,2]]},
+    {"id":"word:text0","lines":[[0,2]]},
+    {"id":"new:text0","lines":[[0,2]]}
+  ]
+}

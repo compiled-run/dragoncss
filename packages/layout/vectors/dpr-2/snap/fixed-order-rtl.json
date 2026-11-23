@@ -1,0 +1,144 @@
+{
+ "platform": "darwin-arm64",
+ "devicePixelRatio": 2,
+ "input": [
+  {
+   "id": "html",
+   "parent": null,
+   "x": 0,
+   "y": 0,
+   "width": 51200,
+   "height": 20480
+  },
+  {
+   "id": "body",
+   "parent": "html",
+   "x": 0,
+   "y": 0,
+   "width": 51200,
+   "height": 20480
+  },
+  {
+   "id": "row",
+   "parent": "body",
+   "x": 0,
+   "y": 0,
+   "width": 51200,
+   "height": 7680
+  },
+  {
+   "id": "r",
+   "parent": "row",
+   "x": 35840,
+   "y": 0,
+   "width": 15360,
+   "height": 7680
+  },
+  {
+   "id": "grid",
+   "parent": "body",
+   "x": 0,
+   "y": 12800,
+   "width": 51200,
+   "height": 7680
+  },
+  {
+   "id": "gr",
+   "parent": "grid",
+   "x": 35840,
+   "y": 0,
+   "width": 15360,
+   "height": 7680
+  },
+  {
+   "id": "f",
+   "parent": "row",
+   "x": 0,
+   "y": 0,
+   "width": 10240,
+   "height": 5120
+  },
+  {
+   "id": "gf",
+   "parent": "grid",
+   "x": 0,
+   "y": 0,
+   "width": 10240,
+   "height": 5120
+  }
+ ],
+ "output": [
+  {
+   "id": "html",
+   "left": 0,
+   "top": 0,
+   "right": 800,
+   "bottom": 320,
+   "width": 800,
+   "height": 320
+  },
+  {
+   "id": "body",
+   "left": 0,
+   "top": 0,
+   "right": 800,
+   "bottom": 320,
+   "width": 800,
+   "height": 320
+  },
+  {
+   "id": "row",
+   "left": 0,
+   "top": 0,
+   "right": 800,
+   "bottom": 120,
+   "width": 800,
+   "height": 120
+  },
+  {
+   "id": "r",
+   "left": 560,
+   "top": 0,
+   "right": 800,
+   "bottom": 120,
+   "width": 240,
+   "height": 120
+  },
+  {
+   "id": "grid",
+   "left": 0,
+   "top": 200,
+   "right": 800,
+   "bottom": 320,
+   "width": 800,
+   "height": 120
+  },
+  {
+   "id": "gr",
+   "left": 560,
+   "top": 200,
+   "right": 800,
+   "bottom": 320,
+   "width": 240,
+   "height": 120
+  },
+  {
+   "id": "f",
+   "left": 0,
+   "top": 0,
+   "right": 160,
+   "bottom": 80,
+   "width": 160,
+   "height": 80
+  },
+  {
+   "id": "gf",
+   "left": 0,
+   "top": 200,
+   "right": 160,
+   "bottom": 280,
+   "width": 160,
+   "height": 80
+  }
+ ]
+}

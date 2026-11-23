@@ -33,7 +33,8 @@ import { inDomain, validateInput, type ValidInput } from './analysis/input.ts';
 import type { InteractionPartition, InteractionValue } from './analysis/interaction.ts';
 import { checkGeneratedIdentity, generatedRuleRefusals, markerRuleRefusals } from './analysis/generated.ts';
 import { checkStaticEmptyHosts } from './analysis/pseudo-hosts.ts';
-import { emptyPartition, firstInteractionPseudo, stateMembers, hitUnmodelledBox, hitUnmodelledControl, hitUnmodelledFact, interactionCapRefusal, interactionPartition, interactionRefusals, interactionRuleOrigin, focusReachable, gateInteractionFeatures, provesPointerRow, ruleIsInteractive, selectFocusRefusals } from './analysis/interaction.ts';
+import { emptyPartition, firstInteractionPseudo, stateMembers, hitUnmodelledBox, hitUnmodelledControl, hitUnmodelledFact, interactionCapRefusal, interactionPartition, interactionRefusals, interactionRuleOrigin, focusReachable, gateInteractionFeatures, provesPointerRow, ruleIsInteractive } from './analysis/interaction.ts';
+import { isCheckboxType } from './analysis/elements/controls.ts';
 import type { Linked, LinkedElement } from './analysis/link.ts';
 import type { InteractionState } from './analysis/match.ts';
 import { assignmentKey, linkDocument } from './analysis/link.ts';
@@ -313,6 +314,8 @@ export type InternalOptions = {
   readonly hostCanvas?: boolean;
   /** The host app runs a form's submission and reset (a Markless host), so a submit or reset button inside a <form> compiles. */
   readonly hostForms?: boolean;
+  /** The host draws and edits every single-line text field natively (a Markless host), so an editable one is laid out; else native refuses it. */
+  readonly hostTextEditing?: boolean;
   /** The host's Brotli decoder, which a WOFF2 @font-face src needs; without one a WOFF2 is DRAGON_FONT_UNREADABLE (no-brotli). */
   readonly brotliDecompress?: BrotliDecompress;
   /**
@@ -343,6 +346,7 @@ type Resolved = {
   readonly hostTopLayer: boolean;
   readonly hostCanvas: boolean;
   readonly hostForms: boolean;
+  readonly hostTextEditing: boolean;
   readonly systemFonts: boolean;
   readonly nativeLanes: NativeLanes | null;
   readonly brotliDecompress: BrotliDecompress | null;
@@ -1013,7 +1017,7 @@ function checkCases(linked: Linked, rules: readonly Rule[], targets: readonly Kn
   const { contextual: reported, refused, fonts, fenced, fontDeferrals } = seen;
   const keys = projectFonts === null ? NO_FONTS : projectFonts.keys;
   const out: CaseResult[] = [];
-  const env = { direction: options.direction, rootFont: options.rootFont, ua: options.ua, registered, colorScheme, hostCanvas: options.hostCanvas };
+  const env = { direction: options.direction, rootFont: options.rootFont, ua: options.ua, registered, colorScheme, hostCanvas: options.hostCanvas, hostTextEditing: options.hostTextEditing };
   // Every check of a case runs on each of its interaction states too, so a refusal inside a hover rule is reported (SELD-R2a).
   const check = (resolved: ResolvedElement): UsedKey[] => {
     const computedAt = diagnostics.length;
@@ -1144,6 +1148,42 @@ function checkCases(linked: Linked, rules: readonly Rule[], targets: readonly Kn
 
 /** An assignment as the messages name it: state=value, comma-separated, or "(the initial assignment)" when it sets nothing. */
 const assignmentLabel = (a: Assignment): string => (a.length === 0 ? '(the initial assignment)' : a.map((x) => `${x.state.state}=${String(x.value)}`).join(', '));
+
+/**
+ * FORM-checkbox: Chrome draws a themed checkbox in its pressed or hovered colours while it is :active or :hover, which Dragon does
+ * not draw yet, so an author rule that tests either on a themed checkbox is refused on native rather than shown beside the resting
+ * colours.
+ */
+function checkboxPressRefusals(cases: readonly CaseResult[], targets: readonly KnownTarget[], diagnostics: Diagnostic[]): void {
+  const seen = new Set<string>();
+  for (const c of cases) {
+    if (c.resolved === null || c.partition === null) continue;
+    const p = c.partition;
+    for (const el of themedCheckboxes(c.resolved)) {
+      for (const pseudo of ['hover', 'active'] as const) {
+        if (!p.candidates[pseudo].includes(el.element.address)) continue;
+        for (const t of NATIVE_TARGETS.filter((x) => targets.includes(x))) {
+          const id = `${t}|${pseudo}|${el.element.address}`;
+          if (seen.has(id)) continue;
+          seen.add(id);
+          diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_SELECTOR', { origin: el.element.node.origin, target: t, message: `:${pseudo} on the themed checkbox ${el.element.address} is not supported: Dragon does not draw Chrome's ${pseudo === 'hover' ? 'hovered' : 'pressed'} checkbox colours yet (FORM-checkbox)`, manual: `Style the state on a wrapper element, or with a component state.` }));
+        }
+      }
+    }
+  }
+}
+
+/** The input[type=checkbox] elements of a resolved tree whose appearance is auto, in preorder. */
+function themedCheckboxes(root: ResolvedElement): ResolvedElement[] {
+  const out: ResolvedElement[] = [];
+  const visit = (el: ResolvedElement): void => {
+    const a = el.props.get('appearance');
+    if (el.element.tag === 'input' && isCheckboxType(el.element.attributes.get('type')) && a !== undefined && a.value.kind === 'keyword' && a.value.value === 'auto') out.push(el);
+    for (const k of el.children) if (k.kind === 'element') visit(k);
+  };
+  visit(root);
+  return out;
+}
 
 /**
  * R13: on native, a pointer-reachable interaction state needs Dragon's hit test, which models only the HIT_MODELLED paint facts.
@@ -1547,7 +1587,6 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       diagnostics.push(...preLinkDiagnostics);
     }
     focusable = focusReachable(interactionRules, linked?.cases ?? null);
-    diagnostics.push(...selectFocusRefusals(interactionRules, linked?.cases ?? null, options.faults));
     const nativeRefusals = gateInteractionFeatures(interactionRules, linked?.cases ?? null, NATIVE_TARGETS.filter((t) => targets.includes(t)), options.profiles === 'enforce' ? (t) => profileFor(profiles, t) : null, options.faults);
     if (options.interactionLanes) laneOnlyNative = NATIVE_TARGETS.filter((t) => nativeRefusals.some((d) => d.target === t));
     else {
@@ -1670,6 +1709,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
         diagnostics.splice(valuesAt, 0, ...withoutRepeatedBrowserOnly(values, diagnostics));
       }
       hitModelRefusals(cases, [...(bandRules[nativeBand] as Set<Rule>)], targets, options, diagnostics);
+      checkboxPressRefusals(cases, targets, diagnostics);
       // PNT1: the lanes lower a fractional opacity and a layer item kept under a clip on native (T154: and a selectable user-select),
       // but a user's compile refuses them there until PNT1-opacity-b, a clip-chain view and P6c, so a document that uses one is
       // lane-only on native and proves no native row (pipeline.ts). So is one with a unicode-bidi that can reorder text (analysis/bidi.ts).
@@ -2036,6 +2076,7 @@ export function createProjectWith<const T extends Targets>(config: ProjectConfig
     hostTopLayer: options.hostTopLayer === true,
     hostCanvas: options.hostCanvas === true,
     hostForms: options.hostForms === true,
+    hostTextEditing: options.hostTextEditing === true,
     systemFonts: options.systemFonts === true,
     nativeLanes: options.nativeLanes === undefined ? null : options.nativeLanes,
     brotliDecompress: options.brotliDecompress ?? null,
