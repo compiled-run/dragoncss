@@ -215,8 +215,8 @@ export type CheckboxMarks = {
  */
 export function checkboxMarks(width: number, height: number, zoom: number): CheckboxMarks {
   // The theme paints at zoom 1 in a whole-px rect, the border box divided by the zoom and truncated (measured at DPR 2.625).
-  const w = Math.trunc(width / zoom);
-  const h = Math.trunc(height / zoom);
+  const w = truncPxToInt(width / zoom);
+  const h = truncPxToInt(height / zoom);
   const side = (w < h ? w : h) * zoom;
   const x = (w * zoom - side) / 2;
   const y = (h * zoom - side) / 2;

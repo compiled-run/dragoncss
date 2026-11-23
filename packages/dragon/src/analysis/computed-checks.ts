@@ -1825,6 +1825,7 @@ function checkTextField(el: ResolvedElement, layoutParent: ResolvedElement | nul
   if (state === 'search' && keywordOf(direction) === 'rtl') {
     refuse(direction, 'search-rtl', `direction: rtl on <input type=search> ${address} is not supported: Chrome puts its cancel button at the inline end, which the engine lays out only for ltr`, `Set direction: ltr on <input> ${address}, or use type="text".`, 'DRAGON_UNSUPPORTED_VALUE', targets.filter((t) => t === 'ios' || t === 'android'));
   }
+  if (state === 'search') checkSearchField(el, (v, what, message, manual) => refuse(v, what, message, manual, 'DRAGON_UNSUPPORTED_VALUE', targets.filter((t) => t === 'ios' || t === 'android')));
   if (!(hostEdits && tag === 'input') && !el.element.attributes.has('readonly')) {
     refuse(null, 'editing', `<${tag}> ${address} is an editable text control: Dragon draws its value but has no caret, selection or keyboard input on iOS and Android yet (the FORM-b editing slice)`, `Add readonly to <${tag}> ${address}, or target web only, until native text editing lands.`, 'DRAGON_UNSUPPORTED_VALUE', targets.filter((t) => t === 'ios' || t === 'android'));
   }
@@ -1857,6 +1858,36 @@ function checkTextAreaChrome(el: ResolvedElement, targets: readonly string[], re
     refuse(el.props.get(ox === 'visible' ? 'overflow-x' : 'overflow-y') as ResolvedValue, 'overflow', `overflow: visible on <textarea> ${address}, which Chrome makes auto, is not modelled`, `Leave overflow at auto, or set hidden, on <textarea> ${address}.`, 'DRAGON_UNSUPPORTED_VALUE', native);
   } else if (keywordOf(scrollbarWidth) !== 'none' && ((oy !== 'hidden' && oy !== 'clip') || ox === 'scroll')) {
     refuse(scrollbarWidth, 'gutter', `<textarea> ${address} reserves a scrollbar gutter in its default size (scrollbar-width: ${valueToString(scrollbarWidth.value)}), whose thickness is the platform's`, `Set scrollbar-width: none (or overflow: hidden) on <textarea> ${address}.`, 'DRAGON_UNSUPPORTED_VALUE', native);
+  }
+}
+
+/**
+ * FORM-search (notes/FORM-search-spec.md R5): the cancel button narrows a search field's editor and placeholder at their inline
+ * end, which no fixture measures under a text-align that moves text off the inline start, or under an author ::placeholder margin.
+ * refuse refuses on the native targets only: on the web Chrome lays the field out itself.
+ */
+function checkSearchField(el: ResolvedElement, refuse: (v: ResolvedValue | null, what: string, message: string, manual: string) => void): void {
+  const address = el.element.address;
+  const align = el.props.get('text-align') as ResolvedValue;
+  const rtl = keywordOf(el.props.get('direction') as ResolvedValue) === 'rtl';
+  // controls-search measures start alignment and controls-text-field-search end alignment in ltr (an rtl search field is refused).
+  const startAligned = (v: ResolvedValue): boolean => {
+    const a = keywordOf(v);
+    return a === 'start' || (a === 'left' && !rtl) || (a === 'right' && rtl) || (!rtl && (a === 'end' || a === 'right'));
+  };
+  if (!startAligned(align)) {
+    refuse(align, 'search-align', `text-align: ${valueToString(align.value)} on the search field ${address} is not supported: its cancel button narrows the editor, which moves centred text in a way no fixture measures yet`, `Keep text-align: start on <input type=search> ${address}.`);
+  }
+  for (const c of el.children) {
+    if (c.kind !== 'element') continue;
+    const part = textFieldPartOf(c as ResolvedElement);
+    if (part === undefined || part.part !== 'placeholder') continue;
+    const own = (c as ResolvedElement).props.get('text-align') as ResolvedValue;
+    if (startAligned(align) && !startAligned(own)) refuse(own, 'search-placeholder-align', `text-align: ${valueToString(own.value)} on the placeholder of the search field ${address} is not supported: the cancel button narrows the placeholder's box, which moves centred text in a way no fixture measures yet`, `Keep text-align: start on the ::placeholder of <input type=search> ${address}.`);
+    for (const side of ['margin-left', 'margin-right'] as const) {
+      const m = (c as ResolvedElement).props.get(side) as ResolvedValue;
+      if (valueToString(m.value) !== '0px') refuse(m, `search-placeholder-${side}`, `${side}: ${valueToString(m.value)} on the placeholder of the search field ${address} is not supported: the cancel button takes the placeholder's inline end, which no fixture measures with an author margin`, `Remove the ::placeholder ${side} for <input type=search> ${address}.`);
+    }
   }
 }
 
