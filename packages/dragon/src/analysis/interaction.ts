@@ -705,10 +705,13 @@ export function hitUnmodelledFact(root: ResolvedElement, ua: UaDataset, compiles
     if (el.element.tag === 'svg') return { property: 'fill', address: el.element.address };
     // An overflow value computed from its partner (computeOverflowPair) has no declaration: it compiles only when the partner does.
     const partner = (p: Longhand): ResolvedValue | undefined => (p === 'overflow-x' ? el.props.get('overflow-y') : p === 'overflow-y' ? el.props.get('overflow-x') : undefined);
+    const oneBox = hitRetargetsParts(el);
     for (const [p, v] of el.props) {
       const other = partner(p);
       if (!PROPERTY_ASPECTS[p].paint || !compiles(v) || (other !== undefined && !compiles(other))) continue;
       if (other !== undefined && el === propagated) continue;
+      // A control hit as one box has no content its scrolling could move, and Chrome hits its border box at any scroll offset.
+      if (other !== undefined && oneBox) continue;
       const modelled = HIT_MODELLED.get(p);
       if (modelled !== undefined) {
         if (modelled(v.value)) continue;
@@ -721,7 +724,7 @@ export function hitUnmodelledFact(root: ResolvedElement, ua: UaDataset, compiles
       }
       if (JSON.stringify(v.value) !== init) return { property: p, address: el.element.address };
     }
-    if (hitRetargetsParts(el)) return null;
+    if (oneBox) return null;
     for (const c of el.children) {
       if (c.kind !== 'element') continue;
       const found = visit(c);
