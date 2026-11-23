@@ -504,10 +504,10 @@ function layoutOwnContents(ctx: Ctx, node: LayoutBox | ControlBox, a: ContentsAr
   const withFloats = floatEnd === null ? flowEnd : max(flowEnd, sub(floatEnd, add(bor.top, pad.top)));
   // css-contain-2 §3.1: under size containment the content height is contain-intrinsic-height (none is 0), whatever the contents.
   // FORM-b: an empty inner editor or select inner element holds one empty line, its strut's (Blink's has-line-if-empty).
-  const empty = control !== null && (control.kind === 'text-editor' || control.kind === 'select-inner') && box.children.every((k) => k.kind === 'text' && k.text === '') && box.strut !== null ? metricsOf(ctx, box.id, box.strut.font, box.strut.lineHeight, false) : null;
+  const empty = control !== null && (control.kind === 'text-editor' || control.kind === 'select-inner') && onlyEmptyTexts(box.children) && box.strut !== null ? metricsOf(ctx, box.id, box.strut.font, box.strut.lineHeight, false) : null;
   // A textarea's editor ends a value ending in a preserved line feed with one more, empty line (Blink's placeholder <br>).
   const last = control !== null && control.kind === 'text-editor' && box.strut !== null ? box.children[box.children.length - 1] : undefined;
-  const trailing = last !== undefined && last.kind === 'text' && last.whiteSpaceCollapse !== 'collapse' && last.text.endsWith('\n') && box.strut !== null ? metricsOf(ctx, box.id, box.strut.font, box.strut.lineHeight, false) : null;
+  const trailing = last !== undefined && last.kind === 'text' && last.whiteSpaceCollapse !== 'collapse' && endsInLineFeed(last.text) && box.strut !== null ? metricsOf(ctx, box.id, box.strut.font, box.strut.lineHeight, false) : null;
   const flowIntrinsic = s.containSize === 'size' ? containedHeight(s) : empty !== null ? add(empty.above, empty.below) : trailing !== null ? add(withFloats, add(trailing.above, trailing.below)) : withFloats;
   // unpositioned_list_marker.cc AddToBoxWithoutLineBoxes: content without a baseline grows to hold the marker, top-aligned.
   const intrinsic = marker !== null && r.markerY === null ? max(flowIntrinsic, sub(marker.height, add(bor.top, pad.top))) : flowIntrinsic;
@@ -538,6 +538,18 @@ function layoutOwnContents(ctx: Ctx, node: LayoutBox | ControlBox, a: ContentsAr
   // Chrome deviation min-max-end-margin: when min-height or max-height changes the height, the end margins neither escape nor count.
   const escapeBottom = bottomAdjoins && (height === add(intrinsic, vbp) || ctx.faults.minMaxEndMarginSpec) ? r.endStrut : EMPTY_STRUT;
   return { frag: { id: box.id, width: a.borderBoxWidth, height, baseline, children: r.placed, outOfFlow: r.outOfFlow, inflow: null, lines: null }, escapeTop: r.escapeTop, escapeBottom, collapseThrough, lastBaseline: r.lastBaseline, lastBaselineFlex: r.lastBaselineFlex, defaultLastBaseline: r.defaultLastBaseline, defaultLastBaselineFlex: r.defaultLastBaselineFlex };
+}
+
+/** Whether a box holds nothing but empty text leaves (an edited textarea's empty editor keeps its leaf). */
+function onlyEmptyTexts(children: LayoutBox['children']): boolean {
+  for (const k of children) if (k.kind !== 'text' || k.text !== '') return false;
+  return true;
+}
+
+function endsInLineFeed(text: string): boolean {
+  let last = '';
+  for (const ch of text) last = ch;
+  return last === '\n';
 }
 
 /**
