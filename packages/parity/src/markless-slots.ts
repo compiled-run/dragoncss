@@ -10,7 +10,7 @@ export type MarklessSlot = { readonly id: string; readonly initial: number; read
 export type StyleTemplate = readonly (string | { readonly slot: string })[];
 
 export type SlotRuleName = 'line' | 'line32' | 'channel';
-/** c + k·s, rounded to a 32-bit float (line32) or to Chrome's 8-bit rgb() channel (channel); not finite: c. */
+/** c + k·s, rounded to a 32-bit float (line32) or to Chrome's 8-bit rgb() channel (channel: k = 1 for r, g, b, k = 255 for alpha); not finite: c. */
 export type SlotRule = readonly [rule: SlotRuleName, c: number, k: number];
 export type SlotPath = readonly (string | number)[];
 /** Per piece (below zero, zero and up, not finite): the field's value, and each number in it that follows the slot. */
@@ -143,7 +143,8 @@ function fitRule(samples: readonly (readonly [number, number])[], piece: 0 | 1 |
   if (y0 === undefined || y1 === undefined) throw new Error(`no sample at ${s0} and ${s1}`);
   const k = (y1 - y0) / (s1 - s0);
   const c = y0 - k * s0;
-  for (const r of [['line', c, k], ['line32', c, k], ['channel', 0, 1]] as const) if (exact(r)) return r;
+  // A channel's c and k stay fixed: a fitted k = 128 matches every sample of calc(a * 0.5) as an alpha and is wrong at 0.7.
+  for (const r of [['line', c, k], ['line32', c, k], ['channel', 0, 1], ['channel', 0, 255]] as const) if (exact(r)) return r;
   return null;
 }
 
