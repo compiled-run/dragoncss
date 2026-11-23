@@ -387,6 +387,16 @@ export const FLEX_OR_GRID: readonly string[] = ['flex', 'inline-flex', 'grid', '
 export const transformedForStacking = (el: ResolvedElement): boolean =>
   transformsDescendants(el) || elementWillChange(el).includes('opacity') || hasClipPath(el) || elementMaskGradient(el) !== null || filterOf(el) || isolates(el) || blendModeOf(el.props.get('mix-blend-mode')?.value) !== 'normal' || containsDescendants(el);
 
+/** Whether an element's hit facts make it a stacking context (internal.ts hitFacts): opacity below 1, a stacking paint fact, or sticky. */
+export function hitFactContext(el: ResolvedElement): boolean {
+  const o = el.props.get('opacity');
+  const opacity = o === undefined ? 1 : opacityOf(o.value);
+  if (opacity === null) throw new ProgramError(`${el.element.address}: opacity did not compute to a number`);
+  const pos = el.props.get('position');
+  // css-position-3 §3.4: a sticky box always makes a stacking context.
+  return opacity < 1 || transformedForStacking(el) || (pos !== undefined && pos.value.kind === 'keyword' && pos.value.value === 'sticky');
+}
+
 /** Whether an element has a filter other than none (a hand-built element may carry no filter value at all). */
 const filterOf = (el: ResolvedElement): boolean => {
   const f = el.props.get('filter') as ResolvedValue | undefined;

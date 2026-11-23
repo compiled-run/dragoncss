@@ -530,6 +530,23 @@ describe('atomic inlines on their lines', () => {
     expect(hitRefusal(input)).toBe('p has percentage padding around atomic inlines, whose lines the hit table does not place yet (INL2a)');
     expect(() => hitTableOf(input, ahemMeasurer, facts, NO_HIT_TABLE_FAULTS)).toThrow(/percentage padding around atomic inlines/);
   });
+
+  it('refuses by name, before building, an atomic inline its hit facts make a stacking context or transform (INL2c)', async () => {
+    const { hitFactsRefusal, hitRefusal, hitTableOf } = await import('../src/rt-hit.ts');
+    const { ahemMeasurer } = await import('../src/index.ts');
+    const { input, facts } = await inlineInput();
+    const message = 'c1 is an atomic inline that forms a stacking context or is transformed, which no Chrome hit capture orders against its line yet (INL2c)';
+    const base = facts.get('c1');
+    if (base === undefined) throw new Error('no c1 facts');
+    expect(hitFactsRefusal(input, facts)).toBeNull();
+    for (const changed of [{ ...base, context: true }, { ...base, context: true, transform: [{ fn: 'translate', x: { kind: 'px', px: 2, percent: 0 }, y: { kind: 'px', px: 0, percent: 0 }, angle: 0, sx: 1, sy: 1 }] }]) {
+      const f = new Map(facts);
+      f.set('c1', changed as typeof base);
+      expect(hitRefusal(input)).toBeNull();
+      expect(hitFactsRefusal(input, f)).toBe(message);
+      expect(() => hitTableOf(input, ahemMeasurer, f, NO_HIT_TABLE_FAULTS)).toThrow(message);
+    }
+  });
 });
 
 describe('hitTest through rounded corners (SELD-R2b, FloatRoundedRect::IntersectsQuad)', () => {

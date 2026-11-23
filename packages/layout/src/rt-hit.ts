@@ -1035,7 +1035,7 @@ function boxNodes(s: TableState, b: LayoutBox, parent: number, orders: Map<strin
     lengths = f.radii;
     paint = paintOf(b.id, f, r, s.dpr, ox, oy, sox, soy, s.faults);
   }
-  if (line >= 0 && (paint.context || paint.transformed)) throw new HitError(atomicRefusal(b.id));
+  if (line >= 0 && (paint.context || paint.transformed)) throw new HitError(contextAtomicRefusal(b.id));
   if (own < 0) throw new HitError(`anonymous box ${b.id} has no element ancestor`);
   const border = resolveBorder(zoomedBox(s, b.id).style, s.ctx.devicePixelRatio);
   const order = orders === null ? undefined : orders.get(b.id);
@@ -1262,7 +1262,7 @@ function replacedNode(s: TableState, c: ReplacedLeaf, parent: number, orders: Ma
   const border = resolveBorder(style, s.ctx.devicePixelRatio);
   const order = orders === null ? undefined : orders.get(c.id);
   const paint = paintOf(c.id, f, r, s.dpr, ox, oy, sox, soy, s.faults);
-  if (line >= 0 && (paint.context || paint.transformed)) throw new HitError(atomicRefusal(c.id));
+  if (line >= 0 && (paint.context || paint.transformed)) throw new HitError(contextAtomicRefusal(c.id));
   pushNode(s, {
     kind: 'box', parent, target: s.nodes.length, x: r.x, y: r.y, width: r.width, height: r.height, clips: c.style.overflowX === 'hidden',
     borderTop: border.top, borderRight: border.right, borderBottom: border.bottom, borderLeft: border.left, layer: c.style.position !== 'static',
@@ -1322,6 +1322,11 @@ function paddingRefusal(id: string): string {
   return `${id} has percentage padding around atomic inlines, whose lines the hit table does not place yet (INL2a)`;
 }
 
+/** No Chrome hit capture orders an atomic inline that is its own stacking context, or transformed, against its line's text yet. */
+function contextAtomicRefusal(id: string): string {
+  return `${id} is an atomic inline that forms a stacking context or is transformed, which no Chrome hit capture orders against its line yet (INL2c)`;
+}
+
 /** An atomic inline outside an inline formatting context (which the compiler never builds) has no line to paint on. */
 function atomicRefusal(id: string): string {
   return `${id} is an atomic inline outside an inline formatting context, which the hit table does not model (INL2a)`;
@@ -1365,6 +1370,27 @@ export function hitRefusal(input: LayoutInput): string | null {
   return boxHitRefusal(input.root);
 }
 
+/** The first atomic inline on a line under b whose hit facts make it a stacking context or transform it, or null. */
+function boxContextRefusal(b: LayoutBox, facts: ReadonlyMap<string, HitFact>): string | null {
+  for (const child of b.children) {
+    const c = child.kind === 'control' ? hitControlBox(child) : child;
+    if ((c.kind === 'box' || c.kind === 'replaced') && isAtomicInline(c) && b.strut !== null) {
+      const f = facts.get(c.id);
+      if (f !== undefined && (f.context || f.transform.length > 0)) return contextAtomicRefusal(c.id);
+    }
+    if (c.kind === 'box') {
+      const r = boxContextRefusal(c, facts);
+      if (r !== null) return r;
+    }
+  }
+  return null;
+}
+
+/** Why hitTableOf refuses an input with these hit facts beyond hitRefusal: an atomic inline that is a stacking context (INL2c). */
+export function hitFactsRefusal(input: LayoutInput, facts: ReadonlyMap<string, HitFact>): string | null {
+  return boxContextRefusal(input.root, facts);
+}
+
 /** The input as layout resolved it, with the caller's measurer; a refusal there is a HitError, as the layout's own is. */
 function hitZoomed(input: LayoutInput, measurer: TextMeasurer): LayoutInput {
   try {
@@ -1379,7 +1405,7 @@ function hitZoomed(input: LayoutInput, measurer: TextMeasurer): LayoutInput {
 export function hitTableOf(input: LayoutInput, measurer: TextMeasurer, facts: ReadonlyMap<string, HitFact>, faults: HitTableFaults): HitTable {
   // The named refusal comes first, so a case is refused for what hitRefusal names, not for whatever the walk meets before it
   // (line-clamp-lines' walk meets l7's Ahem p glyphs over several lines first).
-  const refused = hitRefusal(input);
+  const refused = hitRefusal(input) ?? hitFactsRefusal(input, facts);
   if (refused !== null) throw new HitError(refused);
   const out = layout(input, measurer);
   if (out.kind !== 'ok') throw new HitError(`the engine refused the input (${out.unsupported.code} at ${out.unsupported.nodeId})`);

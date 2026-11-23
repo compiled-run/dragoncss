@@ -596,6 +596,15 @@ describe('interaction states: hit model (R13)', () => {
     expect(otherErrors(compile({}, padded, mixed, TARGETS, 'derive').diagnostics)).toEqual([]);
   });
 
+  // HIT-atomic-inline INL2c: rt-hit.ts refuses an atomic inline its hit facts make a stacking context (hitFactsRefusal). Opacity
+  // passes R13's paint-fact check (the table orders z-index 0 contexts), so the box check refuses the rules by that box's name.
+  it('refuses interaction rules on native beside an atomic inline that forms a stacking context', () => {
+    const css = BODY + '.w { width: 100px; } .ib { display: inline-block; width: 20px; height: 8px; opacity: 0.5; } .k:hover { background-color: #0c0; }';
+    const wbody = (r: Parameters<Parameters<typeof inputFor>[1]>[0]) => [div(r, 'w', ['w'], [text(r, 'wt', 'aa'), div(r, 'ib', ['ib'])]), div(r, 'k', ['k'])];
+    expect(otherErrors(compile({}, css, wbody, TARGETS, 'derive').diagnostics)).toEqual(['ios', 'android'].map((t) => `DRAGON_UNSUPPORTED_SELECTOR [${t}] :hover needs Dragon hit testing through the atomic inline forming a stacking context ib, which is not built yet (package INL2c hit model)`));
+    expect(otherErrors(compile({}, css, wbody, { web: {} }, 'derive').diagnostics)).toEqual([]);
+  });
+
   it('catches the plant hitUnmodelledNotRefused', () => {
     expect(otherErrors(compile({ hitUnmodelledNotRefused: true }, css, body, TARGETS, 'derive').diagnostics)).toEqual([]);
   });

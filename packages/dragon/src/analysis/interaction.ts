@@ -25,7 +25,8 @@ import type { InteractionProbe, InteractionState } from './match.ts';
 import { NO_INTERACTION } from './match.ts';
 import type { ResolvedElement } from './resolve.ts';
 import { selectPartOf, textFieldPartOf } from './resolve.ts';
-import { holdsAtomicLine, propagatedFrom } from './computed-checks.ts';
+import { atomicLineChildren, holdsAtomicLine, propagatedFrom } from './computed-checks.ts';
+import { hitFactContext } from '../lower/paint/stacking.ts';
 import { matrixParts, TRANSFORM_LIST_TYPE, transformFunctionsOf } from '../css/properties/transform.ts';
 
 /** R7: the distinct reachable interaction states one app assignment compiles; more are refused (package SELD-R2s). */
@@ -654,8 +655,8 @@ export function hitUnmodelledControl(root: ResolvedElement): string | null {
 /** The kinds of box hitUnmodelledBox names, with the package each waits for. */
 export type HitUnmodelledBox = {
   readonly address: string;
-  readonly kind: 'float' | 'fixed box' | 'inline-grid box' | 'block with percentage padding around atomic inlines';
-  readonly pkg: 'FLT' | 'POSX-f' | 'G-INL' | 'INL2a';
+  readonly kind: 'float' | 'fixed box' | 'inline-grid box' | 'block with percentage padding around atomic inlines' | 'atomic inline forming a stacking context';
+  readonly pkg: 'FLT' | 'POSX-f' | 'G-INL' | 'INL2a' | 'INL2c';
 };
 
 /**
@@ -677,6 +678,7 @@ export function hitUnmodelledBox(root: ResolvedElement, compiles: (v: ResolvedVa
         const v = el.props.get(p);
         if (v !== undefined && percent(v) && compiles(v)) return { address: el.element.address, kind: 'block with percentage padding around atomic inlines', pkg: 'INL2a' };
       }
+      for (const a of atomicLineChildren(el)) if (hitFactContext(a)) return { address: a.element.address, kind: 'atomic inline forming a stacking context', pkg: 'INL2c' };
     }
     const block = key(el, 'display') === 'block' || key(el, 'display') === 'inline-block';
     for (const c of el.children) {

@@ -419,6 +419,14 @@ export function holdsAtomicLine(el: ResolvedElement): boolean {
   return atomic;
 }
 
+/** The atomic inlines on the lines of a block container holdsAtomicLine accepts, in tree order (through display: contents). */
+export function atomicLineChildren(el: ResolvedElement): ResolvedElement[] {
+  if (!holdsAtomicLine(el)) return [];
+  const out: ResolvedElement[] = [];
+  for (const c of boxKids(el)) if (c.kind === 'element' && isAtomic(c)) out.push(c);
+  return out;
+}
+
 /** Whether el is a block container whose inline formatting context lays out a line: an atomic inline, or text other than collapsible white space. */
 function holdsInlineContent(el: ResolvedElement): boolean {
   if (isInlineBox(el)) return false;
