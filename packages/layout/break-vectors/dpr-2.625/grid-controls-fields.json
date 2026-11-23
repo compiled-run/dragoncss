@@ -1,0 +1,23 @@
+{
+  "case": "grid-controls-fields",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"b1:text0","lines":[[0,2]]},
+    {"id":"b2:text0","lines":[[0,3]]},
+    {"id":"b3:text0","lines":[[0,1]]},
+    {"id":"t1::editor:text0","lines":[[0,2]]},
+    {"id":"t2::editor:text0","lines":[[0,4]]},
+    {"id":"s1::inner:text0","lines":[[0,2]]},
+    {"id":"t3::editor:text0","lines":[[0,2]]},
+    {"id":"a1::editor:text0","lines":[[0,5]]},
+    {"id":"s2::inner:text0","lines":[[0,3]]},
+    {"id":"b4:text0","lines":[[0,2]]},
+    {"id":"b5:text0","lines":[[0,6]]},
+    {"id":"t4::editor:text0","lines":[[0,2]]},
+    {"id":"b6:text0","lines":[[0,8]]},
+    {"id":"s3::inner:text0","lines":[[0,2]]},
+    {"id":"a2::editor:text0","lines":[[0,2]]},
+    {"id":"t5::editor:text0","lines":[[0,2]]},
+    {"id":"b7:text0","lines":[[0,2]]}
+  ]
+}

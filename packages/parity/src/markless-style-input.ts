@@ -6,11 +6,11 @@ import { createHash } from 'node:crypto';
 import { posix } from 'node:path';
 import { brotliDecompressSync } from 'node:zlib';
 import type { BrotliDecompress, ClassSymbol, Condition, FontMap, FrontEndResult, NativeStyles, NativeStylesConfig, NativeStyleTarget, Rgba8, SourceFile, TreeNode } from 'dragon';
-import { BAND_KEY, compiledCases, compileNativeStylesWith, decodeFontFile, isTreeNodeId, nativeBands, parseStylesheet, resolvedInteractionTextTransforms, resolvedTextTransforms, TREE_SCHEMA_REVISION } from 'dragon';
+import { BAND_KEY, compiledCases, compileNativeStylesWith, decodeFontFile, isTreeNodeId, LISTED_OPTIONS_ATTRIBUTE, nativeBands, parseStylesheet, resolvedInteractionTextTransforms, resolvedTextTransforms, TREE_SCHEMA_REVISION } from 'dragon';
 import type { rtBand } from '@dragon/layout';
 import { textDecoration } from '@dragon/layout';
 import { FONT_REFERENCE_MAP } from './font-reference.ts';
-import { checkPlan, hexBits, PLAN_HEIGHTS, slottedLayout } from './markless-plan.ts';
+import { checkPlan, HEIGHT_FEATURES, heightDependence, hexBits, PLAN_HEIGHTS, slottedLayout } from './markless-plan.ts';
 import type { MarklessPlan } from './markless-plan.ts';
 import { withFontMapAssets } from './fixture-groups/fonts.ts';
 import { DOCUMENT_ID, PROJECT_ID } from './fixture-reader.ts';
@@ -290,6 +290,7 @@ export function parseMarklessStyleInput(text: string): MarklessStyleInput {
       if (!isRecord(node['attributes']) || !Object.values(node['attributes']).every(isString)) fail(`${id}: attributes are not strings`);
       if (node['boxless'] !== undefined && node['boxless'] !== true) fail(`${id}: boxless is true or absent`);
       if (MARKLESS_BOXLESS_ATTRIBUTE in (node['attributes'] as Record<string, unknown>)) fail(`${id}: ${MARKLESS_BOXLESS_ATTRIBUTE} is Dragon's own attribute`);
+      if (LISTED_OPTIONS_ATTRIBUTE in (node['attributes'] as Record<string, unknown>)) fail(`${id}: ${LISTED_OPTIONS_ATTRIBUTE} is Dragon's own attribute`);
       if (node['classByState'] !== undefined) {
         if ('class' in (node['attributes'] as Record<string, unknown>)) fail(`${id}: class is both a fixed attribute and a class by state`);
         checkByState('classByState', node['classByState']);
@@ -300,7 +301,7 @@ export function parseMarklessStyleInput(text: string): MarklessStyleInput {
         for (const [name, byState] of Object.entries(attributesByState as Record<string, unknown>)) {
           if (name === 'class' || !/^[a-z][a-z0-9-]*$/.test(name)) fail(`${id}: attributesByState names ${JSON.stringify(name)}, which is not a non-class attribute name`);
           if (name in (node['attributes'] as Record<string, unknown>)) fail(`${id}: ${name} is both a fixed attribute and an attribute by state`);
-          if (name === MARKLESS_BOXLESS_ATTRIBUTE) fail(`${id}: ${MARKLESS_BOXLESS_ATTRIBUTE} is Dragon's own attribute`);
+          if (name === MARKLESS_BOXLESS_ATTRIBUTE || name === LISTED_OPTIONS_ATTRIBUTE) fail(`${id}: ${name} is Dragon's own attribute`);
           checkByState(`attributesByState.${name}`, byState);
         }
       }
@@ -555,6 +556,8 @@ export function marklessFrontEnd(slotted: MarklessStyleInput, inputText: string,
         ...Object.entries(n.attributes).filter(([name]) => name !== 'class').map(([name, value]) => ({ name, value: [{ when: { kind: 'true' }, value }], origin })),
         ...(marklessShownModal(n) && !('open' in n.attributes) ? [{ name: 'open', value: [{ when: { kind: 'true' }, value: '' }], origin }] : []),
         ...(n.boxless === true ? [{ name: MARKLESS_BOXLESS_ATTRIBUTE, value: [{ when: { kind: 'true' }, value: '' }], origin }] : []),
+        // FORM-b S4: a select holding a list's rows has only the template option here, so Dragon keeps its widest-option refusals.
+        ...(n.kind === 'element' && n.element === 'select' && input.nodes.some((k) => k.parent === n.id && k.row !== undefined) ? [{ name: LISTED_OPTIONS_ATTRIBUTE, value: [{ when: { kind: 'true' }, value: '' }], origin }] : []),
         // An attribute that follows state: each distinct value (null: absent) holds in exactly the combinations that give it.
         ...Object.entries(n.attributesByState ?? {}).map(([name, byState]) => {
           const entryOf = entriesOf(n.id, `attributesByState.${name}`, byState);
@@ -633,7 +636,7 @@ function compileMarkless(parsed: MarklessStyleInput, inputText: string, inputPat
   const map = mode === 'system' ? MARKLESS_SYSTEM_FONT_MAP : FONT_REFERENCE_MAP;
   const input = withFontMapAssets(marklessFrontEnd(parsed, inputText, inputPath, fonts, mode), map);
   const devices = marklessDevices(parsed, at);
-  const config: NativeStylesConfig = { projectId: PROJECT_ID, name: parsed.component, targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 } }, fonts: map, viewport: devices.ios.viewport, support: 'lanes', topLayer: 'host', canvas: 'host', forms: 'host', output: 'program', brotliDecompress: NODE_BROTLI, ...(mode === 'system' ? { systemFonts: 'measured' as const } : {}) };
+  const config: NativeStylesConfig = { projectId: PROJECT_ID, name: parsed.component, targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 } }, fonts: map, viewport: devices.ios.viewport, support: 'lanes', topLayer: 'host', canvas: 'host', forms: 'host', textEditing: 'host', output: 'program', brotliDecompress: NODE_BROTLI, ...(mode === 'system' ? { systemFonts: 'measured' as const } : {}) };
   const { styles, compiled } = compileNativeStylesWith(config, input);
   const errors = styles.diagnostics.filter((d) => d.severity === 'error');
   if (errors.length > 0) fail(`${parsed.component} does not compile:\n${errors.map((d) => `  ${d.code} [${d.target ?? 'all'}] ${d.message}`).join('\n')}`);
@@ -749,6 +752,22 @@ export function marklessStyleExport(inputText: string, inputPath: string, readFo
 }
 
 /**
+ * Per target, what may make the page's text change with the viewport height (markless-plan.ts heightDependence), or null when
+ * Dragon's analysis proves it cannot, so the layout plan does not check its text at PLAN_HEIGHTS' heights.
+ */
+export function marklessTextHeightProof(inputText: string, inputPath: string, readFont?: (file: string) => Uint8Array, mode: MarklessFonts = 'system'): { readonly [T in NativeStyleTarget]?: string | null } {
+  const parsed = parseMarklessStyleInput(inputText);
+  const fonts = readFont === undefined ? [] : marklessFontFiles(parsed, readFont);
+  const { styles } = compileMarkless(parsed, inputText, inputPath, fonts, mode);
+  const out: { [T in NativeStyleTarget]?: string | null } = {};
+  for (const t of ['ios', 'android'] as const) {
+    const o = styles.targets[t];
+    if (o?.kind === 'emitted') out[t] = heightDependence(o.program, (o.bands?.table.atoms ?? []).map((a) => a.feature));
+  }
+  return out;
+}
+
+/**
  * What makes a target's page depend on the viewport's height, each named: an @media feature that reads it, and each node whose
  * frame differs when the page is laid out at `width` and each of `heights` and PLAN_HEIGHTS' (vh units, percentage heights that
  * resolve against the viewport, text sized by the height). Empty when the page depends on the width alone.
@@ -818,8 +837,6 @@ function withTransformed(plan: MarklessPlan, compiled: object): MarklessPlan {
   return leaves.size === 0 ? plan : { ...plan, transformed: [...leaves].sort() };
 }
 
-/** The media features whose value changes with the viewport's height. */
-const HEIGHT_FEATURES: ReadonlySet<rtBand.BandFeature> = new Set(['height', 'orientation', 'aspect-ratio']);
 
 /** Each Dragon id an assignment's plan geometry names, with the input's id for it, where they differ. */
 const planNamesOf = (a: ExportAssignment, rename: (id: string) => string): (readonly [string, string])[] => a.nodes.map((n) => [n.id, rename(n.id)] as const).filter(([d, m]) => d !== m);
@@ -1231,6 +1248,34 @@ const backgroundOf = (nodes: readonly ExportNode[], id: string): Rgba8 => {
 /** The writes html and body may carry: the hosts draw the canvas and body's background, and no border, image or effect of either. */
 const ROOT_WRITES: ReadonlySet<string> = new Set(['background-color', 'border-widths', 'border-styles', 'border-colors']);
 
+/**
+ * The hosts draw a pre-composited group without cc's per-tile fold, so the export holds only groups cc never folds on any tiling:
+ * no box of it one draw op (a lone fill, a lone border, or a member's outline ring; text never folds, and a group's own outline lies in
+ * its box's item).
+ */
+function checkHostGroups(nodes: readonly ExportNode[], where: string): void {
+  const kids = new Map<string, ExportNode[]>();
+  for (const n of nodes) if (n.parent !== null) kids.set(n.parent, [...(kids.get(n.parent) ?? []), n]);
+  const ops = (n: ExportNode): number => {
+    const fill = n.writes.some((w) => w['kind'] === 'background-color' && isRecord(w['color']) && (w['color'] as Rgba8).alpha > 0) ? 1 : 0;
+    const styles = n.writes.find((w) => w['kind'] === 'border-styles')?.['styles'];
+    const widths = n.borderWidths === null ? [0, 0, 0, 0] : [n.borderWidths.top, n.borderWidths.right, n.borderWidths.bottom, n.borderWidths.left];
+    const sides = widths.filter((w, k) => (w ?? 0) > 0 && Array.isArray(styles) && styles[k] !== 'none' && styles[k] !== 'hidden').length;
+    return fill + (sides === 4 ? 1 : sides);
+  };
+  for (const g of nodes) {
+    if (!g.writes.some((w) => w['kind'] === 'opacity-group' || w['kind'] === 'filter-group')) continue;
+    if (ops(g) === 1) fail(`${where}: ${g.id} is a see-through group whose own box is one draw op, which cc may fold; the hosts draw no per-tile fold`);
+    const visit = (n: ExportNode): void => {
+      for (const c of kids.get(n.id) ?? []) {
+        if (c.kind !== 'text' && (ops(c) === 1 || c.writes.some((w) => w['kind'] === 'outline'))) fail(`${where}: ${c.id} inside the see-through group ${g.id} is one draw op, which cc may fold; the hosts draw no per-tile fold`);
+        visit(c);
+      }
+    };
+    visit(g);
+  }
+}
+
 function checkRootPaint(nodes: readonly ExportNode[], id: string, where: string): void {
   const node = nodes.find((n) => n.id === id);
   for (const w of node?.writes ?? []) {
@@ -1285,6 +1330,7 @@ const onBase = (base: Rgba8, src: Rgba8): Rgba8 => {
 function rootPaint(nodes: readonly ExportNode[], where: string, band: 'light' | 'dark' | null, used: UsedScheme): { readonly canvas: Rgba8; readonly bodyBackground: Rgba8 | null } {
   checkRootPaint(nodes, 'html', where);
   checkRootPaint(nodes, 'body', where);
+  checkHostGroups(nodes, where);
   const html = backgroundOf(nodes, 'html');
   const body = backgroundOf(nodes, 'body');
   // Owner ruling: a light page keeps the white base in a dark band, where Chrome 145 uses rgb(18, 18, 18), so see-through is refused there.

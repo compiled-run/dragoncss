@@ -1,0 +1,10 @@
+{
+  "case": "opacity-group-button-rtl",
+  "dpr": 2,
+  "texts": [
+    {"id":"word1:text0","lines":[[0,2]]},
+    {"id":"delete:text0","lines":[[0,2]]},
+    {"id":"word2:text0","lines":[[0,2]]},
+    {"id":"plain:text0","lines":[[0,2]]}
+  ]
+}

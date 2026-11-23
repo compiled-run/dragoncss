@@ -1051,6 +1051,9 @@ export function nodeLit(lang: Lang, n: ProgramNode, moving: ReadonlySet<string> 
       case 'select-arrow':
         // FORM-b: a state record holds no arrow write; the arrow is drawn on the static program only.
         throw new StateEmitError(`${n.id}: a select's drop-down arrow in a state program has no state-node write (FORM-b draws it on the static program only)`);
+      case 'checkbox':
+        // FORM-checkbox: a state record holds no checkbox write; the checkbox is drawn on the static program only.
+        throw new StateEmitError(`${n.id}: a checkbox in a state program has no state-node write (FORM-checkbox draws it on the static program only)`);
       case 'list-marker':
         // GEN-c: a state record holds no marker write; the marker is drawn on the static program only.
         throw new StateEmitError(`${n.id}: a list marker in a state program has no state-node write (GEN-c draws markers on the static program only)`);

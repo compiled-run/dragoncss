@@ -2,14 +2,15 @@
 // gives exactly the geometry the export computes at build time, at the proof devices and at other sizes and ratios.
 import { readFileSync } from 'node:fs';
 import type { ControlBox, LayoutBox } from '@dragon/layout';
-import { menuListArrow, menuListArrowBox } from '@dragon/layout';
+import { checkboxMarks, fromRaw, LU_PER_PX, menuListArrow, menuListArrowBox, snapRect } from '@dragon/layout';
 import { describe, expect, it } from 'vitest';
-import { checkMarklessExport, marklessStyleExport } from '../src/markless-style-input.ts';
+import { checkMarklessExport, marklessStyleExport, marklessTextHeightProof } from '../src/markless-style-input.ts';
 import { paintRows } from '../src/markless-style-compare.ts';
 import type { MarklessPlan } from '../src/markless-plan.ts';
-import { PLAN_DENSITIES, planWidths } from '../src/markless-plan.ts';
+import { heightDependence, PLAN_DENSITIES, planWidths } from '../src/markless-plan.ts';
 import type { ExportNode } from '../src/native-style-export.ts';
 import { repoPath } from '../src/paths.ts';
+import { checkboxColors } from '../../dragon/src/forms/checkbox.ts';
 
 // The translate harness is loaded by path at run time, as text-latin-engine.test.ts does.
 const { checkMarklessPlan, runMarklessLayout } = (await import(new URL('../../translate/harness/harness.ts', import.meta.url).href)) as { checkMarklessPlan(line: string): string; runMarklessLayout(line: string): string };
@@ -129,6 +130,109 @@ describe('the layout plan of a Markless export', () => {
     expect(JSON.parse(checkMarklessPlan(JSON.stringify(unread)))).toEqual(['harness-error', `$.plan.variants[${last}].root.style.position: unexpected running`]);
   });
 
+  it('records the same plan in worker threads as in this thread, with and without the height check', () => {
+    const text = readFileSync(repoPath(FLUID), 'utf8');
+    const before = { workers: process.env['DRAGON_PLAN_WORKERS'], check: process.env['DRAGON_PLAN_HEIGHT_CHECK'] };
+    try {
+      // FLUID is proven, so without `always` both exports skip the height passes; with it both run them.
+      for (const check of [undefined, 'always']) {
+        if (check === undefined) delete process.env['DRAGON_PLAN_HEIGHT_CHECK'];
+        else process.env['DRAGON_PLAN_HEIGHT_CHECK'] = check;
+        process.env['DRAGON_PLAN_WORKERS'] = '1';
+        const serial = marklessStyleExport(text, FLUID, undefined, 'system', undefined, true).exported;
+        process.env['DRAGON_PLAN_WORKERS'] = '4';
+        const workers = marklessStyleExport(text, FLUID, undefined, 'system', undefined, true).exported;
+        expect(JSON.stringify(workers), `height check ${check ?? 'proven'}`).toBe(JSON.stringify(serial));
+      }
+    } finally {
+      for (const [k, v] of [['DRAGON_PLAN_WORKERS', before.workers], ['DRAGON_PLAN_HEIGHT_CHECK', before.check]] as const) {
+        if (v === undefined) delete process.env[k];
+        else process.env[k] = v;
+      }
+    }
+  });
+
+  it('fails, naming the recording, when a plan worker exits before it answers, and waits on no timeout', () => {
+    const before = { workers: process.env['DRAGON_PLAN_WORKERS'], fault: process.env['DRAGON_PLAN_WORKER_FAULT'] };
+    try {
+      process.env['DRAGON_PLAN_WORKERS'] = '2';
+      process.env['DRAGON_PLAN_WORKER_FAULT'] = 'exit';
+      expect(() => marklessStyleExport(readFileSync(repoPath(FLUID), 'utf8'), FLUID, undefined, 'system', undefined, true)).toThrow(/^a layout plan worker exited before recording (ios|android) at [0-9.]+x$/);
+    } finally {
+      for (const [k, v] of [['DRAGON_PLAN_WORKERS', before.workers], ['DRAGON_PLAN_WORKER_FAULT', before.fault]] as const) {
+        if (v === undefined) delete process.env[k];
+        else process.env[k] = v;
+      }
+    }
+  });
+
+  it('fails, naming the recording, when Node stops a plan worker that runs out of memory, which runs no handler', () => {
+    const keys = ['DRAGON_PLAN_WORKERS', 'DRAGON_PLAN_WORKER_FAULT', 'DRAGON_PLAN_STALL_MS'] as const;
+    const before = keys.map((k) => process.env[k]);
+    try {
+      process.env['DRAGON_PLAN_WORKERS'] = '2';
+      process.env['DRAGON_PLAN_WORKER_FAULT'] = 'oom';
+      process.env['DRAGON_PLAN_STALL_MS'] = '3000';
+      expect(() => marklessStyleExport(readFileSync(repoPath(FLUID), 'utf8'), FLUID, undefined, 'system', undefined, true)).toThrow(/^a layout plan worker stopped recording (ios|android) at [0-9.]+x: it laid nothing out for 3 s/);
+    } finally {
+      keys.forEach((k, i) => {
+        if (before[i] === undefined) delete process.env[k];
+        else process.env[k] = before[i];
+      });
+    }
+  });
+
+  it('proves a page\'s text independent of the viewport height only from its own program, and names what it cannot prove', () => {
+    const proof = (css: string) => marklessTextHeightProof(withCss(css), FLUID, undefined, 'system');
+    expect(proof('')).toEqual({ ios: null, android: null });
+    // A block size in vh reaches no inline size, so the text cannot change.
+    expect(proof('.bar { min-height: 100vh; padding-top: 2vh; }')).toEqual({ ios: null, android: null });
+    expect(proof('.page { font-size: 4vh; }').ios).toMatch(/has a font size or line height in vh, vmin or vmax$/);
+    expect(proof('.page { width: 50vmin; }').ios).toMatch(/has an inline-axis length in vh, vmin or vmax$/);
+    expect(proof('.bar { height: 40vh; aspect-ratio: 2; }').ios).toMatch(/has an aspect-ratio$/);
+    expect(proof('.bar { display: flex; flex-direction: column; flex-wrap: wrap; height: 50vh; }').ios).toMatch(/is a multi-line column flex container$/);
+    expect(proof('@media (orientation: landscape) { .bar { color: red; } }').ios).toBe('a media query on orientation');
+  });
+
+  it("names a select whose option text is spaced in vh, though the option is not among the select's children", () => {
+    // Only what heightDependence reads: every length auto, no grid, multicol or anchor.
+    const style = new Proxy({ display: 'block', multicol: null, anchor: null, grid: null } as Record<string, unknown>, { get: (o, k: string) => (k in o ? o[k] : { kind: 'auto' }) });
+    const px = (value: number) => ({ kind: 'px', value }) as const;
+    const font = { specifiedSize: px(10) };
+    const tree = (letterSpacing: unknown) => {
+      const option = { kind: 'text', id: 'h2:text0', text: 'Longest option', font, lineHeight: { kind: 'normal' }, letterSpacing, wordSpacing: px(0) };
+      const inner = { kind: 'control', id: 'h1::inner', style, strut: null, control: { kind: 'select-inner' }, children: [] };
+      const select = { kind: 'control', id: 'h1', style, strut: null, control: { kind: 'select-menulist', font, lineHeight: { kind: 'normal' }, arrowWidth: 0, options: [option] }, children: [inner] };
+      return { variants: [{ root: { kind: 'box', id: 'h0', style, strut: null, marker: null, children: [select] } }] } as unknown as Parameters<typeof heightDependence>[0];
+    };
+    expect(heightDependence(tree(px(0)), [])).toBeNull();
+    expect(heightDependence(tree({ kind: 'viewport', value: 2, axis: 'height', size: 'large' }), [])).toBe('h2:text0 has spacing in vh, vmin or vmax');
+  });
+
+  it('still checks the text at other heights on a page it cannot prove, and refuses one whose text follows the height', () => {
+    const path = 'examples/markless-styles/input/width-media.native-style-input.json';
+    const input = JSON.parse(readFileSync(repoPath(path), 'utf8')) as { css: string };
+    const tall = JSON.stringify({ ...input, css: `${input.css}\n.note { font-size: 4vh; }` });
+    expect(marklessTextHeightProof(tall, path).ios).not.toBeNull();
+    expect(() => marklessStyleExport(tall, path, undefined, 'system', undefined, true)).toThrow(/^ios: variant 0 at 320 x 320 css px and 2x (shapes|reads the metrics of) .*, which it does not at height 778; the plan records text at one viewport height/);
+  });
+
+  it('exports a proven page byte for byte as it does with the height check', () => {
+    const text = withCss('.bar { min-height: 100vh; }');
+    expect(marklessTextHeightProof(text, FLUID)).toEqual({ ios: null, android: null });
+    const before = process.env['DRAGON_PLAN_HEIGHT_CHECK'];
+    try {
+      process.env['DRAGON_PLAN_HEIGHT_CHECK'] = 'always';
+      const checked = marklessStyleExport(text, FLUID, undefined, 'system', undefined, true).exported;
+      delete process.env['DRAGON_PLAN_HEIGHT_CHECK'];
+      const proven = marklessStyleExport(text, FLUID, undefined, 'system', undefined, true).exported;
+      expect(JSON.stringify(proven, null, 1)).toBe(JSON.stringify(checked, null, 1));
+    } finally {
+      if (before === undefined) delete process.env['DRAGON_PLAN_HEIGHT_CHECK'];
+      else process.env['DRAGON_PLAN_HEIGHT_CHECK'] = before;
+    }
+  });
+
   it('records every root width a phone from 320 to 1400 css px can have, in whole device and whole css px', () => {
     const w = planWidths(2.625);
     expect(w[0]).toBeCloseTo(320, 9);
@@ -180,6 +284,51 @@ describe('the layout plan of a Markless export', () => {
     expect(arrows).toBe(2);
     const plain = marklessStyleExport(readFileSync(repoPath(FLUID), 'utf8'), FLUID, undefined, 'system', undefined, true).exported.targets.ios!;
     expect(deviceLayout(plain.plan!, 0, plain.viewport.width, plain.viewport.height, plain.dpr).length).toBe(3);
+  });
+
+  it("gives the notes form's checkbox its theme marks last, tagged, from its snapped border box, beside a checkbox write with Chrome's colours", () => {
+    // NoteForm.tsrx's pinned field: .check { display: flex; align-items: center; gap: 10px; min-height: 44px }, a 22px input with
+    // accent-color #c2410c; form-checkbox.test.ts proves checkboxMarks and checkboxColors against Chrome's pixels at these sizes.
+    const css = 'body { margin: 0; font-family: Ahem; font-size: 16px; }\n* { box-sizing: border-box; }\n.page { padding: 24px; }\n.check { display: flex; align-items: center; gap: 10px; min-height: 44px; }\n.check input { width: 22px; height: 22px; accent-color: #c2410c; }\n';
+    const nodes = (checked: boolean) => [
+      { kind: 'element', id: 'h0', element: 'main', parent: null, attributes: { class: 'page' } },
+      { kind: 'element', id: 'h1', element: 'label', parent: 'h0', attributes: { class: 'check' } },
+      { kind: 'element', id: 'h2', element: 'input', parent: 'h1', attributes: checked ? { type: 'checkbox', name: 'pinned', checked: '' } : { type: 'checkbox', name: 'pinned' } },
+      { kind: 'text', id: 'h1:text0', parent: 'h1', text: 'Pin' },
+    ];
+    for (const checked of [false, true]) {
+      const text = JSON.stringify({ version: 'markless.native-style-input/0', component: 'Pinning', nodes: nodes(checked), css, states: [] });
+      const { exported } = marklessStyleExport(text, 'checkbox.json', undefined, 'system', undefined, true);
+      for (const t of ['ios', 'android'] as const) {
+        const x = exported.targets[t]!;
+        const names = new Map(x.planNames?.[0] ?? []);
+        const box = x.assignments[0]!.nodes.find((n) => n.id === 'h2')!;
+        const write = box.writes.find((w) => w.kind === 'checkbox') as { checked: boolean; colors: unknown } | undefined;
+        expect(write, t).toBeDefined();
+        expect(write!.checked, t).toBe(checked);
+        expect(write!.colors, t).toEqual(checkboxColors({ r: 194, g: 65, b: 12, alpha: 255 }, { checkboxLightCheckOnLightAccent: false }));
+        // Every ratio the plan measures text at, at the proof viewport and a small phone's.
+        for (const [width, height, dpr] of PLAN_DENSITIES[t].flatMap((d) => [[x.viewport.width, x.viewport.height, d], [375, 589, d]] as const)) {
+          const out = deviceLayout(x.plan!, 0, width, height, dpr);
+          expect(out[0], `${t} ${dpr} ${JSON.stringify(out)}`).toBe('ok');
+          expect(out.length, t).toBe(4);
+          const suffix = decode(out[3]) as [string, unknown[][]];
+          expect(suffix[0], t).toBe('checkbox-marks');
+          const frames = new Map((out[2] as unknown[][]).map((n) => [names.get(n[0] as string) ?? (n[0] as string), decode(n[1]) as number[]]));
+          // The marks are of the snapped border box: the frame made absolute through its parents, in LU, snapped to device px.
+          const parents = new Map(x.assignments[0]!.nodes.map((n) => [n.id, n.parent]));
+          let [ax, ay] = [0, 0];
+          for (let id: string | null | undefined = 'h2'; id !== null && id !== undefined; id = parents.get(id)) {
+            ax += frames.get(id)![0]!;
+            ay += frames.get(id)![1]!;
+          }
+          const f = frames.get('h2')!;
+          const snapped = snapRect({ id: 'h2', parent: null, x: fromRaw(ax * LU_PER_PX), y: fromRaw(ay * LU_PER_PX), width: fromRaw(f[2]! * LU_PER_PX), height: fromRaw(f[3]! * LU_PER_PX) });
+          const m = checkboxMarks(snapped.width, snapped.height, dpr);
+          expect(suffix[1].map((c) => [names.get(c[0] as string) ?? c[0], ...c.slice(1)]), `${t} ${dpr}`).toEqual([['h2', m.x, m.y, m.side, m.plain, m.radius, m.backgroundInset, m.borderInset, m.borderWidth, [...m.check], m.checkWidth]]);
+        }
+      }
+    }
   });
 
   it('gives a slotted page with a menulist-button select its slot writes, then its arrows, tagged and last', () => {
