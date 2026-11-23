@@ -116,4 +116,10 @@ describe('FORM-a controls', () => {
     expect(through('.t { display: block; font-family: Ahem; appearance: none; resize: none; scrollbar-width: none; }', area)).toEqual([]);
     expect(through('.s { overflow: auto; width: 10px; height: 10px; }', (r) => div(r, 's', ['s']))).toContainEqual(expect.stringMatching(/:hover needs Dragon hit testing through overflow-[xy] on s/));
   });
+
+  it('reads no paint fact of a text field\'s UA shadow parts for the hit model, as Chrome retargets them to the field', () => {
+    const field = (r: SourceRef) => ({ ...div(r, 't', ['t']), tag: 'input', attributes: [attr('type', 'search'), attr('readonly', '')] });
+    const out = compile(`${BODY}input { display: block; font-family: Ahem; appearance: none; } .a { width: 10px; height: 10px; } .a:hover { width: 20px; }`, (r) => [field(r), div(r, 'a', ['a'])], NATIVE, true);
+    expect(errors(out.diagnostics).filter((e) => e.includes('t::'))).toEqual([]);
+  });
 });
