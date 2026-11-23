@@ -1,0 +1,144 @@
+{
+ "platform": "darwin-arm64",
+ "devicePixelRatio": 3,
+ "input": [
+  {
+   "id": "html",
+   "parent": null,
+   "x": 0,
+   "y": 0,
+   "width": 76800,
+   "height": 33024
+  },
+  {
+   "id": "body",
+   "parent": "html",
+   "x": 0,
+   "y": 0,
+   "width": 76800,
+   "height": 33024
+  },
+  {
+   "id": "bar",
+   "parent": "body",
+   "x": 0,
+   "y": 3840,
+   "width": 76800,
+   "height": 7680
+  },
+  {
+   "id": "r1",
+   "parent": "body",
+   "x": 0,
+   "y": 8832,
+   "width": 76800,
+   "height": 5760
+  },
+  {
+   "id": "r2",
+   "parent": "body",
+   "x": 0,
+   "y": 15744,
+   "width": 76800,
+   "height": 5760
+  },
+  {
+   "id": "r3",
+   "parent": "body",
+   "x": 0,
+   "y": 22656,
+   "width": 76800,
+   "height": 5760
+  },
+  {
+   "id": "foot",
+   "parent": "body",
+   "x": 0,
+   "y": 28416,
+   "width": 76800,
+   "height": 4608
+  },
+  {
+   "id": "tag",
+   "parent": "bar",
+   "x": 49920,
+   "y": 5760,
+   "width": 11520,
+   "height": 5760
+  }
+ ],
+ "output": [
+  {
+   "id": "html",
+   "left": 0,
+   "top": 0,
+   "right": 1200,
+   "bottom": 516,
+   "width": 1200,
+   "height": 516
+  },
+  {
+   "id": "body",
+   "left": 0,
+   "top": 0,
+   "right": 1200,
+   "bottom": 516,
+   "width": 1200,
+   "height": 516
+  },
+  {
+   "id": "bar",
+   "left": 0,
+   "top": 60,
+   "right": 1200,
+   "bottom": 180,
+   "width": 1200,
+   "height": 120
+  },
+  {
+   "id": "r1",
+   "left": 0,
+   "top": 138,
+   "right": 1200,
+   "bottom": 228,
+   "width": 1200,
+   "height": 90
+  },
+  {
+   "id": "r2",
+   "left": 0,
+   "top": 246,
+   "right": 1200,
+   "bottom": 336,
+   "width": 1200,
+   "height": 90
+  },
+  {
+   "id": "r3",
+   "left": 0,
+   "top": 354,
+   "right": 1200,
+   "bottom": 444,
+   "width": 1200,
+   "height": 90
+  },
+  {
+   "id": "foot",
+   "left": 0,
+   "top": 444,
+   "right": 1200,
+   "bottom": 516,
+   "width": 1200,
+   "height": 72
+  },
+  {
+   "id": "tag",
+   "left": 780,
+   "top": 150,
+   "right": 960,
+   "bottom": 240,
+   "width": 180,
+   "height": 90
+  }
+ ]
+}
