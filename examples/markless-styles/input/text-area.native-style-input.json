@@ -190,7 +190,7 @@
    "text": "After"
   }
  ],
- "css": ".page {\n\tpadding: 20px;\n\tfont-family: Ahem;\n\tfont-size: 16px;\n\tcolor: #222222;\n}\ntextarea {\n\tfont: inherit;\n\tcolor: inherit;\n}\n.body {\n\tdisplay: block;\n\twidth: 100%;\n\tmargin-bottom: 18px;\n\tpadding: 12px 14px;\n\tborder: 1px solid #cccccc;\n\tbackground: #fafafa;\n\tline-height: 1.45;\n\tresize: none;\n\tscrollbar-width: none;\n}\n.tall {\n\tbox-sizing: border-box;\n\tmin-height: 180px;\n}\n.normal {\n\tline-height: normal;\n}\n.body::placeholder {\n\tcolor: #888888;\n}\n.note {\n\tmargin: 0;\n}\n",
+ "css": ".page {\n\tpadding: 20px;\n\tfont-family: Ahem;\n\tfont-size: 16px;\n\tcolor: #222222;\n}\ntextarea {\n\tfont: inherit;\n\tcolor: inherit;\n}\n.body {\n\tdisplay: block;\n\twidth: 100%;\n\tmargin-bottom: 18px;\n\tpadding: 12px 14px;\n\tborder: 1px solid #cccccc;\n\tbackground: #fafafa;\n\tline-height: 1.45;\n\tresize: none;\n\tscrollbar-width: none;\n}\n.tall {\n\tbox-sizing: border-box;\n\tmin-height: 180px;\n}\n.normal {\n\tline-height: normal;\n\tpadding: 10px 6px 4px 18px;\n}\n.body::placeholder {\n\tcolor: #888888;\n}\n.note {\n\tmargin: 0;\n}\n",
  "states": [
   {
    "cell": "state:body",

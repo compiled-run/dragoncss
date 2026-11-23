@@ -165,9 +165,12 @@ describe('FORM-b text fields', () => {
     const base = 'textarea { display: block; font: inherit; resize: none; scrollbar-width: none; }';
     const body = '<textarea data-dragon-id="a" rows="3">XX</textarea>';
     const refusals = (css: string, host = true): string[] => errors(compile('ta-host-styles', `${base} textarea { ${css} }`, body, BASE, false, host)).filter((e) => e.includes('which the host edits'));
-    expect(refusals('text-indent: 0%; letter-spacing: 0px; text-align: left; overflow-wrap: break-word')).toEqual([]);
-    const each: readonly string[] = ['letter-spacing: 1px', 'word-spacing: 2px', 'text-indent: 3px', 'text-align: center', 'text-align: justify', 'text-transform: uppercase', 'text-decoration-line: underline', 'white-space: pre', 'white-space: nowrap', 'white-space: normal', 'overflow-wrap: normal', 'word-break: break-all', 'unicode-bidi: plaintext', 'direction: rtl', 'font-kerning: none', 'font-feature-settings: "liga" 0', 'font-variant-ligatures: none', 'padding-left: 10%'];
+    expect(refusals('text-indent: 0%; letter-spacing: 0px; text-align: left; overflow-wrap: break-word; font-kerning: normal; unicode-bidi: isolate')).toEqual([]);
+    const each: readonly string[] = ['letter-spacing: 1px', 'word-spacing: 2px', 'text-indent: 3px', 'text-align: center', 'text-align: justify', 'text-transform: uppercase', 'text-decoration-line: underline', 'white-space: pre', 'white-space: nowrap', 'white-space: normal', 'overflow-wrap: normal', 'word-break: break-all', 'unicode-bidi: plaintext', 'direction: rtl', 'font-kerning: none', 'font-feature-settings: "liga" 0', 'font-variant-ligatures: none', 'font-variation-settings: "wght" 500', 'font-synthesis: none', '-webkit-text-stroke: 1px red', 'tab-size: 2', 'padding-left: 10%'];
     for (const css of each) expect(refusals(css).length, css).toBeGreaterThan(0);
+    // One the textarea only inherits is named as inherited: Chrome's form-control rule resets it, Dragon's UA dataset does not yet.
+    const inherited = errors(compile('ta-host-inherit', `body { text-transform: uppercase; } ${base}`, body, BASE, false, true)).filter((e) => e.includes('which Chrome resets on a form control'));
+    expect(inherited.length).toBeGreaterThan(0);
     // A readonly textarea and a compile without host editing are drawn by Dragon itself, so these do not apply.
     expect(errors(compile('ta-host-styles-ro', `${base} textarea { letter-spacing: 1px; }`, '<textarea data-dragon-id="a" rows="3" readonly="">XX</textarea>', BASE, false, true)).filter((e) => e.includes('which the host edits'))).toEqual([]);
   });

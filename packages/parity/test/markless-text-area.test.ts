@@ -83,7 +83,7 @@ describe('editable textareas in a Markless export', () => {
           const border = x.assignments[0]!.nodes.find((n) => n.id === id)!.borderWidths!;
           expect(Math.abs((editor.y - box.y) * x.dpr - Math.round(border['top']!) - row.insets[0]!), `${t} ${id} top inset`).toBeLessThan(1 / 128);
           expect(Math.abs((editor.x - box.x) * x.dpr - Math.round(border['left']!) - row.insets[3]!), `${t} ${id} left inset`).toBeLessThan(1 / 128);
-          expect([row.insets[1], row.insets[2]], `${t} ${id} right and bottom insets`).toEqual([row.insets[3], row.insets[0]]);
+          expect(Math.abs((box.x + box.width - editor.x - editor.width) * x.dpr - Math.round(border['right']!) - row.insets[1]!), `${t} ${id} right inset`).toBeLessThan(1 / 128);
           expect(Math.round(glyph - ascent), `${t} ${id} descent`).toBe(Math.round(0.2 * 16 * x.dpr));
         }
         // The pitch is the engine's line height on the LU grid: 1.45 x 16px is not 23.2 css px exactly, so an unsnapped pitch misses.

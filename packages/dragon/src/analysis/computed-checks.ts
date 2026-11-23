@@ -1864,21 +1864,30 @@ function checkTextField(el: ResolvedElement, layoutParent: ResolvedElement | nul
   if (tag === 'textarea') checkTextAreaChrome(el, targets, refuse);
 }
 
+/** The text longhands Chrome's UA form-control rule resets on a textarea, which Dragon's UA dataset does not capture yet. */
+const FORM_CONTROL_RESETS: ReadonlySet<string> = new Set(['letter-spacing', 'word-spacing', 'text-indent', 'text-align', 'text-transform']);
+
 /** The text longhands a host-edited textarea must leave at the textarea's defaults: the host's own text view lays its text out from the exported font, colour, pitch and baseline only. */
-const HOST_EDITED_TEXT: readonly (readonly [Longhand, (v: CssValue, rtl: boolean) => boolean])[] = [
+const HOST_EDITED_TEXT: readonly (readonly [Longhand, (v: CssValue) => boolean])[] = [
   ['letter-spacing', (v) => (v.kind === 'keyword' && v.value === 'normal') || (v.kind === 'length' && v.value === 0)],
   ['word-spacing', (v) => (v.kind === 'keyword' && v.value === 'normal') || (v.kind === 'length' && v.value === 0)],
   ['text-indent', (v) => (v.kind === 'length' || v.kind === 'percentage') && v.value === 0],
-  ['text-align', (v, rtl) => v.kind === 'keyword' && (v.value === 'start' || v.value === (rtl ? 'right' : 'left'))],
+  ['text-align', (v) => v.kind === 'keyword' && (v.value === 'start' || v.value === 'left')],
   ['text-transform', (v) => v.kind === 'keyword' && v.value === 'none'],
   ['text-decoration-line', (v) => v.kind === 'keyword' && v.value === 'none'],
   ['white-space-collapse', (v) => v.kind === 'keyword' && v.value === 'preserve'],
   ['text-wrap-mode', (v) => v.kind === 'keyword' && v.value === 'wrap'],
   ['overflow-wrap', (v) => v.kind === 'keyword' && v.value === 'break-word'],
   ['word-break', (v) => v.kind === 'keyword' && v.value === 'normal'],
-  ['unicode-bidi', (v) => v.kind === 'keyword' && v.value === 'normal'],
+  ['unicode-bidi', (v) => v.kind === 'keyword' && (v.value === 'normal' || v.value === 'isolate' || v.value === 'embed')],
   ['direction', (v) => v.kind === 'keyword' && v.value === 'ltr'],
-  ['font-kerning', (v) => v.kind === 'keyword' && v.value === 'auto'],
+  ['font-kerning', (v) => v.kind === 'keyword' && (v.value === 'auto' || v.value === 'normal')],
+  ['font-variation-settings', (v) => v.kind === 'keyword' && v.value === 'normal'],
+  ['font-optical-sizing', (v) => v.kind === 'keyword' && v.value === 'auto'],
+  ['font-synthesis-weight', (v) => v.kind === 'keyword' && v.value === 'auto'],
+  ['font-synthesis-style', (v) => v.kind === 'keyword' && v.value === 'auto'],
+  ['-webkit-text-stroke-width', (v) => v.kind === 'length' && v.value === 0],
+  ['tab-size', (v) => v.kind === 'number' && v.value === 8],
   ['font-feature-settings', (v) => v.kind === 'keyword' && v.value === 'normal'],
   ...(['font-variant-caps', 'font-variant-ligatures', 'font-variant-numeric', 'font-variant-east-asian', 'font-variant-alternates', 'font-variant-position'] as const).map((p): readonly [Longhand, (v: CssValue) => boolean] => [p, (v) => v.kind === 'keyword' && v.value === 'normal']),
 ];
@@ -1889,10 +1898,11 @@ const HOST_EDITED_TEXT: readonly (readonly [Longhand, (v: CssValue, rtl: boolean
  */
 function checkHostEditedTextArea(el: ResolvedElement, refuse: (v: ResolvedValue | null, what: string, message: string, manual: string) => void): void {
   const address = el.element.address;
-  const rtl = keywordOf(el.props.get('direction') as ResolvedValue) === 'rtl';
   for (const [p, isDefault] of HOST_EDITED_TEXT) {
-    const v = el.props.get(p) as ResolvedValue;
-    if (!isDefault(v.value, rtl)) refuse(v, `edit-${p}`, `${p}: ${valueToString(v.value)} on <textarea> ${address}, which the host edits in its own text view, laid out from the exported font, pitch and baseline only`, `Remove ${p} from <textarea> ${address}.`);
+    const v = el.props.get(p);
+    if (v === undefined || isDefault(v.value)) continue;
+    if (v.origin === 'inherited' && FORM_CONTROL_RESETS.has(p)) refuse(v, `edit-${p}`, `<textarea> ${address} inherits ${p}: ${valueToString(v.value)}, which Chrome resets on a form control and Dragon does not model; the host edits it in its own text view`, `Set ${p} back to its initial value on <textarea> ${address}, or move it off the ancestor.`);
+    else refuse(v, `edit-${p}`, `${p}: ${valueToString(v.value)} on <textarea> ${address}, which the host edits in its own text view, laid out from the exported font, pitch and baseline only`, `Remove ${p} from <textarea> ${address}.`);
   }
   for (const side of ['padding-top', 'padding-right', 'padding-bottom', 'padding-left'] as const) {
     const pad = el.props.get(side) as ResolvedValue;
