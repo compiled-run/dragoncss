@@ -120,7 +120,7 @@ describe('FORM-b text fields', () => {
       ['tf-font-ib', '.w { display: inline-block; }', /d is display: inline-block with an auto width/],
       ['tf-font-maxc', '.w { width: max-content; }', /d has width: max-content/],
       ['tf-font-abs', '.w { position: absolute; }', /d is position: absolute with an auto width/],
-      ['tf-font-grid2', '.w { display: grid; grid-template-columns: auto auto; }', /t is a grid item of d, whose columns are not one stretching column/],
+      ['tf-font-grid2', '.w { display: grid; grid-template-columns: auto auto; }', /t is a grid item of d, whose column is not its whole content box/],
       ['tf-font-flex', '.w { display: flex; }', /t is a flex item of d, sized by its content/],
     ];
     for (const [id, css, why] of cyclic) expect(font(id, `.f { width: 100%; } ${css}`, `<div data-dragon-id="d" class="w">${field}</div>`), id).toContainEqual(expect.stringMatching(why));
