@@ -99,6 +99,12 @@ export function engineRoots(files: readonly string[]): { file: string; name: str
   for (const st of decoration.statements) {
     if (ts.isFunctionDeclaration(st) && st.name !== undefined && st.modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword)) roots.push({ file: at('text-decoration.ts'), name: st.name.text });
   }
+  // ROW-text-space RS1: the white space phase I the build runs, which a phone runs again over a context whose text changed.
+  const whiteSpace = program.getSourceFile(at('white-space.ts'));
+  if (whiteSpace === undefined) throw new Error('the root file white-space.ts is not an engine file');
+  for (const st of whiteSpace.statements) {
+    if (ts.isFunctionDeclaration(st) && st.name !== undefined && st.modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword)) roots.push({ file: at('white-space.ts'), name: st.name.text });
+  }
   // MQ-R1 (T067 R4): the @media band lookup a native root runs on a size change.
   const bandFile = program.getSourceFile(at('rt-band.ts'));
   if (bandFile === undefined) throw new Error('the root file rt-band.ts is not an engine file');
