@@ -1,10 +1,12 @@
 // The hit lane leaves out, each by name, PNT2's cases that write a rotated transform (until SELD-R2b T146), these PNT1 cases with a
-// stacking context below the root that rt-hit.ts does not order (an integer z-index, a context its hit facts do not name), these INL1a inline-box and <br> cases and INL2a atomic-inline cases (rt-hit.ts
+// stacking context below the root that rt-hit.ts does not order (an integer z-index, a context its hit facts do not name), these INL1a inline-box and <br> cases and the INL2a atomic-inline cases rt-hit.ts still refuses (rt-hit.ts
 // hitRefusal) and the SVG-a1 svg cases (hit-capture.ts hitRefusal). Shared by hit-report.test.ts and lanes.test.ts so both judge
 // the same exact union.
 export const INLINE_OUT: readonly string[] = [
   // contain-intrinsic-ahem and containment-layout hold inline-blocks (their contained boxes' stacking contexts are ordered now).
   'contain-intrinsic-ahem', 'contain-intrinsic-ahem-rtl', 'containment-layout', 'containment-layout-rtl',
+  // INL2c: an opacity inline-block on a line in the anonymous box beside a block child.
+  'hit-atomic-inline-context',
   // GRID-controls: the fixtures' inline-grid container sits on its line as an atomic inline.
   'grid-controls', 'grid-controls-rtl', 'grid-controls-fields',
   // GEN and TABLE (#443): an inline ::before or ::after box, and table-properties' inline boxes.
@@ -15,7 +17,7 @@ export const INLINE_OUT: readonly string[] = [
   'float-clear-inert', 'float-clear-inert-rtl',
   // TXT2-b's text-spacing-ahem and text-word-spacing-ahem hold an inline box.
   'text-spacing-ahem', 'text-spacing-ahem-rtl', 'text-word-spacing-ahem', 'text-word-spacing-ahem-rtl',
-  // #266's vertical-align-inert holds an inline-block (an atomic inline); GRID_OUT listed it for its grid container before G-HIT.
+  // #266's vertical-align-inert holds an inline box (s); GRID_OUT listed it for its grid container before G-HIT.
   'vertical-align-inert', 'vertical-align-inert-rtl',
   // TXT2-f's text-overflow-fonts holds an inline box and text-overflow-lines a <br>; TXT2-e's text-transform-keywords holds an
   // inline box and text-transform-text a <br>; TXT2's text-justify-ahem and TXT2-a's text-break-ahem hold an inline box.
@@ -43,17 +45,15 @@ export const INLINE_OUT: readonly string[] = [
   'text-fill-stroke-colors', 'text-fill-stroke-colors-rtl',
   // LEGACY-BOX's box-decoration-initial (#458) holds inline boxes (s2s, a slice across lines) and COLOR-SCHEME's color-scheme-plain (#455) inline boxes (s1e, s3a).
   'box-decoration-initial', 'box-decoration-initial-rtl', 'color-scheme-plain', 'color-scheme-plain-rtl',
-  // GEN-c (#469): display-contents holds an inline box (a2), link-pseudos inline links (a1) and list-markers-disc an inline-block first
-  // child (i1s, an atomic inline).
+  // GEN-c (#469): display-contents holds an inline box (a2), link-pseudos inline links (a1) and list-markers-disc a <br> (i1br).
   'display-contents', 'display-contents-rtl', 'link-pseudos', 'link-pseudos-rtl', 'list-markers-disc', 'list-markers-disc-rtl',
   // multicol-ahem holds <br>s (h1-h3, n1-n5).
   'multicol-ahem', 'multicol-ahem-rtl',
   // text-box-ahem holds inline boxes (h1, h2) and a <br> (i1).
   'text-box-ahem', 'text-box-ahem-rtl',
-  // INL2a: every atomic-inline case holds an inline-block, inline-flex or inline-grid on a line (rt-hit.ts refuses an atomic inline by name).
-  ...['block', 'flex', 'grid', 'breaks', 'shrink', 'north-star'].flatMap((n) => [`atomic-inline-${n}`, `atomic-inline-${n}-rtl`]), 'atomic-inline-links', 'atomic-inline-disclosure',
-  // Atomic inlines: center-block (s6), container-inline-size (line-a) and inline-replaced-img (alone-img).
-  'center-block', 'center-block-rtl', 'container-inline-size', 'container-inline-size-rtl', 'inline-replaced-img', 'inline-replaced-img-rtl',
+  // HIT-atomic-inline: rt-hit.ts models an atomic inline on its line, so atomic-inline-breaks, -shrink, -north-star, -links and
+  // -disclosure hit; atomic-inline-block, -flex and -grid still hold a <br> inside an atomic inline (text-br, row-br).
+  ...['block', 'flex', 'grid'].flatMap((n) => [`atomic-inline-${n}`, `atomic-inline-${n}-rtl`]),
   // Inline boxes: unicode-bidi-* (s1, sp), casc-all (u1), text-break-all-* (h1, b1), text-shadow-composite (l1s) and zoom-scaled (t1).
   'unicode-bidi-ltr', 'unicode-bidi-blocks', 'unicode-bidi-blocks-rtl', 'casc-all', 'casc-all-rtl', 'text-break-all-ahem', 'text-break-all-letters', 'text-break-all-letters-rtl',
   'text-shadow-composite', 'text-shadow-composite-rtl', 'zoom-scaled', 'zoom-scaled-rtl',
@@ -69,7 +69,7 @@ export const MARKER_REASON = /^outside text marker on .+: Chrome hits a list ite
 // before its inline box l9s).
 export const CLAMP_OUT: readonly string[] = ['line-clamp-lines', 'line-clamp-nested'];
 export const CLAMP_REASON = /^.+ clamps its lines \(-webkit-line-clamp\), and Chrome hit tests the content past the clamp point by rules the hit table does not model yet \(TXT2-g\)$/;
-export const INLINE_REASON = /is (an inline box|a <br>|an atomic inline), which the hit table does not model yet/;
+export const INLINE_REASON = /is (an inline box|a <br>|an atomic inline), which the hit table does not model yet| is an atomic inline that forms a stacking context or is transformed, which no Chrome hit capture orders against its line yet \(INL2c\)/;
 // ALIAS-2's alias-paint writes a rotating -webkit-transform and backface-values rotates its boxes, so the hit lane refuses them with the
 // transform reason though their names are not transform-.
 export const TRANSFORM_NAMED: readonly string[] = ['alias-paint', 'backface-values', 'backface-values-rtl'];
