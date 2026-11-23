@@ -1,0 +1,17 @@
+{
+  "case": "sticky-overconstrained-rtl",
+  "chrome": "145.0.7632.6",
+  "version": "dragon.hit-capture/2",
+  "viewport": {
+    "width": 400,
+    "height": 300
+  },
+  "direction": "rtl",
+  "points": 20,
+  "gridSha256": "11af185aacacb10562798eb8ef3738c8636e19859fda121dc6f5c79d87b7b5f3",
+  "ids": [
+    "lead",
+    "tall"
+  ],
+  "runs": [[0,8],[1,12]]
+}
