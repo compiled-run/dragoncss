@@ -66,6 +66,24 @@ describe('the compiler and the hit table agree on atomic inlines', () => {
   });
 });
 
+describe('the hit table refuses a contain: paint inline-block by name (HIT-INL2c)', () => {
+  it('with its compiled hit facts, once the contain: layout one before it is plain', async () => {
+    const { hitFacts, programInput } = await import('dragon');
+    const { hitFactsRefusal } = await import('../../layout/src/rt-hit.ts');
+    const n = nativeCases().find((c) => c.case.id === 'containment-layout');
+    if (n === undefined) throw new Error('no containment-layout case');
+    const facts = hitFacts(n.compiled, n.case.assignment);
+    const paint = facts?.get('ib-p');
+    const layout = facts?.get('ib-l');
+    if (facts == null || paint === undefined || layout === undefined) throw new Error('no ib-p or ib-l facts');
+    expect([paint.context, paint.otherContext, layout.otherContext]).toEqual([true, 'containment', 'containment']);
+    expect(() => caseHitTable(n)).toThrow('ib-l is an atomic inline that containment makes a stacking context, which no Chrome hit capture orders against its line yet (INL2c)');
+    const plain = new Map(facts);
+    plain.set('ib-l', { ...layout, context: false, otherContext: '' });
+    expect(hitFactsRefusal(programInput(n.programs.uikit, n.case.environment.viewport, 1), plain)).toBe('ib-p is an atomic inline that containment makes a stacking context, which no Chrome hit capture orders against its line yet (INL2c)');
+  });
+});
+
 // HIT-INL2c paint: hit order follows paint order. In Chrome 145 an atomic inline that forms a stacking context paints over the
 // text after it on its line (b1 at 50% red over the Ahem 'b' glyphs), a plain one under it (b01, the glyphs stay black); Dragon's
 // native program hosts the context atomic b1 in html's z0 layer after the flow, and leaves b01 in the flow.
