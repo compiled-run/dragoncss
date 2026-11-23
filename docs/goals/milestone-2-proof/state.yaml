@@ -4155,6 +4155,13 @@ tasks:
     lane: paint
     objective: 'TDEC-e: text-shadow (45.9% usage) and text-emphasis. Unboarded gap found by T148J; Judge spec first.'
     receipt: null
+  - id: SLOT-transitions
+    type: worker
+    assignee: Worker
+    status: active
+    lane: runtime
+    objective: 'ST1: refuse a property a Markless slot moves when Chrome would transition or animate it as the app writes the slot (asked for by the SLOT-colour Judge verdict, Q5, PR #677). Spec notes/SLOT-transitions-spec.md; Judge verdict 2026-11-23 approved with amendments A (accessor beside animProgramOf: computed values, listings, keyframed longhands; listings checked in base and every sample), B (sample animation programs JSON-equal to the base''s), C (Q2 refuse animations whatever their timing, 0s fill-none an over-refusal; Q3 accept transitions on other properties, refuse a moved closure write; Q4 row rule first, pinned), D (Chrome rows test plus five planted faults) and E (docs slots paragraph).'
+    receipt: null
   - id: T999
     type: judge
     assignee: Judge
