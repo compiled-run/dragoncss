@@ -968,6 +968,7 @@
              "kind": "number",
              "value": 1.45
             },
+            "avgChar": "ahem",
             "cancelButton": {
              "marginStart": 1,
              "marginEnd": 3
@@ -1984,6 +1985,7 @@
           "lineHeight": {
            "kind": "normal"
           },
+          "avgChar": "ahem",
           "cancelButton": null
          },
          "strut": null,
@@ -2527,6 +2529,7 @@
           "lineHeight": {
            "kind": "normal"
           },
+          "avgChar": "ahem",
           "cancelButton": null
          },
          "strut": null,
@@ -3100,6 +3103,7 @@
           "lineHeight": {
            "kind": "normal"
           },
+          "avgChar": "ahem",
           "cancelButton": null
          },
          "strut": null,
@@ -3643,6 +3647,7 @@
           "lineHeight": {
            "kind": "normal"
           },
+          "avgChar": "ahem",
           "cancelButton": null
          },
          "strut": null,
@@ -4302,6 +4307,7 @@
           "lineHeight": {
            "kind": "normal"
           },
+          "avgChar": "ahem",
           "cancelButton": null
          },
          "strut": null,
@@ -4875,6 +4881,7 @@
           "lineHeight": {
            "kind": "normal"
           },
+          "avgChar": "ahem",
           "cancelButton": null
          },
          "strut": null,
@@ -5258,6 +5265,7 @@
           "lineHeight": {
            "kind": "normal"
           },
+          "avgChar": "ahem",
           "cancelButton": null
          },
          "strut": null,
@@ -5834,6 +5842,7 @@
            "kind": "px",
            "value": 30
           },
+          "avgChar": "ahem",
           "cancelButton": null
          },
          "strut": null,
@@ -6221,6 +6230,7 @@
            "kind": "px",
            "value": 4
           },
+          "avgChar": "ahem",
           "cancelButton": null
          },
          "strut": null,
@@ -6609,6 +6619,7 @@
            "kind": "px",
            "value": 30
           },
+          "avgChar": "ahem",
           "cancelButton": null
          },
          "strut": null,
@@ -7313,6 +7324,7 @@
           "lineHeight": {
            "kind": "normal"
           },
+          "avgChar": "ahem",
           "cancelButton": {
            "marginStart": 1,
            "marginEnd": 3
@@ -7844,6 +7856,7 @@
           "lineHeight": {
            "kind": "normal"
           },
+          "avgChar": "ahem",
           "cancelButton": {
            "marginStart": 1,
            "marginEnd": 3
@@ -8695,6 +8708,7 @@
           "lineHeight": {
            "kind": "normal"
           },
+          "avgChar": "ahem",
           "cancelButton": null
          },
          "strut": null,
@@ -9078,6 +9092,7 @@
           "lineHeight": {
            "kind": "normal"
           },
+          "avgChar": "ahem",
           "cancelButton": null
          },
          "strut": null,
