@@ -13,7 +13,7 @@ public final class ClampedChild {
 public func lineClamp_clampChild(_ ctx: Ctx, _ box: LayoutBox, _ kid: LayoutBox, _ borderBoxWidth: Double, _ cbInline: Double, _ left: Double, _ after: JsArray<any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf>) throws -> ClampedChild {
   // ts: packages/layout/src/line-clamp.ts:30
   if try ((kid.strut == nil) || box_establishesFormattingContext(kid.style, ctx.faults)) {
-    try unsupported_unsupported(S.s_line_clamp, kid.id, S.s700, jsConcat(kid.id, S.s78, box.id, S.s112))
+    try unsupported_unsupported(S.s_line_clamp, kid.id, S.s703, jsConcat(kid.id, S.s79, box.id, S.s113))
   }
   let pad: Edges = try box_resolvePaddingWith(kid.style, cbInline, ctx.faults)
   let bor: Edges = try box_resolveBorder(kid.style, ctx.devicePixelRatio)
@@ -47,7 +47,7 @@ public func lineClamp_clampedInput(_ input: LayoutInput, _ boxes: JsArray<Layout
     let w: Double? = widths.get(id)
     // ts: packages/layout/src/line-clamp.ts:51
     if (w == nil) {
-      throw JsError(message: jsConcat(S.s655, id))
+      throw JsError(message: jsConcat(S.s658, id))
     }
     return try jsUnwrap(w)
   }
