@@ -438,7 +438,7 @@ export function engineLayoutProjection(compiled: object, environment: Environmen
 
 // SELD-R1b (notes/T047-runtime-spec.md RT-9): the hit table and each element's hit facts.
 import { elementTransformWrite } from './lower/paint/transform.ts';
-import { hitFactContext } from './lower/paint/stacking.ts';
+import { hitFactContext, hitFactOtherContext } from './lower/paint/stacking.ts';
 export type { HitFact } from './emit/runtime/hit.ts';
 export { HIT_FACTS_VERSION } from './emit/runtime/hit.ts';
 
@@ -459,7 +459,7 @@ export function hitFacts(compiled: object, assignment: Assignment, state: string
     const lengths = radiusLengths(el.props, el.element.address);
     const transform = elementTransformWrite(el);
     const context = hitFactContext(el);
-    out.set(el.element.address, { pointerEvents: v.value.value, inherited: v.origin === 'inherited', activation: activates(el.element.tag, el.element.attributes), radii: roundsAnyCorner(lengths) ? lengths : [], context, transform: transform === null ? [] : transform.ops, origin: transform === null ? NO_ORIGIN : transform.origin });
+    out.set(el.element.address, { pointerEvents: v.value.value, inherited: v.origin === 'inherited', activation: activates(el.element.tag, el.element.attributes), radii: roundsAnyCorner(lengths) ? lengths : [], context, otherContext: context ? hitFactOtherContext(el) : '', transform: transform === null ? [] : transform.ops, origin: transform === null ? NO_ORIGIN : transform.origin });
     for (const ch of el.children) if (ch.kind === 'element') walk(ch);
   };
   walk(c.resolved);

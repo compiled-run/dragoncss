@@ -20,6 +20,8 @@ export const TEXT_LATIN: readonly FixtureSpec[] = [
   layout('text-ahem-fractional', ['ltr']),
   // TXT1a-2 phase R: faces declared with @font-face (Roboto, and Inter Bold for the UA-bold h1), the font-family:<declared> proof.
   layout('text-latin-declared', ['ltr', 'rtl']),
+  // FORM-text-font: notes-styled text fields in two declared faces (Roboto at line-height 1.45, Inter at 1), percentage widths.
+  layout('controls-text-font', ['ltr']),
 ];
 
 /** data-dragon-id to postScriptName: the face Chrome must draw each listed element's text with, in both documents. */
@@ -35,6 +37,7 @@ export const TEXT_LATIN_FACES: ReadonlyMap<string, { readonly [id: string]: stri
   ['text-latin-words', { a: LATO, b: LATO, c: INTER, d: LATO, e: LATO }],
   ['text-latin-metrics', { r1: LATO, r2: LATO, r3: INTER, r4: INTER }],
   ['text-latin-declared', { regular: 'Roboto-Regular', wide: 'Roboto-Regular', bold: 'Inter-Bold' }],
+  ['controls-text-font', { c1: 'Roboto-Regular', c2: 'Roboto-Regular', c3: 'Roboto-Regular', 't1::editor': 'Roboto-Regular', 'b1::editor': 'Roboto-Regular', 't2::placeholder': 'Roboto-Regular', c4: 'Inter-Regular', c5: 'Inter-Regular', 't3::editor': 'Inter-Regular', 'b2::editor': 'Inter-Regular' }],
 ]);
 
 /**

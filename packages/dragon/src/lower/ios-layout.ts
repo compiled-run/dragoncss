@@ -43,6 +43,7 @@ import type {
   TextAlign,
   TextIndentValue,
   TextBoxTrim,
+  TextFieldAvgChar,
   TextOverflow,
   TextWrapStyle,
   TextLeaf,
@@ -56,7 +57,8 @@ import type {
 import type { Longhand, TextLonghand } from '../css/properties.ts';
 import { INHERITED, LONGHANDS } from '../css/properties.ts';
 import type { CssValue } from '../css/stylesheet.ts';
-import { exactLayoutRatio, MATH_VALUE_FUNCTIONS } from '../css/values.ts';
+import { exactLayoutRatio, familyListText, MATH_VALUE_FUNCTIONS } from '../css/values.ts';
+import { parseFamilyList } from '../fonts/family-list.ts';
 import { FONT_METRIC_LAYOUT_UNITS } from '../css/units.ts';
 import type { ResolvedElement, ResolvedText, ResolvedValue } from '../analysis/resolve.ts';
 import { environmentOf, initialValue, isInitialByProvenance, valueToString } from '../analysis/resolve.ts';
@@ -622,6 +624,13 @@ const AHEM_EXPECTED = 'Ahem (the milestone-1 layout font)';
 /** The face id of the bundled Ahem, as the engine names it (layout text.ts AHEM_FACE_ID); other faces are sha256:<hex>. */
 export const AHEM_FACE = 'Ahem';
 
+/** Whether a text field's average character width is Ahem's: its first listed family, case preserved, is Ahem (input.ts TextFieldAvgChar). */
+export function textFieldAvgChar(family: CssValue): TextFieldAvgChar {
+  const text = familyListText(family);
+  const first = text === null ? undefined : parseFamilyList(text)?.[0];
+  return first?.kind === 'family' && first.name === 'Ahem' ? 'ahem' : 'unmeasured';
+}
+
 /** The lowering's font refusal for a text node, or null: the analysis reports it for every case before any lowering (T005 rec 3). */
 export function textFontProblem(t: ResolvedText): string | null {
   const family = (t.props.get('font-family') as ResolvedValue).value;
@@ -1049,12 +1058,12 @@ function lowerBox(given: ResolvedElement, l: Lowerer, gridParent: GridContainer 
       // A textarea scrolls (overflow auto, or hidden) from offset 0 with its scrollbars hidden: at rest it clips as overflow: clip
       // does. rows and cols are HTML §4.10.11's: a valid non-negative integer above zero, else 2 and 20.
       const clip: LayoutStyle = { ...style, overflowX: 'clip', overflowY: 'clip' };
-      return { kind: 'control', id, boxType: 'element', style: clip, control: { kind: 'text-area', cols: positiveIntegerAttribute(el.element.attributes.get('cols'), 20), rows: positiveIntegerAttribute(el.element.attributes.get('rows'), 2), font: own.font, lineHeight: own.lineHeight, ...textAreaScrollbarOf(el, l.ua) }, strut, children };
+      return { kind: 'control', id, boxType: 'element', style: clip, control: { kind: 'text-area', cols: positiveIntegerAttribute(el.element.attributes.get('cols'), 20), rows: positiveIntegerAttribute(el.element.attributes.get('rows'), 2), font: own.font, lineHeight: own.lineHeight, avgChar: textFieldAvgChar((el.props.get('font-family') as ResolvedValue).value) , ...textAreaScrollbarOf(el, l.ua) }, strut, children };
     }
     const search = inputTypeState(el.element.attributes.get('type')) === 'search';
     // A search field's cancel button is a box of its own (<id>::cancel), which the engine sizes and places beside the editor.
     const parts = search ? [...children, anonymousBox(el, `${id}::cancel`, [], l)] : children;
-    return { kind: 'control', id, boxType: 'element', style, control: { kind: 'text-field', size: textFieldSize(el.element.attributes.get('size')), font: own.font, lineHeight: own.lineHeight, cancelButton: search ? SEARCH_CANCEL_BUTTON : null }, strut, children: parts };
+    return { kind: 'control', id, boxType: 'element', style, control: { kind: 'text-field', size: textFieldSize(el.element.attributes.get('size')), font: own.font, lineHeight: own.lineHeight, avgChar: textFieldAvgChar((el.props.get('font-family') as ResolvedValue).value), cancelButton: search ? SEARCH_CANCEL_BUTTON : null }, strut, children: parts };
   }
   if (field !== undefined) {
     // An input's inner editor scrolls in Chrome (overflow: scroll, scrollbar-width: none) from offset 0 until the user edits; at

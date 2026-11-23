@@ -2,13 +2,13 @@
 // Point semantics: the point floored to 1/64 px is a 1x1 px box with exclusive intersection; text against its pixel-snapped rect;
 // a line against its rect and, inclusively, the block's snapped border box at the line's offset (T063J); paint order; plants.
 import { describe, expect, it } from 'vitest';
-import type { HitNode } from '../src/rt-hit.ts';
-import { activationTarget, HitError, hitTest, NO_HIT_FAULTS, NO_HIT_TABLE_FAULTS } from '../src/rt-hit.ts';
+import type { HitFact, HitNode } from '../src/rt-hit.ts';
+import { activationTarget, HitError, hitAt, hitTest, NO_HIT_FAULTS, NO_HIT_TABLE_FAULTS, prepareHit } from '../src/rt-hit.ts';
 
 const PX = 64;
 const base = { clips: false, borderTop: 0, borderRight: 0, borderBottom: 0, borderLeft: 0, layer: false, absolute: false, fixed: false, atomic: false, order: 0, layerOrder: 0, line: -1, inkLeft: 0, inkTop: 0, inkRight: 0, inkBottom: 0, pointerEvents: 'auto', radii: [], context: false, transformed: false, scaleX: 1, scaleY: 1, offsetX: 0, offsetY: 0 } as const;
 const NO_ORIGIN = { x: { kind: 'px', px: 0, percent: 0 }, y: { kind: 'px', px: 0, percent: 0 } } as const;
-const FLAT = { radii: [], context: false, transform: [], origin: NO_ORIGIN } as const;
+const FLAT = { radii: [], context: false, otherContext: '', transform: [], origin: NO_ORIGIN } as const;
 const box = (parent: number, target: number, x: number, y: number, w: number, h: number, more: Partial<HitNode> = {}): HitNode => ({ ...base, kind: 'box', parent, target, x: x * PX, y: y * PX, width: w * PX, height: h * PX, ...more });
 const at = (nodes: readonly HitNode[], x: number, y: number, faults = NO_HIT_FAULTS): number => hitTest(nodes, Math.floor(x * PX), Math.floor(y * PX), faults);
 
@@ -286,8 +286,8 @@ describe('hitTableOf and hitRefusal refuse a form control by name', () => {
     const { ahemMeasurer } = await import('../src/index.ts');
     const strut = { font: ahemFont(10), lineHeight: { kind: 'normal' } } as const;
     const select = control('s', { kind: 'select-menulist', font: ahemFont(10), lineHeight: { kind: 'normal' }, arrowWidth: 0, options: [] }, { display: 'flex', width: px(60) }, [control('s::inner', { kind: 'select-inner' }, {}, [text('s::inner:text0', 'XX')], strut)]);
-    const field = control('f', { kind: 'text-field', size: 4, font: ahemFont(10), lineHeight: { kind: 'normal' }, cancelButton: null }, { display: 'block', width: px(60) }, [control('f::editor', { kind: 'text-editor' }, {}, [text('f::editor:text0', 'XX')], strut)], null);
-    const area = control('a', { kind: 'text-area', cols: 4, rows: 2, font: ahemFont(10), lineHeight: { kind: 'normal' }, scrollbarInline: 0, scrollbarBlock: 0 }, { display: 'block' }, [control('a::editor', { kind: 'text-editor' }, {}, [text('a::editor:text0', 'XX XX')], strut)], null);
+    const field = control('f', { kind: 'text-field', size: 4, font: ahemFont(10), lineHeight: { kind: 'normal' }, avgChar: 'ahem', cancelButton: null }, { display: 'block', width: px(60) }, [control('f::editor', { kind: 'text-editor' }, {}, [text('f::editor:text0', 'XX')], strut)], null);
+    const area = control('a', { kind: 'text-area', cols: 4, rows: 2, font: ahemFont(10), lineHeight: { kind: 'normal' }, avgChar: 'ahem', scrollbarInline: 0, scrollbarBlock: 0 }, { display: 'block' }, [control('a::editor', { kind: 'text-editor' }, {}, [text('a::editor:text0', 'XX XX')], strut)], null);
     const root = { ...box('html', { width: px(100) }), children: [select, field, area] };
     const input = { viewport: { width: 400, height: 300 }, devicePixelRatio: 1, ...neutralEnvironment({ width: 400, height: 300 }), root };
     expect(hitRefusal(input)).toBeNull();
@@ -542,21 +542,40 @@ describe('atomic inlines on their lines', () => {
     expect(() => hitTableOf(input, ahemMeasurer, facts, NO_HIT_TABLE_FAULTS)).toThrow(/percentage padding around atomic inlines/);
   });
 
-  it('refuses by name, before building, an atomic inline its hit facts make a stacking context or transform (INL2c)', async () => {
+  it('hits an atomic inline that forms a stacking context as its own layer, above the text after it too (HIT-INL2c)', async () => {
     const { hitFactsRefusal, hitRefusal, hitTableOf } = await import('../src/rt-hit.ts');
     const { ahemMeasurer } = await import('../src/index.ts');
     const { input, facts } = await inlineInput();
-    const message = 'c1 is an atomic inline that forms a stacking context or is transformed, which no Chrome hit capture orders against its line yet (INL2c)';
     const base = facts.get('c1');
     if (base === undefined) throw new Error('no c1 facts');
-    expect(hitFactsRefusal(input, facts)).toBeNull();
-    for (const changed of [{ ...base, context: true }, { ...base, context: true, transform: [{ fn: 'translate', x: { kind: 'px', px: 2, percent: 0 }, y: { kind: 'px', px: 0, percent: 0 }, angle: 0, sx: 1, sy: 1 }] }]) {
-      const f = new Map(facts);
-      f.set('c1', changed as typeof base);
-      expect(hitRefusal(input)).toBeNull();
-      expect(hitFactsRefusal(input, f)).toBe(message);
-      expect(() => hitTableOf(input, ahemMeasurer, f, NO_HIT_TABLE_FAULTS)).toThrow(message);
-    }
+    const f = new Map<string, HitFact>(facts);
+    f.set('c1', { ...base, context: true });
+    expect(hitRefusal(input)).toBeNull();
+    expect(hitFactsRefusal(input, f)).toBeNull();
+    const t = hitTableOf(input, ahemMeasurer, f, NO_HIT_TABLE_FAULTS);
+    const c1 = t.nodes[t.ids.indexOf('c1')] as HitNode;
+    expect([c1.context, c1.line, c1.x / PX, c1.width / PX]).toEqual([true, 0, 15, 20]);
+    const prepared = prepareHit(t.nodes, NO_HIT_FAULTS);
+    const at = (x: number, y: number) => t.ids[t.nodes[hitAt(prepared, x * PX, c1.y + y * PX)]?.target ?? -1];
+    expect(at(20, 6)).toBe('c1');
+    expect(at(16, 1)).toBe('k');
+    // A plain atomic loses this 1x1 px box to t2 after it (above); as its own layer it paints, and hits, above its line's text.
+    expect(at(34.25, 6)).toBe('c1');
+    expect(at(120, 6)).toBe('p');
+    // Planted fault contextNotLayered hits it with its line's flow again, so t2 wins.
+    const flat = hitTableOf(input, ahemMeasurer, f, { ...NO_HIT_TABLE_FAULTS, contextNotLayered: true });
+    const pf = prepareHit(flat.nodes, NO_HIT_FAULTS);
+    expect(flat.ids[flat.nodes[hitAt(pf, 34.25 * PX, c1.y + 6 * PX)]?.target ?? -1]).toBe('p');
+    // A rotate stays refused by name before building.
+    const r = new Map<string, HitFact>(facts);
+    r.set('c1', { ...base, context: true, transform: [{ fn: 'rotate', x: { kind: 'px', px: 0, percent: 0 }, y: { kind: 'px', px: 0, percent: 0 }, angle: 5, sx: 1, sy: 1 }] } as unknown as HitFact);
+    expect(hitFactsRefusal(input, r)).toMatch(/^c1 rotates/);
+    expect(() => hitTableOf(input, ahemMeasurer, r, NO_HIT_TABLE_FAULTS)).toThrow(/c1 rotates/);
+    // A context that containment (or any source but opacity and a transform) makes stays refused by name, with opacity beside it too.
+    const contained = new Map<string, HitFact>(facts);
+    contained.set('c1', { ...base, context: true, otherContext: 'containment' });
+    expect(hitFactsRefusal(input, contained)).toBe('c1 is an atomic inline that containment makes a stacking context, which no Chrome hit capture orders against its line yet (INL2c)');
+    expect(() => hitTableOf(input, ahemMeasurer, contained, NO_HIT_TABLE_FAULTS)).toThrow(/c1 is an atomic inline that containment makes a stacking context/);
   });
 });
 

@@ -38,6 +38,22 @@ export const CONTROLS: readonly FixtureSpec[] = [
   both('controls-range-block'),
   both('controls-range-flex'),
   layout('controls-text-field'),
+  // FIELD-font-width FW1: a field in a face Dragon does not measure, accepted natively only where its width never reads its intrinsic
+  // width. ltr only, as controls-text-field: an rtl field's editor keeps its white space in an rtl block (DRAGON_UNSUPPORTED_BIDI).
+  layout('controls-text-field-font-definite'),
+  reject('reject-controls-text-font-float', 'DRAGON_UNSUPPORTED_FONT', '100%', 'width: 100% on <input> t is not supported here: <div> d takes its width from its content (float: left with an auto width)'),
+  reject('reject-controls-text-font-inline-block', 'DRAGON_UNSUPPORTED_FONT', '100%', 'width: 100% on <input> t is not supported here: <div> d takes its width from its content (display: inline-block with an auto width)'),
+  reject('reject-controls-text-font-max-content', 'DRAGON_UNSUPPORTED_FONT', '100%', 'width: 100% on <input> t is not supported here: <div> d takes its width from its content (width: max-content)'),
+  reject('reject-controls-text-font-absolute', 'DRAGON_UNSUPPORTED_FONT', '100%', 'width: 100% on <input> t is not supported here: <div> d takes its width from its content (position: absolute with an auto width)'),
+  reject('reject-controls-text-font-grid-columns', 'DRAGON_UNSUPPORTED_FONT', '<input data-dragon-id="t" readonly="" value="Hg">', '<input> t is a grid item with min-width: auto, whose automatic minimum Chrome takes from the field\'s intrinsic width'),
+  reject('reject-controls-text-font-grid-start', 'DRAGON_UNSUPPORTED_FONT', '<input data-dragon-id="t" readonly="" value="Hg">', '<input> t is a grid item with min-width: auto, whose automatic minimum Chrome takes from the field\'s intrinsic width'),
+  reject('reject-controls-text-font-grid-auto-columns', 'DRAGON_UNSUPPORTED_FONT', '<input data-dragon-id="t" readonly="" value="Hg">', '<input> t is a grid item with min-width: auto, whose automatic minimum Chrome takes from the field\'s intrinsic width'),
+  reject('reject-controls-text-font-grid-areas', 'DRAGON_UNSUPPORTED_FONT', '<input data-dragon-id="t" readonly="" value="Hg">', '<input> t is a grid item with min-width: auto, whose automatic minimum Chrome takes from the field\'s intrinsic width'),
+  reject('reject-controls-text-font-grid-flow-column', 'DRAGON_UNSUPPORTED_FONT', '<input data-dragon-id="t" readonly="" value="Hg">', '<input> t is a grid item with min-width: auto, whose automatic minimum Chrome takes from the field\'s intrinsic width'),
+  reject('reject-controls-text-font-grid-column-2', 'DRAGON_UNSUPPORTED_FONT', '<input data-dragon-id="t" readonly="" value="Hg">', '<input> t is a grid item with min-width: auto, whose automatic minimum Chrome takes from the field\'s intrinsic width'),
+  reject('reject-controls-text-font-justify-self', 'DRAGON_UNSUPPORTED_FONT', '100%', 'width: 100% on <input> t is not supported here: <div> a takes its width from its content (justify-self: start with an auto width)'),
+  reject('reject-controls-text-font-grid-min0', 'DRAGON_UNSUPPORTED_FONT', '100%', 'width: 100% on <input> t is not supported here: it is a grid item of <div> d, whose column is not its whole content box'),
+  reject('reject-controls-text-font-min-width', 'DRAGON_UNSUPPORTED_FONT', '100%', 'width: 100% on <input> t is not supported here: <div> d takes its width from its content (min-width: max-content)'),
   layout('controls-text-field-search'),
   layout('controls-textarea'),
   // FORM-b: the scrollbar thickness Chrome adds to a textarea's default size (16 DIP at auto, 14 at thin, to the width unless

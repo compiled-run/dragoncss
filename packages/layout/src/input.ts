@@ -595,16 +595,17 @@ export type CancelButton = { readonly marginStart: number; readonly marginEnd: n
  *   width), ratio being the input's (value - min) / (max - min) in [0, 1] (AdjustSliderThumbInlineOffset);
  * - button-block: a block button, whose in-flow contents are centred safely in the block axis (AlignBlockContent);
  * - text-field (FORM-b): a single-line text field, a block container of its placeholder (if any) and its inner editor. Its intrinsic
- *   content inline size is size x the advance of 0 in its font, rounded up to a whole px; its auto content height is the editor's,
- *   which it centres unsafely in the block axis, and the placeholder's baseline is put on the editor's. font and lineHeight are the
- *   input's own, which decide the editor's line height (environment.ts editorLineHeightIsNormal). cancelButton: a search field's,
- *   which takes the inline end of the editor's line and is centred with the editor (controls.ts searchCancelButtonSize); null for
- *   any other field;
+ *   content inline size is size x the advance of 0 in its font, rounded up to a whole px, read only when avgChar is ahem; its auto
+ *   content height is the editor's, which it centres unsafely in the block axis, and the placeholder's baseline is put on the
+ *   editor's. font and lineHeight are the input's own, which decide the editor's line height (environment.ts
+ *   editorLineHeightIsNormal). cancelButton: a search field's, which takes the inline end of the editor's line and is centred with
+ *   the editor (controls.ts searchCancelButtonSize); null for any other field;
  * - text-area (FORM-b): a textarea, a block container of its placeholder (if any) and its inner editor, both at its content box
  *   start. Its intrinsic content inline size is cols x the advance of 0, rounded up to a whole px, and its auto content height is
- *   rows x its line height, whatever its text; font and lineHeight are the textarea's own. scrollbarInline and scrollbarBlock are
- *   the platform's scrollbar thickness in DIP that Chrome adds to that inline size (overflow-y not hidden or clip) and to that
- *   height (overflow-x scroll), 0 where it adds none: trunc(thickness x the device scale) device px, whatever the zoom;
+ *   rows x its line height, whatever its text; font and lineHeight are the textarea's own; avgChar as a text-field's, the cols width
+ *   read only when it is ahem. scrollbarInline and scrollbarBlock are the platform's scrollbar thickness in DIP that Chrome adds to
+ *   that inline size (overflow-y not hidden or clip) and to that height (overflow-x scroll), 0 where it adds none:
+ *   trunc(thickness x the device scale) device px, whatever the zoom;
  * - text-editor: the inner editor, a block container holding the value's text;
  * - text-placeholder: the placeholder, a block container holding the placeholder text, out of the field's flow;
  * - fieldset: a block fieldset, whose rendered legend sits in its block-start border and whose other contents flow in an anonymous
@@ -618,12 +619,19 @@ export type CancelButton = { readonly marginStart: number; readonly marginEnd: n
  *   select's min- and max-content inline size (intrinsic.ts menuListNaturalInlineSize), measured on the device as the shown label is;
  * - select-inner: the inner element, a block container holding the shown option's label; empty, it still holds one line.
  */
+/**
+ * Where a text field's average character width is proven: ahem when its first listed family is Ahem, whose advance of 0 is Chrome's
+ * average (both 1em); unmeasured otherwise, which the compiler accepts only where the field's used width never reads its intrinsic
+ * width, and the engine refuses to read (text-field-avg-char).
+ */
+export type TextFieldAvgChar = 'ahem' | 'unmeasured';
+
 export type ControlKind =
   | { readonly kind: 'range'; readonly defaultInlineSize: number }
   | { readonly kind: 'slider-thumb'; readonly ratio: number }
   | { readonly kind: 'button-block' }
-  | { readonly kind: 'text-field'; readonly size: number; readonly font: FontSpec; readonly lineHeight: LineHeightValue; readonly cancelButton: CancelButton | null }
-  | { readonly kind: 'text-area'; readonly cols: number; readonly rows: number; readonly font: FontSpec; readonly lineHeight: LineHeightValue; readonly scrollbarInline: number; readonly scrollbarBlock: number }
+  | { readonly kind: 'text-field'; readonly size: number; readonly font: FontSpec; readonly lineHeight: LineHeightValue; readonly avgChar: TextFieldAvgChar; readonly cancelButton: CancelButton | null }
+  | { readonly kind: 'text-area'; readonly cols: number; readonly rows: number; readonly font: FontSpec; readonly lineHeight: LineHeightValue; readonly avgChar: TextFieldAvgChar; readonly scrollbarInline: number; readonly scrollbarBlock: number }
   | { readonly kind: 'text-editor' }
   | { readonly kind: 'text-placeholder' }
   | { readonly kind: 'fieldset' }
