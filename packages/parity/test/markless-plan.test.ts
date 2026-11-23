@@ -7,7 +7,8 @@ import { describe, expect, it } from 'vitest';
 import { checkMarklessExport, marklessStyleExport, marklessTextHeightProof } from '../src/markless-style-input.ts';
 import { paintRows } from '../src/markless-style-compare.ts';
 import type { MarklessPlan } from '../src/markless-plan.ts';
-import { PLAN_DENSITIES, planWidths } from '../src/markless-plan.ts';
+import { heightDependence, PLAN_DENSITIES, planWidths } from '../src/markless-plan.ts';
+import { ahemFont, box, control, text } from '../../layout/test/helpers.ts';
 import type { ExportNode } from '../src/native-style-export.ts';
 import { repoPath } from '../src/paths.ts';
 import { checkboxColors } from '../../dragon/src/forms/checkbox.ts';
@@ -130,19 +131,25 @@ describe('the layout plan of a Markless export', () => {
     expect(JSON.parse(checkMarklessPlan(JSON.stringify(unread)))).toEqual(['harness-error', `$.plan.variants[${last}].root.style.position: unexpected running`]);
   });
 
-  it('records the same plan in worker threads as in this thread', () => {
+  it('records the same plan in worker threads as in this thread, with and without the height check', () => {
     const text = readFileSync(repoPath(FLUID), 'utf8');
-    const before = process.env['DRAGON_PLAN_WORKERS'];
+    const before = { workers: process.env['DRAGON_PLAN_WORKERS'], check: process.env['DRAGON_PLAN_HEIGHT_CHECK'] };
     try {
-      process.env['DRAGON_PLAN_WORKERS'] = '1';
-      const serial = marklessStyleExport(text, FLUID, undefined, 'system', undefined, true).exported;
-      process.env['DRAGON_PLAN_WORKERS'] = '4';
-      const workers = marklessStyleExport(text, FLUID, undefined, 'system', undefined, true).exported;
-      expect(JSON.stringify(workers)).toBe(JSON.stringify(serial));
+      // FLUID is proven, so without `always` both exports skip the height passes; with it both run them.
+      for (const check of [undefined, 'always']) {
+        if (check === undefined) delete process.env['DRAGON_PLAN_HEIGHT_CHECK'];
+        else process.env['DRAGON_PLAN_HEIGHT_CHECK'] = check;
+        process.env['DRAGON_PLAN_WORKERS'] = '1';
+        const serial = marklessStyleExport(text, FLUID, undefined, 'system', undefined, true).exported;
+        process.env['DRAGON_PLAN_WORKERS'] = '4';
+        const workers = marklessStyleExport(text, FLUID, undefined, 'system', undefined, true).exported;
+        expect(JSON.stringify(workers), `height check ${check ?? 'proven'}`).toBe(JSON.stringify(serial));
+      }
     } finally {
-      if (before === undefined) delete process.env['DRAGON_PLAN_WORKERS'];
-      else process.env['DRAGON_PLAN_WORKERS'] = before;
-    }
+      for (const [k, v] of [['DRAGON_PLAN_WORKERS', before.workers], ['DRAGON_PLAN_HEIGHT_CHECK', before.check]] as const) {
+        if (v === undefined) delete process.env[k];
+        else process.env[k] = v;
+      }
   });
 
   it('fails, naming the recording, when a plan worker exits before it answers, and waits on no timeout', () => {
@@ -185,6 +192,14 @@ describe('the layout plan of a Markless export', () => {
     expect(proof('.bar { height: 40vh; aspect-ratio: 2; }').ios).toMatch(/has an aspect-ratio$/);
     expect(proof('.bar { display: flex; flex-direction: column; flex-wrap: wrap; height: 50vh; }').ios).toMatch(/is a multi-line column flex container$/);
     expect(proof('@media (orientation: landscape) { .bar { color: red; } }').ios).toBe('a media query on orientation');
+  });
+
+  it("names a select whose option text is spaced in vh, though the option is not among the select's children", () => {
+    const vh = { kind: 'viewport', value: 2, axis: 'height', size: 'large' } as const;
+    const select = (letterSpacing: typeof vh | { readonly kind: 'px'; readonly value: number }) =>
+      ({ variants: [{ rootFontSize: 16, root: box('h0', {}, [control('h1', { kind: 'select-menulist', font: ahemFont(10), lineHeight: { kind: 'normal' }, arrowWidth: 0, options: [text('h2:text0', 'Longest option', { letterSpacing })] }, { display: 'flex' }, [control('h1::inner', { kind: 'select-inner' }, {})])]) }] }) as unknown as Parameters<typeof heightDependence>[0];
+    expect(heightDependence(select({ kind: 'px', value: 0 }), [])).toBeNull();
+    expect(heightDependence(select(vh), [])).toBe('h2:text0 has spacing in vh, vmin or vmax');
   });
 
   it('still checks the text at other heights on a page it cannot prove, and refuses one whose text follows the height', () => {

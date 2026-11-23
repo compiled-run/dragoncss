@@ -156,6 +156,11 @@ export function heightDependence(sp: StateProgram, bandFeatures: Iterable<string
     if (b.strut !== null && font(b.strut.font, b.strut.lineHeight)) return `${b.id} has a font size or line height in vh, vmin or vmax`;
     if (b.kind === 'box' && b.marker !== null && font(b.marker.font, b.marker.lineHeight)) return `${b.id}'s marker has a font size in vh, vmin or vmax`;
     if (b.kind === 'control' && 'font' in b.control && font(b.control.font, b.control.lineHeight)) return `${b.id} has a font size or line height in vh, vmin or vmax`;
+    // A select is as wide as its widest option, whose text is not among its children.
+    if (b.kind === 'control' && b.control.kind === 'select-menulist') for (const o of b.control.options) {
+      const r = inline(o);
+      if (r !== null) return r;
+    }
     for (const c of b.children) {
       const r = c.kind === 'box' || c.kind === 'control' || c.kind === 'replaced' ? box(c) : inline(c);
       if (r !== null) return r;
