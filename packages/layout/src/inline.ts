@@ -541,8 +541,11 @@ export function buildIfc(ctx: Ctx, box: LayoutBox): Ifc {
     if (first !== undefined && (t.overflowWrap !== first.overflowWrap || t.wordBreak !== first.wordBreak)) {
       unsupported('mixed-text-wrap-mode', t.id, 'css-text-3 §5.2, §5.5', `text runs with different overflow-wrap or word-break in one formatting context of ${box.id}`);
     }
-    // TXT2-a with TXT2-c: how Blink breaks preserved spaces at grapheme boundaries has no Chrome comparison yet.
-    if ((t.overflowWrap !== 'normal' || t.wordBreak !== 'normal') && t.whiteSpaceCollapse !== 'collapse') {
+    // TXT2-a with TXT2-c: how Blink breaks preserved spaces at grapheme boundaries has no Chrome comparison yet, but for
+    // overflow-wrap: break-word over white-space-collapse: preserve, a textarea's (FORM-b, the controls-textarea fixture: long
+    // words, runs of preserved spaces at and across a break, leading and trailing spaces).
+    const preservedBreakWord = t.overflowWrap === 'break-word' && t.wordBreak === 'normal' && t.whiteSpaceCollapse === 'preserve';
+    if ((t.overflowWrap !== 'normal' || t.wordBreak !== 'normal') && t.whiteSpaceCollapse !== 'collapse' && !preservedBreakWord) {
       unsupported('word-break', t.id, 'css-text-3 §5.5', `overflow-wrap: ${t.overflowWrap} and word-break: ${t.wordBreak} on ${t.id}, whose white-space-collapse is ${t.whiteSpaceCollapse}`);
     }
   }
@@ -706,13 +709,12 @@ function latinScopeRefusal(text: string): string {
     const cp = ch.codePointAt(0) as number;
     const sc = scriptCode(cp);
     if (sc === USCRIPT_LATIN) continue;
-    const at = `U+${cp.toString(16).toUpperCase()}`;
-    if (sc !== USCRIPT_COMMON && sc !== USCRIPT_INHERITED) return `${at} is outside Latin, Common and Inherited`;
+    if (sc !== USCRIPT_COMMON && sc !== USCRIPT_INHERITED) return `U+${cp.toString(16).toUpperCase()} is outside Latin, Common and Inherited`;
     const ext = scriptExtensions(cp);
     let latin = false;
     for (const e of ext) if (e === USCRIPT_LATIN) latin = true;
     const plain = ext.length === 1 && ((ext[0] as number) === USCRIPT_COMMON || (ext[0] as number) === USCRIPT_INHERITED);
-    if (!latin && !plain) return `${at} is Common or Inherited, but its Script_Extensions exclude Latin, so Blink shapes it in a run of its own`;
+    if (!latin && !plain) return `U+${cp.toString(16).toUpperCase()} is Common or Inherited, but its Script_Extensions exclude Latin, so Blink shapes it in a run of its own`;
   }
   return '';
 }
