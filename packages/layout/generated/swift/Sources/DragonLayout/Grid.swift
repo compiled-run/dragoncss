@@ -896,11 +896,11 @@ public func grid_repeaterSize(_ sizes: JsArray<any U_TrackSize_breadth_TrackSize
   var size: Double = units_ZERO
   // ts: packages/layout/src/grid.ts:519
   do {
-    let _a53 = sizes
-    var _i53 = 0
-    while _i53 < _a53.items.count {
-      let t: any U_TrackSize_breadth_TrackSize_fitContent_TrackSize_minmax = _a53.items[_i53]
-      _i53 += 1
+    let _a55 = sizes
+    var _i55 = 0
+    while _i55 < _a55.items.count {
+      let t: any U_TrackSize_breadth_TrackSize_fitContent_TrackSize_minmax = _a55.items[_i55]
+      _i55 += 1
       // ts: packages/layout/src/grid.ts:520
       if try grid_definitionIntrinsic(t) {
         throw JsError(message: S.s611)
@@ -939,11 +939,11 @@ public func grid_autoRepetitions(_ template: JsArray<TrackRepeater>, _ auto: Gri
   var nonAuto: Double = units_ZERO
   // ts: packages/layout/src/grid.ts:543
   do {
-    let _a54 = template
-    var _i54 = 0
-    while _i54 < _a54.items.count {
-      let r: TrackRepeater = _a54.items[_i54]
-      _i54 += 1
+    let _a56 = template
+    var _i56 = 0
+    while _i56 < _a56.items.count {
+      let r: TrackRepeater = _a56.items[_i56]
+      _i56 += 1
       try nonAuto = units_add(nonAuto, units_mulInt(grid_repeaterSize(r.sizes, false, gutter, size, engineFaults), r.count))
     }
   }
@@ -984,11 +984,11 @@ public func grid_axisTracks(_ box: LayoutBox, _ g: GridContainerStyle, _ axis: J
   if (auto == nil) {
     // ts: packages/layout/src/grid.ts:569
     do {
-      let _a55 = template
-      var _i55 = 0
-      while _i55 < _a55.items.count {
-        let r: TrackRepeater = _a55.items[_i55]
-        _i55 += 1
+      let _a57 = template
+      var _i57 = 0
+      while _i57 < _a57.items.count {
+        let r: TrackRepeater = _a57.items[_i57]
+        _i57 += 1
         _ = jsPush(repeaters, GridRepeater(r.count, r.sizes, false))
       }
     }
@@ -1309,11 +1309,11 @@ public func grid_frontOverlapping(_ list: GridPlacedList, _ c: GridCursor) throw
   var best: Double = -1.0
   // ts: packages/layout/src/grid.ts:768
   do {
-    let _a56 = c.overlapping
-    var _i56 = 0
-    while _i56 < _a56.items.count {
-      let i: Double = _a56.items[_i56]
-      _i56 += 1
+    let _a58 = c.overlapping
+    var _i58 = 0
+    while _i58 < _a58.items.count {
+      let i: Double = _a58.items[_i58]
+      _i58 += 1
       // ts: packages/layout/src/grid.ts:769
       if (best < 0.0) {
         best = i
@@ -1428,11 +1428,11 @@ public func grid_moveCursorToFitGridSpan(_ list: GridPlacedList, _ c: GridCursor
         nextMinor = c.current.minor
         // ts: packages/layout/src/grid.ts:835
         do {
-          let _a57 = c.overlapping
-          var _i57 = 0
-          while _i57 < _a57.items.count {
-            let i: Double = _a57.items[_i57]
-            _i57 += 1
+          let _a59 = c.overlapping
+          var _i59 = 0
+          while _i59 < _a59.items.count {
+            let i: Double = _a59.items[_i59]
+            _i59 += 1
             let p: GridPlacedItem = try jsUnwrap(jsAt(list.items, i))
             // ts: packages/layout/src/grid.ts:837
             if ((nextMinor < p.minorEnd) && (p.minorStart < (nextMinor + minorSpan))) {
@@ -1533,11 +1533,11 @@ public func grid_runPlacement(_ g: GridContainerStyle, _ boxes: JsArray<any U_Co
   var rowStartOffset: Double = 0.0
   // ts: packages/layout/src/grid.ts:903
   do {
-    let _a58 = boxes
-    var _i58 = 0
-    while _i58 < _a58.items.count {
-      let b: any U_ControlBox_LayoutBox_ReplacedLeaf = _a58.items[_i58]
-      _i58 += 1
+    let _a60 = boxes
+    var _i60 = 0
+    while _i60 < _a60.items.count {
+      let b: any U_ControlBox_LayoutBox_ReplacedLeaf = _a60.items[_i60]
+      _i60 += 1
       let gi: GridItemStyle? = b.style.gridItem
       // ts: packages/layout/src/grid.ts:905
       if (gi == nil) {
@@ -1615,11 +1615,11 @@ public func grid_runPlacement(_ g: GridContainerStyle, _ boxes: JsArray<any U_Co
 })
     // ts: packages/layout/src/grid.ts:946
     do {
-      let _a59 = ordered
-      var _i59 = 0
-      while _i59 < _a59.items.count {
-        let o: GridIndexedPlaced = _a59.items[_i59]
-        _i59 += 1
+      let _a61 = ordered
+      var _i61 = 0
+      while _i61 < _a61.items.count {
+        let o: GridIndexedPlaced = _a61.items[_i61]
+        _i61 += 1
         let index: Double = jsLength(list.items)
         o.p.prev = list.tail
         _ = jsPush(list.items, o.p)
@@ -1636,11 +1636,11 @@ public func grid_runPlacement(_ g: GridContainerStyle, _ boxes: JsArray<any U_Co
     let minorCursors: JsArray<GridMinorCursor> = JsArray<GridMinorCursor>([])
     // ts: packages/layout/src/grid.ts:959
     do {
-      let _a60 = locked
-      var _i60 = 0
-      while _i60 < _a60.items.count {
-        let i: Double = _a60.items[_i60]
-        _i60 += 1
+      let _a62 = locked
+      var _i62 = 0
+      while _i62 < _a62.items.count {
+        let i: Double = _a62.items[_i62]
+        _i62 += 1
         let major: GridAxisPosition = try jsUnwrap(jsAt(majors, i))
         let minor: GridAxisPosition = try jsUnwrap(jsAt(minors, i))
         let c: GridCursor = try grid_newCursor(list)
@@ -1677,11 +1677,11 @@ public func grid_runPlacement(_ g: GridContainerStyle, _ boxes: JsArray<any U_Co
     var cursor: GridCursor = try grid_newCursor(list)
     // ts: packages/layout/src/grid.ts:981
     do {
-      let _a61 = notLocked
-      var _i61 = 0
-      while _i61 < _a61.items.count {
-        let i: Double = _a61.items[_i61]
-        _i61 += 1
+      let _a63 = notLocked
+      var _i63 = 0
+      while _i63 < _a63.items.count {
+        let i: Double = _a63.items[_i63]
+        _i63 += 1
         let major: GridAxisPosition = try jsUnwrap(jsAt(majors, i))
         let minor: GridAxisPosition = try jsUnwrap(jsAt(minors, i))
         // ts: packages/layout/src/grid.ts:984
@@ -1726,11 +1726,11 @@ public func grid_buildRanges(_ explicit: JsArray<GridRepeater>, _ implicitSize: 
   var cur: Double = startOffset
   // ts: packages/layout/src/grid.ts:1026
   do {
-    let _a62 = explicit
-    var _i62 = 0
-    while _i62 < _a62.items.count {
-      let r: GridRepeater = _a62.items[_i62]
-      _i62 += 1
+    let _a64 = explicit
+    var _i64 = 0
+    while _i64 < _a64.items.count {
+      let r: GridRepeater = _a64.items[_i64]
+      _i64 += 1
       _ = jsPush(starts, cur)
       try cur += grid_repeaterTrackCount(r)
       _ = jsPush(ends, cur)
@@ -1745,11 +1745,11 @@ public func grid_buildRanges(_ explicit: JsArray<GridRepeater>, _ implicitSize: 
   }
   // ts: packages/layout/src/grid.ts:1038
   do {
-    let _a63 = spans
-    var _i63 = 0
-    while _i63 < _a63.items.count {
-      let s: GridLines = _a63.items[_i63]
-      _i63 += 1
+    let _a65 = spans
+    var _i65 = 0
+    while _i65 < _a65.items.count {
+      let s: GridLines = _a65.items[_i65]
+      _i65 += 1
       _ = jsPush(starts, s.start)
       _ = jsPush(ends, s.end)
     }
@@ -1830,11 +1830,11 @@ public func grid_newCollection(_ axis: JsString, _ explicit: JsArray<GridRepeate
   var tracks: Double = 0.0
   // ts: packages/layout/src/grid.ts:1105
   do {
-    let _a64 = ranges
-    var _i64 = 0
-    while _i64 < _a64.items.count {
-      let r: GridRange = _a64.items[_i64]
-      _i64 += 1
+    let _a66 = ranges
+    var _i66 = 0
+    while _i66 < _a66.items.count {
+      let r: GridRange = _a66.items[_i66]
+      _i66 += 1
       // ts: packages/layout/src/grid.ts:1105
       if (!r.collapsed) {
         tracks += r.trackCount
@@ -1920,11 +1920,11 @@ public func grid_buildSets(_ grid: GridState, _ c: GridCollection, _ available: 
   var all: GridProps = try grid_NO_PROPS()
   // ts: packages/layout/src/grid.ts:1163
   do {
-    let _a65 = c.ranges
-    var _i65 = 0
-    while _i65 < _a65.items.count {
-      let range: GridRange = _a65.items[_i65]
-      _i65 += 1
+    let _a67 = c.ranges
+    var _i67 = 0
+    while _i67 < _a67.items.count {
+      let range: GridRange = _a67.items[_i67]
+      _i67 += 1
       var props: GridProps = try grid_NO_PROPS()
       // ts: packages/layout/src/grid.ts:1165
       if range.collapsed {
@@ -1982,11 +1982,11 @@ public func grid_buildSets(_ grid: GridState, _ c: GridCollection, _ available: 
   c.props = all
   // ts: packages/layout/src/grid.ts:1193
   do {
-    let _a66 = c.sets
-    var _i66 = 0
-    while _i66 < _a66.items.count {
-      let s: GridSet = _a66.items[_i66]
-      _i66 += 1
+    let _a68 = c.sets
+    var _i68 = 0
+    while _i68 < _a68.items.count {
+      let s: GridSet = _a68.items[_i68]
+      _i68 += 1
       let t: GridTrack = s.track
       // ts: packages/layout/src/grid.ts:1195
       if (t.fitContent && (t.limit != nil)) {
@@ -2032,11 +2032,11 @@ public func grid_totalTrackSize(_ c: GridCollection) throws -> Double {
   var total: Double = units_ZERO
   // ts: packages/layout/src/grid.ts:1223
   do {
-    let _a67 = c.sets
-    var _i67 = 0
-    while _i67 < _a67.items.count {
-      let s: GridSet = _a67.items[_i67]
-      _i67 += 1
+    let _a69 = c.sets
+    var _i69 = 0
+    while _i69 < _a69.items.count {
+      let s: GridSet = _a69.items[_i69]
+      _i69 += 1
       try total = units_add(total, units_add(s.baseSize, units_mulInt(c.gutter, s.trackCount)))
     }
   }
@@ -2050,11 +2050,11 @@ public func grid_cacheInitializedGeometry(_ c: GridCollection, _ first: Double) 
   var offset: Double = first
   // ts: packages/layout/src/grid.ts:1231
   do {
-    let _a68 = c.sets
-    var _i68 = 0
-    while _i68 < _a68.items.count {
-      let s: GridSet = _a68.items[_i68]
-      _i68 += 1
+    let _a70 = c.sets
+    var _i70 = 0
+    while _i70 < _a70.items.count {
+      let s: GridSet = _a70.items[_i70]
+      _i70 += 1
       // ts: packages/layout/src/grid.ts:1232
       if (s.growthLimit == grid_INDEFINITE) {
         _ = jsPush(lastIndefinite, (jsLength(lastIndefinite) - 1.0))
@@ -2077,11 +2077,11 @@ public func grid_finalizeGeometry(_ c: GridCollection, _ first: Double, _ gutter
   var offset: Double = first
   // ts: packages/layout/src/grid.ts:1248
   do {
-    let _a69 = c.sets
-    var _i69 = 0
-    while _i69 < _a69.items.count {
-      let s: GridSet = _a69.items[_i69]
-      _i69 += 1
+    let _a71 = c.sets
+    var _i71 = 0
+    while _i71 < _a71.items.count {
+      let s: GridSet = _a71.items[_i71]
+      _i71 += 1
       try offset = units_add(offset, units_add(s.baseSize, units_mulInt(gutter, s.trackCount)))
       _ = jsPush(geometry, GridSetGeometry(offset, s.trackCount))
     }
@@ -2292,11 +2292,11 @@ public func grid_distributeExtraSpace(_ ctx: Ctx, _ extraSpace: Double, _ flexSu
   if (extra == grid_INDEFINITE) {
     // ts: packages/layout/src/grid.ts:1401
     do {
-      let _a70 = toGrow
-      var _i70 = 0
-      while _i70 < _a70.items.count {
-        let s: GridSet = _a70.items[_i70]
-        _i70 += 1
+      let _a72 = toGrow
+      var _i72 = 0
+      while _i72 < _a72.items.count {
+        let s: GridSet = _a72.items[_i72]
+        _i72 += 1
         try s.itemIncurredIncrease = grid_growthPotential(s, type, true)
       }
     }
@@ -2305,11 +2305,11 @@ public func grid_distributeExtraSpace(_ ctx: Ctx, _ extraSpace: Double, _ flexSu
   var growable: Double = 0.0
   // ts: packages/layout/src/grid.ts:1405
   do {
-    let _a71 = toGrow
-    var _i71 = 0
-    while _i71 < _a71.items.count {
-      let s: GridSet = _a71.items[_i71]
-      _i71 += 1
+    let _a73 = toGrow
+    var _i73 = 0
+    while _i73 < _a73.items.count {
+      let s: GridSet = _a73.items[_i73]
+      _i73 += 1
       s.itemIncurredIncrease = units_ZERO
       // ts: packages/layout/src/grid.ts:1407
       if try (grid_growthPotential(s, type, true) != units_ZERO) {
@@ -2375,11 +2375,11 @@ public func grid_distributeExtraSpace(_ ctx: Ctx, _ extraSpace: Double, _ flexSu
   }
   // ts: packages/layout/src/grid.ts:1444
   do {
-    let _a72 = sets
-    var _i72 = 0
-    while _i72 < _a72.items.count {
-      let s: GridSet = _a72.items[_i72]
-      _i72 += 1
+    let _a74 = sets
+    var _i74 = 0
+    while _i74 < _a74.items.count {
+      let s: GridSet = _a74.items[_i74]
+      _i74 += 1
       // ts: packages/layout/src/grid.ts:1445
       if (growable == 0.0) {
         break
@@ -2397,11 +2397,11 @@ public func grid_distributeExtraSpace(_ ctx: Ctx, _ extraSpace: Double, _ flexSu
     growable = 0.0
     // ts: packages/layout/src/grid.ts:1452
     do {
-      let _a73 = beyondSets
-      var _i73 = 0
-      while _i73 < _a73.items.count {
-        let s: GridSet = _a73.items[_i73]
-        _i73 += 1
+      let _a75 = beyondSets
+      var _i75 = 0
+      while _i75 < _a75.items.count {
+        let s: GridSet = _a75.items[_i75]
+        _i75 += 1
         // ts: packages/layout/src/grid.ts:1452
         if try (beyondPotential(s) != units_ZERO) {
           growable += s.trackCount
@@ -2411,11 +2411,11 @@ public func grid_distributeExtraSpace(_ ctx: Ctx, _ extraSpace: Double, _ flexSu
     ratioSum = growable
     // ts: packages/layout/src/grid.ts:1454
     do {
-      let _a74 = beyondSets
-      var _i74 = 0
-      while _i74 < _a74.items.count {
-        let s: GridSet = _a74.items[_i74]
-        _i74 += 1
+      let _a76 = beyondSets
+      var _i76 = 0
+      while _i76 < _a76.items.count {
+        let s: GridSet = _a76.items[_i76]
+        _i76 += 1
         // ts: packages/layout/src/grid.ts:1455
         if (growable == 0.0) {
           break
@@ -2467,21 +2467,21 @@ public func grid_itemSpanSize(_ item: GridItemData, _ axis: JsString) throws -> 
 public func grid_accommodateItems(_ ctx: Ctx, _ c: GridCollection, _ group: JsArray<GridItemData>, _ type: JsString, _ spansFlex: Bool, _ contribution: @escaping (JsString, GridItemData) throws -> Double) throws -> Void {
   // ts: packages/layout/src/grid.ts:1481
   do {
-    let _a75 = c.sets
-    var _i75 = 0
-    while _i75 < _a75.items.count {
-      let s: GridSet = _a75.items[_i75]
-      _i75 += 1
+    let _a77 = c.sets
+    var _i77 = 0
+    while _i77 < _a77.items.count {
+      let s: GridSet = _a77.items[_i77]
+      _i77 += 1
       s.plannedIncrease = grid_INDEFINITE
     }
   }
   // ts: packages/layout/src/grid.ts:1482
   do {
-    let _a76 = group
-    var _i76 = 0
-    while _i76 < _a76.items.count {
-      let item: GridItemData = _a76.items[_i76]
-      _i76 += 1
+    let _a78 = group
+    var _i78 = 0
+    while _i78 < _a78.items.count {
+      let item: GridItemData = _a78.items[_i78]
+      _i78 += 1
       let toGrow: JsArray<GridSet> = JsArray<GridSet>([])
       let beyond: JsArray<GridSet> = JsArray<GridSet>([])
       var flexSum: Double = 0.0
@@ -2492,11 +2492,11 @@ public func grid_accommodateItems(_ ctx: Ctx, _ c: GridCollection, _ group: JsAr
       }
       // ts: packages/layout/src/grid.ts:1488
       do {
-        let _a77 = try grid_setsOf(c, grid_itemSets(item, c.axis))
-        var _i77 = 0
-        while _i77 < _a77.items.count {
-          let s: GridSet = _a77.items[_i77]
-          _i77 += 1
+        let _a79 = try grid_setsOf(c, grid_itemSets(item, c.axis))
+        var _i79 = 0
+        while _i79 < _a79.items.count {
+          let s: GridSet = _a79.items[_i79]
+          _i79 += 1
           try spanned = units_add(spanned, grid_affectedSize(s, type))
           // ts: packages/layout/src/grid.ts:1490
           if try (spansFlex && (!grid_isFlex(s.track.max))) {
@@ -2537,11 +2537,11 @@ public func grid_accommodateItems(_ ctx: Ctx, _ c: GridCollection, _ group: JsAr
       }
       // ts: packages/layout/src/grid.ts:1503
       do {
-        let _a78 = toGrow
-        var _i78 = 0
-        while _i78 < _a78.items.count {
-          let s: GridSet = _a78.items[_i78]
-          _i78 += 1
+        let _a80 = toGrow
+        var _i80 = 0
+        while _i80 < _a80.items.count {
+          let s: GridSet = _a80.items[_i80]
+          _i80 += 1
           try s.plannedIncrease = grid_maxLu(s.itemIncurredIncrease, s.plannedIncrease)
         }
       }
@@ -2549,11 +2549,11 @@ public func grid_accommodateItems(_ ctx: Ctx, _ c: GridCollection, _ group: JsAr
   }
   // ts: packages/layout/src/grid.ts:1505
   do {
-    let _a79 = c.sets
-    var _i79 = 0
-    while _i79 < _a79.items.count {
-      let s: GridSet = _a79.items[_i79]
-      _i79 += 1
+    let _a81 = c.sets
+    var _i81 = 0
+    while _i81 < _a81.items.count {
+      let s: GridSet = _a81.items[_i81]
+      _i81 += 1
       try grid_growAffectedSize(type, s)
     }
   }
@@ -2662,21 +2662,21 @@ public func grid_maximizeTracks(_ ctx: Ctx, _ c: GridCollection, _ available: Gr
     var tracks: Double = 0.0
     // ts: packages/layout/src/grid.ts:1561
     do {
-      let _a80 = c.sets
-      var _i80 = 0
-      while _i80 < _a80.items.count {
-        let s: GridSet = _a80.items[_i80]
-        _i80 += 1
+      let _a82 = c.sets
+      var _i82 = 0
+      while _i82 < _a82.items.count {
+        let s: GridSet = _a82.items[_i82]
+        _i82 += 1
         tracks += s.trackCount
       }
     }
     // ts: packages/layout/src/grid.ts:1562
     do {
-      let _a81 = c.sets
-      var _i81 = 0
-      while _i81 < _a81.items.count {
-        let s: GridSet = _a81.items[_i81]
-        _i81 += 1
+      let _a83 = c.sets
+      var _i83 = 0
+      while _i83 < _a83.items.count {
+        let s: GridSet = _a83.items[_i83]
+        _i83 += 1
         try grid_increaseBaseSize(s, units_add(s.baseSize, units_equalShare(free, s.trackCount, tracks)))
       }
     }
@@ -2688,11 +2688,11 @@ public func grid_maximizeTracks(_ ctx: Ctx, _ c: GridCollection, _ available: Gr
   let sets: JsArray<GridSet> = try grid_distributeExtraSpace(ctx, free, 0.0, true, S.s_free_space, jsCopy(c.sets), nil, false)
   // ts: packages/layout/src/grid.ts:1567
   do {
-    let _a82 = sets
-    var _i82 = 0
-    while _i82 < _a82.items.count {
-      let s: GridSet = _a82.items[_i82]
-      _i82 += 1
+    let _a84 = sets
+    var _i84 = 0
+    while _i84 < _a84.items.count {
+      let s: GridSet = _a84.items[_i84]
+      _i84 += 1
       try grid_increaseBaseSize(s, units_add(s.baseSize, s.itemIncurredIncrease))
     }
   }
@@ -2709,11 +2709,11 @@ public func grid_maximizeTracks(_ ctx: Ctx, _ c: GridCollection, _ available: Gr
     let redone: JsArray<GridSet> = try grid_distributeExtraSpace(ctx, room, 0.0, true, S.s_free_space, jsCopy(c.sets), nil, false)
     // ts: packages/layout/src/grid.ts:1577
     do {
-      let _a83 = redone
-      var _i83 = 0
-      while _i83 < _a83.items.count {
-        let s: GridSet = _a83.items[_i83]
-        _i83 += 1
+      let _a85 = redone
+      var _i85 = 0
+      while _i85 < _a85.items.count {
+        let s: GridSet = _a85.items[_i85]
+        _i85 += 1
         try grid_increaseBaseSize(s, units_add(s.baseSize, s.itemIncurredIncrease))
       }
     }
@@ -2745,11 +2745,11 @@ public func grid_stretchAutoTracks(_ ctx: Ctx, _ grid: GridState, _ c: GridColle
   let sets: JsArray<GridSet> = try grid_distributeExtraSpace(ctx, free, 0.0, true, S.s_free_space, toGrow, toGrow, true)
   // ts: packages/layout/src/grid.ts:1590
   do {
-    let _a84 = sets
-    var _i84 = 0
-    while _i84 < _a84.items.count {
-      let s: GridSet = _a84.items[_i84]
-      _i84 += 1
+    let _a86 = sets
+    var _i86 = 0
+    while _i86 < _a86.items.count {
+      let s: GridSet = _a86.items[_i86]
+      _i86 += 1
       try grid_increaseBaseSize(s, units_add(s.baseSize, s.itemIncurredIncrease))
     }
   }
@@ -2763,11 +2763,11 @@ public func grid_findFrSize(_ ctx: Ctx, _ c: GridCollection, _ sets: JsArray<Gri
   let flexible: JsArray<GridSet> = JsArray<GridSet>([])
   // ts: packages/layout/src/grid.ts:1599
   do {
-    let _a85 = sets
-    var _i85 = 0
-    while _i85 < _a85.items.count {
-      let s: GridSet = _a85.items[_i85]
-      _i85 += 1
+    let _a87 = sets
+    var _i87 = 0
+    while _i87 < _a87.items.count {
+      let s: GridSet = _a87.items[_i87]
+      _i87 += 1
       // ts: packages/layout/src/grid.ts:1600
       if try (grid_isFlex(s.track.max) && (!units_floatNearlyEqual(grid_setFlex(s), 0.0))) {
         try flexSum = units_flexSumAdd(flexSum, grid_setFlex(s))
@@ -2840,11 +2840,11 @@ public func grid_expandFlexibleTracks(_ ctx: Ctx, _ c: GridCollection, _ items: 
   } else {
     // ts: packages/layout/src/grid.ts:1639
     do {
-      let _a86 = items
-      var _i86 = 0
-      while _i86 < _a86.items.count {
-        let item: GridItemData = _a86.items[_i86]
-        _i86 += 1
+      let _a88 = items
+      var _i88 = 0
+      while _i88 < _a88.items.count {
+        let item: GridItemData = _a88.items[_i88]
+        _i88 += 1
         // ts: packages/layout/src/grid.ts:1640
         if try (!grid_itemProps(item, c.axis).flexible) {
           continue
@@ -2859,11 +2859,11 @@ public func grid_expandFlexibleTracks(_ ctx: Ctx, _ c: GridCollection, _ items: 
     }
     // ts: packages/layout/src/grid.ts:1645
     do {
-      let _a87 = c.sets
-      var _i87 = 0
-      while _i87 < _a87.items.count {
-        let s: GridSet = _a87.items[_i87]
-        _i87 += 1
+      let _a89 = c.sets
+      var _i89 = 0
+      while _i89 < _a89.items.count {
+        let s: GridSet = _a89.items[_i89]
+        _i89 += 1
         // ts: packages/layout/src/grid.ts:1646
         if try (!grid_isFlex(s.track.max)) {
           continue
@@ -2880,11 +2880,11 @@ public func grid_expandFlexibleTracks(_ ctx: Ctx, _ c: GridCollection, _ items: 
   var leftover: Double = 0.0
   // ts: packages/layout/src/grid.ts:1653
   do {
-    let _a88 = c.sets
-    var _i88 = 0
-    while _i88 < _a88.items.count {
-      let s: GridSet = _a88.items[_i88]
-      _i88 += 1
+    let _a90 = c.sets
+    var _i90 = 0
+    while _i90 < _a90.items.count {
+      let s: GridSet = _a90.items[_i90]
+      _i90 += 1
       // ts: packages/layout/src/grid.ts:1654
       if try (!grid_isFlex(s.track.max)) {
         continue
@@ -2908,11 +2908,11 @@ public func grid_computeUsedTrackSizes(_ ctx: Ctx, _ grid: GridState, _ c: GridC
   }
   // ts: packages/layout/src/grid.ts:1667
   do {
-    let _a89 = c.sets
-    var _i89 = 0
-    while _i89 < _a89.items.count {
-      let s: GridSet = _a89.items[_i89]
-      _i89 += 1
+    let _a91 = c.sets
+    var _i91 = 0
+    while _i91 < _a91.items.count {
+      let s: GridSet = _a91.items[_i91]
+      _i91 += 1
       // ts: packages/layout/src/grid.ts:1667
       if (s.growthLimit == grid_INDEFINITE) {
         s.growthLimit = s.baseSize
@@ -3290,11 +3290,11 @@ public func grid_computeBaselines(_ ctx: Ctx, _ grid: GridState, _ axis: JsStrin
   try grid_resetBaselines(c)
   // ts: packages/layout/src/grid.ts:2066
   do {
-    let _a90 = grid.items
-    var _i90 = 0
-    while _i90 < _a90.items.count {
-      let item: GridItemData = _a90.items[_i90]
-      _i90 += 1
+    let _a92 = grid.items
+    var _i92 = 0
+    while _i92 < _a92.items.count {
+      let item: GridItemData = _a92.items[_i92]
+      _i92 += 1
       // ts: packages/layout/src/grid.ts:2067
       if try (grid_baselineKind(item, axis) == S.s_none) {
         continue
@@ -3398,11 +3398,11 @@ public func grid_initializeTrackSizes(_ ctx: Ctx, _ grid: GridState, _ axis: JsS
   try grid_buildSets(grid, c, available)
   // ts: packages/layout/src/grid.ts:2152
   do {
-    let _a91 = grid.items
-    var _i91 = 0
-    while _i91 < _a91.items.count {
-      let item: GridItemData = _a91.items[_i91]
-      _i91 += 1
+    let _a93 = grid.items
+    var _i93 = 0
+    while _i93 < _a93.items.count {
+      let item: GridItemData = _a93.items[_i93]
+      _i93 += 1
       let span: GridLines = ((axis == S.s_columns) ? item.column : item.row)
       let sets: GridSetIndices = try grid_setIndicesOf(c, span)
       let props: GridProps = try grid_spanPropsOf(c, span)
@@ -3443,11 +3443,11 @@ public func grid_completeTrackSizing(_ ctx: Ctx, _ grid: GridState, _ axis: JsSt
   if (checkDependent && (axis == S.s_rows)) {
     // ts: packages/layout/src/grid.ts:2183
     do {
-      let _a92 = grid.items
-      var _i92 = 0
-      while _i92 < _a92.items.count {
-        let item: GridItemData = _a92.items[_i92]
-        _i92 += 1
+      let _a94 = grid.items
+      var _i94 = 0
+      while _i94 < _a94.items.count {
+        let item: GridItemData = _a94.items[_i94]
+        _i94 += 1
         // ts: packages/layout/src/grid.ts:2183
         if item.sizingDependsOnBlockSize {
           _ = try jsPush(dependent, GridDependentItem(item.rowSets, grid_setSpanSize(c, item.rowSets.begin, item.rowSets.end)))
@@ -3459,11 +3459,11 @@ public func grid_completeTrackSizing(_ ctx: Ctx, _ grid: GridState, _ axis: JsSt
   try grid_finalizeGeometry(c, first.start, first.gutter)
   // ts: packages/layout/src/grid.ts:2187
   do {
-    let _a93 = dependent
-    var _i93 = 0
-    while _i93 < _a93.items.count {
-      let d: GridDependentItem = _a93.items[_i93]
-      _i93 += 1
+    let _a95 = dependent
+    var _i95 = 0
+    while _i95 < _a95.items.count {
+      let d: GridDependentItem = _a95.items[_i95]
+      _i95 += 1
       // ts: packages/layout/src/grid.ts:2187
       if try (grid_setSpanSize(c, d.sets.begin, d.sets.end) != d.cached) {
         return true
@@ -3497,11 +3497,11 @@ public func grid_buildGrid(_ ctx: Ctx, _ box: LayoutBox, _ pad: Edges, _ bor: Ed
   let outOfFlow: JsArray<LayoutBox> = JsArray<LayoutBox>([])
   // ts: packages/layout/src/grid.ts:2210
   do {
-    let _a94 = box.children
-    var _i94 = 0
-    while _i94 < _a94.items.count {
-      let k: any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a94.items[_i94]
-      _i94 += 1
+    let _a96 = box.children
+    var _i96 = 0
+    while _i96 < _a96.items.count {
+      let k: any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a96.items[_i96]
+      _i96 += 1
       // ts: packages/layout/src/grid.ts:2211
       if (((k.kind != S.s_box) && ((k as! any U_ControlBox_InlineBox_LineBreak_ReplacedLeaf_TextLeaf).kind != S.s_replaced)) && ((k as! any U_ControlBox_InlineBox_LineBreak_TextLeaf).kind != S.s_control)) {
         throw JsError(message: jsConcat((k as! any U_InlineBox_LineBreak_TextLeaf).id, S.s114, box.id, S.s308))
@@ -3610,11 +3610,11 @@ public func grid_placeItems(_ ctx: Ctx, _ grid: GridState, _ a: GridArgs, _ intr
   var firstSet: Double = grid_NOT_FOUND
   // ts: packages/layout/src/grid.ts:2333
   do {
-    let _a95 = grid.items
-    var _i95 = 0
-    while _i95 < _a95.items.count {
-      let item: GridItemData = _a95.items[_i95]
-      _i95 += 1
+    let _a97 = grid.items
+    var _i97 = 0
+    while _i97 < _a97.items.count {
+      let item: GridItemData = _a97.items[_i97]
+      _i97 += 1
       let inlineOffset: Double = try grid_setOffset(grid.columns, item.columnSets.begin)
       let blockOffset: Double = try grid_setOffset(grid.rows, item.rowSets.begin)
       let areaInline: Double = try grid_areaSize(grid.columns, item.columnSets)
