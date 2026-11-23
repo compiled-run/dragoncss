@@ -497,11 +497,11 @@ describe('border-radius: lowering and emission', () => {
     const kotlin = RADIUS_EMITTER.native['android-views'].file ?? '';
     const at = kotlin.indexOf('fun dragonAfterLayoutRadius(');
     const hook = kotlin.slice(at, kotlin.indexOf('\n}\n', at));
-    // The img case takes the branch that clears the layer and the overlay, before either is made.
+    // The img case takes the branch that clears the layer and the foreground mask, before either is made.
     const skip = hook.indexOf('if (inner == null || (Build.VERSION.SDK_INT < 33 && dragonHostsNoChildren(v, c))) {');
     expect(skip).toBeGreaterThan(0);
     const cleared = hook.slice(skip, hook.indexOf('    return\n', skip));
-    expect(cleared).toContain('c.overlay.clear()');
+    expect(cleared).toContain('c.foreground = null');
     expect(cleared).toContain('c.setLayerType(View.LAYER_TYPE_NONE, null)');
     expect(hook.indexOf('c.setLayerType(View.LAYER_TYPE_HARDWARE, null)')).toBeGreaterThan(skip);
     // Only a box that draws an image counts, and an img clip view that somehow hosts children fails loudly instead of going unmasked.
@@ -526,10 +526,12 @@ describe('border-radius on a scroll container: the rounded clip stays put while 
     expect(RADIUS_EMITTER.native.uikit.file ?? '').toContain('m.frame = c.bounds');
   });
 
-  it('Android API 31 and 32 move the overlay mask by the host clip view\'s scroll offset; the API 33 outline needs no move', () => {
+  it('Android API 31 and 32 draw the mask as the foreground, after the scrollbars, moved by the host clip view\'s scroll offset; the API 33 outline needs no move', () => {
     const kotlin = RADIUS_EMITTER.native['android-views'].file ?? '';
     expect(kotlin).toContain('class DragonRoundedClipMask(private val path: Path, private val host: View)');
     expect(kotlin).toContain('canvas.translate(host.scrollX.toFloat(), host.scrollY.toFloat())');
-    expect(kotlin).toContain('DragonRoundedClipMask(inner, c)');
+    expect(kotlin).toContain('val mask = DragonRoundedClipMask(inner, c)');
+    expect(kotlin).toContain('c.foreground = mask');
+    expect(kotlin).not.toContain('c.overlay.');
   });
 });

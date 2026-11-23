@@ -203,8 +203,9 @@ fun dragonHostsNoChildren(v: DragonBoxView, c: DragonClipView): Boolean {
 }
 
 /**
- * API 31 and 32: masks a clip view's children outside a path (DST_OUT over the inverse path, in the view's hardware layer). The
- * overlay draws in the host's scrolled canvas, so the path is moved by the host's scroll offset and stays over the padding box.
+ * API 31 and 32: masks a clip view's children and its scrollbars outside a path (DST_OUT over the inverse path, in the view's
+ * hardware layer). As the view's foreground it draws after the scrollbars, in the host's scrolled canvas, so the path is moved by the
+ * host's scroll offset and stays over the padding box.
  */
 class DragonRoundedClipMask(private val path: Path, private val host: View) : Drawable() {
   private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { xfermode = PorterDuffXfermode(PorterDuff.Mode.DST_OUT) }
@@ -225,7 +226,7 @@ class DragonRoundedClipMask(private val path: Path, private val host: View) : Dr
  * After every layout: the device scale, the resolved radii on the shape, the background (native or rounded, background module),
  * and the overflow clip (the padding-edge path in the clip view's coordinates): the clip view's outline on API 33 and up, where
  * Outline clips to any path (a RenderNode property, outside the scroll translation, so it stays put while a DragonScrollView
- * scrolls); an overlay mask in a hardware layer on API 31 and 32, moved by the scroll offset as it draws. An img's clip view hosts no children (its image
+ * scrolls); a foreground mask in a hardware layer on API 31 and 32, drawn after the scrollbars and moved by the scroll offset as it draws. An img's clip view hosts no children (its image
  * is drawn by the box view, clipped to the curve by the image stage), so on API 31 and 32 it gets no layer or mask.
  */
 fun dragonAfterLayoutRadius(v: DragonBoxView, shape: DragonBoxShape, scale: Double) {
@@ -239,7 +240,7 @@ fun dragonAfterLayoutRadius(v: DragonBoxView, shape: DragonBoxShape, scale: Doub
   if (inner == null || (Build.VERSION.SDK_INT < 33 && dragonHostsNoChildren(v, c))) {
     c.clipToOutline = false
     c.outlineProvider = ViewOutlineProvider.BACKGROUND
-    c.overlay.clear()
+    c.foreground = null
     c.setLayerType(View.LAYER_TYPE_NONE, null)
     return
   }
@@ -254,8 +255,7 @@ fun dragonAfterLayoutRadius(v: DragonBoxView, shape: DragonBoxShape, scale: Doub
     val mask = DragonRoundedClipMask(inner, c)
     mask.setBounds(0, 0, c.dragonFrame[2] - c.dragonFrame[0], c.dragonFrame[3] - c.dragonFrame[1])
     c.setLayerType(View.LAYER_TYPE_HARDWARE, null)
-    c.overlay.clear()
-    c.overlay.add(mask)
+    c.foreground = mask
   }
 }
 
