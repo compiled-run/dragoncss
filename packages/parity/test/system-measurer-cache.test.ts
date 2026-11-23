@@ -50,8 +50,9 @@ function mapRecorder(): { readonly recorder: MeasurerRecorder; readonly metrics:
 }
 
 const program = { a: { font: { family: sans } }, b: { font: { family: serif } } };
-const font = (family: string, size: number): TextFont => ({ family, size, letterSpacing: 0, wordSpacing: 0 }) as unknown as TextFont;
-const asks = [sans, serif, AHEM_FACE_ID].flatMap((family) => [10, 13.5, 16, 28].map((size) => font(family, size)));
+const font = (family: string, size: number, spacing = 0): TextFont => ({ family, size, letterSpacing: spacing, wordSpacing: spacing, smallCaps: spacing > 0 }) as unknown as TextFont;
+// Fonts that differ only in spacing and caps share a face and size, so they share its metrics and lengths.
+const asks = [sans, serif, AHEM_FACE_ID].flatMap((family) => [10, 13.5, 16, 28].flatMap((size) => [font(family, size), font(family, size, 2)]));
 
 describe('systemMeasurer asked again answers and records as fresh measurers do', () => {
   it('metrics and lengths of system and engine faces, five rounds in two orders, on one measurer and on a fresh one per ask', () => {

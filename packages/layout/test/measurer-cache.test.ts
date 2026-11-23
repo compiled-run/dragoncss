@@ -44,11 +44,12 @@ function countingShaper(): { readonly shaper: GlyphShaper; readonly calls: strin
 }
 
 const fresh = (): TextMeasurer => deviceShapedMeasurer(new Map([[AHEM_FACE_ID, AHEM_FONT_DATA]]), countingShaper().shaper);
-const font = (size: number, letterSpacing: number, wordSpacing: number): TextFont => ({ family: AHEM_FACE_ID, size, letterSpacing, wordSpacing }) as unknown as TextFont;
+const font = (size: number, letterSpacing: number, wordSpacing: number, smallCaps = false): TextFont => ({ family: AHEM_FACE_ID, size, letterSpacing, wordSpacing, smallCaps }) as unknown as TextFont;
 
 // Texts that share prefixes and differ by one code point, refused ones among them, so a cache keyed wrongly answers wrongly.
 const texts = ['X', 'XX', 'XX X', 'X XX', 'É', 'Xé', 'X́', 'X—X', '日本', 'X日', 'Xα', 'α', 'X॑', ''];
-const fonts = [font(10, 0, 0), font(16, 0, 0), font(16, 2, 0), font(16, 0, 3), font(16, 2, 3)];
+// Small caps over Ahem is synthesized at a smaller size, and refused with spacing: each must be its own entry.
+const fonts = [font(10, 0, 0), font(16, 0, 0), font(16, 2, 0), font(16, 0, 3), font(16, 2, 3), font(16, 0, 0, true), font(16, 2, 0, true)];
 
 describe('one device measurer asked again answers as a fresh measurer', () => {
   it('measure, measureRange and shaped: every text in every font, three rounds in three orders', () => {
@@ -58,7 +59,7 @@ describe('one device measurer asked again answers as a fresh measurer', () => {
     for (const order of orders) {
       for (const f of [...fonts].reverse()) for (const t of order) {
         const once = fresh();
-        expect(shared.measure(t, f), `${t} ${f.size}/${f.letterSpacing}/${f.wordSpacing}`).toEqual(once.measure(t, f));
+        expect(shared.measure(t, f), `${t} ${f.size}/${f.letterSpacing}/${f.wordSpacing}/${String(f.smallCaps)}`).toEqual(once.measure(t, f));
         const end = [...t].length;
         expect(shared.measureRange(t, 0, end, f)).toEqual(fresh().measureRange(t, 0, end, f));
         const a = shared.shaped(t, f);
