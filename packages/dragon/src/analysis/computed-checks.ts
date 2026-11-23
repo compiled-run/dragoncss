@@ -1829,11 +1829,35 @@ function singleStretchColumn(grid: ResolvedElement): boolean {
 }
 
 /**
+ * Why a flex item's width can read its content, or null when it cannot: an item of a single-line column container (horizontal writing
+ * mode) whose width is a length or percentage, or is auto and stretched with no auto inline margin, takes the container's inner width
+ * (css-flexbox-1 §9.4 steps 8 and 11). Chrome 145 measured each other shape (a row, flex-wrap: wrap with two lines, align-self
+ * start, center, flex-end or baseline, an auto margin) at 175, 195 and 328px for one field in Roboto, Inter and Ahem.
+ */
+function columnFlexReader(item: ResolvedElement, isControl: boolean, flex: ResolvedElement): string | null {
+  const at = `${item.element.address} is a flex item of ${flex.element.address}`;
+  const direction = keywordOr(flex, 'flex-direction', 'row');
+  if (direction !== 'column' && direction !== 'column-reverse') return `${at} in a ${direction} flex container, sized by its content`;
+  const wrap = keywordOr(flex, 'flex-wrap', 'nowrap');
+  if (wrap !== 'nowrap') return `${at} in a flex-wrap: ${wrap} column, whose lines are sized by their content`;
+  if (isControl || sizedWithoutContent(item.props.get('width') as ResolvedValue)) return null;
+  const own = keywordOr(item, 'align-self', 'auto') !== 'auto';
+  const [owner, property] = own ? [item, 'align-self' as const] : [flex, 'align-items' as const];
+  const align = keywordOr(owner, property, 'normal');
+  if (align !== 'normal' && align !== 'stretch') return `${at}, aligned by ${property}: ${valueToString((owner.props.get(property) as ResolvedValue).value)}, sized by its content`;
+  for (const side of ['margin-left', 'margin-right'] as const) {
+    if (keywordOr(item, side, '0') === 'auto') return `${at} with ${side}: auto, sized by its content`;
+  }
+  return null;
+}
+
+/**
  * FORM-text-font: why a text control's inline size can read its face's average character width, or null when it cannot. Chrome 145
  * measured: a field with a length width, or a percentage width whose containing block's width does not depend on content, is the
  * same size in Roboto, Inter and Ahem; with no width, or a percentage width in a float, an inline-block, a max-content box, an
  * auto-width absolute box, a grid whose column is sized by content, a box aligned to the start (justify-self: start, in block and
- * grid layout) or a box whose min-width is max-content, it is not (175 and 195px for one field in Roboto and Inter).
+ * grid layout), a box whose min-width is max-content or a flex item columnFlexReader names, it is not (175 and 195px for one field
+ * in Roboto and Inter).
  */
 function avgWidthReader(el: ResolvedElement, chain: readonly ResolvedElement[]): string | null {
   const width = el.props.get('width') as ResolvedValue;
@@ -1849,10 +1873,13 @@ function avgWidthReader(el: ResolvedElement, chain: readonly ResolvedElement[]):
   for (let i = boxes.length - 1; i >= 0; i--) {
     const box = boxes[i] as ResolvedElement;
     const display = displayKeyword(box);
-    if (display === 'flex' || display === 'inline-flex') return `${child.element.address} is a flex item of ${box.element.address}, sized by its content`;
+    if (display === 'flex' || display === 'inline-flex') {
+      const reason = columnFlexReader(child, child === el, box);
+      if (reason !== null) return reason;
+    }
     if ((display === 'grid' || display === 'inline-grid') && !singleStretchColumn(box)) return `${child.element.address} is a grid item of ${box.element.address}, whose column is not its whole content box`;
     // The control's own self-alignment and margins do not move a percentage width; an ancestor's do size it by content.
-    if (child !== el && !stretchesInline(child, box)) return `${child.element.address} is aligned in ${box.element.address} by justify-self, sized by its content`;
+    if (child !== el && display !== 'flex' && display !== 'inline-flex' && !stretchesInline(child, box)) return `${child.element.address} is aligned in ${box.element.address} by justify-self, sized by its content`;
     if (child !== el && (display === 'grid' || display === 'inline-grid') && (keywordOf(child.props.get('margin-left') as ResolvedValue) === 'auto' || keywordOf(child.props.get('margin-right') as ResolvedValue) === 'auto')) return `${child.element.address} has an auto inline margin in grid ${box.element.address}, sized by its content`;
     for (const bound of ['min-width', 'max-width'] as const) {
       if (!boundWithoutContent(box, bound)) return `${box.element.address} has ${bound}: ${valueToString((box.props.get(bound) as ResolvedValue).value)}, sized by its content`;

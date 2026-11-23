@@ -121,10 +121,42 @@ describe('FORM-b text fields', () => {
       ['tf-font-maxc', '.w { width: max-content; }', /d has width: max-content/],
       ['tf-font-abs', '.w { position: absolute; }', /d is position: absolute with an auto width/],
       ['tf-font-grid2', '.w { display: grid; grid-template-columns: auto auto; }', /t is a grid item of d, whose columns are not one stretching column/],
-      ['tf-font-flex', '.w { display: flex; }', /t is a flex item of d, sized by its content/],
+      ['tf-font-flex', '.w { display: flex; }', /t is a flex item of d in a row flex container, sized by its content/],
     ];
     for (const [id, css, why] of cyclic) expect(font(id, `.f { width: 100%; } ${css}`, `<div data-dragon-id="d" class="w">${field}</div>`), id).toContainEqual(expect.stringMatching(why));
     expect(font('tf-font-minc', '.f { width: 100%; min-width: min-content; }', field)).toContainEqual(expect.stringMatching(/its min-width is min-content/));
+  });
+
+  it('lifts it in a single-line column flex container whose item takes the inner width (FORM-text-font column flex)', () => {
+    // Chrome 145, DPR 1, a 412px viewport: these fields are 412, 372 or 300px in Roboto, Inter and Ahem alike; the refused shapes are
+    // 175, 195 and 328px (the two-line wrap 206, 206 and 328px).
+    const font = (id: string, css: string, body: string): string[] => errors(compile(id, `input { font-family: Lato; } .f { width: 100%; } ${css}`, body, BASE, true)).filter((e) => e.includes('average character width'));
+    const field = '<input data-dragon-id="t" readonly="" class="f">';
+    const inItem = `<div data-dragon-id="c" class="c"><div data-dragon-id="i" class="i">${field}</div></div>`;
+    const col = '.c { display: flex; flex-direction: column; }';
+    const notes = '.c { min-height: 100vh; display: flex; flex-direction: column; } .i { width: 100%; max-width: 880px; margin: 0 auto; padding: 20px; } .g { display: grid; gap: 6px; }';
+    expect(font('tf-col-notes', notes, `<div data-dragon-id="c" class="c"><main data-dragon-id="i" class="i"><label data-dragon-id="g" class="g">${field}</label></main></div>`)).toEqual([]);
+    const accepted: readonly [string, string][] = [
+      ['tf-col-stretch', col],
+      ['tf-col-reverse', '.c { display: flex; flex-direction: column-reverse; }'],
+      ['tf-col-align-stretch', `${col} .c { align-items: center; } .i { align-self: stretch; }`],
+      ['tf-col-pct-center', `${col} .c { align-items: center; } .i { width: 50%; }`],
+      ['tf-col-justify-self', `${col} .i { justify-self: start; }`],
+    ];
+    for (const [id, css] of accepted) expect(font(id, css, inItem), id).toEqual([]);
+    expect(font('tf-col-direct', `${col} .c { align-items: center; }`, `<div data-dragon-id="c" class="c">${field}</div>`)).toEqual([]);
+    const refused: readonly [string, string, RegExp][] = [
+      ['tf-col-row', '.c { display: flex; }', /i is a flex item of c in a row flex container, sized by its content/],
+      ['tf-col-wrap', `${col} .c { flex-wrap: wrap; }`, /i is a flex item of c in a flex-wrap: wrap column, whose lines are sized by their content/],
+      ['tf-col-wrap-direct', `${col} .c { flex-wrap: wrap; } .i { width: 100%; }`, /i is a flex item of c in a flex-wrap: wrap column/],
+      ['tf-col-start', `${col} .c { align-items: flex-start; }`, /i is a flex item of c, aligned by align-items: flex-start, sized by its content/],
+      ['tf-col-self-center', `${col} .i { align-self: center; }`, /i is a flex item of c, aligned by align-self: center, sized by its content/],
+      ['tf-col-baseline', `${col} .c { align-items: baseline; }`, /aligned by align-items: baseline/],
+      ['tf-col-margin', `${col} .i { margin-left: auto; }`, /i is a flex item of c with margin-left: auto, sized by its content/],
+      ['tf-col-inline-flex', '.c { display: inline-flex; flex-direction: column; }', /c is display: inline-flex with an auto width, sized by its content/],
+      ['tf-col-float', `${col} .c { float: left; }`, /c floats with an auto width/],
+    ];
+    for (const [id, css, why] of refused) expect(font(id, css, inItem), id).toContainEqual(expect.stringMatching(why));
   });
 
   it('lays out a search field with its cancel button at the end of the editor\'s line, as Chrome 145 does', () => {
