@@ -155,8 +155,16 @@ describe('FORM-b text fields', () => {
       ['tf-col-margin', `${col} .i { margin-left: auto; }`, /i is a flex item of c with margin-left: auto, sized by its content/],
       ['tf-col-inline-flex', '.c { display: inline-flex; flex-direction: column; }', /c is display: inline-flex with an auto width, sized by its content/],
       ['tf-col-float', `${col} .c { float: left; }`, /c floats with an auto width/],
+      ['tf-col-last-baseline', `${col} .c { align-items: last baseline; }`, /i is a flex item of c, aligned by align-items: last baseline/],
+      ['tf-col-self-start', `${col} .i { align-self: self-start; }`, /i is a flex item of c, aligned by align-self: self-start/],
+      ['tf-col-stretch-margin', `${col} .i { align-self: stretch; margin-right: auto; }`, /i is a flex item of c with margin-right: auto/],
+      ['tf-col-logical-margin', `${col} .i { margin-inline-start: auto; }`, /i is a flex item of c with margin-left: auto/],
     ];
     for (const [id, css, why] of refused) expect(font(id, css, inItem), id).toContainEqual(expect.stringMatching(why));
+    // Chrome 145 sizes these by content too (175, 195 and 328px); the compiler refuses their values before the width walk.
+    const all = (id: string, css: string): string[] => errors(compile(id, `input { font-family: Lato; } .f { width: 100%; } ${col} ${css}`, inItem, BASE, true));
+    expect(all('tf-col-safe-center', '.c { align-items: safe center; }')).toContainEqual(expect.stringMatching(/multi-token value "safe center" for align-items is not supported/));
+    expect(all('tf-col-anchor-center', '.c { align-items: anchor-center; }')).toContainEqual(expect.stringMatching(/"anchor-center" is not a valid value for align-items/));
   });
 
   it('lays out a search field with its cancel button at the end of the editor\'s line, as Chrome 145 does', () => {

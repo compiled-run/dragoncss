@@ -1831,8 +1831,9 @@ function singleStretchColumn(grid: ResolvedElement): boolean {
 /**
  * Why a flex item's width can read its content, or null when it cannot: an item of a single-line column container (horizontal writing
  * mode) whose width is a length or percentage, or is auto and stretched with no auto inline margin, takes the container's inner width
- * (css-flexbox-1 §9.4 steps 8 and 11). Chrome 145 measured each other shape (a row, flex-wrap: wrap with two lines, align-self
- * start, center, flex-end or baseline, an auto margin) at 175, 195 and 328px for one field in Roboto, Inter and Ahem.
+ * (css-flexbox-1 §9.4 steps 8 and 11). Chrome 145 measured each other auto-width shape (a row, align-self start, center,
+ * flex-end or baseline, an auto margin) at 175, 195 and 328px for one field in Roboto, Inter and Ahem, and two wrapped lines at
+ * 206, 206 and 328px; a percentage item under flex-wrap stays refused by scope.
  */
 function columnFlexReader(item: ResolvedElement, isControl: boolean, flex: ResolvedElement): string | null {
   const at = `${item.element.address} is a flex item of ${flex.element.address}`;
