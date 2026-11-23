@@ -3,7 +3,7 @@
 // shaping the build measured, recorded at every root width a phone in PLAN_WIDTHS can have, so the device never shapes text.
 // The text is recorded at one viewport height: a page whose text changes with the height is refused.
 import { pathToFileURL } from 'node:url';
-import type { FontData, FontLengths, FontMetrics, LayoutInput, TextMeasurer } from '@dragon/layout';
+import type { CalcExpr, ControlBox, FontData, FontLengths, FontMetrics, FontSpec, InlineChild, LayoutBox, LayoutInput, LayoutStyle, LineHeightValue, ReplacedLeaf, TextMeasurer } from '@dragon/layout';
 import { layout } from '@dragon/layout';
 import type { NativeStyleTarget, StateProgram } from 'dragon';
 import { programAt } from 'dragon';
@@ -79,8 +79,106 @@ export function planWidths(dpr: number): number[] {
   return [...out].sort((a, b) => a - b);
 }
 
+/** The media features whose value changes with the viewport's height. */
+export const HEIGHT_FEATURES: ReadonlySet<string> = new Set(['height', 'orientation', 'aspect-ratio']);
+
+/** Whether a calculation reads the viewport's height: vh, vmin or vmax of any size, directly or through a font size it reads. */
+function readsHeight(e: CalcExpr): boolean {
+  switch (e.kind) {
+    case 'viewport':
+      return e.axis !== 'width';
+    case 'em':
+      return readsHeight(e.fontSize);
+    case 'font-metric':
+      return readsHeight(e.font.specifiedSize);
+    case 'lh':
+      return readsHeight(e.font.specifiedSize) || (e.lineHeight.kind === 'calc' && readsHeight(e.lineHeight.expr));
+    case 'font-percent':
+      return readsHeight(e.parent);
+    case 'font-calc':
+      return readsHeight(e.expr) || readsHeight(e.parent);
+    case 'invert':
+      return readsHeight(e.term);
+    case 'clamp':
+      return readsHeight(e.min) || readsHeight(e.value) || readsHeight(e.max);
+    case 'sum':
+    case 'product':
+    case 'min':
+    case 'max':
+      return e.terms.some(readsHeight);
+    case 'px':
+    case 'percent':
+    case 'number':
+    case 'rem':
+    case 'env':
+    case 'pixels-and-percent':
+      return false;
+  }
+}
+
+const heightIn = (v: { readonly kind: string; readonly expr?: CalcExpr }): boolean => v.kind === 'calc' && v.expr !== undefined && readsHeight(v.expr);
+
+/**
+ * Why a page's text may change with the viewport height, or null when Dragon's analysis of its program proves it cannot. The
+ * height reaches layout as the initial containing block's height, as vh, vmin and vmax, and through height media features. A
+ * block size reaches an inline size, which is all that decides the text shaped, only through an aspect-ratio, a replaced
+ * element's ratio, a multi-line column flex container, column-flow or auto-repeated grid rows, multi-column layout or anchor
+ * positioning; a page with none of them and no vh, vmin or vmax in an inline-axis length or a font cannot shape other text at
+ * another height.
+ */
+export function heightDependence(sp: StateProgram, bandFeatures: Iterable<string>): string | null {
+  for (const f of bandFeatures) if (HEIGHT_FEATURES.has(f)) return `a media query on ${f}`;
+  const font = (f: FontSpec, lineHeight: LineHeightValue): boolean => readsHeight(f.specifiedSize) || heightIn(lineHeight);
+  const style = (id: string, st: LayoutStyle): string | null => {
+    if (st.aspectRatio.kind !== 'auto') return `${id} has an aspect-ratio`;
+    if (st.multicol !== null) return `${id} is a multi-column container`;
+    if (st.anchor !== null) return `${id} is anchor-positioned`;
+    if ((st.display === 'flex' || st.display === 'inline-flex') && (st.flexDirection === 'column' || st.flexDirection === 'column-reverse') && st.flexWrap !== 'nowrap') return `${id} is a multi-line column flex container`;
+    if (st.grid !== null && (st.grid.autoFlow === 'column' || st.grid.autoRepeatRows !== null)) return `${id} places grid items by its rows`;
+    const inlineAxis = [st.width, st.minWidth, st.maxWidth, st.left, st.right, st.marginLeft, st.marginRight, st.paddingLeft, st.paddingRight, st.borderLeftWidth, st.borderRightWidth, st.flexBasis, st.columnGap, st.textIndent];
+    if (inlineAxis.some(heightIn)) return `${id} has an inline-axis length in vh, vmin or vmax`;
+    if (st.grid !== null) {
+      const tracks = [...st.grid.templateColumns.flatMap((r) => r.sizes), ...st.grid.autoColumns, ...(st.grid.autoRepeatColumns?.sizes ?? [])];
+      for (const t of tracks) if ((t.kind === 'breadth' && heightIn(t.breadth)) || (t.kind === 'minmax' && (heightIn(t.min) || heightIn(t.max))) || (t.kind === 'fit-content' && heightIn(t.limit))) return `${id} has a grid column in vh, vmin or vmax`;
+    }
+    return null;
+  };
+  const inline = (c: InlineChild): string | null => {
+    if (font(c.font, c.lineHeight)) return `${c.id} has a font size or line height in vh, vmin or vmax`;
+    if (c.kind === 'text') return readsHeight(c.letterSpacing) || readsHeight(c.wordSpacing) ? `${c.id} has spacing in vh, vmin or vmax` : null;
+    if (c.kind === 'br') return null;
+    return style(c.id, c.style) ?? c.children.map(inline).find((r) => r !== null) ?? null;
+  };
+  const box = (b: LayoutBox | ControlBox | ReplacedLeaf): string | null => {
+    if (b.kind === 'replaced') return `${b.id} is a replaced element, whose size follows its ratio`;
+    const own = style(b.id, b.style);
+    if (own !== null) return own;
+    if (b.strut !== null && font(b.strut.font, b.strut.lineHeight)) return `${b.id} has a font size or line height in vh, vmin or vmax`;
+    if (b.kind === 'box' && b.marker !== null && font(b.marker.font, b.marker.lineHeight)) return `${b.id}'s marker has a font size in vh, vmin or vmax`;
+    if (b.kind === 'control' && 'font' in b.control && font(b.control.font, b.control.lineHeight)) return `${b.id} has a font size or line height in vh, vmin or vmax`;
+    // A select is as wide as its widest option, whose text is not among its children.
+    if (b.kind === 'control' && b.control.kind === 'select-menulist') for (const o of b.control.options) {
+      const r = inline(o);
+      if (r !== null) return r;
+    }
+    for (const c of b.children) {
+      const r = c.kind === 'box' || c.kind === 'control' || c.kind === 'replaced' ? box(c) : inline(c);
+      if (r !== null) return r;
+    }
+    return null;
+  };
+  for (const v of sp.variants) {
+    const r = box(v.root as LayoutBox);
+    if (r !== null) return r;
+  }
+  return null;
+}
+
+/** Told of every layout a recording makes; a plan worker counts them, so its pool tells a stopped worker from a slow one. */
+export const recordingProgress: { onLayout: () => void } = { onLayout: () => {} };
+
 /** One ratio's recording: every variant at every PLAN_WIDTHS root width, then checked at PLAN_HEIGHTS' heights. */
-export function recordDensity(t: NativeStyleTarget, sp: StateProgram, system: SystemFonts, bundled: readonly string[], authorFiles: ReadonlyMap<string, Uint8Array>, dpr: number, height: number): PlanDensity {
+export function recordDensity(t: NativeStyleTarget, sp: StateProgram, system: SystemFonts, bundled: readonly string[], authorFiles: ReadonlyMap<string, Uint8Array>, dpr: number, height: number, checkHeights = true): PlanDensity {
   const calls = new Map<string, readonly unknown[]>();
   const metrics = new Map<string, readonly unknown[]>();
   const lengths = new Map<string, readonly unknown[]>();
@@ -100,6 +198,7 @@ export function recordDensity(t: NativeStyleTarget, sp: StateProgram, system: Sy
     const viewport = { width, height: h };
     const input: LayoutInput = { viewport, devicePixelRatio: dpr, viewportUnits: { small: viewport, large: viewport, dynamic: viewport }, safeArea: { top: 0, right: 0, bottom: 0, left: 0 }, rootFontSize: v.rootFontSize, root: v.root };
     const r = layout(input, m);
+    recordingProgress.onLayout();
     if (r.kind !== 'ok') throw new Error(`${t}: the engine refused variant ${vi} at ${width} x ${h} css px and ${dpr}x: ${r.unsupported.code} at ${r.unsupported.nodeId}`);
   };
   const m = systemMeasurer(system, sp, bundled, dpr, authorFiles, recorder);
@@ -107,6 +206,7 @@ export function recordDensity(t: NativeStyleTarget, sp: StateProgram, system: Sy
   sp.variants.forEach((_, vi) => {
     for (const width of widths) lay(m, vi, width, height);
   });
+  if (!checkHeights) return { dpr, calls: [...calls.values()], metrics: [...metrics.values()], lengths: [...lengths.values()] };
   const unrecorded: string[] = [];
   const check: MeasurerRecorder = {
     shape(call) {
@@ -134,10 +234,10 @@ export function recordDensity(t: NativeStyleTarget, sp: StateProgram, system: Sy
  * bundled files; `height` the height every recorded layout uses. A page whose text at PLAN_HEIGHTS' heights is not the text
  * recorded at `height` is refused, and so is a plan the device's reader (harness.ts checkMarklessPlan) cannot read all of, by field.
  */
-export function marklessPlan(t: NativeStyleTarget, sp: StateProgram, system: (dpr: number) => SystemFonts, bundled: readonly string[], authorFiles: ReadonlyMap<string, Uint8Array>, height: number, recorded?: readonly DensityResult[]): MarklessPlan {
+export function marklessPlan(t: NativeStyleTarget, sp: StateProgram, system: (dpr: number) => SystemFonts, bundled: readonly string[], authorFiles: ReadonlyMap<string, Uint8Array>, height: number, recorded?: readonly DensityResult[], checkHeights = true): MarklessPlan {
   const densities = PLAN_DENSITIES[t].map((dpr, i) => {
     const r = recorded?.[i];
-    if (r === undefined) return recordDensity(t, sp, system(dpr), bundled, authorFiles, dpr, height);
+    if (r === undefined) return recordDensity(t, sp, system(dpr), bundled, authorFiles, dpr, height, checkHeights);
     if ('error' in r) throw new Error(r.error);
     return r.density;
   });

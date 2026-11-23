@@ -10,7 +10,7 @@ import { BAND_KEY, compiledCases, compileNativeStylesWith, decodeFontFile, isTre
 import type { rtBand } from '@dragon/layout';
 import { textDecoration } from '@dragon/layout';
 import { FONT_REFERENCE_MAP } from './font-reference.ts';
-import { checkPlan, hexBits, PLAN_HEIGHTS, slottedLayout } from './markless-plan.ts';
+import { checkPlan, HEIGHT_FEATURES, heightDependence, hexBits, PLAN_HEIGHTS, slottedLayout } from './markless-plan.ts';
 import type { MarklessPlan } from './markless-plan.ts';
 import { withFontMapAssets } from './fixture-groups/fonts.ts';
 import { DOCUMENT_ID, PROJECT_ID } from './fixture-reader.ts';
@@ -750,6 +750,22 @@ export function marklessStyleExport(inputText: string, inputPath: string, readFo
 }
 
 /**
+ * Per target, what may make the page's text change with the viewport height (markless-plan.ts heightDependence), or null when
+ * Dragon's analysis proves it cannot, so the layout plan does not check its text at PLAN_HEIGHTS' heights.
+ */
+export function marklessTextHeightProof(inputText: string, inputPath: string, readFont?: (file: string) => Uint8Array, mode: MarklessFonts = 'system'): { readonly [T in NativeStyleTarget]?: string | null } {
+  const parsed = parseMarklessStyleInput(inputText);
+  const fonts = readFont === undefined ? [] : marklessFontFiles(parsed, readFont);
+  const { styles } = compileMarkless(parsed, inputText, inputPath, fonts, mode);
+  const out: { [T in NativeStyleTarget]?: string | null } = {};
+  for (const t of ['ios', 'android'] as const) {
+    const o = styles.targets[t];
+    if (o?.kind === 'emitted') out[t] = heightDependence(o.program, (o.bands?.table.atoms ?? []).map((a) => a.feature));
+  }
+  return out;
+}
+
+/**
  * What makes a target's page depend on the viewport's height, each named: an @media feature that reads it, and each node whose
  * frame differs when the page is laid out at `width` and each of `heights` and PLAN_HEIGHTS' (vh units, percentage heights that
  * resolve against the viewport, text sized by the height). Empty when the page depends on the width alone.
@@ -816,8 +832,6 @@ function withTransformed(plan: MarklessPlan, compiled: object): MarklessPlan {
   return leaves.size === 0 ? plan : { ...plan, transformed: [...leaves].sort() };
 }
 
-/** The media features whose value changes with the viewport's height. */
-const HEIGHT_FEATURES: ReadonlySet<rtBand.BandFeature> = new Set(['height', 'orientation', 'aspect-ratio']);
 
 function exportMarkless(parsed: MarklessStyleInput, inputText: string, inputPath: string, fonts: readonly MarklessFontFile[], mode: MarklessFonts, at: MarklessAtSize | undefined, plan: boolean): { readonly input: FrontEndResult; readonly styles: NativeStyles; readonly exported: MarklessStyleExport; readonly decoded: readonly { readonly file: string; readonly bytes: Uint8Array }[] } {
   const { input, styles, compiled, devices } = compileMarkless(parsed, inputText, inputPath, fonts, mode, at);

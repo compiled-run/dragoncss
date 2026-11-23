@@ -4,10 +4,10 @@ import { readFileSync } from 'node:fs';
 import type { ControlBox, LayoutBox } from '@dragon/layout';
 import { checkboxMarks, fromRaw, LU_PER_PX, menuListArrow, menuListArrowBox, snapRect, stickyShift } from '@dragon/layout';
 import { describe, expect, it } from 'vitest';
-import { checkMarklessExport, marklessStyleExport } from '../src/markless-style-input.ts';
+import { checkMarklessExport, marklessStyleExport, marklessTextHeightProof } from '../src/markless-style-input.ts';
 import { paintRows } from '../src/markless-style-compare.ts';
 import type { MarklessPlan } from '../src/markless-plan.ts';
-import { PLAN_DENSITIES, planWidths } from '../src/markless-plan.ts';
+import { heightDependence, PLAN_DENSITIES, planWidths } from '../src/markless-plan.ts';
 import type { ExportNode } from '../src/native-style-export.ts';
 import { repoPath } from '../src/paths.ts';
 import { checkboxColors } from '../../dragon/src/forms/checkbox.ts';
@@ -130,18 +130,106 @@ describe('the layout plan of a Markless export', () => {
     expect(JSON.parse(checkMarklessPlan(JSON.stringify(unread)))).toEqual(['harness-error', `$.plan.variants[${last}].root.style.position: unexpected running`]);
   });
 
-  it('records the same plan in worker threads as in this thread', () => {
+  it('records the same plan in worker threads as in this thread, with and without the height check', () => {
     const text = readFileSync(repoPath(FLUID), 'utf8');
-    const before = process.env['DRAGON_PLAN_WORKERS'];
+    const before = { workers: process.env['DRAGON_PLAN_WORKERS'], check: process.env['DRAGON_PLAN_HEIGHT_CHECK'] };
     try {
-      process.env['DRAGON_PLAN_WORKERS'] = '1';
-      const serial = marklessStyleExport(text, FLUID, undefined, 'system', undefined, true).exported;
-      process.env['DRAGON_PLAN_WORKERS'] = '4';
-      const workers = marklessStyleExport(text, FLUID, undefined, 'system', undefined, true).exported;
-      expect(JSON.stringify(workers)).toBe(JSON.stringify(serial));
+      // FLUID is proven, so without `always` both exports skip the height passes; with it both run them.
+      for (const check of [undefined, 'always']) {
+        if (check === undefined) delete process.env['DRAGON_PLAN_HEIGHT_CHECK'];
+        else process.env['DRAGON_PLAN_HEIGHT_CHECK'] = check;
+        process.env['DRAGON_PLAN_WORKERS'] = '1';
+        const serial = marklessStyleExport(text, FLUID, undefined, 'system', undefined, true).exported;
+        process.env['DRAGON_PLAN_WORKERS'] = '4';
+        const workers = marklessStyleExport(text, FLUID, undefined, 'system', undefined, true).exported;
+        expect(JSON.stringify(workers), `height check ${check ?? 'proven'}`).toBe(JSON.stringify(serial));
+      }
     } finally {
-      if (before === undefined) delete process.env['DRAGON_PLAN_WORKERS'];
-      else process.env['DRAGON_PLAN_WORKERS'] = before;
+      for (const [k, v] of [['DRAGON_PLAN_WORKERS', before.workers], ['DRAGON_PLAN_HEIGHT_CHECK', before.check]] as const) {
+        if (v === undefined) delete process.env[k];
+        else process.env[k] = v;
+      }
+    }
+  });
+
+  it('fails, naming the recording, when a plan worker exits before it answers, and waits on no timeout', () => {
+    const before = { workers: process.env['DRAGON_PLAN_WORKERS'], fault: process.env['DRAGON_PLAN_WORKER_FAULT'] };
+    try {
+      process.env['DRAGON_PLAN_WORKERS'] = '2';
+      process.env['DRAGON_PLAN_WORKER_FAULT'] = 'exit';
+      expect(() => marklessStyleExport(readFileSync(repoPath(FLUID), 'utf8'), FLUID, undefined, 'system', undefined, true)).toThrow(/^a layout plan worker exited before recording (ios|android) at [0-9.]+x$/);
+    } finally {
+      for (const [k, v] of [['DRAGON_PLAN_WORKERS', before.workers], ['DRAGON_PLAN_WORKER_FAULT', before.fault]] as const) {
+        if (v === undefined) delete process.env[k];
+        else process.env[k] = v;
+      }
+    }
+  });
+
+  it('fails, naming the recording, when Node stops a plan worker that runs out of memory, which runs no handler', () => {
+    const keys = ['DRAGON_PLAN_WORKERS', 'DRAGON_PLAN_WORKER_FAULT', 'DRAGON_PLAN_STALL_MS'] as const;
+    const before = keys.map((k) => process.env[k]);
+    try {
+      process.env['DRAGON_PLAN_WORKERS'] = '2';
+      process.env['DRAGON_PLAN_WORKER_FAULT'] = 'oom';
+      process.env['DRAGON_PLAN_STALL_MS'] = '3000';
+      expect(() => marklessStyleExport(readFileSync(repoPath(FLUID), 'utf8'), FLUID, undefined, 'system', undefined, true)).toThrow(/^a layout plan worker stopped recording (ios|android) at [0-9.]+x: it laid nothing out for 3 s/);
+    } finally {
+      keys.forEach((k, i) => {
+        if (before[i] === undefined) delete process.env[k];
+        else process.env[k] = before[i];
+      });
+    }
+  });
+
+  it('proves a page\'s text independent of the viewport height only from its own program, and names what it cannot prove', () => {
+    const proof = (css: string) => marklessTextHeightProof(withCss(css), FLUID, undefined, 'system');
+    expect(proof('')).toEqual({ ios: null, android: null });
+    // A block size in vh reaches no inline size, so the text cannot change.
+    expect(proof('.bar { min-height: 100vh; padding-top: 2vh; }')).toEqual({ ios: null, android: null });
+    expect(proof('.page { font-size: 4vh; }').ios).toMatch(/has a font size or line height in vh, vmin or vmax$/);
+    expect(proof('.page { width: 50vmin; }').ios).toMatch(/has an inline-axis length in vh, vmin or vmax$/);
+    expect(proof('.bar { height: 40vh; aspect-ratio: 2; }').ios).toMatch(/has an aspect-ratio$/);
+    expect(proof('.bar { display: flex; flex-direction: column; flex-wrap: wrap; height: 50vh; }').ios).toMatch(/is a multi-line column flex container$/);
+    expect(proof('@media (orientation: landscape) { .bar { color: red; } }').ios).toBe('a media query on orientation');
+  });
+
+  it("names a select whose option text is spaced in vh, though the option is not among the select's children", () => {
+    // Only what heightDependence reads: every length auto, no grid, multicol or anchor.
+    const style = new Proxy({ display: 'block', multicol: null, anchor: null, grid: null } as Record<string, unknown>, { get: (o, k: string) => (k in o ? o[k] : { kind: 'auto' }) });
+    const px = (value: number) => ({ kind: 'px', value }) as const;
+    const font = { specifiedSize: px(10) };
+    const tree = (letterSpacing: unknown) => {
+      const option = { kind: 'text', id: 'h2:text0', text: 'Longest option', font, lineHeight: { kind: 'normal' }, letterSpacing, wordSpacing: px(0) };
+      const inner = { kind: 'control', id: 'h1::inner', style, strut: null, control: { kind: 'select-inner' }, children: [] };
+      const select = { kind: 'control', id: 'h1', style, strut: null, control: { kind: 'select-menulist', font, lineHeight: { kind: 'normal' }, arrowWidth: 0, options: [option] }, children: [inner] };
+      return { variants: [{ root: { kind: 'box', id: 'h0', style, strut: null, marker: null, children: [select] } }] } as unknown as Parameters<typeof heightDependence>[0];
+    };
+    expect(heightDependence(tree(px(0)), [])).toBeNull();
+    expect(heightDependence(tree({ kind: 'viewport', value: 2, axis: 'height', size: 'large' }), [])).toBe('h2:text0 has spacing in vh, vmin or vmax');
+  });
+
+  it('still checks the text at other heights on a page it cannot prove, and refuses one whose text follows the height', () => {
+    const path = 'examples/markless-styles/input/width-media.native-style-input.json';
+    const input = JSON.parse(readFileSync(repoPath(path), 'utf8')) as { css: string };
+    const tall = JSON.stringify({ ...input, css: `${input.css}\n.note { font-size: 4vh; }` });
+    expect(marklessTextHeightProof(tall, path).ios).not.toBeNull();
+    expect(() => marklessStyleExport(tall, path, undefined, 'system', undefined, true)).toThrow(/^ios: variant 0 at 320 x 320 css px and 2x (shapes|reads the metrics of) .*, which it does not at height 778; the plan records text at one viewport height/);
+  });
+
+  it('exports a proven page byte for byte as it does with the height check', () => {
+    const text = withCss('.bar { min-height: 100vh; }');
+    expect(marklessTextHeightProof(text, FLUID)).toEqual({ ios: null, android: null });
+    const before = process.env['DRAGON_PLAN_HEIGHT_CHECK'];
+    try {
+      process.env['DRAGON_PLAN_HEIGHT_CHECK'] = 'always';
+      const checked = marklessStyleExport(text, FLUID, undefined, 'system', undefined, true).exported;
+      delete process.env['DRAGON_PLAN_HEIGHT_CHECK'];
+      const proven = marklessStyleExport(text, FLUID, undefined, 'system', undefined, true).exported;
+      expect(JSON.stringify(proven, null, 1)).toBe(JSON.stringify(checked, null, 1));
+    } finally {
+      if (before === undefined) delete process.env['DRAGON_PLAN_HEIGHT_CHECK'];
+      else process.env['DRAGON_PLAN_HEIGHT_CHECK'] = before;
     }
   });
 
