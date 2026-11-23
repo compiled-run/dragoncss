@@ -150,9 +150,47 @@ describe('FORM-b text fields', () => {
     expect([b.get('t::cancel'), b.get('v::cancel')]).toEqual([{ x: 4 + 189 + 1, y: 3 + 1.5, width: 7, height: 7 }, undefined]);
   });
 
-  it('still refuses a textarea when the host edits single-line fields', () => {
-    const refused = errors(compile('tf-host-textarea', '', '<textarea data-dragon-id="a">XX</textarea>', BASE, false, true)).filter((e) => e.includes('is an editable text control'));
-    expect(refused).toEqual([expect.stringMatching(/^android DRAGON_UNSUPPORTED_VALUE <textarea> a is an editable text control/), expect.stringMatching(/^ios DRAGON_UNSUPPORTED_VALUE <textarea> a is an editable text control/)]);
+  it('lays out an editable textarea when the host edits text, its empty editor one line tall, and a compile without that still refuses it', () => {
+    const css = 'textarea { display: block; font: inherit; margin: 0; border: 2px solid #036; padding: 1px 2px; resize: none; scrollbar-width: none; line-height: 1.5; }';
+    const body = '<textarea data-dragon-id="a" rows="3">XX</textarea>\n<textarea data-dragon-id="e" rows="3"></textarea>\n<textarea data-dragon-id="r" rows="3" readonly=""></textarea>';
+    expect(errors(compile('ta-host-edits', css, body, BASE, false, true))).toEqual([]);
+    const refused = errors(compile('ta-not-host', css, body)).filter((e) => e.includes('is an editable text control'));
+    expect(refused).toEqual(['a', 'a', 'e', 'e'].map((id, i) => expect.stringMatching(new RegExp(`^${i % 2 === 0 ? 'android' : 'ios'} DRAGON_UNSUPPORTED_VALUE <textarea> ${id} is an editable text control`))));
+    const b = boxes(compile('ta-host-edits', css, body, BASE, false, true));
+    // Chrome 145: an editable empty editor holds one line (15px for a 10px Ahem line at line-height 1.5); a readonly one is 0 tall.
+    expect([b.get('a::editor')?.height, b.get('e::editor')?.height, b.get('r::editor')?.height, b.get('a')?.height]).toEqual([15, 15, 0, 3 * 15 + 2 + 4]);
+  });
+
+  it('refuses on an edited textarea each text style the host view does not lay out, and none at the textarea defaults', () => {
+    const base = 'textarea { display: block; font: inherit; resize: none; scrollbar-width: none; }';
+    const body = '<textarea data-dragon-id="a" rows="3">XX</textarea>';
+    const refusals = (css: string, host = true): string[] => errors(compile('ta-host-styles', `${base} textarea { ${css} }`, body, BASE, false, host)).filter((e) => e.includes('which the host edits'));
+    expect(refusals('text-indent: 0%; letter-spacing: 0px; text-align: left; overflow-wrap: break-word; font-kerning: normal; unicode-bidi: isolate')).toEqual([]);
+    const each: readonly string[] = ['letter-spacing: 1px', 'word-spacing: 2px', 'text-indent: 3px', 'text-align: center', 'text-align: justify', 'text-transform: uppercase', 'text-decoration-line: underline', 'white-space: pre', 'white-space: nowrap', 'white-space: normal', 'overflow-wrap: normal', 'word-break: break-all', 'unicode-bidi: plaintext', 'direction: rtl', 'font-kerning: none', 'font-feature-settings: "liga" 0', 'font-variant-ligatures: none', 'font-variation-settings: "wght" 500', 'font-synthesis: none', '-webkit-text-stroke: 1px red', 'tab-size: 2', 'padding-left: 10%'];
+    for (const css of each) expect(refusals(css).length, css).toBeGreaterThan(0);
+    // One the textarea only inherits is named as inherited: Chrome's form-control rule resets it, Dragon's UA dataset does not yet.
+    const inherited = errors(compile('ta-host-inherit', `body { text-transform: uppercase; } ${base}`, body, BASE, false, true)).filter((e) => e.includes('which Chrome resets on a form control'));
+    expect(inherited.length).toBeGreaterThan(0);
+    // A readonly textarea and a compile without host editing are drawn by Dragon itself, so these do not apply.
+    expect(errors(compile('ta-host-styles-ro', `${base} textarea { letter-spacing: 1px; }`, '<textarea data-dragon-id="a" rows="3" readonly="">XX</textarea>', BASE, false, true)).filter((e) => e.includes('which the host edits'))).toEqual([]);
+  });
+
+  it('refuses the same text styles on an edited <input>, but not its wrapping or padding, which its one-line editor box makes moot', () => {
+    const body = '<input data-dragon-id="t" type="search" placeholder="PP">\n<input data-dragon-id="v" value="XX">\n<input data-dragon-id="e" type="email" value="a@b">';
+    const refusals = (css: string): string[] => errors(compile('tf-host-styles', `input { ${css} }`, body, BASE, false, true)).filter((e) => e.includes('which the host edits'));
+    expect(refusals('white-space: pre; overflow-wrap: anywhere; word-break: break-all; padding: 10%')).toEqual([]);
+    for (const css of ['text-transform: uppercase', 'letter-spacing: 1px', 'text-decoration-line: underline', 'font-feature-settings: "liga" 0']) expect(refusals(css).length, css).toBeGreaterThan(0);
+    // A ::placeholder rule of its own is held to the same list: the host draws the placeholder from its font and colour only.
+    const placeholder = (css: string, b: string): string[] => errors(compile('tf-host-placeholder', css, b, BASE, false, true)).filter((e) => e.includes('on the ::placeholder of'));
+    expect(placeholder('input::placeholder { text-transform: uppercase; }', body).length).toBeGreaterThan(0);
+    expect(placeholder('textarea { display: block; font: inherit; resize: none; scrollbar-width: none; } textarea::placeholder { letter-spacing: 2px; }', '<textarea data-dragon-id="a" rows="3" placeholder="PP"></textarea>').length).toBeGreaterThan(0);
+    expect(placeholder('input::placeholder { color: #888; }', body)).toEqual([]);
+    expect(errors(compile('tf-host-styles-ro', 'input { text-transform: uppercase; }', '<input data-dragon-id="v" value="XX" readonly="">', BASE, false, true)).filter((e) => e.includes('which the host edits'))).toEqual([]);
+  });
+
+  it('keeps :read-write and :read-only refused on an edited textarea, whose state is the host\'s', () => {
+    const css = 'textarea { display: block; font: inherit; resize: none; scrollbar-width: none; } textarea:read-write { color: #036; }';
+    expect(errors(compile('ta-read-write', css, '<textarea data-dragon-id="a">XX</textarea>', BASE, false, true)).filter((e) => e.includes(':read-write'))).not.toEqual([]);
   });
 
   it('accepts an editable search field in a Markless compile (textEditing: host) and refuses it in a plain native compile', () => {
