@@ -226,7 +226,7 @@ export type MarklessChromeFonts = { readonly mode: MarklessFonts; readonly files
  */
 export async function captureMarklessAssignment(browser: Browser, input: MarklessStyleInput, t: ExportTarget, values: Values, scheme: 'light' | 'dark', fonts: MarklessChromeFonts = { mode: 'pinned', files: new Map(), prepare: fontReferencePrepare(FONT_REFERENCE_MAP) }, screenshot?: string): Promise<WebCapture> {
   let backdrops: CapturedNode[] = [];
-  const capture = await captureFixture(browser, `markless-${input.component}`, authoredFontHtml(marklessDocumentHtml(input, values, fonts.mode), fonts.files), { viewport: t.viewport, devicePixelRatio: t.dpr, direction: 'ltr', rootFont: 'ua-default' }, [], async (page) => {
+  const capture = await captureFixture(browser, `markless-${input.component}`, authoredFontHtml(marklessDocumentHtml(input, values, fonts.mode), fonts.files), { viewport: t.viewport, devicePixelRatio: t.dpr, direction: 'ltr', rootFont: 'ua-default' }, OUTLINE_PROPERTIES, async (page) => {
     await page.emulateMedia({ colorScheme: scheme });
     await fonts.prepare(page);
     const mismatch = documentMismatch(marklessDocumentTree(input, values), await page.evaluate(readDocumentTree));
@@ -544,6 +544,19 @@ function computedRgba(text: string | undefined): Rgba8 | null {
   return { r: Number(m[1]), g: Number(m[2]), b: Number(m[3]), alpha: Math.round(255 * (m[4] === undefined ? 1 : Number(m[4]))) };
 }
 
+/** The outline longhands every Markless capture reads, for the outline an interaction state draws (:focus, :focus-visible). */
+const OUTLINE_PROPERTIES = ['outline-style', 'outline-width', 'outline-color', 'outline-offset'];
+
+/** A state's outline against Chrome's computed one: style, width and offset in CSS px, and colour; none where the state draws none. */
+function outlineRow(target: string, values: Values, state: string, id: string, w: Record<string, unknown> | undefined, c: CapturedNode | undefined): CompareRow {
+  const got = c?.computed;
+  const px = (v: string | undefined): number | null => (v !== undefined && v.endsWith('px') ? Number(v.slice(0, -2)) : null);
+  const chrome = got === undefined || got === null || got['outline-style'] === 'none' ? null : { style: got['outline-style'], width: px(got['outline-width']), offset: px(got['outline-offset']), color: computedRgba(got['outline-color']) };
+  const exported = w === undefined ? null : { style: w['style'], width: w['width'], offset: w['offset'], color: w['color'] };
+  const pass = JSON.stringify(chrome) === JSON.stringify(exported);
+  return { target, values, state, id, maxDeltaDevicePx: null, pass, ...(pass ? {} : { problem: `outline ${JSON.stringify(exported)} in the export, ${JSON.stringify(chrome)} in Chrome` }) };
+}
+
 /**
  * An interaction state's paint against Chrome forced into the state. Every element of the state but html and body (whose
  * backgrounds the canvas rows compare): its background colour, or transparent where the export writes none, against Chrome's
@@ -560,10 +573,11 @@ export function interactionPaintRows(target: string, state: string, base: Export
     if (n.kind !== 'element' || n.id === 'html' || n.id === 'body') continue;
     const now = byKind(n.writes);
     const then = byKind(before.get(n.id)?.writes ?? []);
-    for (const kind of [...new Set([...now.keys(), ...then.keys()])].filter((k) => k !== 'background-color' && now.get(k) !== then.get(k))) {
+    const c = chrome.get(n.id);
+    if (now.get('outline') !== then.get('outline')) rows.push(outlineRow(target, a.values, state, n.id, n.writes.find((w) => w['kind'] === 'outline'), c));
+    for (const kind of [...new Set([...now.keys(), ...then.keys()])].filter((k) => k !== 'background-color' && k !== 'outline' && now.get(k) !== then.get(k))) {
       rows.push({ target, values: a.values, state, id: n.id, maxDeltaDevicePx: null, pass: false, problem: `the state changes its ${kind} write, which this comparison does not read from Chrome yet` });
     }
-    const c = chrome.get(n.id);
     if (c === undefined || !c.hasBox) continue;
     const exported = (n.writes.find((w) => w['kind'] === 'background-color')?.['color'] as Rgba8 | undefined) ?? TRANSPARENT;
     const got = computedRgba(c.computed?.['background-color']);
