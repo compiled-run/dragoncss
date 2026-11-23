@@ -1294,6 +1294,7 @@
           "lineHeight": {
            "kind": "normal"
           },
+          "avgChar": "ahem",
           "cancelButton": null
          },
          "strut": null,
@@ -1658,6 +1659,7 @@
           "lineHeight": {
            "kind": "normal"
           },
+          "avgChar": "ahem",
           "cancelButton": null
          },
          "strut": null,
@@ -2592,6 +2594,7 @@
           "lineHeight": {
            "kind": "normal"
           },
+          "avgChar": "ahem",
           "cancelButton": null
          },
          "strut": null,
@@ -4314,6 +4317,7 @@
           "lineHeight": {
            "kind": "normal"
           },
+          "avgChar": "ahem",
           "cancelButton": null
          },
          "strut": null,
@@ -5980,6 +5984,7 @@
             "lineHeight": {
              "kind": "normal"
             },
+            "avgChar": "ahem",
             "cancelButton": null
            },
            "strut": null,
