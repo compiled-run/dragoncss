@@ -50,6 +50,8 @@ export type HitNode = {
   readonly layer: boolean;
   /** position absolute: its containing block is the nearest layer ancestor. */
   readonly absolute: boolean;
+  /** position fixed: its containing block is the viewport (a transformed ancestor's containing block is refused). */
+  readonly fixed: boolean;
   /** Painted atomically (a flex item): all its phases are tested together, in the parent's foreground phase. */
   readonly atomic: boolean;
   /** The flex item's place in its container's fragment order (its atomic paint); 0 for every other box. */
@@ -507,6 +509,11 @@ function allPhases(ctx: HitCtx, i: number): number {
 /** The containing block chain step: a layer's for an absolutely positioned box, the parent otherwise. */
 function containingParent(ctx: HitCtx, i: number): number {
   const n = node(ctx, i);
+  if (n.fixed) {
+    // The compiler refuses every box that would be a fixed box's containing block (a transform, a filter, will-change), so it is the viewport.
+    for (let up = n.parent; up >= 0; up = node(ctx, up).parent) if (node(ctx, up).transformed) throw new HitError(`hit node ${i} is fixed inside a transformed box, whose containing block the hit table does not model`);
+    return 0;
+  }
   if (!n.absolute) return n.parent;
   let at = n.parent;
   while (at >= 0 && !node(ctx, at).layer) at = node(ctx, at).parent;
@@ -971,7 +978,7 @@ function linePieces(s: TableState, b: LayoutBox, parent: number, target: number,
   }
   const y = top - run.halfLeading;
   const radii = roundedOf(x0, y, x1 - x0, run.lineHeight, NO_EDGES, lengths, s.dpr, sox, soy);
-  pushNode(s, { kind: 'line', parent, target, x: x0, y, width: x1 - x0, height: run.lineHeight, clips: false, borderTop: 0, borderRight: 0, borderBottom: 0, borderLeft: 0, layer: false, absolute: false, atomic: false, order: 0, layerOrder: 0, line: k, inkLeft: 0, inkTop: 0, inkRight: 0, inkBottom: 0, pointerEvents: pe, radii, context: false, transformed: false, scaleX: 1, scaleY: 1, offsetX: 0, offsetY: 0 }, `${b.id}:hitline${k}`, false);
+  pushNode(s, { kind: 'line', parent, target, x: x0, y, width: x1 - x0, height: run.lineHeight, clips: false, borderTop: 0, borderRight: 0, borderBottom: 0, borderLeft: 0, layer: false, absolute: false, fixed: false, atomic: false, order: 0, layerOrder: 0, line: k, inkLeft: 0, inkTop: 0, inkRight: 0, inkBottom: 0, pointerEvents: pe, radii, context: false, transformed: false, scaleX: 1, scaleY: 1, offsetX: 0, offsetY: 0 }, `${b.id}:hitline${k}`, false);
   for (const p of own) {
     const q = p.rect;
     // Ahem's ink: the glyph run's bounds rounded out to whole pixels in the run's own space (from the run origin to n em, and
@@ -981,7 +988,7 @@ function linePieces(s: TableState, b: LayoutBox, parent: number, target: number,
     const above = p.full ? floorOf(-0.8 * em) : 0;
     pushNode(s, {
       kind: 'text', parent, target, x: q.x, y: q.y, width: q.width, height: q.height, clips: false, borderTop: 0, borderRight: 0, borderBottom: 0, borderLeft: 0,
-      layer: false, absolute: false, atomic: false, order: 0, layerOrder: 0, line: k, inkLeft: q.x, inkTop: baseline + above * LU_PX, inkRight: q.x - floorOf(-(glyphs * em)) * LU_PX,
+      layer: false, absolute: false, fixed: false, atomic: false, order: 0, layerOrder: 0, line: k, inkLeft: q.x, inkTop: baseline + above * LU_PX, inkRight: q.x - floorOf(-(glyphs * em)) * LU_PX,
       inkBottom: baseline - floorOf(-0.2 * em) * LU_PX, pointerEvents: pe, radii: [], context: false, transformed: false, scaleX: 1, scaleY: 1, offsetX: 0, offsetY: 0,
     }, q.id, false);
   }
@@ -1029,8 +1036,8 @@ function boxNodes(s: TableState, b: LayoutBox, parent: number, orders: Map<strin
   pushNode(s, {
     kind: 'box', parent, target: own, x: r.x, y: r.y, width: r.width, height: r.height, clips: clipsBothAxes(b.style),
     borderTop: border.top, borderRight: border.right, borderBottom: border.bottom, borderLeft: border.left, layer: b.style.position !== 'static',
-    absolute: b.style.position === 'absolute', atomic: orders !== null, order: order === undefined ? 0 : order,
-    layerOrder: orders !== null && b.style.position !== 'absolute' ? b.style.order : 0, line: -1,
+    absolute: b.style.position === 'absolute', fixed: b.style.position === 'fixed', atomic: orders !== null, order: order === undefined ? 0 : order,
+    layerOrder: orders !== null && b.style.position !== 'absolute' && b.style.position !== 'fixed' ? b.style.order : 0, line: -1,
     inkLeft: 0, inkTop: 0, inkRight: 0, inkBottom: 0, pointerEvents: pe, radii: roundedOf(r.x, r.y, r.width, r.height, border, lengths, s.dpr, snapX0, snapY0),
     context: paint.context, transformed: paint.transformed, scaleX: paint.scaleX, scaleY: paint.scaleY, offsetX: paint.offsetX, offsetY: paint.offsetY,
   }, b.id, act);
@@ -1043,7 +1050,6 @@ function boxNodes(s: TableState, b: LayoutBox, parent: number, orders: Map<strin
     if (c.kind === 'text') leaves.push(c);
     else if (c.kind === 'inline' || c.kind === 'br') throw new HitError(inlineRefusal(c.id, c.kind));
     else if ((c.kind === 'box' || c.kind === 'replaced') && isAtomicInline(c)) throw new HitError(atomicRefusal(c.id));
-    else if ((c.kind === 'box' || c.kind === 'replaced') && c.style.position === 'fixed') throw new HitError(fixedRefusal(c.id));
     else if ((c.kind === 'box' || c.kind === 'replaced') && c.style.float !== 'none' && c.style.position !== 'absolute' && c.style.position !== 'fixed' && (b.style.display === 'block' || b.style.display === 'inline-block')) throw new HitError(floatRefusal(c.id));
     else kids++;
   }
@@ -1080,8 +1086,8 @@ function replacedNode(s: TableState, c: ReplacedLeaf, parent: number, orders: Ma
   pushNode(s, {
     kind: 'box', parent, target: s.nodes.length, x: r.x, y: r.y, width: r.width, height: r.height, clips: c.style.overflowX === 'hidden',
     borderTop: border.top, borderRight: border.right, borderBottom: border.bottom, borderLeft: border.left, layer: c.style.position !== 'static',
-    absolute: c.style.position === 'absolute', atomic: orders !== null, order: order === undefined ? 0 : order,
-    layerOrder: orders !== null && c.style.position !== 'absolute' ? c.style.order : 0, line: -1,
+    absolute: c.style.position === 'absolute', fixed: c.style.position === 'fixed', atomic: orders !== null, order: order === undefined ? 0 : order,
+    layerOrder: orders !== null && c.style.position !== 'absolute' && c.style.position !== 'fixed' ? c.style.order : 0, line: -1,
     inkLeft: 0, inkTop: 0, inkRight: 0, inkBottom: 0, pointerEvents: pe, radii: roundedOf(r.x, r.y, r.width, r.height, border, f.radii, s.dpr, paint.transformed && !(paint.scaleX === 1 && paint.scaleY === 1) ? r.x : sox, paint.transformed && !(paint.scaleX === 1 && paint.scaleY === 1) ? r.y : soy),
     context: paint.context, transformed: paint.transformed, scaleX: paint.scaleX, scaleY: paint.scaleY, offsetX: paint.offsetX, offsetY: paint.offsetY,
   }, c.id, f.activation);
@@ -1118,10 +1124,6 @@ function isAtomicInline(b: LayoutBox | ReplacedLeaf): boolean {
   return d === 'inline-block' || d === 'inline-flex' || d === 'inline-grid';
 }
 
-function fixedRefusal(id: string): string {
-  return `${id} is position: fixed, a stacking context placed against the viewport, which the hit table does not model yet (POSX-f; no Chrome hit capture)`;
-}
-
 function floatRefusal(id: string): string {
   return `${id} is a float, which the hit table does not model yet (FLT; no Chrome hit capture)`;
 }
@@ -1147,7 +1149,6 @@ function boxHitRefusal(b: LayoutBox): string | null {
     const c = child.kind === 'control' ? hitControlBox(child) : child;
     if (c.kind === 'inline' || c.kind === 'br') return inlineRefusal(c.id, c.kind);
     if (c.kind === 'replaced' && isAtomicInline(c)) return atomicRefusal(c.id);
-    if ((c.kind === 'box' || c.kind === 'replaced') && c.style.position === 'fixed') return fixedRefusal(c.id);
     if ((c.kind === 'box' || c.kind === 'replaced') && c.style.float !== 'none' && c.style.position !== 'absolute' && c.style.position !== 'fixed' && (b.style.display === 'block' || b.style.display === 'inline-block')) return floatRefusal(c.id);
     if (c.kind === 'box') {
       if (c.style.lineClamp > 0) return clampRefusal(c.id);

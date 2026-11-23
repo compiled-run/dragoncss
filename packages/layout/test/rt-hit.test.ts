@@ -6,7 +6,7 @@ import type { HitNode } from '../src/rt-hit.ts';
 import { activationTarget, HitError, hitTest, NO_HIT_FAULTS, NO_HIT_TABLE_FAULTS } from '../src/rt-hit.ts';
 
 const PX = 64;
-const base = { clips: false, borderTop: 0, borderRight: 0, borderBottom: 0, borderLeft: 0, layer: false, absolute: false, atomic: false, order: 0, layerOrder: 0, line: -1, inkLeft: 0, inkTop: 0, inkRight: 0, inkBottom: 0, pointerEvents: 'auto', radii: [], context: false, transformed: false, scaleX: 1, scaleY: 1, offsetX: 0, offsetY: 0 } as const;
+const base = { clips: false, borderTop: 0, borderRight: 0, borderBottom: 0, borderLeft: 0, layer: false, absolute: false, fixed: false, atomic: false, order: 0, layerOrder: 0, line: -1, inkLeft: 0, inkTop: 0, inkRight: 0, inkBottom: 0, pointerEvents: 'auto', radii: [], context: false, transformed: false, scaleX: 1, scaleY: 1, offsetX: 0, offsetY: 0 } as const;
 const NO_ORIGIN = { x: { kind: 'px', px: 0, percent: 0 }, y: { kind: 'px', px: 0, percent: 0 } } as const;
 const FLAT = { radii: [], context: false, transform: [], origin: NO_ORIGIN } as const;
 const box = (parent: number, target: number, x: number, y: number, w: number, h: number, more: Partial<HitNode> = {}): HitNode => ({ ...base, kind: 'box', parent, target, x: x * PX, y: y * PX, width: w * PX, height: h * PX, ...more });
@@ -78,6 +78,17 @@ describe('paint order', () => {
     expect(at([root, clip, escaped], 10, 50)).toBe(2);
     const held = box(1, 2, 0, 0, 100, 100, { layer: true });
     expect(at([root, clip, held], 10, 50)).toBe(0);
+  });
+
+  it('lets a fixed box escape every clipping ancestor, as its containing block is the viewport, and refuses one inside a transformed box', () => {
+    const root = box(-1, 0, 0, 0, 400, 300);
+    const clipLayer = box(0, 1, 0, 0, 50, 20, { clips: true, layer: true });
+    const fixed = box(1, 2, 0, 0, 100, 100, { layer: true, fixed: true });
+    expect(at([root, clipLayer, fixed], 10, 50)).toBe(2);
+    const absolute = box(1, 2, 0, 0, 100, 100, { layer: true, absolute: true });
+    expect(at([root, clipLayer, absolute], 10, 50)).toBe(0);
+    const turned = box(0, 1, 0, 0, 50, 20, { clips: true, layer: true, context: true, transformed: true });
+    expect(() => at([root, turned, fixed], 10, 50)).toThrow('is fixed inside a transformed box');
   });
 });
 
