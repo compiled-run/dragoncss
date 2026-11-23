@@ -1,6 +1,7 @@
 // RF-INL: an inline-level replaced box is an atomic inline (css-display-3 §2.4). It is sized as a block-level replaced box is (CSS
 // 2.2 §10.3.2, §10.6.2) and has no baseline of its own, so its bottom margin edge sits on the baseline (CSS2 §10.8.1). The parity
 // fixtures inline-replaced-img and inline-replaced-svg compare these boxes with Chrome; these pin the engine's rules.
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { absoluteRects, ahemMeasurer, layoutWithFaults, NO_ENGINE_FAULTS, validateLayoutInput } from '../src/index.ts';
 import { hitRefusal } from '../src/rt-hit.ts';
@@ -92,7 +93,11 @@ describe('RF-INL: inline-level replaced boxes', () => {
     const m = rects(line([t20('t', 'a'), img('a', { width: px(20), height: px(20), marginLeft: px(6) }), t20('u', 'b')]), { ...NO_ENGINE_FAULTS, atomicMarginExcluded: true });
     expect(at(m, 'a').x).toBe(20);
   });
-  it('is refused by the hit table, as every atomic inline is (no Chrome hit capture)', () => {
-    expect(hitRefusal(env(line([t20('t', 'a'), img('a')])))).toMatch(/^a is an atomic inline/);
+  it('is hit-modelled on its line, as the Chrome hit captures of inline-replaced-img and hit-atomic-inline prove', () => {
+    expect(hitRefusal(env(line([t20('t', 'a'), img('a')])))).toBeNull();
+    for (const [capture, ids] of [['inline-replaced-img', ['alone-img', 'text-img', 'edges-img', 'natural-img', 'block-img', 'tall-img', 'wrap-a', 'wrap-b']], ['inline-replaced-img-rtl', ['text-img', 'wrap-a', 'wrap-b']], ['hit-atomic-inline', ['f1']]] as const) {
+      const c = JSON.parse(readFileSync(new URL(`../../parity/expected-hit/${capture}.hit.json`, import.meta.url), 'utf8')) as { ids: string[]; runs: [number, number][] };
+      for (const id of ids) expect(c.runs.some(([k]) => c.ids[k] === id), `${capture}: Chrome names ${id} at some point`).toBe(true);
+    }
   });
 });

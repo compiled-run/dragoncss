@@ -16,7 +16,7 @@ import { TEXT_LONGHANDS } from './css/properties.ts';
 import type { ElementColors, NativeBackend, NativeProgram } from './lower/native-program.ts';
 import { colorChannels, lowerNativeProgram, lowerNativePrograms, movingTransforms, ProgramError, usedColors } from './lower/native-program.ts';
 import { isSymbolMarker, rootFontSizeOf } from './lower/ios-layout.ts';
-import type { InteractionPartition } from './analysis/interaction.ts';
+import type { InteractionPartition, InteractionValue } from './analysis/interaction.ts';
 import { pointerFocusVisible } from './analysis/interaction.ts';
 import type { InternalCase } from './project.ts';
 import { caseByAssignment, internalRecord, originOfValue } from './project.ts';
@@ -236,6 +236,23 @@ export function resolvedTextTransforms(compiled: object, assignment: Assignment,
   return out;
 }
 
+/** resolvedTextTransforms of each interaction state of the case in the band, in its partition's state order. */
+export function resolvedInteractionTextTransforms(compiled: object, assignment: Assignment, band: number): readonly ReadonlyMap<string, TextTransform>[] | null {
+  const record = internalRecord(compiled);
+  if (record === undefined) return null;
+  const c = record.bands === null ? (band === 0 ? caseByAssignment(record, assignment) : undefined) : record.bands.cases[band]?.find((x) => x.key === keyOfAssignment(assignment));
+  if (c === undefined) return null;
+  return c.interaction.map((i) => {
+    const out = new Map<string, TextTransform>();
+    const walk = (el: ResolvedElement): void => {
+      out.set(el.element.address, textTransformOf(el.props));
+      for (const ch of el.children) if (ch.kind === 'element') walk(ch);
+    };
+    walk(i.resolved);
+    return out;
+  });
+}
+
 /** SVG-a1: the scene of every rendered <svg> of a case, in document order (analysis/elements/svg.ts). */
 export function svgScenes(compiled: object, assignment: Assignment): readonly SvgScene[] | null {
   const c = caseOf(compiled, assignment);
@@ -422,8 +439,7 @@ export function engineLayoutProjection(compiled: object, environment: Environmen
 
 // SELD-R1b (notes/T047-runtime-spec.md RT-9): the hit table and each element's hit facts.
 import { elementTransformWrite } from './lower/paint/transform.ts';
-import { transformedForStacking } from './lower/paint/stacking.ts';
-import { opacityOf } from './css/properties/effects.ts';
+import { hitFactContext } from './lower/paint/stacking.ts';
 export type { HitFact } from './emit/runtime/hit.ts';
 export { HIT_FACTS_VERSION } from './emit/runtime/hit.ts';
 
@@ -442,13 +458,8 @@ export function hitFacts(compiled: object, assignment: Assignment, state: string
     const v = el.props.get('pointer-events');
     if (v === undefined || v.value.kind !== 'keyword' || (v.value.value !== 'auto' && v.value.value !== 'none')) throw new Error(`${el.element.address}: pointer-events did not resolve to auto or none`);
     const lengths = radiusLengths(el.props, el.element.address);
-    const o = el.props.get('opacity');
-    const opacity = o === undefined ? 1 : opacityOf(o.value);
-    if (opacity === null) throw new Error(`${el.element.address}: opacity did not compute to a number`);
     const transform = elementTransformWrite(el);
-    const pos = el.props.get('position');
-    // css-position-3 §3.4: a sticky or fixed box always makes a stacking context.
-    const context = opacity < 1 || transformedForStacking(el) || (pos !== undefined && pos.value.kind === 'keyword' && (pos.value.value === 'sticky' || pos.value.value === 'fixed'));
+    const context = hitFactContext(el);
     out.set(el.element.address, { pointerEvents: v.value.value, inherited: v.origin === 'inherited', activation: activates(el.element.tag, el.element.attributes), radii: roundsAnyCorner(lengths) ? lengths : [], context, transform: transform === null ? [] : transform.ops, origin: transform === null ? NO_ORIGIN : transform.origin });
     for (const ch of el.children) if (ch.kind === 'element') walk(ch);
   };
@@ -653,16 +664,41 @@ import type { InteractionLevelInput as LevelInput } from './lower/interaction-pr
 export function interactionLevelInput(compiled: object, assignment: Assignment, backend: NativeBackend): LevelInput | string {
   const c = caseOf(compiled, assignment);
   if (typeof c === 'string') return c;
-  if (c.partition === null || c.resolved === null) return 'the case did not resolve';
+  return levelInputOf(c.partition, c.resolved, c.interaction, (key) => nativePrograms(compiled, assignment, key), backend);
+}
+
+/** interactionLevelInput in one @media band: the band's own partition and each state's lowering in that band. */
+export function interactionLevelInputIn(compiled: object, assignment: Assignment, band: number, backend: NativeBackend): LevelInput | string {
+  const record = internalRecord(compiled);
+  if (record === undefined) return 'not a compiled result from this package';
+  if (record.bands === null) return band === 0 ? interactionLevelInput(compiled, assignment, backend) : `the compile has no @media bands, so no band ${band}`;
+  const key = keyOfAssignment(assignment);
+  const c = record.bands.cases[band]?.find((x) => x.key === key);
+  if (c === undefined) return `no reachable case for the assignment ${JSON.stringify(assignment)} in band ${band}`;
+  const lower = (state: string): NativePrograms => {
+    const i = c.interaction.find((x) => x.value.key === state);
+    if (i === undefined || i.nativeLowered === null) return { kind: 'blocked', reason: `interaction state ${state} has no native lowering in band ${band}` };
+    try {
+      return { kind: 'ready', programs: lowerNativePrograms(i.nativeLowered, i.resolved, record.images, movingOf(record), record.textPlants) };
+    } catch (e) {
+      if (e instanceof ProgramError) return { kind: 'blocked', reason: e.message };
+      throw e;
+    }
+  };
+  return levelInputOf(c.partition, c.resolved, c.interaction, lower, backend);
+}
+
+function levelInputOf(partition: InteractionPartition | null, resolved: ResolvedElement | null, interaction: readonly { readonly value: InteractionValue }[], lower: (state: string) => NativePrograms, backend: NativeBackend): LevelInput | string {
+  if (partition === null || resolved === null) return 'the case did not resolve';
   const elements = new Map<string, ResolvedElement>();
   const walk = (el: ResolvedElement): void => {
     elements.set(el.element.address, el);
     for (const ch of el.children) if (ch.kind === 'element') walk(ch);
   };
-  walk(c.resolved);
+  walk(resolved);
   const programs: NativeProgram[] = [];
-  for (const i of c.interaction) {
-    const p = nativePrograms(compiled, assignment, i.value.key);
+  for (const i of interaction) {
+    const p = lower(i.value.key);
     if (p.kind === 'blocked') return `interaction state ${i.value.key}: ${p.reason}`;
     programs.push(p.programs[backend]);
   }
@@ -673,7 +709,7 @@ export function interactionLevelInput(compiled: object, assignment: Assignment, 
     return el.tag === 'input' ? (el.attributes.get('type')?.trim().toLowerCase() || 'text') : null;
   };
   return {
-    partition: c.partition,
+    partition,
     programs,
     touchConsumesTap: (address) => typeOf(address) === 'range',
     keyboardInput: (address) => {

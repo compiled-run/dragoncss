@@ -14,7 +14,9 @@ import { FONT_REFERENCE_MAP, fontReferencePrepare } from './font-reference.ts';
 import type { CapturedNode } from './capture.ts';
 import type { MarklessCompiledTarget, MarklessExportAssignment, MarklessFontFile, MarklessFonts, MarklessStyleExport, MarklessStyleInput } from './markless-style-input.ts';
 import { armShown, assignmentCombinations, checkMarklessExport, filledAtInitial, MARKLESS_BOXLESS_ATTRIBUTE, marklessCompiledTargets, marklessDocumentCss, marklessNodeId, marklessShownModal, schemeOf, shownText, valueUnder } from './markless-style-input.ts';
-import type { ExportAssignment, ExportTarget, NativeStyleExport } from './native-style-export.ts';
+import type { ExportAssignment, ExportInteractionMatch, ExportNode, ExportTarget, NativeStyleExport } from './native-style-export.ts';
+import type { ForcedPseudo } from './cases.ts';
+import { forcePseudo } from './forced-pseudo.ts';
 import { decodePng } from './pixel-reference.ts';
 import type { SystemFonts } from './system-fonts/provider.ts';
 import { systemFontsFor, systemRequestOf } from './system-fonts/provider.ts';
@@ -224,7 +226,7 @@ export type MarklessChromeFonts = { readonly mode: MarklessFonts; readonly files
  */
 export async function captureMarklessAssignment(browser: Browser, input: MarklessStyleInput, t: ExportTarget, values: Values, scheme: 'light' | 'dark', fonts: MarklessChromeFonts = { mode: 'pinned', files: new Map(), prepare: fontReferencePrepare(FONT_REFERENCE_MAP) }, screenshot?: string): Promise<WebCapture> {
   let backdrops: CapturedNode[] = [];
-  const capture = await captureFixture(browser, `markless-${input.component}`, authoredFontHtml(marklessDocumentHtml(input, values, fonts.mode), fonts.files), { viewport: t.viewport, devicePixelRatio: t.dpr, direction: 'ltr', rootFont: 'ua-default' }, [], async (page) => {
+  const capture = await captureFixture(browser, `markless-${input.component}`, authoredFontHtml(marklessDocumentHtml(input, values, fonts.mode), fonts.files), { viewport: t.viewport, devicePixelRatio: t.dpr, direction: 'ltr', rootFont: 'ua-default' }, OUTLINE_PROPERTIES, async (page) => {
     await page.emulateMedia({ colorScheme: scheme });
     await fonts.prepare(page);
     const mismatch = documentMismatch(marklessDocumentTree(input, values), await page.evaluate(readDocumentTree));
@@ -533,7 +535,69 @@ export function pairBoxes(input: MarklessStyleInput, assignment: ExportAssignmen
 }
 
 /** A measured box, or (maxDeltaDevicePx null, never passing) a box only one side has, with the problem named. */
-export type CompareRow = { readonly target: string; readonly values: Values; readonly id: string; readonly maxDeltaDevicePx: number | null; readonly pass: boolean; readonly problem?: string };
+export type CompareRow = { readonly target: string; readonly values: Values; readonly state?: string; readonly id: string; readonly maxDeltaDevicePx: number | null; readonly pass: boolean; readonly problem?: string };
+
+/** Chrome's computed background-color as 8-bit RGBA, or null when it is not an rgb() or rgba() colour. */
+function computedRgba(text: string | undefined): Rgba8 | null {
+  const m = text === undefined ? null : /^rgba?\(([\d.]+), ([\d.]+), ([\d.]+)(?:, ([\d.]+))?\)$/.exec(text);
+  if (m === null) return null;
+  return { r: Number(m[1]), g: Number(m[2]), b: Number(m[3]), alpha: Math.round(255 * (m[4] === undefined ? 1 : Number(m[4]))) };
+}
+
+/** The outline longhands every Markless capture reads, for the outline an interaction state draws (:focus, :focus-visible). */
+const OUTLINE_PROPERTIES = ['outline-style', 'outline-width', 'outline-color', 'outline-offset'];
+
+/** A state's outline against Chrome's computed one: style, width and offset in CSS px, and colour; none where the state draws none. */
+function outlineRow(target: string, values: Values, state: string, id: string, w: Record<string, unknown> | undefined, c: CapturedNode | undefined, dpr: number): CompareRow {
+  const got = c?.computed;
+  if (got === undefined || got === null || typeof got['outline-style'] !== 'string') return { target, values, state, id, maxDeltaDevicePx: null, pass: false, problem: "Chrome's outline was not captured" };
+  const px = (v: string | undefined): number | null => (v !== undefined && v.endsWith('px') ? Number(v.slice(0, -2)) : null);
+  // Chrome uses an outline's width floored to whole device px (at least one), as it does a border's; both are compared in device px.
+  const devicePx = (css: number | null): number | null => (css === null ? null : css === 0 ? 0 : Math.max(1, Math.floor(css * dpr + 1e-6)));
+  const chromeWidth = px(got?.['outline-width']);
+  const chromeColor = computedRgba(got?.['outline-color']);
+  // Chrome draws nothing for a zero-width or transparent outline, where the export writes none.
+  const drawn = got['outline-style'] !== 'none' && chromeWidth !== 0 && chromeColor?.alpha !== 0;
+  const chrome = drawn ? { style: got['outline-style'], width: chromeWidth === null ? null : Math.round(chromeWidth * dpr), color: chromeColor } : null;
+  const exported = w === undefined ? null : { style: w['style'], width: devicePx(w['width'] as number), color: w['color'] };
+  // Chrome keeps an offset to 1/64 device px; the export writes the CSS value.
+  const chromeOffset = drawn ? px(got['outline-offset']) : null;
+  const exportOffset = w === undefined || typeof w['offset'] !== 'number' ? null : Math.round((w['offset'] as number) * dpr * 64) / (64 * dpr);
+  const offsetsMatch = chromeOffset === null || exportOffset === null ? chromeOffset === exportOffset : Math.abs(chromeOffset - exportOffset) < 1e-4;
+  const pass = JSON.stringify(chrome) === JSON.stringify(exported) && offsetsMatch;
+  return { target, values, state, id, maxDeltaDevicePx: null, pass, ...(pass ? {} : { problem: `outline ${JSON.stringify(exported === null ? null : { ...exported, offset: exportOffset })} in the export, ${JSON.stringify(chrome === null ? null : { ...chrome, offset: chromeOffset })} in Chrome` }) };
+}
+
+/**
+ * An interaction state's paint against Chrome forced into the state. Every element of the state but html and body (whose
+ * backgrounds the canvas rows compare): its background colour, or transparent where the export writes none, and its outline, or
+ * none, against Chrome's computed ones, so a state that misses a change Chrome makes fails too. A write of another kind the state changes from its
+ * assignment is a failing row naming it, as this comparison does not read it from Chrome yet.
+ */
+export function interactionPaintRows(target: string, state: string, base: ExportAssignment, a: ExportAssignment, captured: readonly CapturedNode[], dpr = 1): CompareRow[] {
+  const rows: CompareRow[] = [];
+  const before = new Map(base.nodes.map((n) => [n.id, n]));
+  const chrome = new Map(captured.filter((c) => c.kind === 'element').map((c) => [c.id, c]));
+  const byKind = (writes: ExportNode['writes']): Map<string, string> => new Map(writes.map((w) => [String(w['kind']), JSON.stringify(w)]));
+  const TRANSPARENT = { r: 0, g: 0, b: 0, alpha: 0 };
+  for (const n of a.nodes) {
+    if (n.kind !== 'element' || n.id === 'html' || n.id === 'body') continue;
+    const now = byKind(n.writes);
+    const then = byKind(before.get(n.id)?.writes ?? []);
+    const c = chrome.get(n.id);
+    // Every boxed element, as for its background: an outline Chrome draws in the state (its focus ring included) and the export misses fails.
+    if (c !== undefined && c.hasBox) rows.push(outlineRow(target, a.values, state, n.id, n.writes.find((w) => w['kind'] === 'outline'), c, dpr));
+    for (const kind of [...new Set([...now.keys(), ...then.keys()])].filter((k) => k !== 'background-color' && k !== 'outline' && now.get(k) !== then.get(k))) {
+      rows.push({ target, values: a.values, state, id: n.id, maxDeltaDevicePx: null, pass: false, problem: `the state changes its ${kind} write, which this comparison does not read from Chrome yet` });
+    }
+    if (c === undefined || !c.hasBox) continue;
+    const exported = (n.writes.find((w) => w['kind'] === 'background-color')?.['color'] as Rgba8 | undefined) ?? TRANSPARENT;
+    const got = computedRgba(c.computed?.['background-color']);
+    const pass = got !== null && JSON.stringify(got) === JSON.stringify(exported);
+    rows.push({ target, values: a.values, state, id: n.id, maxDeltaDevicePx: null, pass, ...(pass ? {} : { problem: `background-color ${JSON.stringify(exported)} in the export, ${JSON.stringify(got)} in Chrome` }) });
+  }
+  return rows;
+}
 
 /**
  * With `screenshots`, Chrome's rendering of each assignment is saved there as `<target>-<assignment>.png`, the reference a device
@@ -562,7 +626,12 @@ export async function compareMarklessExport(input: MarklessStyleInput, given: Na
     await withCleanup(async (undo) => {
       const browser: Browser = await launchChrome(t.dpr);
       undo('close Chrome', () => browser.close());
-      for (const [index, assignment] of t.assignments.entries()) {
+      // Each assignment, then each of its interaction states with Chrome forced into it (CSS.forcePseudoState, as DevTools does).
+      const views = [
+        ...t.assignments.map((assignment, index) => ({ label: `${index}`, assignment, forced: [] as readonly { readonly address: string; readonly pseudo: string }[], base: null as MarklessExportAssignment | null })),
+        ...(t.interaction?.levels ?? []).flatMap((l, i) => l.states.map((st, k) => ({ label: `${i}-state${k}`, assignment: st as MarklessExportAssignment, forced: (l.matches[k] as ExportInteractionMatch).force, base: t.assignments[i] as MarklessExportAssignment }))),
+      ];
+      for (const { label, assignment, forced, base } of views) {
         const band = assignment.values[BAND_KEY];
         const scheme = typeof band === 'number' ? schemeOf(t.bands, band) : unbanded;
         const byId = new Map(assignment.nodes.map((n) => [n.id, n]));
@@ -572,16 +641,22 @@ export async function compareMarklessExport(input: MarklessStyleInput, given: Na
           const p = n.parent === null ? { x: 0, y: 0 } : absolute(n.parent);
           return { x: p.x + n.frame.x, y: p.y + n.frame.y, width: n.frame.width, height: n.frame.height };
         };
-        const prepare = fontMode === 'system' ? systemFontReference(target as 'ios' | 'android', exported.systemFonts ?? []) : fontReferencePrepare(FONT_REFERENCE_MAP);
-        const capture = await captureMarklessAssignment(browser, input, t, assignment.values, scheme, { mode: fontMode, files, prepare }, screenshots === undefined ? undefined : join(screenshots, `${target}-${index}.png`));
-        paint.push(...paintRows(target, assignment, await chromePagePaint(browser, authoredFontHtml(marklessDocumentHtml(input, assignment.values, fontMode), files), input, t, assignment.values, scheme)));
+        const fontPrepare = fontMode === 'system' ? systemFontReference(target as 'ios' | 'android', exported.systemFonts ?? []) : fontReferencePrepare(FONT_REFERENCE_MAP);
+        const force = forcePseudo(forced as readonly ForcedPseudo[]);
+        const prepare = forced.length === 0 ? fontPrepare : async (page: Page): Promise<void> => {
+          await fontPrepare(page);
+          await force(page);
+        };
+        const capture = await captureMarklessAssignment(browser, input, t, assignment.values, scheme, { mode: fontMode, files, prepare }, screenshots === undefined ? undefined : join(screenshots, `${target}-${label}.png`));
+        if (base === null) paint.push(...paintRows(target, assignment, await chromePagePaint(browser, authoredFontHtml(marklessDocumentHtml(input, assignment.values, fontMode), files), input, t, assignment.values, scheme)));
+        else rows.push(...interactionPaintRows(target, label, base, assignment, capture.nodes, t.dpr));
         const paired = pairBoxes(input, assignment, capture.nodes);
-        for (const { id, kind } of paired.problems) rows.push({ target, values: assignment.values, id, maxDeltaDevicePx: null, pass: false, problem: CHROME_PROBLEM[kind] });
+        for (const { id, kind } of paired.problems) rows.push({ target, values: assignment.values, ...(base === null ? {} : { state: label }), id, maxDeltaDevicePx: null, pass: false, problem: CHROME_PROBLEM[kind] });
         for (const { id, c } of paired.pairs) {
           const d = absolute(id);
           const chrome = { x: c.x * t.dpr, y: c.y * t.dpr, width: c.width * t.dpr, height: c.height * t.dpr };
           const delta = Math.max(...(['x', 'y', 'width', 'height'] as const).map((k) => Math.abs(chrome[k] - d[k])));
-          rows.push({ target, values: assignment.values, id, maxDeltaDevicePx: Number(delta.toFixed(4)), pass: delta <= GATE_DEVICE_PX });
+          rows.push({ target, values: assignment.values, ...(base === null ? {} : { state: label }), id, maxDeltaDevicePx: Number(delta.toFixed(4)), pass: delta <= GATE_DEVICE_PX });
         }
       }
     });

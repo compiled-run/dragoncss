@@ -5,9 +5,9 @@ import { createHash } from 'node:crypto';
 import { readdirSync, readFileSync } from 'node:fs';
 import type { BorderOp, LayoutBox, LU, ScrollRange, TextMeasurer } from '@dragon/layout';
 import { absoluteRects, borderNeedsSidePainter, borderPaintOps, LU_PER_PX, NO_DASH_FAULTS, NO_ENGINE_FAULTS, pieceGlyphs, resolveBorder, scrollRanges, snapRect } from '@dragon/layout';
-import type { Assignment, NativeProgram, NativeStyles, NativeStyleTarget, Scalar } from 'dragon';
-import { animTablesOf, borderDevicePx, isScalar, programAt, programInput, replacedContents } from 'dragon';
-import type { AnimTables } from '@dragon/layout';
+import type { Assignment, NativeProgram, NativeStyles, NativeStyleTarget, Scalar, StateProgram } from 'dragon';
+import { animTablesOf, borderDevicePx, interactionProgramAt, isScalar, programAt, programInput, replacedContents } from 'dragon';
+import type { AnimTables, InteractionTables } from '@dragon/layout';
 import { scrollMetricsWithFaults } from '../../layout/src/overflow.ts';
 import { snapEdge } from '../../layout/src/units.ts';
 import { cssFontSizes } from './ahem-lines.ts';
@@ -19,7 +19,7 @@ import { registerFace } from './text-shaper-host.ts';
 import { repoPath } from './paths.ts';
 import { systemMeasurer } from './system-fonts/measurer.ts';
 import type { MarklessPlan } from './markless-plan.ts';
-import { marklessPlan, PLAN_DENSITIES } from './markless-plan.ts';
+import { heightDependence, marklessPlan, PLAN_DENSITIES, planInteractionAssignments, planStateProgram } from './markless-plan.ts';
 import type { DensityJob, DensityResult } from './markless-plan-workers.ts';
 import { planWorkers, recordDensitiesInWorkers } from './markless-plan-workers.ts';
 import type { SystemFaceDescriptor, SystemFonts } from './system-fonts/provider.ts';
@@ -100,9 +100,35 @@ export type ExportTarget = {
    * program's assignments, by Dragon id, which a phone runs with the plan's layout as the page moves between assignments.
    */
   readonly anim?: AnimTables;
+  /**
+   * Only when an assignment has interaction states (:hover, :active, :focus, :focus-visible), one level per assignment: Dragon's
+   * interaction runtime tables (layout/src/rt-interaction.ts), the node each table index addresses, and each interaction state's
+   * assignment, laid out as `assignments` are. The host runs the tables on touch, pointer and focus and shows the state's nodes.
+   */
+  readonly interaction?: { readonly levels: readonly ExportInteractionLevel[] };
   /** With a plan: each list's parent box and the ids of a row's top boxes, which a phone copies once per row. */
   readonly planRepeats?: readonly { readonly id: string; readonly parent: string; readonly template: readonly string[] }[];
 };
+/** One assignment's interaction states: the runtime's tables, the node per table index, and per state its laid-out assignment. */
+export type ExportInteractionMatch = {
+  readonly hover: readonly string[];
+  readonly active: readonly string[];
+  readonly focus: string | null;
+  readonly focusVisible: string | null;
+  readonly force: readonly { readonly address: string; readonly pseudo: string }[];
+};
+export type ExportInteractionLevel = {
+  readonly tables: InteractionTables;
+  readonly addresses: readonly string[];
+  readonly states: readonly ExportAssignment[];
+  /** Per state: the nodes each pseudo-class matches in it, and what CSS.forcePseudoState forces to reach it in Chrome. */
+  readonly matches: readonly ExportInteractionMatch[];
+  /** From a Markless input: each address inside a list row, with the list. A phone applies the state to the row copy it is in. */
+  readonly rows?: { readonly [address: string]: string };
+  /** With a plan: the plan assignment each state lays out as. */
+  readonly planAssignments?: readonly number[];
+};
+
 export type NativeStyleExport = {
   readonly schema: typeof NATIVE_STYLE_EXPORT_SCHEMA;
   readonly units: string;
@@ -255,6 +281,9 @@ export function nativeStyleExport(styles: NativeStyles, component: string, sourc
   const faces = new Set<string>();
   const undecided = new Set<string>();
   const targets: { [T in NativeStyleTarget]?: ExportTarget } = {};
+  // The plan checks its text at other heights unless Dragon's analysis proves the page's text cannot depend on the height.
+  // DRAGON_PLAN_HEIGHT_CHECK=always runs the check on every page, to compare a proven page's export with the check's.
+  const checksHeights = (o: Extract<NativeStyles['targets'][NativeStyleTarget], { readonly kind: 'emitted' }>): boolean => process.env['DRAGON_PLAN_HEIGHT_CHECK'] === 'always' || heightDependence(planStateProgram(o.program, o.interaction), (o.bands?.table.atoms ?? []).map((a) => a.feature)) !== null;
   // The plan's recordings with systemFontsFor's fonts run in worker threads first, every target's ratios at once; each is used,
   // or its error thrown, where the target's plan is made.
   const recorded = new Map<NativeStyleTarget, readonly DensityResult[]>();
@@ -263,7 +292,7 @@ export function nativeStyleExport(styles: NativeStyles, component: string, sourc
     const authorFiles = inputFonts.map((f) => [registerFace(f.bytes), f.bytes] as const);
     const jobs = (['ios', 'android'] as const).flatMap((t) => {
       const o = styles.targets[t];
-      return o?.kind !== 'emitted' ? [] : PLAN_DENSITIES[t].map((dpr): DensityJob => ({ t, sp: o.program, bundled: [...inputFaces.keys()], authorFiles, dpr, height: devices[t].viewport.height }));
+      return o?.kind !== 'emitted' ? [] : PLAN_DENSITIES[t].map((dpr): DensityJob => ({ t, sp: planStateProgram(o.program, o.interaction), bundled: [...inputFaces.keys()], authorFiles, dpr, height: devices[t].viewport.height, checkHeights: checksHeights(o) }));
     });
     const results = recordDensitiesInWorkers(jobs, workers);
     for (const t of ['ios', 'android'] as const) recorded.set(t, results.filter((_, i) => jobs[i]?.t === t));
@@ -278,8 +307,7 @@ export function nativeStyleExport(styles: NativeStyles, component: string, sourc
     const system = systemFonts === null ? null : systemFonts(t, d.dpr);
     const shared = system === null ? null : systemMeasurer(system, sp, [...inputFaces.keys()], d.dpr, new Map(inputFonts.map((f) => [registerFace(f.bytes), f.bytes])));
     const measurer = (): TextMeasurer => shared ?? referenceMeasurer([...inputFaces.keys()]);
-    const assignments = sp.assignments.map((a, i): ExportAssignment => {
-      const program = programAt(sp, i);
+    const exportAt = (program: NativeProgram, a: StateProgram['assignments'][number]): ExportAssignment => {
       const laid = engineBoxes(program, d.viewport, d.dpr, measurer());
       const boxes = new Map(laid.map((b) => [b.id, b]));
       const absolute = absoluteRects(laid);
@@ -323,15 +351,30 @@ export function nativeStyleExport(styles: NativeStyles, component: string, sourc
       if ('undecided' in scroll.page) undecided.add(`${t}: ${scroll.page.undecided}`);
       if ('undecided' in scroll.page) return { values: valuesOf(a.assignment), pageScroll: null, pageScrollUndecided: { nodeId: scroll.page.nodeId, detail: scroll.page.detail }, nodes };
       return { values: valuesOf(a.assignment), pageScroll: scroll.page, nodes };
-    });
+    };
+    const assignments = sp.assignments.map((a, i) => exportAt(programAt(sp, i), a));
+    // Each assignment's interaction states, laid out as the assignments are; the host selects one with Dragon's interaction runtime.
+    const ip = o.interaction;
+    const planStates = ip === undefined ? null : planInteractionAssignments(sp, ip);
+    const interaction = ip === undefined ? {} : {
+      interaction: {
+        levels: ip.levels.map((l, i): ExportInteractionLevel => ({
+          tables: l.tables,
+          addresses: l.addresses,
+          states: l.deltas.map((_, k) => exportAt(interactionProgramAt(ip, i, k), sp.assignments[i] as StateProgram['assignments'][number])),
+          matches: (o.interactionValues?.[i] ?? []).map((v): ExportInteractionMatch => ({ hover: v.hover, active: v.active, focus: v.focus, focusVisible: v.focusVisible, force: v.force })),
+          ...(plan ? { planAssignments: (planStates as number[][])[i] as number[] } : {}),
+        })),
+      },
+    };
     const r = o.readiness;
     if (r.kind === 'blocked') throw new Error(`${component}: ${t} is emitted but its output state is blocked`);
     const readiness = r.kind === 'ready' ? { kind: 'ready' as const } : { kind: 'analysis-only' as const, reason: r.reason };
     if (plan && systemFonts === null) throw new Error(`${component}: a layout plan records the text a target's system fonts shape, and the export was given no system fonts`);
     if (o.anim !== undefined && !plan) throw new Error(`${component}: ${t} has transitions or animations, which a phone runs only with a layout plan`);
     const animated = plan && o.anim !== undefined ? { anim: animTablesOf(o.anim) } : {};
-    const laidOut = plan && systemFonts !== null ? { plan: marklessPlan(t, sp, (dpr) => systemFonts(t, dpr), [...inputFaces.keys()], new Map(inputFonts.map((f) => [registerFace(f.bytes), f.bytes])), d.viewport.height, recorded.get(t)) } : {};
-    targets[t] = { backend: o.backend, viewport: d.viewport, dpr: d.dpr, readiness, states: sp.states.map((s) => ({ key: s.key, domain: s.domain })), initial: sp.initial, assignments, next: sp.next, ...exportBands(o), ...laidOut, ...animated };
+    const laidOut = plan && systemFonts !== null ? { plan: marklessPlan(t, sp, (dpr) => systemFonts(t, dpr), [...inputFaces.keys()], new Map(inputFonts.map((f) => [registerFace(f.bytes), f.bytes])), d.viewport.height, o.interaction, recorded.get(t), checksHeights(o)) } : {};
+    targets[t] = { backend: o.backend, viewport: d.viewport, dpr: d.dpr, readiness, states: sp.states.map((s) => ({ key: s.key, domain: s.domain })), initial: sp.initial, assignments, next: sp.next, ...exportBands(o), ...laidOut, ...animated, ...interaction };
   }
   const files = vendoredFaces();
   return {
