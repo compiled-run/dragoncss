@@ -308,7 +308,8 @@ describe('FIELD-font-width FW1: a field outside Ahem is accepted natively only w
     expect(errors(lato('fw-rtl', 'input { width: 100%; }', field, dragon.NO_FAULTS, 'rtl'))).toContainEqual(expect.stringMatching(/^all DRAGON_UNSUPPORTED_BIDI t::editor:text0 keeps its white space/));
   });
 
-  it('accepts a set-width search field in Lato under the field-width guard, as controls-text-font matches Chrome at its ::cancel box in Roboto and Inter', () => {
+  it('accepts a set-width search field in Lato on every target and lays out its iOS projection, and refuses an auto-width one by the field-width guard', () => {
+    // controls-text-font is the Chrome proof: its search fields match at every node, ::cancel included, in Roboto and Inter.
     const search = lato('fw-search', 'input { width: 120px; }', '<input data-dragon-id="t" readonly="" type="search" value="Hello">');
     expect(errors(search)).toEqual([]);
     const p = dragon.iosLayoutProjection(search, ENVIRONMENT, []);
