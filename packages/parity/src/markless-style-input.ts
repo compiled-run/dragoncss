@@ -124,6 +124,38 @@ export function valueUnder(entries: readonly { readonly when: Readonly<Record<st
   return (found[0] as (typeof entries)[number]).value;
 }
 
+/** A node outside the lists with its by-state lists keyed only by the page's states; entries that differed only by a row cell are one. */
+function withoutRowCells<N extends MarklessStyleInput['nodes'][number]>(n: N, rowCells: ReadonlySet<string>): N {
+  const strip = <E extends { readonly when: When }>(entries: readonly E[], same: (a: E, b: E) => boolean): E[] => {
+    const out: E[] = [];
+    for (const e of entries) {
+      const when = Object.fromEntries(Object.entries(e.when).filter(([cell]) => !rowCells.has(cell)));
+      const twin = out.find((o) => JSON.stringify(o.when) === JSON.stringify(when));
+      if (twin === undefined) out.push({ ...e, when });
+      else if (!same(twin, e)) throw new Error(`${n.id}: its by-state list follows a row's state outside the rows`);
+    }
+    return out;
+  };
+  const value = (a: { readonly value: string | null }, b: { readonly value: string | null }) => a.value === b.value;
+  if (n.kind === 'text') return (n.textByState === undefined ? n : { ...n, textByState: strip(n.textByState, value) }) as N;
+  return {
+    ...n,
+    ...(n.classByState === undefined ? {} : { classByState: strip(n.classByState, value) }),
+    ...(n.attributesByState === undefined ? {} : { attributesByState: Object.fromEntries(Object.entries(n.attributesByState).map(([k, v]) => [k, strip(v, value)])) }),
+    ...(n.styleByState === undefined ? {} : { styleByState: strip(n.styleByState, (a, b) => JSON.stringify(a.template) === JSON.stringify(b.template)) }),
+  } as N;
+}
+
+/** A row node's by-state list under one row's states: one value, or the list over the page states it still follows. */
+function underRow(entries: readonly { readonly when: Readonly<Record<string, StateValue>>; readonly value: string | null }[], rowStates: Readonly<Record<string, unknown>>, id: string): string | null | readonly { readonly when: Readonly<Record<string, StateValue>>; readonly value: string | null }[] {
+  const kept = entries
+    .filter((e) => Object.entries(rowStates).every(([cell, v]) => !(cell in e.when) || e.when[cell] === v))
+    .map((e) => ({ when: Object.fromEntries(Object.entries(e.when).filter(([cell]) => !(cell in rowStates))), value: e.value }));
+  if (kept.length === 0) throw new Error(`${id}: 0 by-state entries hold for ${JSON.stringify(rowStates)}`);
+  const values = new Set(kept.map((e) => e.value));
+  return values.size === 1 ? (kept[0] as (typeof kept)[number]).value : kept;
+}
+
 /** The ids of the document the component is laid out in, which the export keeps under these names. */
 const DOCUMENT_NODES: readonly string[] = ['html', 'body'];
 
@@ -357,9 +389,11 @@ export type MarklessRow = { readonly key: string; readonly states: Readonly<Reco
 export function marklessWithRows(input: MarklessStyleInput, rows: ReadonlyMap<string, readonly MarklessRow[]>): MarklessStyleInput {
   const nodes: MarklessStyleInput['nodes'][number][] = [];
   const placed = new Set<string>();
+  // A node outside the lists may list a row's state as a key it ignores; with the rows written out, that key goes.
+  const rowCells = new Set(input.states.filter((st) => st.row !== undefined).map((st) => st.cell));
   for (const n of input.nodes) {
     if (n.row === undefined) {
-      nodes.push(n);
+      nodes.push(rowCells.size === 0 ? n : withoutRowCells(n, rowCells));
       continue;
     }
     if (placed.has(n.row)) continue;
@@ -377,13 +411,17 @@ export function marklessWithRows(input: MarklessStyleInput, rows: ReadonlyMap<st
           continue;
         }
         const attributes: Record<string, string> = { ...t.attributes };
-        const cls = t.classByState === undefined ? undefined : valueUnder(t.classByState, row.states, t.id);
-        if (cls !== undefined && cls !== null) attributes['class'] = cls;
+        const byState: Record<string, readonly { readonly when: When; readonly value: string | null }[]> = {};
+        let classByState: readonly { readonly when: When; readonly value: string | null }[] | undefined;
+        const cls = t.classByState === undefined ? undefined : underRow(t.classByState, row.states, t.id);
+        if (Array.isArray(cls)) classByState = cls;
+        else if (cls !== undefined && cls !== null) attributes['class'] = cls as string;
         for (const [name, entries] of Object.entries(t.attributesByState ?? {})) {
-          const v = valueUnder(entries, row.states, t.id);
-          if (v !== null) attributes[name] = v;
+          const v = underRow(entries, row.states, t.id);
+          if (Array.isArray(v)) byState[name] = v;
+          else if (v !== null) attributes[name] = v as string;
         }
-        nodes.push({ kind: 'element', id: `${t.id}@${row.key}`, element: t.element, parent, attributes, ...(t.boxless === true ? { boxless: true as const } : {}), ...(t.styleTemplate === undefined ? {} : { styleTemplate: t.styleTemplate }), ...place });
+        nodes.push({ kind: 'element', id: `${t.id}@${row.key}`, element: t.element, parent, attributes, ...(classByState === undefined ? {} : { classByState }), ...(Object.keys(byState).length === 0 ? {} : { attributesByState: byState }), ...(t.boxless === true ? { boxless: true as const } : {}), ...(t.styleTemplate === undefined ? {} : { styleTemplate: t.styleTemplate }), ...place });
       }
     }
   }
