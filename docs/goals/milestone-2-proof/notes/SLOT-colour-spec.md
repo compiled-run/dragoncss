@@ -2,6 +2,24 @@
 
 Worker spec (2026-11-23) for review before implementation. Measured on master 2c460cb251. The Markless side was read on ~/wt/markless/text-parent (c66ec1448).
 
+## Judge verdict (2026-11-23)
+
+- **Approved: CS1 only, amended** (D1 below). CS2 and CS3 are parked until the owner rules on Q1.
+- **Q1.** Pending the owner, because it changes public text: the family writes rgb()/rgba() with number holes.
+- **Q2.** Markless's call. By default the family returns one template per style, and the thumb's branch on its `channel` prop becomes `styleByState`.
+- **Q3.** The closed grammar, only if CS2 is revived.
+- **Q4.** Markless folds a hole whose inputs are all fixed props into fixed text. Sampling a colour slot's four channels in one compile is rejected.
+- **Q5.** A separate task, SLOT-transitions, refuses a property a slot moves when it has a transition or an animation, for every slot, before colorpicker ships.
+- **Q6.** Keep `dragon.markless-plan/1` only if a current harness refuses unknown slot types by name.
+- **Q7.** Keep R5.
+- **Q8.** Planted faults stay on the build side.
+- **Q9.** Agreed.
+- **Q10.** Follow-ups by name.
+- **One analysis.** Parsing a value at run time is not scanning code. But three hand-written parsers would still break "protocol facts are imported" and Dragon's "on-device code never parses CSS", so a revived CS2 uses one TypeScript parser translated to the phones, plus an owner exception.
+- **Licensing.** No Blink code is copied.
+- **Proof standard.** A binding rule is proven only by Chrome at values the build never sampled, including one that separates the accepted rule from its nearest wrong neighbour (0.7). Colour pixels are checked at DPR 2 and 3 over white.
+- **Follow-up.** Refuse a number slot that reaches an rgb() channel or alpha inside calc(), once the F1 `within` fact exists (today `channel(0, 1)` fits such a channel falsely).
+
 ## Why
 
 `colorpicker` is the last @markless/ui family with no native owner. Markless refuses it at build time with "a `style` that follows state whose text is not known when the app is built (only numbers in it may follow state)" (markless packages/compiler/src/passes/native-view.ts:5324-5326).
@@ -133,10 +151,10 @@ So a colour made of number holes inside rgb() already works for r, g and b. Two 
 
 ### D1. Alpha through the channel rule (fitRule)
 
-- **The change.** fitRule (markless-slots.ts:146) tries `['channel', c, k]` with the fitted c and k, instead of only `['channel', 0, 1]`. The harness already computes `channel8(c + k·s)` (harness.ts:3795-3800), so the wire and the harness do not change.
+- **The change (as amended by the Judge).** fitRule (markless-slots.ts:146) keeps `line` and `line32` with the fitted c and k, and for `channel` tries only the fixed `['channel', 0, 1]` and then `['channel', 0, 255]`, never a fitted c and k: a fitted k = 128 matches every sample of `calc(a * 0.5)` and is wrong at 0.7 (round(89.6) = 90, where Chrome gives round(89.25) = 89). Such an alpha is refused by name. The harness already computes `channel8(c + k·s)` (harness.ts:3795-3800), so the wire and the harness do not change.
 - **Why it fits.** Alpha is `round8(clamp(a, 0, 1) × 255)` (color.ts:111-115), and `channel8(0 + 255·a)` is the same double for a in [0, 1]. It clamps the same way outside that range.
 - **Chrome checks alpha already.** The `--size` alpha test at markless-slots.test.ts:181-185 stops refusing. It becomes a binding test plus a Chrome comparison of the alpha at values the build never sampled. That is the reason for changing that test.
-- **The risk** is a function that equals `round8(c + k·s)` at every sample and differs elsewhere. A colour channel's samples (D3) include .5 steps and values across [0, 255] to make that unlikely. The comparison at values the build never sampled is the proof.
+- **The risk** is a function that equals one of the two channel rules at every sample and differs elsewhere. The proof is Chrome at alphas the build never sampled: 0.3, 0.7, 0.002, 0.501 and 0.999.
 
 ### D2. The input and the plan
 
@@ -285,7 +303,7 @@ The host passes four values per colour slot in `slots` (StyleExport.swift:686-70
 ## Slices
 
 - **CS1, alpha through the channel rule** (D1).
-  - The change is fitRule (markless-slots.ts:146), the rewritten markless-slots.test.ts:181-185, and docs/markless-native-styles.md:127 (the channel rule's wording).
+  - The change is fitRule (markless-slots.ts:146), the rewritten markless-slots.test.ts:181-185 (a binding test at those alphas against the export and Chrome, plus the `calc(var(--size, 1) * 0.5)` refusal), and docs/markless-native-styles.md:127 (the channel rule's wording).
   - The proof is markless-slots.test.ts, markless-style-choice.test.ts and markless-row-slots.test.ts, unchanged except :181-185, plus a regen that changes no expected file.
   - About 8-12 KB reviewed.
 - **CS2, the colour slot** (D2-D4, F1-F2).
