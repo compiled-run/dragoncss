@@ -398,28 +398,39 @@ describe('FORM-a control boxes: what the engine and the validator refuse', () =>
     const editor = control('t::editor', { kind: 'text-editor' }, {}, [text('t::editor:text0', 'XX')]);
     const empty = control('t::editor', { kind: 'text-editor' }, {}, [], strut);
     const placeholder = control('t::placeholder', { kind: 'text-placeholder' }, {}, [text('t::placeholder:text0', 'PP')]);
-    const field = (children: (LayoutBox | ControlBox)[]): ControlBox => control('t', { kind: 'text-field', size: 20, font: ahemFont(10), lineHeight: { kind: 'normal' } }, {}, children);
+    const field = (children: (LayoutBox | ControlBox)[]): ControlBox => control('t', { kind: 'text-field', size: 20, font: ahemFont(10), lineHeight: { kind: 'normal' }, cancelButton: null }, {}, children);
     const under = (n: LayoutBox | ControlBox): LayoutInput => ({ ...range({}, []), root: { ...box('root', {}), children: [n] } });
     expect(codes(under(field([editor])))).toEqual([]);
     expect(codes(under(field([placeholder, empty])))).toEqual([]);
     expect(codes(under(field([])))).toEqual(['$.root.children[0].children a text field control holds exactly one text-editor control']);
     expect(codes(under(field([box('d', {})])))).toEqual([
-      '$.root.children[0].children[0] a text field control holds only its text-editor control and at most one text-placeholder control',
+      '$.root.children[0].children[0] a text field control holds only its text-editor control, at most one text-placeholder control and, for a search field, its empty cancel-button box',
       '$.root.children[0].children a text field control holds exactly one text-editor control',
     ]);
     expect(codes(under(field([editor, { ...empty, id: 'e2' }])))).toEqual(['$.root.children[0].children a text field control holds exactly one text-editor control']);
     expect(codes(under(field([placeholder, { ...placeholder, id: 'p2', children: [], strut: null }, editor])))).toEqual(['$.root.children[0].children a text field control holds at most one text-placeholder control']);
     expect(codes(under(box('d', {}, [editor])))).toEqual(['$.root.children[0].children[0].control a text-editor control is a part of a text field control: its parent is one']);
     expect(codes(under(field([{ ...empty, strut: null }])))).toEqual(['$.root.children[0].children[0].strut an empty text-editor control has a strut, whose one empty line it lays out']);
+    const search = (children: (LayoutBox | ControlBox)[]): ControlBox => ({ ...field(children), control: { kind: 'text-field', size: 20, font: ahemFont(10), lineHeight: { kind: 'normal' }, cancelButton: { marginStart: 1, marginEnd: 3 } } });
+    const cancel: LayoutBox = { ...box('t::cancel', {}), boxType: 'anonymous' };
+    expect(codes(under(search([editor, cancel])))).toEqual([]);
+    expect(codes(under(search([editor])))).toEqual(['$.root.children[0].children a search field control holds exactly one cancel-button box']);
+    expect(codes(under(field([editor, cancel])))).toContainEqual('$.root.children[0].children[1] a text field control holds only its text-editor control, at most one text-placeholder control and, for a search field, its empty cancel-button box');
     // The engine's own guard names the validator, which now rejects that input.
     expect(() => layout(under(field([box('d', {})])), ahemMeasurer)).toThrow('validateLayoutInput rejects this input');
+    const area = (children: (LayoutBox | ControlBox)[]): ControlBox => control('t', { kind: 'text-area', cols: 20, rows: 2, font: ahemFont(10), lineHeight: { kind: 'normal' } }, {}, children);
+    expect(codes(under(area([placeholder, editor])))).toEqual([]);
+    expect(codes(under(area([])))).toEqual(['$.root.children[0].children a text area control holds exactly one text-editor control']);
+    // A textarea's empty editor has no line, so no strut, where the engine would lay out one empty line; an input's empty editor keeps one.
+    expect(codes(under(area([{ ...empty, strut: null }])))).toEqual([]);
+    expect(codes(under(area([empty])))).toContain("$.root.children[0].children[0].strut a text area control's empty text-editor control has a null strut: it has no line");
   });
 
   it('the validator refuses a select without exactly one inner element, a stray inner element, and an empty one without a strut', () => {
     const strut = { font: ahemFont(10), lineHeight: { kind: 'normal' } } as const;
     const inner = control('s::inner', { kind: 'select-inner' }, {}, [text('s::inner:text0', 'XX')]);
     const empty = control('s::inner', { kind: 'select-inner' }, {}, [], strut);
-    const select = (children: (LayoutBox | ControlBox)[]): ControlBox => control('s', { kind: 'select-menulist', font: ahemFont(10), lineHeight: { kind: 'normal' }, arrowWidth: 0 }, { display: 'flex' }, children);
+    const select = (children: (LayoutBox | ControlBox)[]): ControlBox => control('s', { kind: 'select-menulist', font: ahemFont(10), lineHeight: { kind: 'normal' }, arrowWidth: 0, options: [] }, { display: 'flex' }, children);
     const under = (n: LayoutBox | ControlBox): LayoutInput => ({ ...range({}, []), root: { ...box('root', {}), children: [n] } });
     expect(codes(under(select([inner])))).toEqual([]);
     expect(codes(under(select([empty])))).toEqual([]);

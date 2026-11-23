@@ -4,6 +4,7 @@ import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, renameSync, statSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
+import { threadId } from 'node:worker_threads';
 import { repoPath } from '../paths.ts';
 import { androidImagePartitions, fileSource } from './android-image.ts';
 import type { Ext4 } from './android-image.ts';
@@ -67,8 +68,10 @@ export class AndroidSystemFiles {
     const bytes = this.fs().readFile(path);
     const sha256 = createHash('sha256').update(bytes).digest('hex');
     mkdirSync(this.dir, { recursive: true });
-    writeFileSync(`${file}.${process.pid}`, bytes);
-    renameSync(`${file}.${process.pid}`, file);
+    // Plan workers are threads of one process: the scratch name is the thread's own.
+    const scratch = `${file}.${process.pid}-${threadId}`;
+    writeFileSync(scratch, bytes);
+    renameSync(scratch, file);
     writeFileSync(meta, `${sha256}\n`);
     return { path, bytes, sha256 };
   }

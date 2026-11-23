@@ -6,7 +6,6 @@
 // inline axis and rows the block axis; rtl mirrors the inline offsets at the end.
 import type {
   AlignItems,
-  ControlBox,
   Direction,
   GridAutoRepeat,
   GridContainerStyle,
@@ -15,6 +14,7 @@ import type {
   GridSelfAlign,
   GridSpan,
   CalcExpr,
+  ControlBox,
   LayoutBox,
   LayoutNode,
   LayoutStyle,
@@ -79,7 +79,7 @@ import {
 } from './box.ts';
 import type { Ctx, EngineFaults } from './block.ts';
 import { directionOf, layoutContents, NO_ENGINE_FAULTS } from './block.ts';
-import { plainBox } from './controls.ts';
+import { compressesPercentWidth, plainBox } from './controls.ts';
 import { intrinsicContentInlineSize } from './intrinsic.ts';
 import { isOutOfFlow, relativeOffsetWith } from './position.ts';
 import { hasAspectRatio } from './ratio.ts';
@@ -1848,8 +1848,10 @@ function layoutReplacedItem(ctx: Ctx, grid: GridState, item: GridItemData, leaf:
 function inlineContributionOf(ctx: Ctx, box: LayoutBox | ControlBox, kind: 'min' | 'max'): LU {
   const s = box.style;
   const bp = borderPaddingOf(ctx, box, 'columns', INDEFINITE);
+  const compressed = kind === 'min' && compressesPercentWidth(box);
   let size: LU;
   if (s.width.kind === 'px') size = borderBoxFromSpecified(fromCssPx(s.width.value), bp, s.boxSizing);
+  else if (compressed && (s.width.kind === 'percent' || s.width.kind === 'calc') && hasPercent(s.width)) size = borderBoxFromSpecified(resolveLength(s.width, ZERO, ctx.faults), bp, s.boxSizing);
   else size = add(intrinsicContentInlineSize(ctx, box, kind), bp);
   if (s.maxWidth.kind === 'px') size = minLu(size, borderBoxFromSpecified(fromCssPx(s.maxWidth.value), bp, s.boxSizing));
   const minWidth = s.minWidth.kind === 'px' ? borderBoxFromSpecified(fromCssPx(s.minWidth.value), bp, s.boxSizing) : bp;
@@ -2193,6 +2195,11 @@ function logicalBsp(pad: Edges, bor: Edges, rtl: boolean): Edges {
   return { top: add(bor.top, pad.top), right: rtl ? left : right, bottom: add(bor.bottom, pad.bottom), left: rtl ? right : left };
 }
 
+/** FORM: the controls the grid places as items, laid out by their kind as in block flow and flex: a block button, a select, a text field and a textarea. */
+function gridPlacesControl(c: ControlBox): boolean {
+  return c.control.kind === 'button-block' || c.control.kind === 'select-menulist' || c.control.kind === 'text-field' || c.control.kind === 'text-area';
+}
+
 /** Builds the items, their placement and the two track collections of a grid container. */
 function buildGrid(ctx: Ctx, box: LayoutBox, pad: Edges, bor: Edges, available: GridAvailable): GridState {
   const s = box.style;
@@ -2202,7 +2209,7 @@ function buildGrid(ctx: Ctx, box: LayoutBox, pad: Edges, bor: Edges, available: 
   const outOfFlow: LayoutBox[] = [];
   for (const k of box.children) {
     if (k.kind !== 'box' && k.kind !== 'replaced' && k.kind !== 'control') throw new Error(`${k.id} is inline content directly in grid container ${box.id}; validateLayoutInput rejects this input`);
-    if (k.kind === 'control' && k.control.kind !== 'button-block') unsupported('grid-control', k.id, 'css-grid-2 §6', `a ${k.control.kind} control as a grid item (not yet supported)`);
+    if (k.kind === 'control' && !gridPlacesControl(k)) unsupported('grid-control', k.id, 'css-grid-2 §6', `a ${k.control.kind} control as a grid item (not yet supported)`);
     // css-grid-2 §9: an absolutely positioned child is no grid item and takes no part in placement or track sizing.
     if (!isOutOfFlow(ctx, k)) inFlow.push(k);
     else if (k.kind === 'box') outOfFlow.push(k);

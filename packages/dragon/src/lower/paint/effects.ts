@@ -20,9 +20,9 @@ import { ProgramError } from './types.ts';
 export type EffectsWrite =
   | { readonly kind: 'opacity'; readonly opacity: number }
   /** A pre-composited group: its opacity, its backdrop box (null: the platform draws the backdrop) and the earlier groups in it. */
-  | { readonly kind: 'opacity-group'; readonly opacity: number; readonly backdrop: string | null; readonly painters: readonly string[] }
+  | { readonly kind: 'opacity-group'; readonly opacity: number; readonly backdrop: string | null; readonly painters: readonly string[]; readonly after?: string; readonly unstable?: readonly string[] }
   /** A pre-composited group with a colour-matrix filter: its opacity (1 for none), its filter functions, backdrop box and painters. */
-  | { readonly kind: 'filter-group'; readonly opacity: number; readonly filter: readonly FilterFunction[]; readonly backdrop: string | null; readonly painters: readonly string[] }
+  | { readonly kind: 'filter-group'; readonly opacity: number; readonly filter: readonly FilterFunction[]; readonly backdrop: string | null; readonly painters: readonly string[]; readonly after?: string; readonly unstable?: readonly string[] }
   /** A group nested in a pre-composited group: its opacity; the outer group's overlay composites it into the outer layer. */
   | { readonly kind: 'opacity-nested'; readonly opacity: number };
 
@@ -60,7 +60,7 @@ export const EFFECTS_LOWERING: PaintLowering<EffectsWrite> = {
     const planned = opacity > 0 ? current.plans.get(el.element.address) : undefined;
     if (planned?.kind === 'group' && planned.filter.length > 0) {
       facts['effects'] = { opacity, filter: planned.filter } satisfies EffectsFacts;
-      return [{ kind: 'filter-group', opacity, filter: planned.filter, backdrop: planned.backdrop, painters: planned.painters }];
+      return [{ kind: 'filter-group', opacity, filter: planned.filter, backdrop: planned.backdrop, painters: planned.painters, ...(planned.after === null ? {} : { after: planned.after }), ...(planned.unstable.length === 0 ? {} : { unstable: planned.unstable }) }];
     }
     if (opacity === 1) return [];
     if (planned?.kind === 'nested') {
@@ -73,7 +73,7 @@ export const EFFECTS_LOWERING: PaintLowering<EffectsWrite> = {
     }
     const effects: EffectsFacts = { opacity };
     facts['effects'] = effects;
-    if (planned?.kind === 'group') return [{ kind: 'opacity-group', opacity, backdrop: planned.backdrop, painters: planned.painters }];
+    if (planned?.kind === 'group') return [{ kind: 'opacity-group', opacity, backdrop: planned.backdrop, painters: planned.painters, ...(planned.after === null ? {} : { after: planned.after }), ...(planned.unstable.length === 0 ? {} : { unstable: planned.unstable }) }];
     return [{ kind: 'opacity', opacity }];
   },
 };

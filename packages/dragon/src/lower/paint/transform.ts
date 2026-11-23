@@ -83,6 +83,15 @@ function originOf(el: ResolvedElement, ops: readonly TransformOp[]): TransformOr
   return origin;
 }
 
+/** The engine functions of an element's translate, rotate, scale and transform, in that order; [] for none. */
+export const elementOps = (el: ResolvedElement): TransformOp[] => elementTransform(el).flatMap((f) => engineOps(f, el.element.address));
+
+/** The typed transform of an element as the program writes it, or null when it has none (its hit facts, rt-hit.ts HitFact). */
+export function elementTransformWrite(el: ResolvedElement): { readonly ops: readonly TransformOp[]; readonly origin: TransformOrigin } | null {
+  const ops = elementOps(el);
+  return ops.length === 0 ? null : { ops, origin: originOf(el, ops) };
+}
+
 export const TRANSFORM_LOWERING: PaintLowering<TransformWrite> = {
   name: 'transform',
   vocabulary: {
@@ -93,7 +102,7 @@ export const TRANSFORM_LOWERING: PaintLowering<TransformWrite> = {
   lower: ({ el, facts }) => {
     // An anonymous box takes the initial value of every non-inherited property (CSS2 §9.2.1.1): transform none.
     if (el === null) return [];
-    const ops = elementTransform(el).flatMap((f) => engineOps(f, el.element.address));
+    const ops = elementOps(el);
     const willChange = elementWillChange(el);
     // Without a transform or will-change the origin is never read, so it is neither lowered nor checked.
     if (ops.length === 0 && willChange.length === 0) return [];
