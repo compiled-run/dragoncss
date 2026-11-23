@@ -32,11 +32,11 @@ fun lineClamp_clampedInput(input: LayoutInput, boxes: JsArray<LayoutRect>, measu
   val widths: JsStringMap<Double> = JsStringMap<Double>()
   // ts: packages/layout/src/line-clamp.ts:48
   run {
-    val _a182 = boxes
-    var _i182 = 0
-    while (_i182 < _a182.size) {
-      val r: LayoutRect = _a182[_i182]
-      _i182++
+    val _a183 = boxes
+    var _i183 = 0
+    while (_i183 < _a183.size) {
+      val r: LayoutRect = _a183[_i183]
+      _i183++
       widths.set(r.id, r.width)
     }
   }

@@ -39,11 +39,11 @@ fun paintMenulist_collectArrowZooms(b: U_ControlBox_LayoutBox, device: Double, o
   }
   // ts: packages/layout/src/paint-menulist.ts:43
   run {
-    val _a232 = b.children
-    var _i232 = 0
-    while (_i232 < _a232.size) {
-      val k: U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a232[_i232]
-      _i232++
+    val _a233 = b.children
+    var _i233 = 0
+    while (_i233 < _a233.size) {
+      val k: U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a233[_i233]
+      _i233++
       // ts: packages/layout/src/paint-menulist.ts:44
       if ((jsStrEq(k.kind, "box") || jsStrEq((k as U_ControlBox_InlineBox_LineBreak_ReplacedLeaf_TextLeaf).kind, "control"))) {
         found = (found + paintMenulist_collectArrowZooms((k as U_ControlBox_LayoutBox), device, out))
@@ -74,11 +74,11 @@ fun paintMenulist_collectArrows(b: U_ControlBox_LayoutBox, zoomedRatio: Double, 
   }
   // ts: packages/layout/src/paint-menulist.ts:63
   run {
-    val _a233 = b.children
-    var _i233 = 0
-    while (_i233 < _a233.size) {
-      val k: U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a233[_i233]
-      _i233++
+    val _a234 = b.children
+    var _i234 = 0
+    while (_i234 < _a234.size) {
+      val k: U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a234[_i234]
+      _i234++
       // ts: packages/layout/src/paint-menulist.ts:64
       if ((jsStrEq(k.kind, "box") || jsStrEq((k as U_ControlBox_InlineBox_LineBreak_ReplacedLeaf_TextLeaf).kind, "control"))) {
         paintMenulist_collectArrows((k as U_ControlBox_LayoutBox), zoomedRatio, device, zooms, abs, out)

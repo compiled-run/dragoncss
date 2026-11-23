@@ -123,11 +123,11 @@ public func rtInteraction_checkInteractionTables(_ t: InteractionTables, _ state
   let lengths: JsArray<Double> = JsArray<Double>([jsLength(t.focusable), jsLength(t.touchConsumesTap), jsLength(t.keyboardInput), jsLength(t.chainOf), jsLength(t.activeChainOf), jsLength(t.pointerFocusOf), jsLength(t.keyboardFocusOf), jsLength(t.forcedHoverOf), jsLength(t.forcedActiveOf), jsLength(t.forcedFocusOf), jsLength(t.forcedFocusVisibleOf)])
   // ts: packages/layout/src/rt-interaction.ts:120
   do {
-    let _a327 = lengths
-    var _i327 = 0
-    while _i327 < _a327.items.count {
-      let l: Double = _a327.items[_i327]
-      _i327 += 1
+    let _a328 = lengths
+    var _i328 = 0
+    while _i328 < _a328.items.count {
+      let l: Double = _a328.items[_i328]
+      _i328 += 1
       // ts: packages/layout/src/rt-interaction.ts:120
       if (l != n) {
         throw try InteractionError(jsConcat(S.s586, jsNumberToString(l), S.s40, jsNumberToString(n), S.s39))

@@ -237,21 +237,21 @@ public func layout_flatten(_ frag: Frag, _ parent: JsString?, _ inFlowX: Double,
   }
   // ts: packages/layout/src/layout.ts:134
   do {
-    let _a177 = frag.outOfFlow
-    var _i177 = 0
-    while _i177 < _a177.items.count {
-      let oof: OutOfFlow = _a177.items[_i177]
-      _i177 += 1
+    let _a178 = frag.outOfFlow
+    var _i178 = 0
+    while _i178 < _a178.items.count {
+      let oof: OutOfFlow = _a178.items[_i178]
+      _i178 += 1
       _ = jsPush(out.pending, Pending(oof, frag.id, absX, absY, -1.0))
     }
   }
   // ts: packages/layout/src/layout.ts:135
   do {
-    let _a178 = frag.children
-    var _i178 = 0
-    while _i178 < _a178.items.count {
-      let c: Box_Placed = _a178.items[_i178]
-      _i178 += 1
+    let _a179 = frag.children
+    var _i179 = 0
+    while _i179 < _a179.items.count {
+      let c: Box_Placed = _a179.items[_i179]
+      _i179 += 1
       try layout_flatten(c.frag, frag.id, c.x, c.y, absX, absY, out)
     }
   }
@@ -261,11 +261,11 @@ public func layout_flatten(_ frag: Frag, _ parent: JsString?, _ inFlowX: Double,
 public func layout_collectSticky(_ b: LayoutBox, _ scroller: JsString?, _ within: JsString?, _ out: JsStringMap<Sticky>) throws -> Void {
   // ts: packages/layout/src/layout.ts:144
   do {
-    let _a179 = b.children
-    var _i179 = 0
-    while _i179 < _a179.items.count {
-      let c: any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a179.items[_i179]
-      _i179 += 1
+    let _a180 = b.children
+    var _i180 = 0
+    while _i180 < _a180.items.count {
+      let c: any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a180.items[_i180]
+      _i180 += 1
       // ts: packages/layout/src/layout.ts:145
       if ((c.kind != S.s_box) && ((c as! any U_ControlBox_InlineBox_LineBreak_ReplacedLeaf_TextLeaf).kind != S.s_replaced)) {
         continue
@@ -388,11 +388,11 @@ public func layout_parents(_ root: LayoutBox) throws -> JsStringMap<LayoutBox> {
   func walk(_ b: LayoutBox) throws -> Void {
     // ts: packages/layout/src/layout.ts:262
     do {
-      let _a180 = b.children
-      var _i180 = 0
-      while _i180 < _a180.items.count {
-        let c: any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a180.items[_i180]
-        _i180 += 1
+      let _a181 = b.children
+      var _i181 = 0
+      while _i181 < _a181.items.count {
+        let c: any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a181.items[_i181]
+        _i181 += 1
         // ts: packages/layout/src/layout.ts:263
         if ((c.kind != S.s_box) && ((c as! any U_ControlBox_InlineBox_LineBreak_ReplacedLeaf_TextLeaf).kind != S.s_control)) {
           continue
@@ -496,11 +496,11 @@ public func layout_absoluteRects(_ boxes: JsArray<LayoutRect>) throws -> JsStrin
   let abs: JsStringMap<LayoutRect> = JsStringMap<LayoutRect>()
   // ts: packages/layout/src/layout.ts:349
   do {
-    let _a181 = boxes
-    var _i181 = 0
-    while _i181 < _a181.items.count {
-      let b: LayoutRect = _a181.items[_i181]
-      _i181 += 1
+    let _a182 = boxes
+    var _i182 = 0
+    while _i182 < _a182.items.count {
+      let b: LayoutRect = _a182.items[_i182]
+      _i182 += 1
       let parent: LayoutRect? = try ((b.parent == nil) ? (nil as LayoutRect?) : (abs.get(jsUnwrap(b.parent)) as LayoutRect?))
       let px0: Double = try ((parent == nil) ? 0.0 : jsUnwrap(parent).x)
       let py0: Double = try ((parent == nil) ? 0.0 : jsUnwrap(parent).y)

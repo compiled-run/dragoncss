@@ -99,6 +99,14 @@
    "height": 2969
   },
   {
+   "id": "n1::cancel",
+   "parent": "n1",
+   "x": 29376,
+   "y": 2476,
+   "width": 1344,
+   "height": 1344
+  },
+  {
    "id": "nl",
    "parent": "notes",
    "x": 2560,
@@ -747,6 +755,14 @@
    "height": 512
   },
   {
+   "id": "s1::cancel",
+   "parent": "s1",
+   "x": 1280,
+   "y": 448,
+   "width": 384,
+   "height": 384
+  },
+  {
    "id": "srch:text1",
    "parent": "srch",
    "x": 5120,
@@ -801,6 +817,14 @@
    "y": 384,
    "width": 2432,
    "height": 1280
+  },
+  {
+   "id": "s2::cancel",
+   "parent": "s2",
+   "x": 3072,
+   "y": 576,
+   "width": 896,
+   "height": 896
   },
   {
    "id": "wraps",
@@ -1015,6 +1039,15 @@
    "bottom": 226,
    "width": 423,
    "height": 47
+  },
+  {
+   "id": "n1::cancel",
+   "left": 499,
+   "top": 192,
+   "right": 520,
+   "bottom": 213,
+   "width": 21,
+   "height": 21
   },
   {
    "id": "nl",
@@ -1746,6 +1779,15 @@
    "height": 8
   },
   {
+   "id": "s1::cancel",
+   "left": 60,
+   "top": 717,
+   "right": 66,
+   "bottom": 723,
+   "width": 6,
+   "height": 6
+  },
+  {
    "id": "srch:text1",
    "left": 80,
    "top": 706,
@@ -1807,6 +1849,15 @@
    "bottom": 726,
    "width": 38,
    "height": 20
+  },
+  {
+   "id": "s2::cancel",
+   "left": 188,
+   "top": 709,
+   "right": 202,
+   "bottom": 723,
+   "width": 14,
+   "height": 14
   },
   {
    "id": "wraps",

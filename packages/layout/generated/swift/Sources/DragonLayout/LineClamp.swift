@@ -34,11 +34,11 @@ public func lineClamp_clampedInput(_ input: LayoutInput, _ boxes: JsArray<Layout
   let widths: JsStringMap<Double> = JsStringMap<Double>()
   // ts: packages/layout/src/line-clamp.ts:48
   do {
-    let _a182 = boxes
-    var _i182 = 0
-    while _i182 < _a182.items.count {
-      let r: LayoutRect = _a182.items[_i182]
-      _i182 += 1
+    let _a183 = boxes
+    var _i183 = 0
+    while _i183 < _a183.items.count {
+      let r: LayoutRect = _a183.items[_i183]
+      _i183 += 1
       _ = widths.set(r.id, r.width)
     }
   }

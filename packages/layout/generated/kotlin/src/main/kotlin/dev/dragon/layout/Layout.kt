@@ -168,21 +168,21 @@ fun layout_flatten(frag: Frag, parent: String?, inFlowX: Double, inFlowY: Double
   }
   // ts: packages/layout/src/layout.ts:134
   run {
-    val _a177 = frag.outOfFlow
-    var _i177 = 0
-    while (_i177 < _a177.size) {
-      val oof: OutOfFlow = _a177[_i177]
-      _i177++
+    val _a178 = frag.outOfFlow
+    var _i178 = 0
+    while (_i178 < _a178.size) {
+      val oof: OutOfFlow = _a178[_i178]
+      _i178++
       jsPush(out.pending, Pending(oof, frag.id, absX, absY, -1.0))
     }
   }
   // ts: packages/layout/src/layout.ts:135
   run {
-    val _a178 = frag.children
-    var _i178 = 0
-    while (_i178 < _a178.size) {
-      val c: Box_Placed = _a178[_i178]
-      _i178++
+    val _a179 = frag.children
+    var _i179 = 0
+    while (_i179 < _a179.size) {
+      val c: Box_Placed = _a179[_i179]
+      _i179++
       layout_flatten(c.frag, frag.id, c.x, c.y, absX, absY, out)
     }
   }
@@ -192,11 +192,11 @@ fun layout_flatten(frag: Frag, parent: String?, inFlowX: Double, inFlowY: Double
 fun layout_collectSticky(b: LayoutBox, scroller: String?, within: String?, out: JsStringMap<Sticky>): Unit {
   // ts: packages/layout/src/layout.ts:144
   run {
-    val _a179 = b.children
-    var _i179 = 0
-    while (_i179 < _a179.size) {
-      val c: U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a179[_i179]
-      _i179++
+    val _a180 = b.children
+    var _i180 = 0
+    while (_i180 < _a180.size) {
+      val c: U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a180[_i180]
+      _i180++
       // ts: packages/layout/src/layout.ts:145
       if ((!jsStrEq(c.kind, "box") && !jsStrEq((c as U_ControlBox_InlineBox_LineBreak_ReplacedLeaf_TextLeaf).kind, "replaced"))) {
         continue
@@ -319,11 +319,11 @@ fun layout_parents(root: LayoutBox): JsStringMap<LayoutBox> {
   fun walk(b: LayoutBox): Unit {
     // ts: packages/layout/src/layout.ts:262
     run {
-      val _a180 = b.children
-      var _i180 = 0
-      while (_i180 < _a180.size) {
-        val c: U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a180[_i180]
-        _i180++
+      val _a181 = b.children
+      var _i181 = 0
+      while (_i181 < _a181.size) {
+        val c: U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a181[_i181]
+        _i181++
         // ts: packages/layout/src/layout.ts:263
         if ((!jsStrEq(c.kind, "box") && !jsStrEq((c as U_ControlBox_InlineBox_LineBreak_ReplacedLeaf_TextLeaf).kind, "control"))) {
           continue
@@ -427,11 +427,11 @@ fun layout_absoluteRects(boxes: JsArray<LayoutRect>): JsStringMap<LayoutRect> {
   val abs: JsStringMap<LayoutRect> = JsStringMap<LayoutRect>()
   // ts: packages/layout/src/layout.ts:349
   run {
-    val _a181 = boxes
-    var _i181 = 0
-    while (_i181 < _a181.size) {
-      val b: LayoutRect = _a181[_i181]
-      _i181++
+    val _a182 = boxes
+    var _i182 = 0
+    while (_i182 < _a182.size) {
+      val b: LayoutRect = _a182[_i182]
+      _i182++
       val parent: LayoutRect? = (if ((b.parent == null)) null else abs.get(jsUnwrap(b.parent)))
       val px0: Double = (if ((parent == null)) 0.0 else jsUnwrap(parent).x)
       val py0: Double = (if ((parent == null)) 0.0 else jsUnwrap(parent).y)

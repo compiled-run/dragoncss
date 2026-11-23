@@ -481,11 +481,11 @@ public func paintDash_opacityGroups(_ p: DashPainter) throws -> JsArray<DashOpac
   var current: Double = 0.0
   // ts: packages/layout/src/paint-dash.ts:273
   do {
-    let _a219 = sorted
-    var _i219 = 0
-    while _i219 < _a219.items.count {
-      let side: Double = _a219.items[_i219]
-      _i219 += 1
+    let _a220 = sorted
+    var _i220 = 0
+    while _i220 < _a220.items.count {
+      let side: Double = _a220.items[_i220]
+      _i220 += 1
       let a: Double = try paintDash_alphaOf(paintDash_edgeAt(p.edges, side))
       // ts: packages/layout/src/paint-dash.ts:275
       if (a != current) {
@@ -528,11 +528,11 @@ public func paintDash_includesAdjacentEdges(_ sides: JsArray<Double>) throws -> 
   var vertical: Bool = false
   // ts: packages/layout/src/paint-dash.ts:301
   do {
-    let _a220 = sides
-    var _i220 = 0
-    while _i220 < _a220.items.count {
-      let s: Double = _a220.items[_i220]
-      _i220 += 1
+    let _a221 = sides
+    var _i221 = 0
+    while _i221 < _a221.items.count {
+      let s: Double = _a221.items[_i221]
+      _i221 += 1
       // ts: packages/layout/src/paint-dash.ts:302
       if ((s == paintDash_TOP) || (s == paintDash_BOTTOM)) {
         horizontal = true
@@ -586,11 +586,11 @@ public func paintDash_paintOpacityGroup(_ p: DashPainter, _ groups: JsArray<Dash
   let completed: JsArray<DashDone> = try paintDash_paintOpacityGroup(p, groups, (index + 1.0), opacity)
   // ts: packages/layout/src/paint-dash.ts:335
   do {
-    let _a221 = try jsUnwrap(group).sides
-    var _i221 = 0
-    while _i221 < _a221.items.count {
-      let side: Double = _a221.items[_i221]
-      _i221 += 1
+    let _a222 = try jsUnwrap(group).sides
+    var _i222 = 0
+    while _i222 < _a222.items.count {
+      let side: Double = _a222.items[_i222]
+      _i222 += 1
       try paintDash_paintSide(p, side, paintAlpha, completed)
       let d: DashDone? = jsAt(completed, side)
       // ts: packages/layout/src/paint-dash.ts:338

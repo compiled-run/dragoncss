@@ -99,6 +99,14 @@
    "height": 4454
   },
   {
+   "id": "n1::cancel",
+   "parent": "n1",
+   "x": 44736,
+   "y": 4051,
+   "width": 1344,
+   "height": 1344
+  },
+  {
    "id": "nl",
    "parent": "notes",
    "x": 3840,
@@ -747,6 +755,14 @@
    "height": 768
   },
   {
+   "id": "s1::cancel",
+   "parent": "s1",
+   "x": 1984,
+   "y": 704,
+   "width": 512,
+   "height": 512
+  },
+  {
    "id": "srch:text1",
    "parent": "srch",
    "x": 7680,
@@ -801,6 +817,14 @@
    "y": 576,
    "width": 3648,
    "height": 1920
+  },
+  {
+   "id": "s2::cancel",
+   "parent": "s2",
+   "x": 4608,
+   "y": 864,
+   "width": 1344,
+   "height": 1344
   },
   {
    "id": "wraps",
@@ -1015,6 +1039,15 @@
    "bottom": 338,
    "width": 645,
    "height": 69
+  },
+  {
+   "id": "n1::cancel",
+   "left": 759,
+   "top": 293,
+   "right": 780,
+   "bottom": 314,
+   "width": 21,
+   "height": 21
   },
   {
    "id": "nl",
@@ -1746,6 +1779,15 @@
    "height": 12
   },
   {
+   "id": "s1::cancel",
+   "left": 91,
+   "top": 1076,
+   "right": 99,
+   "bottom": 1084,
+   "width": 8,
+   "height": 8
+  },
+  {
    "id": "srch:text1",
    "left": 120,
    "top": 1060,
@@ -1807,6 +1849,15 @@
    "bottom": 1090,
    "width": 57,
    "height": 30
+  },
+  {
+   "id": "s2::cancel",
+   "left": 282,
+   "top": 1064,
+   "right": 303,
+   "bottom": 1085,
+   "width": 21,
+   "height": 21
   },
   {
    "id": "wraps",
