@@ -6,6 +6,8 @@
 // legend in its block-start border (HTML §15.3.13); the rejects name the legend cutout paint, a non-block fieldset and the UA groove.
 // FORM-b adds a single select with appearance: none or devolved to menulist-button, and refuses a list box, a themed menulist, a
 // shrink-to-fit width and an optgroup.
+// An inline-block text field (the UA default) is an atomic inline on its line, with its editor line's baseline; the rejects name a
+// field in a right-to-left line, off the baseline and inline-flex.
 import type { FixtureSpec } from '../fixtures.ts';
 import { both, layout, reject } from './define.ts';
 
@@ -36,8 +38,12 @@ export const CONTROLS: readonly FixtureSpec[] = [
   both('controls-range-block'),
   both('controls-range-flex'),
   layout('controls-text-field'),
-  layout('controls-textarea'),
   layout('controls-text-field-search'),
+  layout('controls-textarea'),
+  layout('controls-text-field-inline'),
+  reject('reject-controls-text-field-inline-dir', 'DRAGON_UNSUPPORTED_VALUE', 'rtl', 'the inline-block <input> f is on a right-to-left line of d'),
+  reject('reject-controls-text-field-inline-valign', 'DRAGON_UNSUPPORTED_VALUE', 'middle', 'vertical-align: middle on the inline-block <input> f is not supported'),
+  reject('reject-controls-text-field-inline-flex', 'DRAGON_UNSUPPORTED_VALUE', 'inline-flex', 'display: inline-flex on <input> f is not supported on a text field'),
   // FORM-checkbox: a themed checkbox, 13px unless sized, as a block and a flex item (the notes form's row), checked
   // and not, under a dark and a light accent; the rejects name what the slice does not draw.
   both('controls-checkbox'),
@@ -48,6 +54,7 @@ export const CONTROLS: readonly FixtureSpec[] = [
   reject('reject-checkbox-disabled', 'DRAGON_UNSUPPORTED_ATTRIBUTE', '<input data-dragon-id="c" type="checkbox" disabled="">', 'attribute disabled on c is not supported'),
   reject('reject-checkbox-stretch', 'DRAGON_UNSUPPORTED_VALUE', '<input data-dragon-id="c" type="checkbox">', '<input type=checkbox> c with width: auto is stretched by its flex container'),
   reject('reject-checkbox-radio', 'DRAGON_UNSUPPORTED_ELEMENT', '<input data-dragon-id="c" type="radio">', '<input> c of type radio is not supported'),
+  layout('controls-search'),
   both('controls-select-none'),
   both('controls-select-button'),
   layout('controls-select-label'),

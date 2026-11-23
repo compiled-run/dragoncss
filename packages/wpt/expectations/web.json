@@ -27124,7 +27124,7 @@
     "css/css-sizing/aspect-ratio/zero-or-infinity-009.html": {"interop":["interop-2021-aspect-ratio"],"missing":"kind:reftest","status":"not-runnable"},
     "css/css-sizing/aspect-ratio/zero-or-infinity-010.html": {"interop":["interop-2021-aspect-ratio"],"missing":"kind:reftest","status":"not-runnable"},
     "css/css-sizing/auto-scrollbar-inside-stf-abspos.html": {"missing":"kind:reftest","status":"not-runnable"},
-    "css/css-sizing/available-height-for-replaced-content-001.html": {"missing":"DRAGON_UNPROVEN_CONTEXT:width:<percentage>","status":"not-runnable"},
+    "css/css-sizing/available-height-for-replaced-content-001.html": {"missing":"DRAGON_UNPROVEN_CONTEXT:height:<percentage>","status":"not-runnable"},
     "css/css-sizing/block-fit-content-as-initial.html": {"missing":"kind:reftest","status":"not-runnable"},
     "css/css-sizing/block-image-percentage-max-height-inside-inline.html": {"missing":"kind:reftest","status":"not-runnable"},
     "css/css-sizing/block-size-with-min-or-max-content-1a.html": {"missing":"kind:reftest","status":"not-runnable"},
