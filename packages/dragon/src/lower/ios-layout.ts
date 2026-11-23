@@ -68,10 +68,12 @@ import type { CompilerFaults } from '../faults.ts';
 import type { MathFonts } from '../css/math.ts';
 import { fontUnitsIn, lowerLengthCalc, lowerMathNode, mathContextFor, mathHasViewport, parseMath } from '../css/math.ts';
 import type { UaDataset } from '../ua/datasets.ts';
-import { isControlTag, selectAppearance } from '../analysis/elements/controls.ts';
-import { rangePartOf, selectPartOf, textFieldPartOf } from '../analysis/resolve.ts';
+import { inputTypeState, isCheckboxType, isControlTag, selectAppearance } from '../analysis/elements/controls.ts';
+import { rangePartOf, selectOptionLabelsOf, selectPartOf, textFieldPartOf } from '../analysis/resolve.ts';
+import { SEARCH_CANCEL_BUTTON } from '../forms/text-field.ts';
 import { rangeRatio } from '../forms/range-value.ts';
 import { RANGE_NONE_THUMB } from '../forms/ua-shadow.generated.ts';
+import { CHECKBOX_PART_SIZE } from '../forms/checkbox.ts';
 import { DEFAULT_OBJECT_SIZE, isReplacedTag } from '../analysis/elements/replaced.ts';
 import { appliedContainment } from '../analysis/containment.ts';
 import { INTRINSIC_AUTO_TYPE } from '../css/properties/containment.ts';
@@ -1016,26 +1018,45 @@ function lowerBox(given: ResolvedElement, l: Lowerer, gridParent: GridContainer 
   if (el.element.tag === 'fieldset' && style.display === 'block') return { kind: 'control', id, boxType: 'element', style, control: { kind: 'fieldset' }, strut, children: withRenderedLegend(kids, children) };
   // FORM-a: a block button centres its contents (Blink AlignBlockContent); a flex button is the plain flex container it is.
   if (el.element.tag === 'button' && style.display === 'block') return { kind: 'control', id, boxType: 'element', style, control: { kind: 'button-block' }, strut, children };
+  if (el.element.tag === 'input' && isCheckboxType(el.element.attributes.get('type'))) {
+    // FORM-checkbox: Chrome's theme gives an auto width or height the part size, 13px (LayoutTheme, native_theme_base.cc kCheckboxSize).
+    const part = (v: LayoutStyle['width']): LayoutStyle['width'] => (v.kind === 'auto' ? { kind: 'px', value: CHECKBOX_PART_SIZE } : v);
+    return { kind: 'box', id, boxType: 'element', style: { ...style, width: part(style.width), height: part(style.height) }, strut, marker: null, children };
+  }
   const field = textFieldPartOf(el);
   if (field !== undefined && field.part === null) {
     // FORM-b: a text field's size attribute (HTML §4.10.5.3.2: a valid non-negative integer above zero, else 20) and its own font
     // and line height, which decide its default width and its editor's line height (the engine's controls.ts).
     const own = lowerFont(id, zoomedGet(id, (p: TextLonghand) => (el.props.get(p) as ResolvedValue).value, zoom), l.mode);
-    return { kind: 'control', id, boxType: 'element', style, control: { kind: 'text-field', size: textFieldSize(el.element.attributes.get('size')), font: own.font, lineHeight: own.lineHeight }, strut, children };
+    if (el.element.tag === 'textarea') {
+      // A textarea scrolls (overflow auto, or hidden) from offset 0 with its scrollbars hidden: at rest it clips as overflow: clip
+      // does. rows and cols are HTML §4.10.11's: a valid non-negative integer above zero, else 2 and 20.
+      const clip: LayoutStyle = { ...style, overflowX: 'clip', overflowY: 'clip' };
+      return { kind: 'control', id, boxType: 'element', style: clip, control: { kind: 'text-area', cols: positiveIntegerAttribute(el.element.attributes.get('cols'), 20), rows: positiveIntegerAttribute(el.element.attributes.get('rows'), 2), font: own.font, lineHeight: own.lineHeight }, strut, children };
+    }
+    const search = inputTypeState(el.element.attributes.get('type')) === 'search';
+    // A search field's cancel button is a box of its own (<id>::cancel), which the engine sizes and places beside the editor.
+    const parts = search ? [...children, anonymousBox(el, `${id}::cancel`, [], l)] : children;
+    return { kind: 'control', id, boxType: 'element', style, control: { kind: 'text-field', size: textFieldSize(el.element.attributes.get('size')), font: own.font, lineHeight: own.lineHeight, cancelButton: search ? SEARCH_CANCEL_BUTTON : null }, strut, children: parts };
   }
   if (field !== undefined) {
-    // The inner editor scrolls in Chrome (overflow: scroll, scrollbar-width: none) from offset 0 until the user edits; at rest it
-    // clips its text as overflow: clip does. The placeholder clips (overflow: hidden) as it computes.
-    const clipped: LayoutStyle = field.part === 'editor' ? { ...style, overflowX: 'clip', overflowY: 'clip' } : style;
-    // An empty editor still lays out one line of its own font (the engine's block.ts), so it always carries its strut.
-    const own = field.part === 'editor' ? (strut ?? strutOf(el, true, l.mode, zoom)) : strut;
+    // An input's inner editor scrolls in Chrome (overflow: scroll, scrollbar-width: none) from offset 0 until the user edits; at
+    // rest it clips its text as overflow: clip does. A textarea's editor and every placeholder keep their computed overflow.
+    const clipped: LayoutStyle = field.part === 'editor' && field.host.tag === 'input' ? { ...style, overflowX: 'clip', overflowY: 'clip' } : style;
+    // An input's empty editor still lays out one line of its own font (the engine's block.ts), so it carries its strut; but a
+    // textarea's empty editor has no line, with or without a placeholder (Chrome 145: 0 tall), so it gives the textarea no baseline.
+    const lineless = field.part === 'editor' && field.host.tag === 'textarea' && children.length === 0;
+    const own = lineless ? null : field.part === 'editor' ? (strut ?? strutOf(el, true, l.mode, zoom)) : strut;
     return { kind: 'control', id, boxType: 'element', style: clipped, control: { kind: field.part === 'editor' ? 'text-editor' : 'text-placeholder' }, strut: own, children };
   }
   const select = selectPartOf(el);
   if (select !== undefined && select.part === null) {
     // FORM-b: a single select is a flex row container whatever its display; its font and line height decide its inner element's.
     const own = lowerFont(id, zoomedGet(id, (p: TextLonghand) => (el.props.get(p) as ResolvedValue).value, zoom), l.mode);
-    return { kind: 'control', id, boxType: 'element', style: { ...style, display: 'flex' }, control: { kind: 'select-menulist', font: own.font, lineHeight: own.lineHeight, arrowWidth: menuListArrowWidthOf(el, l.ua) }, strut, children };
+    // FORM-b S4: every option's label as a text leaf in the select's own face, which the engine measures for the natural width.
+    const labelMode: LowerMode = { kind: l.mode.kind, faceOf: () => l.mode.faceOf(id) };
+    const options = selectOptionLabelsOf(el).flatMap((o) => o.children.filter((k): k is ResolvedText => k.kind === 'text').map((t) => lowerText(t, labelMode, zoom)));
+    return { kind: 'control', id, boxType: 'element', style: { ...style, display: 'flex' }, control: { kind: 'select-menulist', font: own.font, lineHeight: own.lineHeight, arrowWidth: menuListArrowWidthOf(el, l.ua), options }, strut, children };
   }
   // An empty inner element still lays out one line of its own font, so it always carries its strut.
   if (select !== undefined) return { kind: 'control', id, boxType: 'element', style, control: { kind: 'select-inner' }, strut: strut ?? strutOf(el, true, l.mode, zoom), children };
@@ -1055,9 +1076,14 @@ function lowerBox(given: ResolvedElement, l: Lowerer, gridParent: GridContainer 
 
 /** HTML §2.3.4.2 rules for parsing non-negative integers, for an input's size: a result above zero, or 20. */
 export function textFieldSize(attr: string | undefined): number {
+  return positiveIntegerAttribute(attr, 20);
+}
+
+/** HTML §2.3.4.2 rules for parsing non-negative integers: a result above zero (and in the int range Chrome keeps), or fallback. */
+export function positiveIntegerAttribute(attr: string | undefined, fallback: number): number {
   const m = attr === undefined ? null : /^[\t\n\f\r ]*\+?([0-9]+)/.exec(attr);
   const n = m === null ? 0 : Number(m[1]);
-  return n > 0 && Number.isSafeInteger(n) ? n : 20;
+  return n > 0 && n <= 0x7fffffff ? n : fallback;
 }
 
 const SYMBOLS: readonly string[] = ['disc', 'circle', 'square'];

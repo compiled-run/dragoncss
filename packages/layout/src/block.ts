@@ -1,7 +1,7 @@
 // Block formatting: box contents, block-level widths and heights, margin collapsing, and inline content (inline.ts).
-import type { Auto, ControlBox, Direction, InlineChild, LayoutBox, LayoutNode, LayoutStyle, NoneValue, ReplacedLeaf, TextAlign } from './input.ts';
+import type { Auto, ControlBox, ControlKind, Direction, InlineChild, LayoutBox, LayoutNode, LayoutStyle, NoneValue, ReplacedLeaf, TextAlign } from './input.ts';
 import type { LU } from './units.ts';
-import { add, clampNegativeToZero, divInt, fromCssPx, max, min, sub, ZERO } from './units.ts';
+import { add, clampNegativeToZero, divInt, fromCssPx, max, min, mulInt, sub, ZERO } from './units.ts';
 import type { BlockStretch, Edges, Frag, HeightBasis, MarginResolved, MinMax, OutOfFlow, Placed, Point } from './box.ts';
 import {
   blockMinMaxWith,
@@ -23,7 +23,7 @@ import {
   specifiedBlockSizeWith,
   sumEdges,
 } from './box.ts';
-import { buttonContentShift, controlOf, plainBox, sliderThumbShift, textEditorShift } from './controls.ts';
+import { buttonContentShift, controlOf, plainBox, searchCancelButtonSize, searchDecorationInlineSize, sliderThumbShift, textEditorShift } from './controls.ts';
 import { layoutFlexContainer } from './flex.ts';
 import type { GridFaults } from './grid.ts';
 import { gridOutOfFlow, layoutGridContainer } from './grid.ts';
@@ -209,6 +209,8 @@ export type EngineFaults = {
   readonly clampEllipsisOnExactLastLine: boolean;
   /** CQ: an inline-size contained box contributes its content's intrinsic inline sizes. */
   readonly containedContentSized: boolean;
+  /** FORM-b S4: a select's natural inline size measures only its shown option's label, not its widest option. */
+  readonly menuListShownLabelOnly: boolean;
   /** CQ: an inline-size contained block joins its parent's block formatting context (margins collapse through it). */
   readonly containerJoinsFlow: boolean;
   /** TXT-TW: text-wrap-style balance and pretty lay lines out greedily, as auto does (inline.ts wrapStyleLines). */
@@ -301,6 +303,7 @@ export const NO_ENGINE_FAULTS: EngineFaults = {
   clampEllipsisMissingWhenLineFits: false,
   clampEllipsisOnExactLastLine: false,
   containedContentSized: false,
+  menuListShownLabelOnly: false,
   containerJoinsFlow: false,
   wrapStyleGreedy: false,
   textBoxTrimIgnored: false,
@@ -475,8 +478,10 @@ function layoutOwnContents(ctx: Ctx, node: LayoutBox | ControlBox, a: ContentsAr
 
   const canCollapseTop = !a.formattingContextRoot && bor.top === 0 && pad.top === 0;
   const marker = box.marker === null ? null : layoutMarker(ctx, box.marker);
+  // FORM-b: a search field's cancel button takes the inline end of its content box from its editor and placeholder.
+  const flowWidth = control !== null && control.kind === 'text-field' && control.cancelButton !== null ? clampNegativeToZero(sub(contentWidth, searchDecorationInlineSize(control, control.cancelButton))) : contentWidth;
   const flow = layoutBlockFlow(ctx, box, {
-    contentWidth,
+    contentWidth: flowWidth,
     borderBoxWidth: a.borderBoxWidth,
     bfcLineOffset: a.formattingContextRoot ? ZERO : a.bfcLineOffset,
     origin: { x: add(bor.left, pad.left), y: add(bor.top, pad.top) },
@@ -504,7 +509,11 @@ function layoutOwnContents(ctx: Ctx, node: LayoutBox | ControlBox, a: ContentsAr
   const height = fromRatio !== null
     ? ratioFinalBlockSize(box, fromRatio, add(a.formattingContextRoot || bor.bottom !== 0 || pad.bottom !== 0 ? intrinsic : r.cursor, vbp), minMax)
     : fixedBorderBox !== null ? fixedBorderBox : constrain(add(intrinsic, vbp), minMax);
-  if (control !== null && control.kind === 'text-field') return layoutTextField(box, r.placed, add(bor.top, pad.top), a.borderBoxWidth, fixedBorderBox, minMax, vbp);
+  if (control !== null && control.kind === 'text-field') return layoutTextField(box, control, r.placed, add(bor.top, pad.top), a.borderBoxWidth, fixedBorderBox, minMax, vbp);
+  if (control !== null && control.kind === 'text-area') {
+    const lines = metricsOf(ctx, box.id, control.font, control.lineHeight, false);
+    return layoutTextArea(box, r.placed, add(bor.top, pad.top), a.borderBoxWidth, fixedBorderBox !== null ? fixedBorderBox : constrain(add(mulInt(add(lines.above, lines.below), control.rows), vbp), minMax));
+  }
   if (control !== null && control.kind === 'button-block') {
     // block_layout_algorithm.cc:1442 AlignBlockContent: the in-flow contents, their baseline and the static positions move down.
     const shift = buttonContentShift(contentBox(height, vbp), intrinsic);
@@ -527,19 +536,51 @@ function layoutOwnContents(ctx: Ctx, node: LayoutBox | ControlBox, a: ContentsAr
 /**
  * FORM-b: a text field's contents after its block flow laid out its placeholder (if any) and editor, each from the content box
  * top. Its auto content height is the editor's; the editor is centred in the content box unsafely (controls.ts), and the
- * placeholder is moved so that its baseline meets the editor's. The field's baseline is the editor's line's, moved with it.
+ * placeholder is moved so that its baseline meets the editor's. The field's baseline is the editor's line's, moved with it. A
+ * search field centres its decoration container (the editor beside the cancel button, as tall as the taller) instead, and the
+ * editor in it (align-items: center).
  */
-function layoutTextField(box: LayoutBox, flow: readonly Placed[], contentTop: LU, width: LU, fixedBorderBox: LU | null, minMax: MinMax, vbp: LU): ContentsResult {
+function layoutTextField(box: LayoutBox, field: Extract<ControlKind, { kind: 'text-field' }>, flow: readonly Placed[], contentTop: LU, width: LU, fixedBorderBox: LU | null, minMax: MinMax, vbp: LU): ContentsResult {
   let editorId = '';
   for (const k of box.children) if (k.kind === 'control' && k.control.kind === 'text-editor') editorId = k.id;
   const editor = flow.find((p) => p.frag.id === editorId);
   if (editor === undefined) throw new Error(`${box.id} is a text field without an inner editor; validateLayoutInput rejects this input`);
   const height = fixedBorderBox !== null ? fixedBorderBox : constrain(add(editor.frag.height, vbp), minMax);
-  const editorY = add(contentTop, textEditorShift(contentBox(height, vbp), editor.frag.height));
-  // The placeholder's baseline meets the editor's (Chrome 145: a 4px Ahem placeholder in a 10px editor sits 5px down, one clipped
-  // to 2px 6px down, since its clipped baseline is 2px); with no baseline on either it starts at the editor's top.
-  const placed = flow.map((p): Placed => (p === editor ? { frag: p.frag, x: p.x, y: editorY } : { frag: p.frag, x: editor.x, y: editor.frag.baseline === null || p.frag.baseline === null ? editorY : add(editorY, sub(editor.frag.baseline, p.frag.baseline)) }));
+  const side = field.cancelButton !== null ? fromCssPx(searchCancelButtonSize(field)) : ZERO;
+  const container = field.cancelButton !== null ? max(editor.frag.height, side) : editor.frag.height;
+  const containerY = add(contentTop, textEditorShift(contentBox(height, vbp), container));
+  const editorY = add(containerY, divInt(sub(container, editor.frag.height), 2));
+  let cancelId = '';
+  for (const k of box.children) if (k.kind === 'box' && k.boxType === 'anonymous') cancelId = k.id;
+  const placed = flow.map((p): Placed => {
+    if (p === editor) return { frag: p.frag, x: p.x, y: editorY };
+    // The cancel button follows the editor in the decoration container, after its inline-start margin, centred (align-items: center).
+    if (field.cancelButton !== null && p.frag.id === cancelId) {
+      const frag: Frag = { id: p.frag.id, width: side, height: side, baseline: null, children: [], outOfFlow: [], inflow: null };
+      return { frag, x: add(add(editor.x, editor.frag.width), fromCssPx(field.cancelButton.marginStart)), y: add(containerY, divInt(sub(container, side), 2)) };
+    }
+    // The placeholder's baseline meets the editor's (Chrome 145: a 4px Ahem placeholder in a 10px editor sits 5px down, one clipped
+    // to 2px 6px down, since its clipped baseline is 2px); with no baseline on either it starts at the editor's top.
+    return { frag: p.frag, x: editor.x, y: editor.frag.baseline === null || p.frag.baseline === null ? editorY : add(editorY, sub(editor.frag.baseline, p.frag.baseline)) };
+  });
   const baseline = editor.frag.baseline === null ? null : add(editorY, editor.frag.baseline);
+  return { frag: { id: box.id, width, height, baseline: clampScrollBaseline(box, baseline, height), children: placed, outOfFlow: [], inflow: null }, escapeTop: EMPTY_STRUT, escapeBottom: EMPTY_STRUT, collapseThrough: false, lastBaseline: baseline, lastBaselineFlex: '', defaultLastBaseline: baseline, defaultLastBaselineFlex: '' };
+}
+
+/**
+ * FORM-b: a textarea's contents after its block flow laid out its placeholder (if any) and editor: both start at the content box
+ * top (Chrome 145: a placeholder with a smaller font or line height than the editor's is not moved down to its baseline). height
+ * is its border box block size, rows x its line height plus borders and padding when auto. Its baseline is the editor's first.
+ */
+function layoutTextArea(box: LayoutBox, flow: readonly Placed[], contentTop: LU, width: LU, height: LU): ContentsResult {
+  let editorId = '';
+  for (const k of box.children) if (k.kind === 'control' && k.control.kind === 'text-editor') editorId = k.id;
+  const editor = flow.find((p) => p.frag.id === editorId);
+  if (editor === undefined) throw new Error(`${box.id} is a textarea without an inner editor; validateLayoutInput rejects this input`);
+  // block_layout_algorithm.cc FinishTextControlPlaceholder: a part sits at the editor's inline start, its margins ignored.
+  const rtl = box.style.direction === 'rtl';
+  const placed = flow.map((p): Placed => ({ frag: p.frag, x: p === editor || !rtl ? editor.x : sub(add(editor.x, editor.frag.width), p.frag.width), y: contentTop }));
+  const baseline = editor.frag.baseline === null ? null : add(contentTop, editor.frag.baseline);
   return { frag: { id: box.id, width, height, baseline: clampScrollBaseline(box, baseline, height), children: placed, outOfFlow: [], inflow: null }, escapeTop: EMPTY_STRUT, escapeBottom: EMPTY_STRUT, collapseThrough: false, lastBaseline: baseline, lastBaselineFlex: '', defaultLastBaseline: baseline, defaultLastBaselineFlex: '' };
 }
 
@@ -687,9 +728,9 @@ export function blockLevelInlineSize(ctx: Ctx, node: LayoutBox | ControlBox, cbI
     if (hasAspectRatio(s)) return unsupported('intrinsic-size-keyword', box.id, 'css-sizing-4 §5.1', `${k} with an aspect-ratio`);
     // css-sizing-4 §3.1: stretch fills the space the margins leave (auto margins as 0), whatever box-sizing says.
     if (k === 'stretch') return stretched;
-    const minC = add(intrinsicContentInlineSize(ctx, box, 'min'), hbp);
+    const minC = add(intrinsicContentInlineSize(ctx, node, 'min'), hbp);
     if (k === 'min-content') return minC;
-    const maxC = add(intrinsicContentInlineSize(ctx, box, 'max'), hbp);
+    const maxC = add(intrinsicContentInlineSize(ctx, node, 'max'), hbp);
     if (k === 'max-content') return maxC;
     return min(maxC, max(minC, stretched));
   };
@@ -699,7 +740,7 @@ export function blockLevelInlineSize(ctx: Ctx, node: LayoutBox | ControlBox, cbI
   const specified = keywordWidth !== null ? null : resolveInlineLengthWith(lengthWidth(box.id, s.width), cbInline, ctx.faults);
   // A block button's or range's auto width fits its content (block_layout_algorithm.cc:3341-3352: a form control is never stretched
   // by its block container), measured in Chrome 145 (packages/parity/fixtures/controls-button-block.html, controls-range-block.html).
-  const fits = node.kind === 'control' && (node.control.kind === 'button-block' || node.control.kind === 'range' || node.control.kind === 'text-field' || node.control.kind === 'legend');
+  const fits = node.kind === 'control' && (node.control.kind === 'button-block' || node.control.kind === 'range' || node.control.kind === 'text-field' || node.control.kind === 'text-area' || node.control.kind === 'select-menulist' || node.control.kind === 'legend');
   const auto = fits ? min(add(intrinsicContentInlineSize(ctx, node, 'max'), hbp), max(add(intrinsicContentInlineSize(ctx, node, 'min'), hbp), stretched)) : stretched;
   const raw = keywordWidth !== null ? keywordWidth : specified === null ? auto : borderBoxFromSpecified(specified, hbp, s.boxSizing);
   const lengths = inlineMinMaxWith(s, keywordMin !== null ? AUTO : lengthMinWidth(box.id, s.minWidth), keywordMax !== null ? NONE : lengthMaxWidth(box.id, s.maxWidth), cbInline, hbp, ctx.faults);
