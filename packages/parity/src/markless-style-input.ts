@@ -6,7 +6,7 @@ import { createHash } from 'node:crypto';
 import { posix } from 'node:path';
 import { brotliDecompressSync } from 'node:zlib';
 import type { BrotliDecompress, ClassSymbol, Condition, FontMap, FrontEndResult, NativeStyles, NativeStylesConfig, NativeStyleTarget, Rgba8, SourceFile, TreeNode } from 'dragon';
-import { BAND_KEY, compiledCases, compileNativeStylesWith, decodeFontFile, isTreeNodeId, nativeBands, parseStylesheet, resolvedTextTransforms, TREE_SCHEMA_REVISION } from 'dragon';
+import { BAND_KEY, compiledCases, compileNativeStylesWith, decodeFontFile, isTreeNodeId, motionFactsOf, nativeBands, parseStylesheet, resolvedTextTransforms, TREE_SCHEMA_REVISION } from 'dragon';
 import type { rtBand } from '@dragon/layout';
 import { textDecoration } from '@dragon/layout';
 import { FONT_REFERENCE_MAP } from './font-reference.ts';
@@ -18,8 +18,8 @@ import type { ExportAssignment, ExportDevice, ExportNode, ExportTarget, NativeSt
 import { EXPORT_DEVICES, exportBands, nativeStyleExport, valuesOf } from './native-style-export.ts';
 import { programAt } from 'dragon';
 import { isWhitespaceText, rehostAddress, textAddresser } from './node-ids.ts';
-import type { MarklessSlot, SlotSample, StyleTemplate } from './markless-slots.ts';
-import { checkSlots, engineStyles, filledStyle, slotBindings } from './markless-slots.ts';
+import type { MarklessSlot, SlotSample, SlotTransitionFaults, StyleTemplate } from './markless-slots.ts';
+import { animProgramAt, checkSlots, engineStyles, filledStyle, slotBindings } from './markless-slots.ts';
 import { systemFontsFor } from './system-fonts/provider.ts';
 
 export const MARKLESS_STYLE_INPUT_VERSION = 'markless.native-style-input/0';
@@ -684,21 +684,29 @@ export function marklessCompiledTargets(parsed: MarklessStyleInput, fonts: reado
  * `decoded`: the sfnt of each WOFF or WOFF2 author font, by its path relative to the input (DECODED_FONTS_DIR), which the export
  * lists with `from: 'input'` and the caller writes there.
  */
-export function marklessStyleExport(inputText: string, inputPath: string, readFont?: (file: string) => Uint8Array, mode: MarklessFonts = 'pinned', at?: MarklessAtSize, plan = false): { readonly input: FrontEndResult; readonly exported: MarklessStyleExport; readonly decoded: readonly { readonly file: string; readonly bytes: Uint8Array }[] } {
+export function marklessStyleExport(inputText: string, inputPath: string, readFont?: (file: string) => Uint8Array, mode: MarklessFonts = 'pinned', at?: MarklessAtSize, plan = false, faults: SlotTransitionFaults = {}): { readonly input: FrontEndResult; readonly exported: MarklessStyleExport; readonly decoded: readonly { readonly file: string; readonly bytes: Uint8Array }[] } {
   const parsed = parseMarklessStyleInput(inputText);
   if ((parsed.fonts ?? []).length > 0 && readFont === undefined) fail('the input names font files, and no reader for them was given');
   const fonts = readFont === undefined ? [] : marklessFontFiles(parsed, readFont);
-  const done = exportMarkless(parsed, inputText, inputPath, fonts, mode, at, plan);
+  const { compiled: _compiled, ...done } = exportMarkless(parsed, inputText, inputPath, fonts, mode, at, plan);
   const slots = parsed.slots ?? [];
   if (slots.length === 0) return done;
   if (!plan) fail(`${parsed.component} has style values that follow state (slots ${slots.map((s) => s.id).join(', ')}), which a phone applies only with the layout plan (--plan)`);
+  const dragonIds = dragonNodeIds(parsed);
+  const templated = new Set(parsed.nodes.flatMap((n) => (n.kind === 'element' && (n.styleTemplate !== undefined || n.styleByState !== undefined) ? [n.id] : [])));
   const sampleOf = (values: readonly number[]): SlotSample => {
     const input = { ...parsed, slots: slots.map((s, k) => ({ ...s, initial: values[k] as number })) };
-    const { styles, exported } = exportMarkless(input, inputText, inputPath, fonts, mode, at, false);
+    const { styles, exported, compiled } = exportMarkless(input, inputText, inputPath, fonts, mode, at, false, true);
     return Object.fromEntries(Object.entries(exported.targets).map(([t, x]) => {
       const o = styles.targets[t as NativeStyleTarget];
       if (o?.kind !== 'emitted') return fail(`${t} is blocked`);
-      return [t, x.assignments.map((a, i) => ({ ...engineStyles(o.program, i), writes: new Map(a.nodes.map((n) => [n.id, n.writes])), frames: new Map(a.nodes.map((n) => [n.id, n.frame])) }))];
+      const facts = o.anim === undefined ? null : motionFactsOf(compiled, o.program.assignments.map((a) => a.assignment));
+      return [t, x.assignments.map((a, i) => {
+        const name = marklessNodeId(parsed, (id) => dragonIds.get(id) as string, a.values);
+        const elements = [...(facts?.[i] ?? [])].map(([address, m]) => [name(address), m] as const).filter(([id]) => faults.slotTransitionOwnElementOnly !== true || templated.has(id));
+        const motion = o.anim === undefined ? {} : { motion: { elements: new Map(elements), anim: animProgramAt(o.anim, i), closure: o.anim.closure.flatMap((c) => c.writes.map((w) => [name(w.node), w.property, name(c.source.node), c.source.property] as const)) } };
+        return { ...engineStyles(o.program, i), writes: new Map(a.nodes.map((n) => [n.id, n.writes])), frames: new Map(a.nodes.map((n) => [n.id, n.frame])), ...motion };
+      })];
     }));
   };
   const initial = slots.map((s) => s.initial);
@@ -721,7 +729,7 @@ export function marklessStyleExport(inputText: string, inputPath: string, readFo
     if ('refused' in got) return fail(`the slots together at ${JSON.stringify(values)} do not compile: ${got.refused}`);
     compiled.push([values, got]);
     return got;
-  });
+  }, faults);
   const targets = Object.fromEntries(Object.entries(done.exported.targets).map(([t, x]) => {
     const plan = x.plan;
     const per = bindings[t as NativeStyleTarget];
@@ -816,9 +824,9 @@ function withTransformed(plan: MarklessPlan, compiled: object): MarklessPlan {
 /** The media features whose value changes with the viewport's height. */
 const HEIGHT_FEATURES: ReadonlySet<rtBand.BandFeature> = new Set(['height', 'orientation', 'aspect-ratio']);
 
-function exportMarkless(parsed: MarklessStyleInput, inputText: string, inputPath: string, fonts: readonly MarklessFontFile[], mode: MarklessFonts, at: MarklessAtSize | undefined, plan: boolean): { readonly input: FrontEndResult; readonly styles: NativeStyles; readonly exported: MarklessStyleExport; readonly decoded: readonly { readonly file: string; readonly bytes: Uint8Array }[] } {
+function exportMarkless(parsed: MarklessStyleInput, inputText: string, inputPath: string, fonts: readonly MarklessFontFile[], mode: MarklessFonts, at: MarklessAtSize | undefined, plan: boolean, sample = false): { readonly input: FrontEndResult; readonly styles: NativeStyles; readonly compiled: object; readonly exported: MarklessStyleExport; readonly decoded: readonly { readonly file: string; readonly bytes: Uint8Array }[] } {
   const { input, styles, compiled, devices } = compileMarkless(parsed, inputText, inputPath, fonts, mode, at);
-  const raw = nativeStyleExport(styles, parsed.component, inputPath, devices, fonts.map((f) => ({ id: f.id, file: f.sfntFile, bytes: f.sfnt })), mode === 'system' ? systemFontsFor : null, plan);
+  const raw = nativeStyleExport(styles, parsed.component, inputPath, devices, fonts.map((f) => ({ id: f.id, file: f.sfntFile, bytes: f.sfnt })), mode === 'system' ? systemFontsFor : null, plan, sample);
   const rekey = cellKey(parsed);
   const cellValues = (a: ExportAssignment): Record<string, unknown> => Object.fromEntries(Object.entries(a.values).map(([k, v]) => [rekey(k), v]));
   const dragonIds = dragonNodeIds(parsed);
@@ -912,7 +920,7 @@ function exportMarkless(parsed: MarklessStyleInput, inputText: string, inputPath
     }];
   }));
   const decoded = [...new Map(fonts.filter((f) => f.sfntFile !== f.file).map((f) => [f.sfntFile, { file: f.sfntFile, bytes: f.sfnt }])).values()];
-  return { input, styles, exported: { ...exported, fontMode: mode, targets }, decoded };
+  return { input, styles, compiled, exported: { ...exported, fontMode: mode, targets }, decoded };
 }
 
 /**
