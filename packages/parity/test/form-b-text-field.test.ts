@@ -175,6 +175,14 @@ describe('FORM-b text fields', () => {
     expect(errors(compile('ta-host-styles-ro', `${base} textarea { letter-spacing: 1px; }`, '<textarea data-dragon-id="a" rows="3" readonly="">XX</textarea>', BASE, false, true)).filter((e) => e.includes('which the host edits'))).toEqual([]);
   });
 
+  it('refuses the same text styles on an edited <input>, but not its wrapping or padding, which its one-line editor box makes moot', () => {
+    const body = '<input data-dragon-id="t" type="search" placeholder="PP">\n<input data-dragon-id="v" value="XX">\n<input data-dragon-id="e" type="email" value="a@b">';
+    const refusals = (css: string): string[] => errors(compile('tf-host-styles', `input { ${css} }`, body, BASE, false, true)).filter((e) => e.includes('which the host edits'));
+    expect(refusals('white-space: pre; overflow-wrap: anywhere; word-break: break-all; padding: 10%')).toEqual([]);
+    for (const css of ['text-transform: uppercase', 'letter-spacing: 1px', 'text-decoration-line: underline', 'font-feature-settings: "liga" 0']) expect(refusals(css).length, css).toBeGreaterThan(0);
+    expect(errors(compile('tf-host-styles-ro', 'input { text-transform: uppercase; }', '<input data-dragon-id="v" value="XX" readonly="">', BASE, false, true)).filter((e) => e.includes('which the host edits'))).toEqual([]);
+  });
+
   it('keeps :read-write and :read-only refused on an edited textarea, whose state is the host\'s', () => {
     const css = 'textarea { display: block; font: inherit; resize: none; scrollbar-width: none; } textarea:read-write { color: #036; }';
     expect(errors(compile('ta-read-write', css, '<textarea data-dragon-id="a">XX</textarea>', BASE, false, true)).filter((e) => e.includes(':read-write'))).not.toEqual([]);
