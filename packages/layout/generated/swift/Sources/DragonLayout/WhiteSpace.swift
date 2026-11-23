@@ -44,22 +44,22 @@ public func whiteSpace_collapseInlineContext(_ runs: JsArray<JsString?>) throws 
   var run: Double = 0.0
   // ts: packages/layout/src/white-space.ts:37
   do {
-    let _a404 = runs
-    var _i404 = 0
-    while _i404 < _a404.items.count {
-      let t: JsString? = _a404.items[_i404]
-      _i404 += 1
+    let _a406 = runs
+    var _i406 = 0
+    while _i406 < _a406.items.count {
+      let t: JsString? = _a406.items[_i406]
+      _i406 += 1
       // ts: packages/layout/src/white-space.ts:38
       if (t == nil) {
         _ = jsPush(chars, RunChar(S.s0, -1.0))
       } else {
         // ts: packages/layout/src/white-space.ts:39
         do {
-          let _a405 = try jsCodePoints(jsUnwrap(t))
-          var _i405 = 0
-          while _i405 < _a405.items.count {
-            let ch: JsString = _a405.items[_i405]
-            _i405 += 1
+          let _a407 = try jsCodePoints(jsUnwrap(t))
+          var _i407 = 0
+          while _i407 < _a407.items.count {
+            let ch: JsString = _a407.items[_i407]
+            _i407 += 1
             _ = jsPush(chars, RunChar(ch, run))
           }
         }
@@ -116,11 +116,11 @@ public func whiteSpace_collapseInlineContext(_ runs: JsArray<JsString?>) throws 
   var i: Double = 0.0
   // ts: packages/layout/src/white-space.ts:76
   do {
-    let _a406 = runs
-    var _i406 = 0
-    while _i406 < _a406.items.count {
-      let t: JsString? = _a406.items[_i406]
-      _i406 += 1
+    let _a408 = runs
+    var _i408 = 0
+    while _i408 < _a408.items.count {
+      let t: JsString? = _a408.items[_i408]
+      _i408 += 1
       // ts: packages/layout/src/white-space.ts:77
       if (t == nil) {
         _ = jsPush(texts, nil)
@@ -139,18 +139,18 @@ public func whiteSpace_preserveBreaksContext(_ runs: JsArray<JsString>, _ keepSp
   var run: Double = 0.0
   // ts: packages/layout/src/white-space.ts:93
   do {
-    let _a407 = runs
-    var _i407 = 0
-    while _i407 < _a407.items.count {
-      let t: JsString = _a407.items[_i407]
-      _i407 += 1
+    let _a409 = runs
+    var _i409 = 0
+    while _i409 < _a409.items.count {
+      let t: JsString = _a409.items[_i409]
+      _i409 += 1
       // ts: packages/layout/src/white-space.ts:94
       do {
-        let _a408 = jsCodePoints(t)
-        var _i408 = 0
-        while _i408 < _a408.items.count {
-          let ch: JsString = _a408.items[_i408]
-          _i408 += 1
+        let _a410 = jsCodePoints(t)
+        var _i410 = 0
+        while _i410 < _a410.items.count {
+          let ch: JsString = _a410.items[_i410]
+          _i410 += 1
           _ = jsPush(chars, RunChar(ch, run))
         }
       }

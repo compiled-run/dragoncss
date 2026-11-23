@@ -266,11 +266,11 @@ public func rtTransition_runTransitionScript(_ states: JsArray<TransitionState>,
   let out: JsArray<TransitionReading> = JsArray<TransitionReading>([])
   // ts: packages/layout/src/rt-transition.ts:184
   do {
-    let _a353 = steps
-    var _i353 = 0
-    while _i353 < _a353.items.count {
-      let step: ScriptStep = _a353.items[_i353]
-      _i353 += 1
+    let _a355 = steps
+    var _i355 = 0
+    while _i355 < _a355.items.count {
+      let step: ScriptStep = _a355.items[_i355]
+      _i355 += 1
       // ts: packages/layout/src/rt-transition.ts:185
       if (step.kind == S.s_state) {
         let next: TransitionState = try rtTransition_stateAt(states, step.state)
