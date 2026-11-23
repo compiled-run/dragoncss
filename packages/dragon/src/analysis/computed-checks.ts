@@ -1921,7 +1921,8 @@ function checkFieldWidth(el: ResolvedElement, parentDisplay: string | null, chai
   for (const [p, v] of [['min-width', minWidth], ['max-width', maxWidth]] as const) {
     if (INTRINSIC_SIZES.has(keywordOf(v))) refuse(v, `${p}-font`, `${p}: ${keywordOf(v)} on <${tag}> ${address} is not supported here: ${why}`, `Give <${tag}> ${address} a ${p} in px or %, or remove it.`);
   }
-  const item = parentDisplay === 'flex' || parentDisplay === 'inline-flex' || parentDisplay === 'grid' || parentDisplay === 'inline-grid';
+  // A column flex item's automatic minimum is on the main axis, its height (Chrome 145: 412px in Roboto, Inter and Ahem alike).
+  const item = rowItem || parentDisplay === 'grid' || parentDisplay === 'inline-grid';
   if (item && keywordOf(minWidth) === 'auto') refuse(minWidth, 'min-width-font', `<${tag}> ${address} is a ${parentDisplay} item with min-width: auto, whose automatic minimum Chrome takes from the field's intrinsic width: ${why}`, `Set min-width (0 is fine) on <${tag}> ${address}.`);
   if (rowItem && (b === 'content' || INTRINSIC_SIZES.has(b))) refuse(basis, 'flex-basis-font', `flex-basis: ${b} on <${tag}> ${address} is not supported: Chrome takes it from the field's intrinsic width, and ${why}`, `Give <${tag}> ${address} a flex-basis in px, or a width and flex-basis: auto.`);
   // Chrome compresses only a percentage width's min-content contribution; a length width with a percentage min-width or max-width
@@ -2019,11 +2020,13 @@ function widthSource(box: ResolvedElement, parent: ResolvedElement | null): 'fix
   if (pd === 'flex' || pd === 'inline-flex') {
     if (keywordOf(parent.props.get('flex-direction') as ResolvedValue).startsWith('column')) {
       const self = kw('align-self') === 'auto' ? keywordOf(parent.props.get('align-items') as ResolvedValue) : kw('align-self');
-      const stretched = (self === 'stretch' || self === 'normal') && kw('margin-left') !== 'auto' && kw('margin-right') !== 'auto';
+      const margin = (['margin-left', 'margin-right'] as const).find((m) => kw(m) === 'auto');
+      const stretched = (self === 'stretch' || self === 'normal') && margin === undefined;
       // css-flexbox-1 §9.4: a multi-line container's line is as wide as its items' contributions, which a stretched item fills.
       const wrap = keywordOf(parent.props.get('flex-wrap') as ResolvedValue);
       if (stretched && wrap !== 'nowrap') return step(`a stretched column flex item in a flex-wrap: ${wrap} container`);
-      return step(stretched ? 'parent' : `a column flex item with align-self: ${self} and an auto width`);
+      const by = kw('align-self') === 'auto' ? (['align-items', parent] as const) : (['align-self', box] as const);
+      return step(stretched ? 'parent' : margin !== undefined ? `a column flex item with ${margin}: auto and an auto width` : `a column flex item with ${by[0]}: ${valueToString((by[1].props.get(by[0]) as ResolvedValue).value)} and an auto width`);
     }
     const scroller = !['visible', 'clip'].includes(kw('overflow-x'));
     if (kw('min-width') === 'auto' && !scroller) return 'a row flex item with min-width: auto';

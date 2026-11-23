@@ -214,6 +214,7 @@ describe('FIELD-font-width FW1: a field outside Ahem is accepted natively only w
   const inRow = (css: string): readonly [string, string] => [`.r { display: flex; width: 200px; } ${css}`, `<div data-dragon-id="r" class="r">${field}</div>`];
   const inBox = (box: string, css: string): readonly [string, string] => [`.wrap { ${box.startsWith('position') ? 'position: relative; height: 60px; ' : ''}width: 300px; } .w { ${box} } ${css}`, `<div data-dragon-id="wrap" class="wrap"><div data-dragon-id="w" class="w">${field}</div></div>`];
 
+  const inColumn = `<div data-dragon-id="c" class="c"><div data-dragon-id="i" class="i">${field}</div></div>`;
   const ACCEPTED: readonly (readonly [string, string, string])[] = [
     ['fw-px', 'input { width: 40px; }', field],
     ['fw-pct', 'input { width: 100%; max-width: 50px; min-width: 10%; }', field],
@@ -225,6 +226,12 @@ describe('FIELD-font-width FW1: a field outside Ahem is accepted natively only w
     ['fw-row-basis-px', ...inRow('input { flex: 0 0 80px; min-width: 10px; max-width: 50%; }')],
     ['fw-row-fill', ...inRow('input { width: 100%; min-width: 0; }')],
     ['fw-col', '.c { display: flex; flex-direction: column; } input { width: 100%; min-width: 0; }', `<div data-dragon-id="c" class="c">${field}</div>`],
+    // FORM-text-font column flex (Chrome 145: 412px, or 372px for the notes shape, in Roboto, Inter and Ahem alike).
+    ['fw-col-min-auto', '.c { display: flex; flex-direction: column; } input { width: 100%; }', `<div data-dragon-id="c" class="c">${field}</div>`],
+    ['fw-col-center-pct', '.c { display: flex; flex-direction: column; align-items: center; } input { width: 100%; }', `<div data-dragon-id="c" class="c">${field}</div>`],
+    ['fw-col-reverse-item', '.c { display: flex; flex-direction: column-reverse; } input { width: 100%; }', inColumn],
+    ['fw-col-self-stretch', '.c { display: flex; flex-direction: column; align-items: center; } .i { align-self: stretch; } input { width: 100%; }', inColumn],
+    ['fw-col-notes', '.c { min-height: 100vh; display: flex; flex-direction: column; } .i { width: 100%; max-width: 880px; margin: 0 auto; padding: 20px; } input { width: 100%; }', inColumn],
   ];
   for (const [id, css, body] of ACCEPTED) {
     it(`accepts ${id} on every target, and the engine lays out its iOS projection`, () => {
@@ -252,6 +259,14 @@ describe('FIELD-font-width FW1: a field outside Ahem is accepted natively only w
     ['fw-ib-pct', ...inBox('display: inline-block;', 'input { width: 100%; }'), 'width: 100% on <input> t is not supported here: <div> w takes its width from its content (display: inline-block with an auto width)'],
     ['fw-float-pct', ...inBox('float: left;', 'input { width: 100%; }'), 'width: 100% on <input> t is not supported here: <div> w takes its width from its content (float: left with an auto width)'],
     ['fw-abspos-pct', ...inBox('position: absolute; top: 0; left: 0;', 'input { width: 100%; }'), 'width: 100% on <input> t is not supported here: <div> w takes its width from its content (position: absolute with an auto width)'],
+    ['fw-col-item-row', '.c { display: flex; } input { width: 100%; }', inColumn, 'width: 100% on <input> t is not supported here: <div> i takes its width from its content (a row flex item with min-width: auto)'],
+    ['fw-col-item-wrap', '.c { display: flex; flex-direction: column; flex-wrap: wrap; } input { width: 100%; }', inColumn, 'width: 100% on <input> t is not supported here: <div> i takes its width from its content (a stretched column flex item in a flex-wrap: wrap container)'],
+    ['fw-col-item-center', '.c { display: flex; flex-direction: column; align-items: center; } input { width: 100%; }', inColumn, 'width: 100% on <input> t is not supported here: <div> i takes its width from its content (a column flex item with align-items: center and an auto width)'],
+    ['fw-col-item-margin', '.c { display: flex; flex-direction: column; } .i { margin-left: auto; } input { width: 100%; }', inColumn, 'width: 100% on <input> t is not supported here: <div> i takes its width from its content (a column flex item with margin-left: auto and an auto width)'],
+    ['fw-col-item-logical-margin', '.c { display: flex; flex-direction: column; } .i { align-self: stretch; margin-inline-end: auto; } input { width: 100%; }', inColumn, 'width: 100% on <input> t is not supported here: <div> i takes its width from its content (a column flex item with margin-right: auto and an auto width)'],
+    ['fw-col-item-self-start', '.c { display: flex; flex-direction: column; } .i { align-self: self-start; } input { width: 100%; }', inColumn, 'width: 100% on <input> t is not supported here: <div> i takes its width from its content (a column flex item with align-self: self-start and an auto width)'],
+    ['fw-col-item-inline-start', '.c { display: flex; flex-direction: column; } .i { margin-inline-start: auto; } input { width: 100%; }', inColumn, 'width: 100% on <input> t is not supported here: <div> i takes its width from its content (a column flex item with margin-left: auto and an auto width)'],
+    ['fw-col-inline-flex', '.c { display: inline-flex; flex-direction: column; } input { width: 100%; }', inColumn, 'width: 100% on <input> t is not supported here: <div> c takes its width from its content (display: inline-flex with an auto width)'],
   ];
   for (const [id, css, body, prefix, thrown = 'text-field-avg-char'] of REFUSED) {
     it(`refuses ${id} on iOS and Android only, and with fieldWidthAnyContext the engine throws ${thrown}`, () => {

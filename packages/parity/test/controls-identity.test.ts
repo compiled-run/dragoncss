@@ -32,7 +32,7 @@ const controlIds = new Set(CONTROLS.map((f) => f.id));
 // FORM-attrs' attr-neutral-form-* pairs (each form attribute on a form, a button and a range) and HIT-atomic-inline's hit-atomic-inline
 // (block buttons holding an inline-block and an inline img, for the button content shift).
 const FORM_ATTRIBUTE_PAIRS: readonly string[] = ['none', 'name', 'autocomplete', 'required', 'minlength', 'maxlength'].map((a) => `attr-neutral-form-${a}`);
-const LATER_WITH_CONTROLS: readonly string[] = ['overflow-controls', 'anchor-control', 'ms-button-disabled', 'grid-controls', 'grid-controls-fields', 'opacity-group-button', 'hit-atomic-inline', 'controls-text-font', ...FORM_ATTRIBUTE_PAIRS];
+const LATER_WITH_CONTROLS: readonly string[] = ['overflow-controls', 'anchor-control', 'ms-button-disabled', 'grid-controls', 'grid-controls-fields', 'opacity-group-button', 'hit-atomic-inline', 'controls-text-font', 'controls-text-font-column-flex', ...FORM_ATTRIBUTE_PAIRS];
 const notEarlier = new Set([...controlIds, ...LATER_WITH_CONTROLS]);
 const earlier = FIXTURES.filter((f) => f.kind === 'layout' && !notEarlier.has(f.id));
 
