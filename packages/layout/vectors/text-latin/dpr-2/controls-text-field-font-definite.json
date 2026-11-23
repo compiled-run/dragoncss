@@ -835,7 +835,8 @@
           "lineHeight": {
            "kind": "normal"
           },
-          "avgChar": "unmeasured"
+          "avgChar": "unmeasured",
+          "cancelButton": null
          },
          "strut": null,
          "children": [
@@ -1189,7 +1190,8 @@
           "lineHeight": {
            "kind": "normal"
           },
-          "avgChar": "unmeasured"
+          "avgChar": "unmeasured",
+          "cancelButton": null
          },
          "strut": null,
          "children": [
@@ -1556,7 +1558,8 @@
           "lineHeight": {
            "kind": "normal"
           },
-          "avgChar": "unmeasured"
+          "avgChar": "unmeasured",
+          "cancelButton": null
          },
          "strut": null,
          "children": [
@@ -2071,7 +2074,8 @@
           "lineHeight": {
            "kind": "normal"
           },
-          "avgChar": "unmeasured"
+          "avgChar": "unmeasured",
+          "cancelButton": null
          },
          "strut": null,
          "children": [
@@ -2425,7 +2429,8 @@
           "lineHeight": {
            "kind": "normal"
           },
-          "avgChar": "unmeasured"
+          "avgChar": "unmeasured",
+          "cancelButton": null
          },
          "strut": null,
          "children": [
@@ -2778,7 +2783,8 @@
           "lineHeight": {
            "kind": "normal"
           },
-          "avgChar": "ahem"
+          "avgChar": "ahem",
+          "cancelButton": null
          },
          "strut": null,
          "children": [
@@ -3280,7 +3286,8 @@
           "lineHeight": {
            "kind": "normal"
           },
-          "avgChar": "unmeasured"
+          "avgChar": "unmeasured",
+          "cancelButton": null
          },
          "strut": null,
          "children": [
@@ -3635,7 +3642,8 @@
           "lineHeight": {
            "kind": "normal"
           },
-          "avgChar": "unmeasured"
+          "avgChar": "unmeasured",
+          "cancelButton": null
          },
          "strut": null,
          "children": [
@@ -4137,7 +4145,8 @@
           "lineHeight": {
            "kind": "normal"
           },
-          "avgChar": "unmeasured"
+          "avgChar": "unmeasured",
+          "cancelButton": null
          },
          "strut": null,
          "children": [
@@ -4786,7 +4795,8 @@
           "lineHeight": {
            "kind": "normal"
           },
-          "avgChar": "unmeasured"
+          "avgChar": "unmeasured",
+          "cancelButton": null
          },
          "strut": null,
          "children": [
@@ -5579,7 +5589,8 @@
             "lineHeight": {
              "kind": "normal"
             },
-            "avgChar": "unmeasured"
+            "avgChar": "unmeasured",
+            "cancelButton": null
            },
            "strut": null,
            "children": [
@@ -6240,7 +6251,8 @@
             "lineHeight": {
              "kind": "normal"
             },
-            "avgChar": "unmeasured"
+            "avgChar": "unmeasured",
+            "cancelButton": null
            },
            "strut": null,
            "children": [
@@ -6888,7 +6900,8 @@
             "lineHeight": {
              "kind": "normal"
             },
-            "avgChar": "unmeasured"
+            "avgChar": "unmeasured",
+            "cancelButton": null
            },
            "strut": null,
            "children": [
