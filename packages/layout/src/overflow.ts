@@ -474,7 +474,7 @@ export const PLACED_LINE_FIELDS: readonly string[] = ['top', 'height', 'baseline
 
 /** Whether a box's children form an inline formatting context (placeLines): it has a text, inline box, <br> or atomic inline child. */
 function hasInlineContent(box: LayoutBox): boolean {
-  return box.children.some((k) => k.kind === 'text' || k.kind === 'inline' || k.kind === 'br' || ((k.kind === 'box' || k.kind === 'replaced') && isAtomicInline(k)));
+  return box.children.some((k) => k.kind === 'text' || k.kind === 'inline' || k.kind === 'br' || ((k.kind === 'box' || k.kind === 'replaced' || k.kind === 'control') && isAtomicInline(k)));
 }
 
 /**
@@ -484,7 +484,7 @@ function hasInlineContent(box: LayoutBox): boolean {
 export function refuseLineLevelBoxes(box: LayoutBox): void {
   if (!hasInlineContent(box)) return;
   for (const k of box.children) {
-    if (k.kind === 'box' || k.kind === 'replaced') throw new OverflowRefusal(k.id, `an atomic inline in the inline formatting context of ${box.id}: its scrollable overflow is not decided here (R16, INL2)`);
+    if (k.kind === 'box' || k.kind === 'replaced' || k.kind === 'control') throw new OverflowRefusal(k.id, `an atomic inline in the inline formatting context of ${box.id}: its scrollable overflow is not decided here (R16, INL2)`);
     // INL1a's inline box fragments and <br>s are line items addLines does not measure (ScrollableOverflowForLine adds them).
     if (k.kind === 'inline') throw new OverflowRefusal(k.id, `an inline box in the inline formatting context of ${box.id}: its scrollable overflow is not decided here (R16, INL1a)`);
     if (k.kind === 'br') throw new OverflowRefusal(k.id, `a <br> in the inline formatting context of ${box.id}: its scrollable overflow is not decided here (R16, INL1a)`);

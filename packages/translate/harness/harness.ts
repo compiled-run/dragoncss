@@ -88,7 +88,8 @@ import type {
   TrackSize,
 } from '../../layout/src/input.ts';
 import type { LayoutRect } from '../../layout/src/layout.ts';
-import { absoluteRects, layout, layoutWithFaults, resolvedInput } from '../../layout/src/layout.ts';
+import type { StickyConstraint } from '../../layout/src/layout.ts';
+import { absoluteRects, layout, layoutWithFaults, layoutWithInflow, resolvedInput, stickyShift } from '../../layout/src/layout.ts';
 import type { Ctx } from '../../layout/src/block.ts';
 import { NO_ENGINE_FAULTS } from '../../layout/src/block.ts';
 import { NO_GRID_FAULTS } from '../../layout/src/grid.ts';
@@ -1286,7 +1287,7 @@ const FAULT_KEYS: readonly string[] = [
   'orderHalfEven', 'orderUnclamped', 'gutterReserved', 'overflowIgnoresPadding', 'ellipsisInTextFont', 'noDotsFallback', 'truncateChangesBlockSize',
   'preservedSpaceCollapsed', 'trailingPreWrapNotHanging', 'breakSpacesHanging', 'indentEveryLine', 'indentAfterBr', 'indentPercentInIntrinsic', 'indentRtlFromLeft',
   'anywhereMinContentIgnored', 'breakWordShrinksMinContent', 'breakAnywhereAlways', 'emergencyBreakBeforeOpportunity', 'wordBreakBreakWordIgnored', 'breakAllIgnored',
-  'clampHeightIncludesHiddenLines', 'clampEllipsisMissingWhenLineFits', 'clampEllipsisOnExactLastLine', 'containedContentSized', 'menuListShownLabelOnly', 'containerJoinsFlow', 'wrapStyleGreedy', 'textBoxTrimIgnored',
+  'clampHeightIncludesHiddenLines', 'clampEllipsisMissingWhenLineFits', 'clampEllipsisOnExactLastLine', 'containedContentSized', 'menuListShownLabelOnly', 'containerJoinsFlow', 'wrapStyleGreedy', 'textBoxTrimIgnored', 'searchCancelIgnored',
   'inlineBlockFirstBaseline', 'overflowBaselineIgnored', 'inlineFlexLastBaseline', 'atomicMarginExcluded', 'noBreakAroundAtomic', 'atomicShrinkToFitIgnored',
   'inlineGridLastItemBaseline',
 ];
@@ -1382,6 +1383,7 @@ function decodeFaults(v: JsonValue): EngineFaults {
     containerJoinsFlow: b('containerJoinsFlow'),
     wrapStyleGreedy: b('wrapStyleGreedy'),
     textBoxTrimIgnored: b('textBoxTrimIgnored'),
+    searchCancelIgnored: b('searchCancelIgnored'),
   };
 }
 
@@ -4013,8 +4015,42 @@ export function checkMarklessPlan(line: string): string {
 export function runMarklessLayout(line: string): string {
   try {
     const parsed = parseJson(line);
-    const withSlots = parsed.kind === 'obj' && parsed.values.has('slots');
-    return marklessLayout(obj(parsed, withSlots ? ['assignment', 'dpr', 'viewport', 'safeArea', 'plan', 'slots'] : ['assignment', 'dpr', 'viewport', 'safeArea', 'plan'], '$'), null);
+    const keys: string[] = ['assignment', 'dpr', 'viewport', 'safeArea', 'plan'];
+    if (parsed.kind === 'obj' && parsed.values.has('slots')) keys.push('slots');
+    if (parsed.kind === 'obj' && parsed.values.has('sticky')) keys.push('sticky');
+    return marklessLayout(obj(parsed, keys, '$'), null);
+  } catch (e) {
+    if (e instanceof HarnessError) return `["harness-error",${q(e.detail)}]`;
+    return '["threw"]';
+  }
+}
+
+/**
+ * POSX-s scroll on the device: {"sticky": the layout answer's sticky constraints as it wrote them (device px as float bits, null for
+ * an auto inset), "scroll": [x, y], the root scroller's offset in device px, floored to the LU grid as Blink floors it}. The answer is ["ok", [[id, dx, dy], ...]], each sticky box's
+ * shift from its in-flow place in device px (stickyShift), the host moving the box's view by its shift less its at-rest one.
+ */
+export function runMarklessSticky(line: string): string {
+  try {
+    const o = obj(parseJson(line), ['sticky', 'scroll'], '$');
+    const scroll = arr(field(o, 'scroll', '$'), '$.scroll');
+    if (scroll.length !== 2) fail('$.scroll: expected [x, y]');
+    const lu = (v: number): LU => fromRaw(Math.round(v * LU_PER_PX));
+    const floorLu = (v: number): LU => fromRaw(Math.floor(v * LU_PER_PX));
+    const sx = floorLu(num(scroll[0] as JsonValue, '$.scroll[0]'));
+    const sy = floorLu(num(scroll[1] as JsonValue, '$.scroll[1]'));
+    let out = '["ok",[';
+    arr(field(o, 'sticky', '$'), '$.sticky').forEach((v, i) => {
+      const at = `$.sticky[${i}]`;
+      const t = arr(v, at);
+      if (t.length !== 15) fail(`${at}: expected an id and 14 numbers`);
+      const n = (k: number): LU => lu(hexBits(str(t[k] as JsonValue, `${at}[${k}]`)));
+      const inset = (k: number): LU | null => ((t[k] as JsonValue).kind === 'null' ? null : n(k));
+      const c: StickyConstraint = { id: str(t[0] as JsonValue, `${at}[0]`), x: n(1), y: n(2), width: n(3), height: n(4), cbLeft: n(5), cbTop: n(6), cbRight: n(7), cbBottom: n(8), viewportWidth: n(9), viewportHeight: n(10), top: inset(11), right: inset(12), bottom: inset(13), left: inset(14) };
+      const d = stickyShift(c, sx, sy);
+      out += `${i === 0 ? '' : ','}[${q(c.id)},${h(d.dx / LU_PER_PX)},${h(d.dy / LU_PER_PX)}]`;
+    });
+    return `${out}]]`;
   } catch (e) {
     if (e instanceof HarnessError) return `["harness-error",${q(e.detail)}]`;
     return '["threw"]';
@@ -4110,6 +4146,7 @@ export function runMarklessRowsLayout(line: string, shaper: GlyphShaper): string
     const keys: string[] = ['assignment', 'dpr', 'viewport', 'safeArea', 'plan', 'rows'];
     if (parsed.kind === 'obj' && parsed.values.has('slots')) keys.push('slots');
     if (parsed.kind === 'obj' && parsed.values.has('texts')) keys.push('texts');
+    if (parsed.kind === 'obj' && parsed.values.has('sticky')) keys.push('sticky');
     return marklessLayout(obj(parsed, keys, '$'), shaper);
   } catch (e) {
     if (e instanceof HarnessError) return `["harness-error",${q(e.detail)}]`;
@@ -4314,7 +4351,8 @@ function marklessLayout(o: JsonObj, live: GlyphShaper | null): string {
     const dashed = spliced === null ? parts.dashed : spliced.dashed;
     const scrollers = spliced === null ? parts.scrollers : spliced.scrollers;
 
-    const r = layout(input, measurer);
+    const placed = layoutWithInflow(input, measurer, NO_ENGINE_FAULTS, NO_GRID_FAULTS);
+    const r = placed.result;
     if (r.kind !== 'ok') return fail(`the engine refused the plan at ${r.unsupported.nodeId}: ${r.unsupported.code} ${r.unsupported.detail}`);
     const boxes = r.boxes;
     const abs = absoluteRects(boxes);
@@ -4362,7 +4400,9 @@ function marklessLayout(o: JsonObj, live: GlyphShaper | null): string {
       const range = rangeOf.get(b.id);
       out += `[${q(b.id)},[${h(b.x / LU_PER_PX)},${h(b.y / LU_PER_PX)},${h(b.width / LU_PER_PX)},${h(b.height / LU_PER_PX)}],${s === undefined ? 'null' : edgeHex(resolveBorder(s, dpr), dpr)},${ownLines === undefined ? 'null' : ownLines},${ops === '' ? 'null' : ops},${range !== undefined && scrollers.has(b.id) ? `[${h(range.minX)},${h(range.maxX)},${h(range.minY)},${h(range.maxY)}]` : 'null'}]`;
     }
-    const arrows = `${arrowsJson(menuListArrows(input, boxes, measurer), abs)}${checkboxesJson(parts.checkboxes, abs, dpr)}`;
+    // POSX-s scroll: a host that moves sticky views asks for their constraints ("sticky": true); an older host is answered as before.
+    const wantsSticky = o.values.has('sticky') && bool(field(o, 'sticky', '$'), '$.sticky');
+    const arrows = `${arrowsJson(menuListArrows(input, boxes, measurer), abs)}${checkboxesJson(parts.checkboxes, abs, dpr)}${wantsSticky ? stickyJson(placed.sticky) : ''}`;
     if (!o.values.has('slots')) return `${out}]${arrows}]`;
     out += `],${writeNumbers(parts, values, '$.slots')}`;
     if (spliced === null) return `${out}${arrows}]`;
@@ -4372,6 +4412,20 @@ function marklessLayout(o: JsonObj, live: GlyphShaper | null): string {
       out += `${i === 0 ? '' : ','}[${q(row.key)},${writeNumbers(row.parts, row.values, `${row.at}.slots`)}]`;
     });
     return `${out}]${arrows}]`;
+}
+
+/**
+ * POSX-s scroll: each sticky box's constraint in device px, as ["sticky", [[id, x, y, width, height, cbLeft, cbTop, cbRight, cbBottom,
+ * viewportWidth, viewportHeight, top, right, bottom, left], ...]] with null for an auto inset; none when the page has no sticky box.
+ */
+function stickyJson(cs: readonly StickyConstraint[]): string {
+  if (cs.length === 0) return '';
+  const px = (v: number | null): string => (v === null ? 'null' : h(v / LU_PER_PX));
+  let out = ',["sticky",[';
+  cs.forEach((c, i) => {
+    out += `${i === 0 ? '' : ','}[${q(c.id)},${px(c.x)},${px(c.y)},${px(c.width)},${px(c.height)},${px(c.cbLeft)},${px(c.cbTop)},${px(c.cbRight)},${px(c.cbBottom)},${px(c.viewportWidth)},${px(c.viewportHeight)},${px(c.top)},${px(c.right)},${px(c.bottom)},${px(c.left)}]`;
+  });
+  return `${out}]]`;
 }
 
 /** Every bound write number of an assignment at these slot values: [[node, write kind, path, value], ...]. */

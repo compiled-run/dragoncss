@@ -487,6 +487,79 @@ describe('grid containers', () => {
   });
 });
 
+// HIT-atomic-inline (notes/HIT-atomic-inline-spec.md): Blink tests an atomic inline in all its phases at its place among its line's
+// items, last first, so it is above the text before it and below the text after it; the line's own area hits the block.
+describe('atomic inlines on their lines', () => {
+  const inlineInput = async (pad: 'px' | 'percent' = 'px') => {
+    const { box, neutralEnvironment, pct, px, text } = await import('./helpers.ts');
+    const ib = box('c1', { display: 'inline-block', width: px(20), height: px(8), marginLeft: px(-25) }, [box('k', { width: px(10), height: px(4) })]);
+    const p = box('p', { width: px(200), paddingLeft: pad === 'px' ? px(0) : pct(5) }, [text('t1', 'aaaa'), ib, text('t2', 'bb')]);
+    const root = box('html', {}, [box('body', {}, [p])]);
+    const facts = new Map(['html', 'body', 'p', 'c1', 'k'].map((id) => [id, { pointerEvents: 'auto', inherited: true, activation: false, ...FLAT }] as const));
+    return { input: { viewport: { width: 400, height: 300 }, devicePixelRatio: 1, ...neutralEnvironment({ width: 400, height: 300 }), root }, facts };
+  };
+
+  it('hits an atomic inline over the text before it and under the text after it, and its child within it', async () => {
+    const { hitRefusal, hitTableOf } = await import('../src/rt-hit.ts');
+    const { ahemMeasurer, layout } = await import('../src/index.ts');
+    const { input, facts } = await inlineInput();
+    expect(layout(input, ahemMeasurer).kind).toBe('ok');
+    expect(hitRefusal(input)).toBeNull();
+    const t = hitTableOf(input, ahemMeasurer, facts, NO_HIT_TABLE_FAULTS);
+    const c1 = t.nodes[t.ids.indexOf('c1')] as HitNode;
+    expect([c1.atomic, c1.line, c1.x / PX, c1.width / PX]).toEqual([true, 0, 15, 20]);
+    const at = (x: number, y: number) => t.ids[t.nodes[hitTest(t.nodes, x * PX, c1.y + y * PX, NO_HIT_FAULTS)]?.target ?? -1];
+    expect(at(20, 6)).toBe('c1');
+    expect(at(16, 1)).toBe('k');
+    expect(at(34, 6)).toBe('c1');
+    // t2 starts at 35: a 1x1 px box at 34.25 reaches it.
+    expect(at(34.25, 6)).toBe('p');
+    expect(at(120, 6)).toBe('p');
+    expect(at(250, 6)).toBe('body');
+    // Planted fault reversedOrder tests the line's items first to last, so the text before c1 wins over it.
+    expect(t.ids[hitTest(t.nodes, 20 * PX, c1.y + 6 * PX, { ignorePointerEventsNone: false, reversedOrder: true })]).toBe('p');
+  });
+
+  it('never places a positioned atomic inline on a line: the engine refuses it first (inline-box-position)', async () => {
+    const { hitTableOf } = await import('../src/rt-hit.ts');
+    const { ahemMeasurer, layout } = await import('../src/index.ts');
+    const { input, facts } = await inlineInput();
+    const p = input.root.children[0]?.kind === 'box' ? input.root.children[0].children[0] : undefined;
+    if (p?.kind !== 'box') throw new Error('no p');
+    const c1 = p.children[1];
+    if (c1?.kind !== 'box') throw new Error('no c1');
+    const moved = { ...input, root: { ...input.root, children: [{ ...input.root.children[0], children: [{ ...p, children: [p.children[0], { ...c1, style: { ...c1.style, position: 'relative' } }, p.children[2]] }] }] } } as typeof input;
+    const r = layout(moved, ahemMeasurer);
+    expect(r.kind === 'ok' ? 'ok' : r.unsupported.code).toBe('inline-box-position');
+    expect(() => hitTableOf(moved, ahemMeasurer, facts, NO_HIT_TABLE_FAULTS)).toThrow(/inline-box-position at c1/);
+  });
+
+  it('refuses by name a block of atomic inlines with percentage padding', async () => {
+    const { hitRefusal, hitTableOf } = await import('../src/rt-hit.ts');
+    const { ahemMeasurer } = await import('../src/index.ts');
+    const { input, facts } = await inlineInput('percent');
+    expect(hitRefusal(input)).toBe('p has percentage padding around atomic inlines, whose lines the hit table does not place yet (INL2a)');
+    expect(() => hitTableOf(input, ahemMeasurer, facts, NO_HIT_TABLE_FAULTS)).toThrow(/percentage padding around atomic inlines/);
+  });
+
+  it('refuses by name, before building, an atomic inline its hit facts make a stacking context or transform (INL2c)', async () => {
+    const { hitFactsRefusal, hitRefusal, hitTableOf } = await import('../src/rt-hit.ts');
+    const { ahemMeasurer } = await import('../src/index.ts');
+    const { input, facts } = await inlineInput();
+    const message = 'c1 is an atomic inline that forms a stacking context or is transformed, which no Chrome hit capture orders against its line yet (INL2c)';
+    const base = facts.get('c1');
+    if (base === undefined) throw new Error('no c1 facts');
+    expect(hitFactsRefusal(input, facts)).toBeNull();
+    for (const changed of [{ ...base, context: true }, { ...base, context: true, transform: [{ fn: 'translate', x: { kind: 'px', px: 2, percent: 0 }, y: { kind: 'px', px: 0, percent: 0 }, angle: 0, sx: 1, sy: 1 }] }]) {
+      const f = new Map(facts);
+      f.set('c1', changed as typeof base);
+      expect(hitRefusal(input)).toBeNull();
+      expect(hitFactsRefusal(input, f)).toBe(message);
+      expect(() => hitTableOf(input, ahemMeasurer, f, NO_HIT_TABLE_FAULTS)).toThrow(message);
+    }
+  });
+});
+
 describe('hitTest through rounded corners (SELD-R2b, FloatRoundedRect::IntersectsQuad)', () => {
   // A 100 px circle: radii 50 px on every corner, outer then inner (no border).
   const circle = [50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50, 50];
@@ -592,4 +665,41 @@ describe('hitTableOf reads a transform and a stacking context from the hit facts
     const still = await setup([{ fn: 'rotate', x: len(0), y: len(0), angle: 0, sx: 1, sy: 1 }, { fn: 'translateX', x: len(5), y: len(0), angle: 0, sx: 1, sy: 1 }], true);
     expect((still().nodes[1] as HitNode).offsetX).toBe(5);
   });
+});
+
+// HIT-atomic-inline in a block button: the engine moves a button's in-flow contents down by half its free block space
+// (buttonContentShift), so its lines and atomic inlines sit there in the table too, with or without a definite height.
+describe('atomic inlines in a block button', () => {
+  const buttonInput = async (sizing: 'auto' | 'height' | 'min-height', atom: 'box' | 'img' | 'none') => {
+    const { box, control, divStyle, neutralEnvironment, px, text } = await import('./helpers.ts');
+    const ib = box('ib', { display: 'inline-block', width: px(20), height: px(8) }, [box('k', { width: px(10), height: px(4) })]);
+    const img = { kind: 'replaced', id: 'img', style: { ...divStyle, display: 'inline', width: px(12), height: px(6) }, natural: { kind: 'image', width: 12, height: 6 }, defaultWidth: 300, defaultHeight: 150, objectFit: 'fill', objectPositionX: px(0), objectPositionY: px(0) } as const;
+    const kids = atom === 'box' ? [text('t1', 'XX'), ib, text('t2', 'XX')] : atom === 'img' ? [text('t1', 'XX'), img, text('t2', 'XX')] : [text('t1', 'XX')];
+    const size = sizing === 'height' ? { height: px(60) } : sizing === 'min-height' ? { minHeight: px(60) } : {};
+    const btn = control('btn', { kind: 'button-block' }, { width: px(100), ...size }, kids);
+    const root = box('html', { width: px(200) }, [box('body', {}, [btn])]);
+    const facts = new Map(['html', 'body', 'btn', 'ib', 'k', 'img'].map((id) => [id, { pointerEvents: 'auto', inherited: true, activation: id === 'btn', ...FLAT }] as const));
+    return { input: { viewport: { width: 400, height: 300 }, devicePixelRatio: 1, ...neutralEnvironment({ width: 400, height: 300 }), root }, facts };
+  };
+
+  for (const sizing of ['auto', 'height', 'min-height'] as const) {
+    for (const atom of ['box', 'img', 'none'] as const) {
+      it(`builds the table for a ${sizing} button holding ${atom === 'none' ? 'text only' : `text and an ${atom === 'box' ? 'inline-block' : 'inline img'}`}, with each atomic inline at its laid-out place`, async () => {
+        const { hitRefusal, hitTableOf } = await import('../src/rt-hit.ts');
+        const { ahemMeasurer, layout } = await import('../src/index.ts');
+        const { input, facts } = await buttonInput(sizing, atom);
+        const laid = layout(input, ahemMeasurer);
+        if (laid.kind !== 'ok') throw new Error(JSON.stringify(laid));
+        expect(hitRefusal(input)).toBeNull();
+        const t = hitTableOf(input, ahemMeasurer, facts, NO_HIT_TABLE_FAULTS);
+        const id = atom === 'box' ? 'ib' : atom === 'img' ? 'img' : null;
+        if (id === null) return;
+        const n = t.nodes[t.ids.indexOf(id)] as HitNode;
+        const b = laid.boxes.find((x) => x.id === id);
+        expect([n.y, n.line]).toEqual([b?.y, 0]);
+        const hit = t.ids[t.nodes[hitTest(t.nodes, n.x + 2 * PX, n.y + 2 * PX, NO_HIT_FAULTS)]?.target ?? -1];
+        expect(hit).toBe(atom === 'box' ? 'k' : 'img');
+      });
+    }
+  }
 });
