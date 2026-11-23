@@ -7,6 +7,7 @@
 // - the UA shadow styles of the range's container, track and thumb (CSS.getMatchedStylesForNode, user-agent origin);
 // - FORM-b: a menulist-button select's inner element margins and paddings through CDP pierce at DPR 1, 2, 2.625 and 3 and zoom 1
 //   and 2, and its arrow's pixels at DPR 2. The platform's arrow width (MenuListArrowWidthInDIP) is the end margin at DPR 1 less 1.
+// - FORM-b: the scrollbar thickness in DIP a textarea's default inline size adds at scrollbar-width auto and thin, at DPR 1.
 // Writes packages/dragon/test/forms/chrome-145/*.json, packages/dragon/src/forms/{appearance,ua-shadow}.generated.ts and
 // packages/dragon/src/forms/chrome-145.<platform>.forms.generated.ts (the per-platform UA data datasets.ts reads).
 // --check requires a byte-identical recapture and every comparison to pass; --plant <name> compares with that fault planted.
@@ -698,7 +699,27 @@ async function captureMenuList(chrome: string): Promise<MenuListCapture> {
   return { chrome, cases, pixels };
 }
 
-function formsUaModule(c: MenuListCapture): string {
+/** A textarea's scrollbar thickness in DIP at scrollbar-width auto and thin. */
+type TextAreaScrollbar = { readonly auto: number; readonly thin: number };
+
+/**
+ * FORM-b: Chrome adds the platform's scrollbar thickness to a textarea's default inline size while overflow-y is not hidden or
+ * clip, even under overlay scrollbars, where no gutter is reserved. At DPR 1 and zoom 1, a 5-column 10px Ahem textarea with no
+ * padding or border is 50px wide at scrollbar-width: none, and each other value's width less 50 is its thickness.
+ */
+async function captureTextAreaScrollbar(browser: Browser): Promise<TextAreaScrollbar> {
+  const values = ['auto', 'thin', 'none'] as const;
+  const body = values.map((v) => `<textarea id="${v}" cols="5" rows="1" style="display:block;margin:0;padding:0;border:0;font:10px/10px Ahem;resize:none;scrollbar-width:${v}"></textarea>`).join('\n');
+  const page = await openPage(browser, `<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body>\n${body}\n</body></html>`, { viewport: { width: 400, height: 300 }, devicePixelRatio: 1, direction: 'ltr', rootFont: 'ahem' });
+  const [auto, thin, none] = await page.evaluate((ids) => ids.map((id) => (document.getElementById(id) as HTMLElement).getBoundingClientRect().width), [...values]);
+  await page.context().close();
+  if (none !== 50) throw new Error(`a 5-column Ahem textarea at scrollbar-width: none is ${String(none)}px wide, not 50`);
+  const t = { auto: (auto as number) - 50, thin: (thin as number) - 50 };
+  if (![t.auto, t.thin].every((v) => Number.isInteger(v) && v > 0)) throw new Error(`textarea scrollbar thicknesses ${t.auto} and ${t.thin} are not whole positive DIP`);
+  return t;
+}
+
+function formsUaModule(c: MenuListCapture, textArea: TextAreaScrollbar): string {
   return `${HEADER}
 
 /** The capture platform (process.platform-process.arch) this data was read on. */
@@ -706,6 +727,9 @@ export const platform = ${JSON.stringify(hostPlatform())};
 
 /** MenuListArrowWidthInDIP: a menulist-button select's inner element inline-end margin less 1, at zoom 1 (menulist.json). */
 export const menuListArrowWidth = ${menuListArrowWidthOf(c)};
+
+/** The scrollbar thickness in DIP a textarea's default inline size adds at scrollbar-width auto and thin, at DPR 1 and zoom 1. */
+export const textAreaScrollbar = ${JSON.stringify(textArea)} as const;
 `;
 }
 
@@ -750,6 +774,7 @@ const browser = await launchChrome();
 let captures: Captures;
 let uaShadow: Awaited<ReturnType<typeof captureUaShadow>>;
 let buttonContexts: Awaited<ReturnType<typeof captureButtonContexts>>;
+let textAreaScrollbar: TextAreaScrollbar;
 try {
   const chrome = browser.version();
   if (chrome !== CHROME_VERSION) throw new Error(`Chrome must be ${CHROME_VERSION}, got ${chrome}`);
@@ -760,6 +785,7 @@ try {
   const button = await captureButtons(browser, chrome);
   buttonContexts = await captureButtonContexts(browser, chrome);
   uaShadow = await captureUaShadow(browser);
+  textAreaScrollbar = await captureTextAreaScrollbar(browser);
   const devolve = await captureDevolve(chrome);
   const menuList = await captureMenuList(chrome);
   captures = { rangeValue, rangeGeometry, button, devolve, menuList };
@@ -776,7 +802,7 @@ const outputs: [string, string][] = [
   [APPEARANCE_PATH, appearanceModule(captures.devolve)],
   [UA_SHADOW_PATH, uaShadowModule(uaShadow)],
   [`${OUT_DIR}/menulist.json`, jsonRows({ chrome: captures.menuList.chrome, cases: captures.menuList.cases }, 'pixels', captures.menuList.pixels)],
-  [FORMS_UA_PATH, formsUaModule(captures.menuList)],
+  [FORMS_UA_PATH, formsUaModule(captures.menuList, textAreaScrollbar)],
 ];
 
 let failed = false;

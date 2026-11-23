@@ -1866,12 +1866,10 @@ function checkTextField(el: ResolvedElement, layoutParent: ResolvedElement | nul
  * FORM-b: what a textarea adds to a text control's refusals, on iOS and Android, where the engine lays it out (an element child
  * everywhere):
  * - an element child (HTML parses a textarea's content as text, so only a producer could write one);
- * - a scrollbar gutter: Chrome adds the scrollbar's thickness to the default width when overflow-y is not hidden or clip, and to
- *   the default height when overflow-x is scroll (probed in Chrome 145 on Linux: 15px for auto, 10px for thin), and that
- *   thickness is the platform's, so only scrollbar-width: none or no gutter is laid out;
  * - overflow: visible, which Chrome turns into auto on a textarea and Dragon does not model.
  * At rest a textarea scrolls from offset 0 with hidden scrollbars, which the native lowering clips; overflowing text cannot be
- * scrolled natively until FORM-b2.
+ * scrolled natively until FORM-b2. The scrollbar thickness Chrome adds to its default size compiles: the lowering gives the
+ * engine the reference platform's (ios-layout.ts textAreaScrollbarOf), and its resize compiles (a phone has no resizer).
  */
 function checkTextAreaChrome(el: ResolvedElement, targets: readonly string[], refuse: (v: ResolvedValue | null, what: string, message: string, manual: string, code?: 'DRAGON_UNSUPPORTED_VALUE' | 'DRAGON_UNSUPPORTED_FONT', on?: readonly string[]) => void): void {
   const address = el.element.address;
@@ -1882,11 +1880,8 @@ function checkTextAreaChrome(el: ResolvedElement, targets: readonly string[], re
   // resize: both (html.css) compiles: a phone has no resizer, and Dragon accepts resize there and does nothing (css/properties/resize.ts).
   const ox = keywordOf(el.props.get('overflow-x') as ResolvedValue);
   const oy = keywordOf(el.props.get('overflow-y') as ResolvedValue);
-  const scrollbarWidth = el.props.get('scrollbar-width') as ResolvedValue;
   if (ox === 'visible' || oy === 'visible') {
     refuse(el.props.get(ox === 'visible' ? 'overflow-x' : 'overflow-y') as ResolvedValue, 'overflow', `overflow: visible on <textarea> ${address}, which Chrome makes auto, is not modelled`, `Leave overflow at auto, or set hidden, on <textarea> ${address}.`, 'DRAGON_UNSUPPORTED_VALUE', native);
-  } else if (keywordOf(scrollbarWidth) !== 'none' && ((oy !== 'hidden' && oy !== 'clip') || ox === 'scroll')) {
-    refuse(scrollbarWidth, 'gutter', `<textarea> ${address} reserves a scrollbar gutter in its default size (scrollbar-width: ${valueToString(scrollbarWidth.value)}), whose thickness is the platform's`, `Set scrollbar-width: none (or overflow: hidden) on <textarea> ${address}.`, 'DRAGON_UNSUPPORTED_VALUE', native);
   }
 }
 
