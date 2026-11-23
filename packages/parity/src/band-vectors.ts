@@ -14,7 +14,7 @@ import { MEDIA_ENVIRONMENT_FIXTURES } from './fixture-groups/media-environment.t
 
 const view = new DataView(new ArrayBuffer(8));
 /** A double's bit pattern as 16 hex digits, as the translate corpus writes numbers (translate/harness/host.ts bitsHex). */
-function bitsHex(x: number): string {
+export function bitsHex(x: number): string {
   view.setFloat64(0, x);
   return view.getBigUint64(0).toString(16).padStart(16, '0');
 }

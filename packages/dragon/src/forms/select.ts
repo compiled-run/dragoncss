@@ -27,6 +27,12 @@ export const SELECT_UA_SHADOW: { readonly inner: readonly ShadowRule[] } = {
   ],
 };
 
+/**
+ * FORM-b S4: a host that renders a select's options as rows of a list (the Markless style export) sets this data attribute on the
+ * select. Dragon then sees only the list's template option, so the widths that read the select's widest option stay refused for it.
+ */
+export const LISTED_OPTIONS_ATTRIBUTE = 'data-dragon-listed-options';
+
 /** An option of a select's list, in tree order: its selected and disabled attributes, its label attribute and its text. */
 export type SelectOption = { readonly selected: boolean; readonly disabled: boolean; readonly label: string | undefined; readonly text: string };
 

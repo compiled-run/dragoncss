@@ -1,0 +1,13 @@
+{
+  "case": "opacity-group-sticky-short",
+  "chrome": "145.0.7632.6",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"link:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"tag:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"brand:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"new:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"card1:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"card2:text0","data":"XX","lines":1,"units":[0,0],"blank":[]}
+  ]
+}

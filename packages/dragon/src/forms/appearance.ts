@@ -6,7 +6,7 @@
 import { NO_FORM_FAULTS } from './faults.ts';
 import type { FormFaults } from './faults.ts';
 
-export type Control = 'button' | 'range' | 'textfield';
+export type Control = 'button' | 'range' | 'textfield' | 'textarea';
 
 export type AuthorControlStyle = {
   readonly appearance: 'auto' | 'none';
