@@ -302,6 +302,7 @@ Approved, with these rulings and amendments.
 - **RTL.** Every rtl text field, Ahem included, is refused on every target by its editor's preserved white space (DRAGON_UNSUPPORTED_BIDI), so controls-text-field-font-definite is ltr only, as controls-text-field is, and a unit test pins that refusal for a Lato field.
 - **Fix found during the build.** blockLevelInlineSize resolved a text field's keyword sizes (`fit-content`, `min-content`, `max-content` in width, min-width and max-width) on the field as a plain box, which reads the editor's text instead of the field's default size. That is wrong against Chrome even for Ahem, and it skipped the tripwire. It now resolves them on the control; the accept fixture's Ahem `width: fit-content` field matches Chrome at the four DPRs.
 - **Vectors.** The committed controls-text-field vectors gain `"avgChar": "ahem"` in their input; no output byte changes.
+- **Search fields stay Ahem-only.** A non-Ahem `<input type=search>` is refused on iOS and Android whatever its width (web is not refused), because no fixture proves its cancel button's placement in a real face against Chrome; it stays refused until one does (FORM-search).
 
 ### FW1 file list
 

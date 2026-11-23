@@ -272,6 +272,15 @@ describe('FIELD-font-width FW1: a field outside Ahem is accepted natively only w
   it('an rtl field in Lato is refused by its editor white space (DRAGON_UNSUPPORTED_BIDI), so the fixture is ltr only', () => {
     expect(errors(lato('fw-rtl', 'input { width: 100%; }', field, dragon.NO_FAULTS, 'rtl'))).toContainEqual(expect.stringMatching(/^all DRAGON_UNSUPPORTED_BIDI t::editor:text0 keeps its white space/));
   });
+
+  it('refuses a set-width search field in Lato on iOS and Android only, as its cancel button is proven only in Ahem, and accepts the text field', () => {
+    const search = lato('fw-search', 'input { width: 120px; }', '<input data-dragon-id="t" readonly="" type="search" value="Hello">');
+    expect(errors(search)).toEqual([
+      expect.stringMatching(/^android DRAGON_UNSUPPORTED_FONT <input type=search> t is in font-family: Lato: a search field's cancel button in a font other than Ahem is not proven yet \(FORM-search\)$/),
+      expect.stringMatching(/^ios DRAGON_UNSUPPORTED_FONT <input type=search> t is in font-family: Lato: a search field's cancel button/),
+    ]);
+    expect(errors(lato('fw-text', 'input { width: 120px; }', '<input data-dragon-id="t" readonly="" type="text" value="Hello">'))).toEqual([]);
+  });
 });
 
 const ACCEPT = 'controls-text-field-font-definite';
