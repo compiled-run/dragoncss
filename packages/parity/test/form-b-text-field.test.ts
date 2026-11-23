@@ -150,6 +150,22 @@ describe('FORM-b text fields', () => {
     expect([b.get('t::cancel'), b.get('v::cancel')]).toEqual([{ x: 4 + 189 + 1, y: 3 + 1.5, width: 7, height: 7 }, undefined]);
   });
 
+  it('lowers an empty readonly textarea when the host edits text: its lineless editor takes the textarea\'s font', () => {
+    // An empty textarea's editor has no line, so no strut (Chrome 145: its height is 0); the editor the host draws typed text in
+    // takes the textarea's font, as an editor with a value does from its strut (the notes form's /new, whose body starts empty).
+    const editorWrites = (id: string, value: string): unknown => {
+      const c = compile(id, 'textarea { display: block; font: inherit; appearance: none; margin: 0; border: 2px solid #036; padding: 1px 2px; resize: none; scrollbar-width: none; color: #123; }', `<textarea data-dragon-id="a" readonly="">${value}</textarea>`, BASE, false, true);
+      expect(errors(c), id).toEqual([]);
+      const p = dragon.nativePrograms(c, []);
+      if (p.kind !== 'ready') throw new Error(`${id}: ${p.reason}`);
+      return Object.fromEntries(Object.entries(p.programs).map(([backend, prog]) => [backend, prog.nodes.find((n) => n.id === 'a::editor')?.writes]));
+    };
+    const empty = editorWrites('tf-host-area-empty', '') as Record<string, readonly { kind: string }[]>;
+    expect(Object.keys(empty).length).toBeGreaterThan(0);
+    for (const writes of Object.values(empty)) expect(writes.map((w) => w.kind)).toEqual(expect.arrayContaining(['font']));
+    expect(empty).toEqual(editorWrites('tf-host-area-value', 'XX'));
+  });
+
   it('still refuses a textarea when the host edits single-line fields', () => {
     const refused = errors(compile('tf-host-textarea', '', '<textarea data-dragon-id="a">XX</textarea>', BASE, false, true)).filter((e) => e.includes('is an editable text control'));
     expect(refused).toEqual([expect.stringMatching(/^android DRAGON_UNSUPPORTED_VALUE <textarea> a is an editable text control/), expect.stringMatching(/^ios DRAGON_UNSUPPORTED_VALUE <textarea> a is an editable text control/)]);

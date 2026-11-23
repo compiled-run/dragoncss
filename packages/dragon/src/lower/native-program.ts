@@ -177,6 +177,16 @@ function sharedPaint(root: LayoutBox, resolved: ResolvedElement, images: Readonl
   const foldBackdrops = provableFoldBackdrops(resolved, movingTransforms);
   const textUnders = nativeTextUnders(resolved);
   const out: NodePaint[] = [];
+  // FORM-b: each textarea editor's font, from its text-area control.
+  const areaFonts = new Map<string, FontSpec>();
+  const collectAreas = (b: LayoutNode): void => {
+    if (b.kind !== 'box' && b.kind !== 'control') return;
+    if (b.kind === 'control' && b.control.kind === 'text-area') {
+      for (const c of b.children) if (c.kind === 'control' && c.control.kind === 'text-editor') areaFonts.set(c.id, b.control.font);
+    }
+    for (const c of b.children) if (c.kind === 'box' || c.kind === 'control') collectAreas(c);
+  };
+  collectAreas(root);
   const visit = (b: LayoutNode, parent: string | null, enclosingColor: Rgba8, ancestorMoves: boolean): void => {
     const anonymous = b.kind === 'box' && b.boxType === 'anonymous';
     const el = anonymous ? null : (elements.get(b.id) ?? null);
@@ -186,9 +196,12 @@ function sharedPaint(root: LayoutBox, resolved: ResolvedElement, images: Readonl
     const transformMoves = ancestorMoves || (el !== null && movingTransforms.has(el.element.address));
     const writes: WriteKind[] = lowerBoxPaint({ box: b, el, parentColor: enclosingColor, facts, images, transformMoves, foldBackdrops, decorations, textShadows, textUnders });
     // The host draws the text a user types into an editor it edits, so the editor box carries that text's font and colour.
+    // An empty textarea's editor holds no line, so no strut (the engine's has-line-if-empty is an input's only); its font is the
+    // textarea's own, which the text-area control carries.
     if (hostEdits && el !== null && b.kind === 'control' && b.control.kind === 'text-editor') {
-      if (b.strut === null) throw new ProgramError(`${b.id}: a text field's editor has no line strut`);
-      writes.push(...textWrites(b.strut.font, glyphFill(el), el, plants));
+      const font = b.strut?.font ?? areaFonts.get(b.id);
+      if (font === undefined) throw new ProgramError(`${b.id}: a text field's editor has no line strut`);
+      writes.push(...textWrites(font, glyphFill(el), el, plants));
     }
     out.push({ id: b.id, parent, kind: anonymous ? 'anonymous' : 'element', clips: hostsClipView(b, el), text: null, writes, facts });
     // A replaced leaf has no children; Phase A paints only its box (background and border), Phase B its content.
