@@ -170,6 +170,13 @@ function sharedPaint(root: LayoutBox, resolved: ResolvedElement, images: Readonl
   };
   walk(resolved);
   const hostEdits = environmentOf(resolved).hostTextEditing === true;
+  const textAreaFonts = new Map<string, FontSpec>();
+  const findTextAreas = (b: LayoutNode): void => {
+    if (b.kind !== 'box' && b.kind !== 'control') return;
+    if (b.kind === 'control' && b.control.kind === 'text-area') for (const k of b.children) if (k.kind === 'control' && k.control.kind === 'text-editor') textAreaFonts.set(k.id, b.control.font);
+    for (const k of b.children) if (k.kind === 'box' || k.kind === 'control') findTextAreas(k);
+  };
+  if (hostEdits) findTextAreas(root);
   // TDEC-b: the decorations each text leaf draws, which the text-decoration module writes on the leaf's container box.
   const decorations = analyzeDecorations(resolved).applied;
   // TXT-FX: the shadows each text leaf draws, which the text-shadow module writes on the leaf's container box.
@@ -187,8 +194,10 @@ function sharedPaint(root: LayoutBox, resolved: ResolvedElement, images: Readonl
     const writes: WriteKind[] = lowerBoxPaint({ box: b, el, parentColor: enclosingColor, facts, images, transformMoves, foldBackdrops, decorations, textShadows, textUnders });
     // The host draws the text a user types into an editor it edits, so the editor box carries that text's font and colour.
     if (hostEdits && el !== null && b.kind === 'control' && b.control.kind === 'text-editor') {
-      if (b.strut === null) throw new ProgramError(`${b.id}: a text field's editor has no line strut`);
-      writes.push(...textWrites(b.strut.font, glyphFill(el), el, plants));
+      // An empty textarea's editor has no line, so no strut: its text is in the textarea's own font.
+      const font = b.strut !== null ? b.strut.font : (textAreaFonts.get(b.id) ?? null);
+      if (font === null) throw new ProgramError(`${b.id}: a text field's editor has no line strut`);
+      writes.push(...textWrites(font, glyphFill(el), el, plants));
     }
     out.push({ id: b.id, parent, kind: anonymous ? 'anonymous' : 'element', clips: hostsClipView(b, el), text: null, writes, facts });
     // A replaced leaf has no children; Phase A paints only its box (background and border), Phase B its content.
