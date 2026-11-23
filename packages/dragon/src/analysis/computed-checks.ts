@@ -404,6 +404,37 @@ function inlineContexts(el: ResolvedElement, blockInInline: (child: ResolvedElem
   return runs.filter((r) => r.length > 0);
 }
 
+/**
+ * Whether el itself (not an anonymous box) is the block container of an atomic inline's line: an atomic inline is among its box
+ * children and no block-level box is, so the compiler wraps none of its inline content in an anonymous block (CSS2 §9.2.1.1).
+ */
+export function holdsAtomicLine(el: ResolvedElement): boolean {
+  if (isInlineBox(el) || isContents(el)) return false;
+  let atomic = false;
+  for (const c of boxKids(el)) {
+    if (c.kind === 'text' || displayKeyword(c) === 'none') continue;
+    if (isAtomic(c)) atomic = true;
+    else if (!isInlineBox(c)) return false;
+  }
+  return atomic;
+}
+
+/** The atomic inlines on the lines of a block container holdsAtomicLine accepts, in tree order (through display: contents). */
+export function atomicLineChildren(el: ResolvedElement): ResolvedElement[] {
+  if (!holdsAtomicLine(el)) return [];
+  const out: ResolvedElement[] = [];
+  for (const c of boxKids(el)) if (c.kind === 'element' && isAtomic(c)) out.push(c);
+  return out;
+}
+
+/** Every atomic inline on a line of el's inline formatting contexts, the anonymous blocks the compiler wraps inline content in included, in tree order. */
+export function lineAtomics(el: ResolvedElement): ResolvedElement[] {
+  if (isInlineBox(el) || isContents(el)) return [];
+  const out: ResolvedElement[] = [];
+  for (const run of inlineContexts(el, () => {})) for (const it of run) if (it.kind === 'atomic') out.push(it.el);
+  return out;
+}
+
 /** Whether el is a block container whose inline formatting context lays out a line: an atomic inline, or text other than collapsible white space. */
 function holdsInlineContent(el: ResolvedElement): boolean {
   if (isInlineBox(el)) return false;

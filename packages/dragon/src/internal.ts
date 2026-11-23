@@ -421,8 +421,7 @@ export function engineLayoutProjection(compiled: object, environment: Environmen
 
 // SELD-R1b (notes/T047-runtime-spec.md RT-9): the hit table and each element's hit facts.
 import { elementTransformWrite } from './lower/paint/transform.ts';
-import { transformedForStacking } from './lower/paint/stacking.ts';
-import { opacityOf } from './css/properties/effects.ts';
+import { hitFactContext } from './lower/paint/stacking.ts';
 export type { HitFact } from './emit/runtime/hit.ts';
 export { HIT_FACTS_VERSION } from './emit/runtime/hit.ts';
 
@@ -441,13 +440,8 @@ export function hitFacts(compiled: object, assignment: Assignment, state: string
     const v = el.props.get('pointer-events');
     if (v === undefined || v.value.kind !== 'keyword' || (v.value.value !== 'auto' && v.value.value !== 'none')) throw new Error(`${el.element.address}: pointer-events did not resolve to auto or none`);
     const lengths = radiusLengths(el.props, el.element.address);
-    const o = el.props.get('opacity');
-    const opacity = o === undefined ? 1 : opacityOf(o.value);
-    if (opacity === null) throw new Error(`${el.element.address}: opacity did not compute to a number`);
     const transform = elementTransformWrite(el);
-    const pos = el.props.get('position');
-    // css-position-3 §3.4: a sticky or fixed box always makes a stacking context.
-    const context = opacity < 1 || transformedForStacking(el) || (pos !== undefined && pos.value.kind === 'keyword' && (pos.value.value === 'sticky' || pos.value.value === 'fixed'));
+    const context = hitFactContext(el);
     out.set(el.element.address, { pointerEvents: v.value.value, inherited: v.origin === 'inherited', activation: activates(el.element.tag, el.element.attributes), radii: roundsAnyCorner(lengths) ? lengths : [], context, transform: transform === null ? [] : transform.ops, origin: transform === null ? NO_ORIGIN : transform.origin });
     for (const ch of el.children) if (ch.kind === 'element') walk(ch);
   };
