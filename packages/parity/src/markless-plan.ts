@@ -80,6 +80,9 @@ export function planWidths(dpr: number): number[] {
 }
 
 /** One ratio's recording: every variant at every PLAN_WIDTHS root width, then checked at PLAN_HEIGHTS' heights. */
+/** Told of every layout a recording makes; a plan worker counts them, so its pool tells a stopped worker from a slow one. */
+export const recordingProgress: { onLayout: () => void } = { onLayout: () => {} };
+
 export function recordDensity(t: NativeStyleTarget, sp: StateProgram, system: SystemFonts, bundled: readonly string[], authorFiles: ReadonlyMap<string, Uint8Array>, dpr: number, height: number): PlanDensity {
   const calls = new Map<string, readonly unknown[]>();
   const metrics = new Map<string, readonly unknown[]>();
@@ -100,6 +103,7 @@ export function recordDensity(t: NativeStyleTarget, sp: StateProgram, system: Sy
     const viewport = { width, height: h };
     const input: LayoutInput = { viewport, devicePixelRatio: dpr, viewportUnits: { small: viewport, large: viewport, dynamic: viewport }, safeArea: { top: 0, right: 0, bottom: 0, left: 0 }, rootFontSize: v.rootFontSize, root: v.root };
     const r = layout(input, m);
+    recordingProgress.onLayout();
     if (r.kind !== 'ok') throw new Error(`${t}: the engine refused variant ${vi} at ${width} x ${h} css px and ${dpr}x: ${r.unsupported.code} at ${r.unsupported.nodeId}`);
   };
   const m = systemMeasurer(system, sp, bundled, dpr, authorFiles, recorder);
