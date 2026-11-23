@@ -706,13 +706,12 @@ function latinScopeRefusal(text: string): string {
     const cp = ch.codePointAt(0) as number;
     const sc = scriptCode(cp);
     if (sc === USCRIPT_LATIN) continue;
-    const at = `U+${cp.toString(16).toUpperCase()}`;
-    if (sc !== USCRIPT_COMMON && sc !== USCRIPT_INHERITED) return `${at} is outside Latin, Common and Inherited`;
+    if (sc !== USCRIPT_COMMON && sc !== USCRIPT_INHERITED) return `U+${cp.toString(16).toUpperCase()} is outside Latin, Common and Inherited`;
     const ext = scriptExtensions(cp);
     let latin = false;
     for (const e of ext) if (e === USCRIPT_LATIN) latin = true;
     const plain = ext.length === 1 && ((ext[0] as number) === USCRIPT_COMMON || (ext[0] as number) === USCRIPT_INHERITED);
-    if (!latin && !plain) return `${at} is Common or Inherited, but its Script_Extensions exclude Latin, so Blink shapes it in a run of its own`;
+    if (!latin && !plain) return `U+${cp.toString(16).toUpperCase()} is Common or Inherited, but its Script_Extensions exclude Latin, so Blink shapes it in a run of its own`;
   }
   return '';
 }
