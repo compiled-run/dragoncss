@@ -126,62 +126,62 @@ enum HS {
   static let s119 = JsString(" is display ")
   static let s120 = JsString(" is display: grid with no grid style; validateLayoutInput rejects this input")
   static let s121 = JsString(" is emoji; emoji segmentation is outside the shaping core")
-  static let s122 = JsString(" is focused with focus-visible but is not keyboard focusable")
-  static let s123 = JsString(" is given twice")
-  static let s124 = JsString(" is in ")
-  static let s125 = JsString(" is inherited with script extensions; outside the shaping core")
-  static let s126 = JsString(" is inline content directly in flex container ")
-  static let s127 = JsString(" is inline content directly in grid container ")
-  static let s128 = JsString(" is laid out with a text-transform, which a phone does not apply to the text it is given")
-  static let s129 = JsString(" is listed twice")
-  static let s130 = JsString(" is negative")
-  static let s131 = JsString(" is never laid out before it")
-  static let s132 = JsString(" is no text leaf of the page outside its lists' rows")
-  static let s133 = JsString(" is no text leaf of the row's template")
-  static let s134 = JsString(" is not 0 or 1")
-  static let s135 = JsString(" is not 8-bit")
-  static let s136 = JsString(" is not RGB8")
-  static let s137 = JsString(" is not RGBA8")
-  static let s138 = JsString(" is not a block container of inline content in its formatting context")
-  static let s139 = JsString(" is not a byte")
-  static let s140 = JsString(" is not a finite number")
-  static let s141 = JsString(" is not a node of the layout input")
-  static let s142 = JsString(" is not a non-negative number or +Infinity")
-  static let s143 = JsString(" is not a piece")
-  static let s144 = JsString(" is not a select")
-  static let s145 = JsString(" is not a slot of the plan")
-  static let s146 = JsString(" is not a slot rule")
-  static let s147 = JsString(" is not a variant")
-  static let s148 = JsString(" is not a whole number, and it is declared integer (the build sampled it at whole numbers only)")
-  static let s149 = JsString(" is not an Ahem full-advance glyph")
-  static let s150 = JsString(" is not an Ahem glyph")
-  static let s151 = JsString(" is not an Ahem small-caps glyph")
-  static let s152 = JsString(" is not an assignment")
-  static let s153 = JsString(" is not an assignment of the plan")
-  static let s154 = JsString(" is not an integer")
-  static let s155 = JsString(" is not anchored")
-  static let s156 = JsString(" is not auto or none")
-  static let s157 = JsString(" is not finite and non-negative")
-  static let s158 = JsString(" is not focusable")
-  static let s159 = JsString(" is not its children in order")
-  static let s160 = JsString(" is not laid out before it")
-  static let s161 = JsString(" is not measured")
-  static let s162 = JsString(" is not placed yet")
-  static let s163 = JsString(" is not proven against Chrome")
-  static let s164 = JsString(" is not supported")
-  static let s165 = JsString(" is not yet proven against Chrome")
-  static let s166 = JsString(" is on a truncated line of ")
-  static let s167 = JsString(" is on no line")
-  static let s168 = JsString(" is outside ")
-  static let s169 = JsString(" is outside Latin, Common and Inherited")
-  static let s170 = JsString(" is outside Latin, Common and Inherited (R4)")
-  static let s171 = JsString(" is outside [-pi/4, pi/4]")
-  static let s172 = JsString(" is outside its ")
-  static let s173 = JsString(" is outside the ")
-  static let s174 = JsString(" is outside the code points the line breaker decides")
-  static let s175 = JsString(" is outside the modelled buffer")
-  static let s176 = JsString(" is position ")
-  static let s177 = JsString(" is position: fixed, a stacking context placed against the viewport, which the hit table does not model yet (POSX-f; no Chrome hit capture)")
+  static let s122 = JsString(" is fixed inside a transformed box, whose containing block the hit table does not model")
+  static let s123 = JsString(" is focused with focus-visible but is not keyboard focusable")
+  static let s124 = JsString(" is given twice")
+  static let s125 = JsString(" is in ")
+  static let s126 = JsString(" is inherited with script extensions; outside the shaping core")
+  static let s127 = JsString(" is inline content directly in flex container ")
+  static let s128 = JsString(" is inline content directly in grid container ")
+  static let s129 = JsString(" is laid out with a text-transform, which a phone does not apply to the text it is given")
+  static let s130 = JsString(" is listed twice")
+  static let s131 = JsString(" is negative")
+  static let s132 = JsString(" is never laid out before it")
+  static let s133 = JsString(" is no text leaf of the page outside its lists' rows")
+  static let s134 = JsString(" is no text leaf of the row's template")
+  static let s135 = JsString(" is not 0 or 1")
+  static let s136 = JsString(" is not 8-bit")
+  static let s137 = JsString(" is not RGB8")
+  static let s138 = JsString(" is not RGBA8")
+  static let s139 = JsString(" is not a block container of inline content in its formatting context")
+  static let s140 = JsString(" is not a byte")
+  static let s141 = JsString(" is not a finite number")
+  static let s142 = JsString(" is not a node of the layout input")
+  static let s143 = JsString(" is not a non-negative number or +Infinity")
+  static let s144 = JsString(" is not a piece")
+  static let s145 = JsString(" is not a select")
+  static let s146 = JsString(" is not a slot of the plan")
+  static let s147 = JsString(" is not a slot rule")
+  static let s148 = JsString(" is not a variant")
+  static let s149 = JsString(" is not a whole number, and it is declared integer (the build sampled it at whole numbers only)")
+  static let s150 = JsString(" is not an Ahem full-advance glyph")
+  static let s151 = JsString(" is not an Ahem glyph")
+  static let s152 = JsString(" is not an Ahem small-caps glyph")
+  static let s153 = JsString(" is not an assignment")
+  static let s154 = JsString(" is not an assignment of the plan")
+  static let s155 = JsString(" is not an integer")
+  static let s156 = JsString(" is not anchored")
+  static let s157 = JsString(" is not auto or none")
+  static let s158 = JsString(" is not finite and non-negative")
+  static let s159 = JsString(" is not focusable")
+  static let s160 = JsString(" is not its children in order")
+  static let s161 = JsString(" is not laid out before it")
+  static let s162 = JsString(" is not measured")
+  static let s163 = JsString(" is not placed yet")
+  static let s164 = JsString(" is not proven against Chrome")
+  static let s165 = JsString(" is not supported")
+  static let s166 = JsString(" is not yet proven against Chrome")
+  static let s167 = JsString(" is on a truncated line of ")
+  static let s168 = JsString(" is on no line")
+  static let s169 = JsString(" is outside ")
+  static let s170 = JsString(" is outside Latin, Common and Inherited")
+  static let s171 = JsString(" is outside Latin, Common and Inherited (R4)")
+  static let s172 = JsString(" is outside [-pi/4, pi/4]")
+  static let s173 = JsString(" is outside its ")
+  static let s174 = JsString(" is outside the ")
+  static let s175 = JsString(" is outside the code points the line breaker decides")
+  static let s176 = JsString(" is outside the modelled buffer")
+  static let s177 = JsString(" is position ")
   static let s178 = JsString(" is rtl, whose carets the model does not measure yet")
   static let s179 = JsString(" is selectable under an element whose used user-select is none, which native refuses")
   static let s180 = JsString(" is transformed but its facts make no stacking context")
@@ -4333,7 +4333,7 @@ func harness_decodeShaping(_ v: any U_JsonArr_JsonBool_JsonNull_JsonNum_JsonObj_
     let id: JsString = try harness_str(harness_field(fo, HS.s_id, at), jsConcat(at, HS.s442))
     // ts: packages/translate/harness/harness.ts:1461
     if faces.has(id) {
-      try harness_fail(jsConcat(at, HS.s443, id, HS.s129))
+      try harness_fail(jsConcat(at, HS.s443, id, HS.s130))
     }
     _ = try faces.set(id, ReplayFace(harness_fontData(harness_field(fo, HS.s_data, at), jsConcat(at, HS.s415)), harness_hanKerning(harness_field(fo, HS.s_hanKerning, at), jsConcat(at, HS.s436))))
 })
@@ -4885,7 +4885,7 @@ func harness_radiusLength(_ a: JsArray<any U_JsonArr_JsonBool_JsonNull_JsonNum_J
   let flag: Double = try harness_arg(a, i)
   // ts: packages/translate/harness/harness.ts:1848
   if ((flag != 0.0) && (flag != 1.0)) {
-    try harness_fail(jsConcat(HS.s1914, jsNumberToString(flag), HS.s134))
+    try harness_fail(jsConcat(HS.s1914, jsNumberToString(flag), HS.s135))
   }
   return try RadiusLength((flag == 1.0), harness_arg(a, (i + 1.0)))
 }
@@ -4900,7 +4900,7 @@ func harness_factRadius(_ v: any U_JsonArr_JsonBool_JsonNull_JsonNum_JsonObj_Jso
   let value: Double = try harness_num(harness_item(pair, 1.0, path), path)
   // ts: packages/translate/harness/harness.ts:1857
   if (value < 0.0) {
-    try harness_fail(jsConcat(path, HS.s662, jsNumberToString(value), HS.s130))
+    try harness_fail(jsConcat(path, HS.s662, jsNumberToString(value), HS.s131))
   }
   return try RadiusLength(harness_bool(harness_item(pair, 0.0, path), path), value)
 }
@@ -5498,7 +5498,7 @@ func harness_gradientResult(_ name: JsString, _ a: JsArray<any U_JsonArr_JsonBoo
         let x: Double = try jsUnwrap(jsAt(row, i))
         // ts: packages/translate/harness/harness.ts:2254
         if (!(((x >= 0.0) && (x <= 255.0)) && (jsFloor(x) == x))) {
-          try harness_fail(jsConcat(HS.s1953, jsNumberToString(i), HS.s139))
+          try harness_fail(jsConcat(HS.s1953, jsNumberToString(i), HS.s140))
         }
         try bytes += jsConcat(((x < 16.0) ? HS.s574 : HS.s0), jsToStringRadix16(x))
         i += 1.0
@@ -5780,7 +5780,7 @@ func harness_rtFinite(_ a: JsArray<any U_JsonArr_JsonBool_JsonNull_JsonNum_JsonO
   let v: Double = try harness_arg(a, i)
   // ts: packages/translate/harness/harness.ts:2485
   if (!(v).isFinite) {
-    try harness_fail(jsConcat(path, HS.s950, jsNumberToString(i), HS.s1005, hostBitsHex(v), HS.s140))
+    try harness_fail(jsConcat(path, HS.s950, jsNumberToString(i), HS.s1005, hostBitsHex(v), HS.s141))
   }
   return v
 }
@@ -5790,7 +5790,7 @@ func harness_rtIterations(_ a: JsArray<any U_JsonArr_JsonBool_JsonNull_JsonNum_J
   let v: Double = try harness_arg(a, i)
   // ts: packages/translate/harness/harness.ts:2492
   if ((v).isNaN || (v < 0.0)) {
-    try harness_fail(jsConcat(path, HS.s950, jsNumberToString(i), HS.s1010, hostBitsHex(v), HS.s142))
+    try harness_fail(jsConcat(path, HS.s950, jsNumberToString(i), HS.s1010, hostBitsHex(v), HS.s143))
   }
   return v
 }
@@ -6026,7 +6026,7 @@ func harness_rtMagnitude(_ x: Double) throws -> Double {
 func harness_rtKernelDomain(_ x: Double) throws -> Void {
   // ts: packages/translate/harness/harness.ts:2650
   if try (!(harness_rtMagnitude(x) < hostHexBits(HS.s583))) {
-    try harness_fail(jsConcat(HS.s1960, hostBitsHex(x), HS.s171))
+    try harness_fail(jsConcat(HS.s1960, hostBitsHex(x), HS.s172))
   }
 }
 
@@ -6295,7 +6295,7 @@ func harness_rtHitResult(_ a: JsArray<any U_JsonArr_JsonBool_JsonNull_JsonNum_Js
     let pe: JsString = try harness_str(harness_item(g, 1.0, path), path)
     // ts: packages/translate/harness/harness.ts:2857
     if ((pe != HS.s_auto) && (pe != HS.s_none)) {
-      try harness_fail(jsConcat(path, HS.s661, pe, HS.s156))
+      try harness_fail(jsConcat(path, HS.s661, pe, HS.s157))
     }
     let rs: JsArray<any U_JsonArr_JsonBool_JsonNull_JsonNum_JsonObj_JsonStr> = try harness_arr(harness_item(g, 4.0, path), jsConcat(path, HS.s984))
     // ts: packages/translate/harness/harness.ts:2859
@@ -6655,7 +6655,7 @@ func harness_iaInt(_ v: any U_JsonArr_JsonBool_JsonNull_JsonNum_JsonObj_JsonStr,
   let n: Double = try harness_num(v, path)
   // ts: packages/translate/harness/harness.ts:3123
   if (!jsIsInteger(n)) {
-    try harness_fail(jsConcat(path, HS.s591, hostBitsHex(n), HS.s154))
+    try harness_fail(jsConcat(path, HS.s591, hostBitsHex(n), HS.s155))
   }
   return n
 }
@@ -7337,7 +7337,7 @@ func harness_planTextLines(_ input: LayoutInput, _ measurer: TextMeasurer, _ box
         if notText.has(r.id) {
           continue
         }
-        try harness_fail(jsConcat(HS.s1920, r.id, HS.s141))
+        try harness_fail(jsConcat(HS.s1920, r.id, HS.s142))
       }
       let p: LayoutBox? = try zBoxes.get(jsUnwrap(pId))
       // ts: packages/translate/harness/harness.ts:3541
@@ -7592,7 +7592,7 @@ func harness_slotRule(_ v: any U_JsonArr_JsonBool_JsonNull_JsonNum_JsonObj_JsonS
   let rule: JsString = try harness_str(jsUnwrap(jsAt(a, 0.0)), jsConcat(path, HS.s963))
   // ts: packages/translate/harness/harness.ts:3684
   if (((rule != HS.s_line) && (rule != HS.s_line32)) && (rule != HS.s_channel)) {
-    try harness_fail(jsConcat(path, HS.s964, rule, HS.s146))
+    try harness_fail(jsConcat(path, HS.s964, rule, HS.s147))
   }
   return try SlotRule(rule, harness_num(jsUnwrap(jsAt(a, 1.0)), jsConcat(path, HS.s965)), harness_num(jsUnwrap(jsAt(a, 2.0)), jsConcat(path, HS.s971)))
 }
@@ -7615,7 +7615,7 @@ func harness_slotIndex(_ v: any U_JsonArr_JsonBool_JsonNull_JsonNum_JsonObj_Json
   let n: Double = try harness_num(v, path)
   // ts: packages/translate/harness/harness.ts:3699
   if (((!jsIsInteger(n)) || (n < 0.0)) || (n >= count)) {
-    try harness_fail(jsConcat(path, HS.s591, jsNumberToString(n), HS.s145))
+    try harness_fail(jsConcat(path, HS.s591, jsNumberToString(n), HS.s146))
   }
   return n
 }
@@ -7669,7 +7669,7 @@ func harness_slotList(_ v: any U_JsonArr_JsonBool_JsonNull_JsonNum_JsonObj_JsonS
     let slot: PlanSlot = try jsUnwrap(jsAt(slots, i))
     // ts: packages/translate/harness/harness.ts:3733
     if ((slot.integer && (s).isFinite) && (!jsIsInteger(s))) {
-      try harness_fail(jsConcat(path, HS.s591, slot.id, HS.s27, jsNumberToString(s), HS.s148))
+      try harness_fail(jsConcat(path, HS.s591, slot.id, HS.s27, jsNumberToString(s), HS.s149))
     }
     _ = jsPush(values, s)
 })
@@ -7777,7 +7777,7 @@ func harness_slotRefusals(_ v: any U_JsonArr_JsonBool_JsonNull_JsonNum_JsonObj_J
     let piece: Double = try harness_num(jsUnwrap(jsAt(a, 1.0)), jsConcat(at, HS.s965))
     // ts: packages/translate/harness/harness.ts:3803
     if (((piece != 0.0) && (piece != 1.0)) && (piece != 2.0)) {
-      try harness_fail(jsConcat(at, HS.s966, jsNumberToString(piece), HS.s143))
+      try harness_fail(jsConcat(at, HS.s966, jsNumberToString(piece), HS.s144))
     }
     _ = try jsPush(out, SlotRefusal(harness_slotIndex(jsUnwrap(jsAt(a, 0.0)), count, jsConcat(at, HS.s963)), piece, harness_str(jsUnwrap(jsAt(a, 2.0)), jsConcat(at, HS.s971))))
 })
@@ -8033,7 +8033,7 @@ func harness_slottedVariant(_ plan: JsonObj, _ vi: Double, _ fields: JsArray<Slo
   let variants: JsArray<any U_JsonArr_JsonBool_JsonNull_JsonNum_JsonObj_JsonStr> = try harness_arr(harness_field(plan, HS.s_variants, HS.s255), HS.s266)
   // ts: packages/translate/harness/harness.ts:3934
   if (((!jsIsInteger(vi)) || (vi < 0.0)) || (vi >= jsLength(variants))) {
-    try harness_fail(jsConcat(HS.s267, jsNumberToString(vi), HS.s147))
+    try harness_fail(jsConcat(HS.s267, jsNumberToString(vi), HS.s148))
   }
   let at: JsString = jsConcat(HS.s268, jsNumberToString(vi), HS.s1000)
   let vo: JsonObj = try harness_obj(jsUnwrap(jsAt(variants, vi)), JsArray<JsString>([HS.s_rootFontSize, HS.s_root]), at)
@@ -8050,7 +8050,7 @@ func harness_planAssignment(_ plan: JsonObj, _ k: Double) throws -> PlanAssignme
   let assignments: JsArray<any U_JsonArr_JsonBool_JsonNull_JsonNum_JsonObj_JsonStr> = try harness_arr(harness_field(plan, HS.s_assignments, HS.s255), HS.s256)
   // ts: packages/translate/harness/harness.ts:3944
   if (((!jsIsInteger(k)) || (k < 0.0)) || (k >= jsLength(assignments))) {
-    try harness_fail(jsConcat(HS.s250, jsNumberToString(k), HS.s153))
+    try harness_fail(jsConcat(HS.s250, jsNumberToString(k), HS.s154))
   }
   let path: JsString = jsConcat(HS.s257, jsNumberToString(k), HS.s1000)
   let count: Double = try jsLength(harness_planSlots(plan))
@@ -8076,7 +8076,7 @@ func harness_planAssignment(_ plan: JsonObj, _ k: Double) throws -> PlanAssignme
   let variants: JsArray<any U_JsonArr_JsonBool_JsonNull_JsonNum_JsonObj_JsonStr> = try harness_arr(harness_field(plan, HS.s_variants, HS.s255), HS.s266)
   // ts: packages/translate/harness/harness.ts:3960
   if (((!jsIsInteger(variant)) || (variant < 0.0)) || (variant >= jsLength(variants))) {
-    try harness_fail(jsConcat(path, HS.s564, jsNumberToString(variant), HS.s147))
+    try harness_fail(jsConcat(path, HS.s564, jsNumberToString(variant), HS.s148))
   }
   let dashed: JsStringMap<PlanDashed> = JsStringMap<PlanDashed>()
   try jsForEachI(harness_arr(harness_field(ao, HS.s_dashed, path), jsConcat(path, HS.s413)), { (d: any U_JsonArr_JsonBool_JsonNull_JsonNum_JsonObj_JsonStr, i: Double) throws -> Void in
@@ -8221,7 +8221,7 @@ func harness_marklessAnimation(_ o: JsonObj) throws -> JsString {
   let initial: Double = try harness_numField(o, HS.s_initial, HS.s247)
   // ts: packages/translate/harness/harness.ts:4076
   if (((!jsIsInteger(initial)) || (initial < 0.0)) || (initial >= count)) {
-    try harness_fail(jsConcat(HS.s254, jsNumberToString(initial), HS.s152))
+    try harness_fail(jsConcat(HS.s254, jsNumberToString(initial), HS.s153))
   }
   var s: AnimatorState = try rtAnimator_animatorStart(t, inputs, initial, harness_RT_NO_FAULTS, harness_AN_NO_FAULTS)
   let none: AnimatorState = try AnimatorState(initial, jsMap(s.transitions, { (_unused0: RunningTransition?) throws -> RunningTransition? in
@@ -8571,7 +8571,7 @@ func harness_withRows(_ v: any U_JsonArr_JsonBool_JsonNull_JsonNum_JsonObj_JsonS
               let nid: (any U_JsonArr_JsonBool_JsonNull_JsonNum_JsonObj_JsonStr)? = try (((next != nil) && (jsUnwrap(next).kind == HS.s_obj)) ? ((jsUnwrap(next) as! JsonObj).values.get(HS.s_id) as (any U_JsonArr_JsonBool_JsonNull_JsonNum_JsonObj_JsonStr)?) : (nil as (any U_JsonArr_JsonBool_JsonNull_JsonNum_JsonObj_JsonStr)?))
               // ts: packages/translate/harness/harness.ts:4256
               if try (((nid == nil) || (jsUnwrap(nid).kind != HS.s_str)) || ((jsUnwrap(nid) as! JsonStr).text != jsUnwrap(jsAt(jsUnwrap(list).template, t)))) {
-                try harness_fail(jsConcat(HS.s279, jsUnwrap(list).parent, HS.s159))
+                try harness_fail(jsConcat(HS.s279, jsUnwrap(list).parent, HS.s160))
               }
               t += 1.0
             }
@@ -8608,7 +8608,7 @@ func harness_withRows(_ v: any U_JsonArr_JsonBool_JsonNull_JsonNum_JsonObj_JsonS
                   _i59 += 1
                   // ts: packages/translate/harness/harness.ts:4265
                   if (!used.has(leaf)) {
-                    try harness_fail(jsConcat(row.at, HS.s557, leaf, HS.s133))
+                    try harness_fail(jsConcat(row.at, HS.s557, leaf, HS.s134))
                   }
                 }
               }
@@ -8637,7 +8637,7 @@ func harness_variantRootJson(_ plan: JsonObj, _ vi: Double) throws -> any U_Json
   let variants: JsArray<any U_JsonArr_JsonBool_JsonNull_JsonNum_JsonObj_JsonStr> = try harness_arr(harness_field(plan, HS.s_variants, HS.s255), HS.s266)
   // ts: packages/translate/harness/harness.ts:4284
   if (((!jsIsInteger(vi)) || (vi < 0.0)) || (vi >= jsLength(variants))) {
-    try harness_fail(jsConcat(HS.s267, jsNumberToString(vi), HS.s147))
+    try harness_fail(jsConcat(HS.s267, jsNumberToString(vi), HS.s148))
   }
   return try harness_field(harness_obj(jsUnwrap(jsAt(variants, vi)), JsArray<JsString>([HS.s_rootFontSize, HS.s_root]), jsConcat(HS.s268, jsNumberToString(vi), HS.s1000)), HS.s_root, jsConcat(HS.s268, jsNumberToString(vi), HS.s1000))
 }
@@ -8850,7 +8850,7 @@ func harness_pageTexts(_ textsValue: (any U_JsonArr_JsonBool_JsonNull_JsonNum_Js
       let leaf: JsString = try harness_str(jsUnwrap(jsAt(p, 0.0)), jsConcat(HS.s289, jsNumberToString(pi), HS.s1012))
       // ts: packages/translate/harness/harness.ts:4414
       if texts.has(leaf) {
-        try harness_fail(jsConcat(HS.s289, jsNumberToString(pi), HS.s1005, leaf, HS.s123))
+        try harness_fail(jsConcat(HS.s289, jsNumberToString(pi), HS.s1005, leaf, HS.s124))
       }
       _ = try texts.set(leaf, harness_str(jsUnwrap(jsAt(p, 1.0)), jsConcat(HS.s289, jsNumberToString(pi), HS.s1013)))
       pi += 1.0
@@ -8992,7 +8992,7 @@ func harness_rowsVariant(_ plan: JsonObj, _ parts: PlanAssignmentParts, _ rowsVa
           let k: Double = try harness_numField(ro, HS.s_assignment, rat)
           // ts: packages/translate/harness/harness.ts:4481
           if (((!jsIsInteger(k)) || (k < 0.0)) || (k >= jsLength(assignments))) {
-            try harness_fail(jsConcat(rat, HS.s376, jsNumberToString(k), HS.s152))
+            try harness_fail(jsConcat(rat, HS.s376, jsNumberToString(k), HS.s153))
           }
           let texts: JsStringMap<JsString> = JsStringMap<JsString>()
           let leaves: JsArray<JsString> = JsArray<JsString>([])
@@ -9009,7 +9009,7 @@ func harness_rowsVariant(_ plan: JsonObj, _ parts: PlanAssignmentParts, _ rowsVa
               let leaf: JsString = try harness_str(jsUnwrap(jsAt(p, 0.0)), jsConcat(rat, HS.s558, jsNumberToString(pi), HS.s1012))
               // ts: packages/translate/harness/harness.ts:4489
               if texts.has(leaf) {
-                try harness_fail(jsConcat(rat, HS.s558, jsNumberToString(pi), HS.s1005, leaf, HS.s123))
+                try harness_fail(jsConcat(rat, HS.s558, jsNumberToString(pi), HS.s1005, leaf, HS.s124))
               }
               _ = try texts.set(leaf, harness_str(jsUnwrap(jsAt(p, 1.0)), jsConcat(rat, HS.s558, jsNumberToString(pi), HS.s1013)))
               _ = jsPush(leaves, leaf)
@@ -9023,7 +9023,7 @@ func harness_rowsVariant(_ plan: JsonObj, _ parts: PlanAssignmentParts, _ rowsVa
           }
           // ts: packages/translate/harness/harness.ts:4495
           if keys.has(key) {
-            try harness_fail(jsConcat(rat, HS.s451, key, HS.s129))
+            try harness_fail(jsConcat(rat, HS.s451, key, HS.s130))
           }
           _ = keys.set(key, true)
           let own: PlanAssignmentParts = try harness_planAssignment(plan, k)
@@ -9067,7 +9067,7 @@ func harness_rowsVariant(_ plan: JsonObj, _ parts: PlanAssignmentParts, _ rowsVa
   for (leaf, _text) in texts.entries {
     // ts: packages/translate/harness/harness.ts:4518
     if transformed.has(leaf) {
-      try harness_fail(jsConcat(HS.s288, leaf, HS.s128))
+      try harness_fail(jsConcat(HS.s288, leaf, HS.s129))
     }
   }
   let usedTexts: JsStringMap<Bool> = JsStringMap<Bool>()
@@ -9078,7 +9078,7 @@ func harness_rowsVariant(_ plan: JsonObj, _ parts: PlanAssignmentParts, _ rowsVa
   for (leaf, _text) in texts.entries {
     // ts: packages/translate/harness/harness.ts:4523
     if ((!usedTexts.has(leaf)) || (!kept.has(leaf))) {
-      try harness_fail(jsConcat(HS.s288, leaf, HS.s132))
+      try harness_fail(jsConcat(HS.s288, leaf, HS.s133))
     }
   }
   // ts: packages/translate/harness/harness.ts:4524
