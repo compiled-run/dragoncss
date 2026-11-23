@@ -33,7 +33,7 @@ const specOf = (id: string) => {
 };
 
 const LAYOUT = 'controls-text-field-inline';
-const REJECTS = ['reject-controls-text-field-inline-rtl', 'reject-controls-text-field-inline-valign', 'reject-controls-text-field-inline-flex'];
+const REJECTS = ['reject-controls-text-field-inline-dir', 'reject-controls-text-field-inline-valign', 'reject-controls-text-field-inline-flex'];
 const live = () => ({ authored: liveAuthored(browser), faults: NO_FAULTS, engineFaults: NO_ENGINE_FAULTS, profiles: 'derive' as const });
 
 describe('the inline text field fixtures against live Chrome', () => {
@@ -80,7 +80,8 @@ describe(`${LAYOUT} equals live Chrome at 1x and every DPR`, () => {
           for (const x of r.problems) failed.push(`${c.id}@${dpr}: ${x.kind}: ${x.detail}`);
         }
         expect(failed).toEqual([]);
-        expect([nodes, texts]).toEqual([112, 32]);
+        // 115: #666 adds each search field's ::cancel box (n1, s1, s2), which matches Chrome's rect exactly.
+        expect([nodes, texts]).toEqual([115, 32]);
       } finally {
         await b.close();
       }
