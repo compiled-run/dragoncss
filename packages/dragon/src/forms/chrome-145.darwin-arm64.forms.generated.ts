@@ -5,3 +5,6 @@ export const platform = "darwin-arm64";
 
 /** MenuListArrowWidthInDIP: a menulist-button select's inner element inline-end margin less 1, at zoom 1 (menulist.json). */
 export const menuListArrowWidth = 15;
+
+/** The scrollbar thickness in DIP a textarea's default inline size adds at scrollbar-width auto and thin, at DPR 1 and zoom 1. */
+export const textAreaScrollbar = {"auto":16,"thin":14} as const;

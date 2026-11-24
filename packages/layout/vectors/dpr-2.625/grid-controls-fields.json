@@ -2956,7 +2956,9 @@
           },
           "lineHeight": {
            "kind": "normal"
-          }
+          },
+          "scrollbarInline": 0,
+          "scrollbarBlock": 0
          },
          "strut": null,
          "children": [
@@ -5275,7 +5277,9 @@
           },
           "lineHeight": {
            "kind": "normal"
-          }
+          },
+          "scrollbarInline": 0,
+          "scrollbarBlock": 0
          },
          "strut": null,
          "children": [

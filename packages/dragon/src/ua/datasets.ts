@@ -59,6 +59,11 @@ export type UaDataset = {
   readonly userAgentForced: { readonly [key: string]: DirRows };
   /** FORM-b: the platform's menulist arrow width in DIP (scripts/capture-form-data.ts), or null where none was captured. */
   readonly menuListArrowWidth: number | null;
+  /**
+   * FORM-b: the scrollbar thickness in DIP Chrome adds to a textarea's default size at scrollbar-width auto and thin
+   * (scripts/capture-form-data.ts), or null where none was captured.
+   */
+  readonly textAreaScrollbar: { readonly auto: number; readonly thin: number } | null;
   /** The top-layer keys (scripts/capture-top-layer-ua.ts): a <dialog> shown with showModal() and its ::backdrop, in this colour scheme. */
   readonly topLayer: { readonly [K in TopLayerKey]: TopLayerRows };
 };
@@ -177,11 +182,13 @@ function withSpecifiedTextFonts(ds: typeof darwinArm64 | typeof darwinArm64Dark,
   const declared = ds.elementKeyDeclared['a[href]'];
   const line = ds.userAgentUnmodelled['a[href]']?.ltr['text-decoration-line'];
   if (declared.ltr['color'] === undefined || declared.rtl['color'] === undefined || line === undefined) throw new Error(`${ds.platform}: the a[href] capture has no color or text-decoration-line`);
-  return { ...ds, topLayer, userAgentTextFonts: Object.fromEntries(rows) as UaDataset['userAgentTextFonts'], anyLink: { color: { ltr: declared.ltr['color'], rtl: declared.rtl['color'] }, line }, menuListArrowWidth: FORM_DATA.get(ds.platform) ?? null };
+  return { ...ds, topLayer, userAgentTextFonts: Object.fromEntries(rows) as UaDataset['userAgentTextFonts'], anyLink: { color: { ltr: declared.ltr['color'], rtl: declared.rtl['color'] }, line }, menuListArrowWidth: FORM_DATA.get(ds.platform)?.menuListArrowWidth ?? null, textAreaScrollbar: FORM_DATA.get(ds.platform)?.textAreaScrollbar ?? null };
 }
 
 /** FORM-b: the captured form control data per platform. */
-const FORM_DATA: ReadonlyMap<string, number> = new Map([[darwinArm64Forms.platform, darwinArm64Forms.menuListArrowWidth]]);
+const FORM_DATA: ReadonlyMap<string, { readonly menuListArrowWidth: number; readonly textAreaScrollbar: { readonly auto: number; readonly thin: number } }> = new Map([
+  [darwinArm64Forms.platform, { menuListArrowWidth: darwinArm64Forms.menuListArrowWidth, textAreaScrollbar: darwinArm64Forms.textAreaScrollbar }],
+]);
 
 const DATASETS: ReadonlyMap<string, UaDataset> = new Map([[darwinArm64.platform, withSpecifiedTextFonts(darwinArm64, darwinArm64TopLayer.light)]]);
 
