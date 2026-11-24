@@ -99,6 +99,8 @@ type Index = {
    * control, or a control that is a scroll container, is refused.
    */
   readonly controls: Map<string, ControlKind>;
+  /** The parts inside a control that clips (a textarea's editor, a select's inner element): no range reads them, nor is theirs read. */
+  readonly parts: Map<string, boolean>;
 };
 
 /** scrollMetrics with planted engine faults; only the parity harness's planted tests pass anything but NO_ENGINE_FAULTS. */
@@ -115,7 +117,7 @@ export function scrollMetricsWithFaults(given: LayoutInput, measurer: TextMeasur
     controlRefusal(ix);
     const containers: ScrollMetrics[] = [];
     for (const b of ix.order) {
-      if (!isScrollContainer(b.style)) continue;
+      if (!isScrollContainer(b.style) || ix.parts.has(b.id)) continue;
       const n = nodeOf(ix, b.id);
       const client = clientOf(ix, n);
       containers.push(metricsOf(b.id, overflowOf(ix, n), client));
@@ -174,7 +176,7 @@ export function scrollRangesWithFaults(given: LayoutInput, measurer: TextMeasure
   const ranges: ScrollRange[] = [];
   const refused: ScrollRangeRefusal[] = [];
   for (const b of ix.order) {
-    if (!isScrollContainer(b.style)) continue;
+    if (!isScrollContainer(b.style) || ix.parts.has(b.id)) continue;
     const one = rangeOf(ix, b);
     if (one.kind === 'ok') ranges.push(one.range);
     else refused.push(one.refusal);
@@ -212,7 +214,7 @@ function nodeOf(ix: Index, id: string): Node {
 }
 
 function indexOf(ctx: Ctx, input: LayoutInput, abs: Map<string, LayoutRect>, inflow: readonly InflowBounds[]): Index {
-  const ix: Index = { ctx, nodes: new Map(), order: [], oofByCb: new Map(), flows: new Map(), gridInflow: new Map(), controls: new Map() };
+  const ix: Index = { ctx, nodes: new Map(), order: [], oofByCb: new Map(), flows: new Map(), gridInflow: new Map(), controls: new Map(), parts: new Map() };
   for (const f of inflow) ix.gridInflow.set(f.id, { x: f.x, y: f.y, width: f.width, height: f.height });
   const icbWidth = fromCssPx(input.viewport.width);
   const walk = (b: OverflowNode, parent: LayoutBox | null, cbInline: LU, positioned: OverflowNode | null, basisKnown: boolean, hidden: boolean): void => {
@@ -222,6 +224,7 @@ function indexOf(ctx: Ctx, input: LayoutInput, abs: Map<string, LayoutRect>, inf
     const padding = resolvePaddingWith(b.style, cbInline, ctx.faults);
     const paddingKnown = basisKnown || !hasPercentPadding(b);
     ix.nodes.set(b.id, { box: b, parent, rect, border, padding, cbInline, paddingKnown });
+    if (hidden) ix.parts.set(b.id, true);
     ix.order.push(b);
     const content = clampNegativeToZero(sub(rect.width, sumEdges(border.left, border.right, padding.left, padding.right)));
     const paddingBoxWidth = clampNegativeToZero(sub(rect.width, add(border.left, border.right)));
