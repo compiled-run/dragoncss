@@ -13,7 +13,10 @@
 //   baseline (Chrome 145 probes).
 // - a textarea (text-area, FORM-b): the same pair of parts, both at the content box start. Its default content inline size is cols
 //   x the advance of 0, rounded up to a whole px, and its auto content height rows x its line height (Chrome 145 under Ahem: cols
-//   5 rows 3 at 10px is 50 x 30, with line-height 7px 50 x 21), with no scrollbar gutter (computed-checks.ts refuses one).
+//   5 rows 3 at 10px is 50 x 30, with line-height 7px 50 x 21). Chrome adds the platform's scrollbar thickness to the inline size
+//   when overflow-y is not hidden or clip, and to the height when overflow-x is scroll, even under overlay scrollbars, where it
+//   reserves no gutter (the reference, macOS overlay: 16 DIP at scrollbar-width auto, 14 at thin, as trunc(DIP x the device scale)
+//   device px whatever the zoom: thin is 36 device px at DPR 2.625; Chrome 145 probes).
 // - a block button (button-block): its in-flow contents are centred in the block axis, safely (html.css
 //   `-internal-align-content-block: center`, block_layout_algorithm_utils.cc:185-203 AlignBlockContent). A flex or grid button is
 //   the plain container its display says (html_button_element.cc:59-74 CreateLayoutObject). There is no anonymous inner box.
@@ -110,10 +113,15 @@ export function searchDecorationInlineSize(c: Extract<ControlKind, { kind: 'text
   return add(fromCssPx(searchCancelButtonSize(c)), add(fromCssPx(cancel.marginStart), fromCssPx(cancel.marginEnd)));
 }
 
-/** FORM-b: a textarea's default content inline size, cols x the float advance of 0, rounded up to a whole px. */
+/** FORM-b: a textarea's default content inline size, cols x the float advance of 0, rounded up to a whole px, plus its scrollbar. */
 export function textAreaInlineSize(measurer: TextMeasurer, c: Extract<ControlKind, { kind: 'text-area' }>): LU {
   const zero = measurer.lengths({ family: c.font.family, size: c.font.size, letterSpacing: 0, wordSpacing: 0, smallCaps: false }).zeroWidth;
-  return ceilFloatToWholePx(floatMul(zero, float32(c.cols)));
+  return add(ceilFloatToWholePx(floatMul(zero, float32(c.cols))), fromCssPx(c.scrollbarInline));
+}
+
+/** FORM-b: a scrollbar thickness in DIP as the whole device px Chrome adds to a textarea's default size, at a device scale. */
+export function textAreaScrollbar(dip: number, device: number): number {
+  return truncPxToInt(floatMul(dip, float32(device)));
 }
 
 /** FORM-b: the offset of a field's editor from its content box top: (content box block size - editor block size) / 2, unclamped. */

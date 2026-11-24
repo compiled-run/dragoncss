@@ -2573,7 +2573,9 @@
                "kind": "number",
                "value": 1.45
               },
-              "avgChar": "unmeasured"
+              "avgChar": "unmeasured",
+              "scrollbarInline": 0,
+              "scrollbarBlock": 0
              },
              "strut": null,
              "children": [
@@ -5111,7 +5113,9 @@
                "kind": "number",
                "value": 1
               },
-              "avgChar": "unmeasured"
+              "avgChar": "unmeasured",
+              "scrollbarInline": 0,
+              "scrollbarBlock": 0
              },
              "strut": null,
              "children": [

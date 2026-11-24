@@ -2,8 +2,6 @@
 // (the css-overflow-3 §3.1 pair rule, Chrome's user-agent defaults), on where a declaration applies (html and body), or on the
 // text and its direction (UAX #9).
 import { authored, diagnostic } from '../diagnostics/catalogue.ts';
-import { radiusLengths, roundsAnyCorner } from '../lower/paint/radius.ts';
-import { ProgramError } from '../lower/paint/types.ts';
 import { fontLoweringGap, textFieldAvgChar, viewportFontSize } from '../lower/ios-layout.ts';
 import { RADIUS_LONGHANDS } from '../css/properties/radius.ts';
 import type { Longhand } from '../css/properties.ts';
@@ -128,7 +126,6 @@ import { checkTextTransform } from './text-transform.ts';
 import { checkFx } from './fx.ts';
 import { checkLineClamp, isLineClampContainer, lineClampOf } from './line-clamp.ts';
 import { parentsOf } from './text-shadow-apart.ts';
-import { checkResize } from './resize.ts';
 import { checkTouchAction, nativePanner, type NativePanner } from './touch-action.ts';
 
 const keywordOf = (v: ResolvedValue): string => (v.value.kind === 'keyword' ? v.value.value : '');
@@ -256,35 +253,6 @@ function checkStartOverflowBackground(el: ResolvedElement, propagated: ResolvedE
     if (reported.has(id)) continue;
     reported.add(id);
     diagnostics.push(diagnostic('DRAGON_UNPROVEN_CONTEXT', { origin, target: t, message, manual: 'Move the background to a wrapper outside the scroll container, or use overflow: hidden.' }));
-  }
-}
-
-/**
- * OVFL-B with PNT1 (#198): a rounded overflow clip masks the clip view (iOS layer mask, Android outline or overlay mask) in its own
- * coordinates, which a scroll view moves with its scroll offset, and no fixture compares a rounded scroll container with Chrome.
- * So border-radius on an auto or scroll container is refused on ios and android until it is drawn and proven.
- */
-function checkRoundedScrollContainer(el: ResolvedElement, propagated: ResolvedElement | null, nativeTargets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
-  if (nativeTargets.length === 0 || el === propagated) return;
-  const kw = (p: Longhand): string => keywordOf(el.props.get(p) as ResolvedValue);
-  if (!(['overflow-x', 'overflow-y'] as const).some((p) => kw(p) === 'auto' || kw(p) === 'scroll')) return;
-  let rounded: boolean;
-  try {
-    rounded = roundsAnyCorner(radiusLengths(el.props, el.element.address));
-  } catch (e) {
-    // A radius that does not compute to px or a percentage is refused by the radius lowering itself.
-    if (e instanceof ProgramError) return;
-    throw e;
-  }
-  if (!rounded) return;
-  const decl = RADIUS_LONGHANDS.map((p) => el.props.get(p) as ResolvedValue).find((v) => v.declaration !== null);
-  const origin = decl === undefined || decl.declaration === null ? el.element.node.origin : authored(decl.declaration.valueSpan);
-  const message = `border-radius on ${el.element.address}, a scroll container: the rounded clip of a native scroll view is not drawn or proven yet (OVFL-B with PNT1)`;
-  for (const t of nativeTargets) {
-    const id = `${t}|ovfl-b-radius|${el.element.address}`;
-    if (reported.has(id)) continue;
-    reported.add(id);
-    diagnostics.push(diagnostic('DRAGON_UNPROVEN_CONTEXT', { origin, target: t, message, manual: 'Round a wrapper outside the scroll container, or use overflow: hidden.' }));
   }
 }
 
@@ -1933,13 +1901,10 @@ function checkHostEditedText(el: ResolvedElement, refuse: (v: ResolvedValue | nu
  * FORM-b: what a textarea adds to a text control's refusals, on iOS and Android, where the engine lays it out (an element child
  * everywhere):
  * - an element child (HTML parses a textarea's content as text, so only a producer could write one);
- * - a resizer (resize other than none), whose grip Chrome draws in the corner and Dragon does not (checkResize refuses it);
- * - a scrollbar gutter: Chrome adds the scrollbar's thickness to the default width when overflow-y is not hidden or clip, and to
- *   the default height when overflow-x is scroll (probed in Chrome 145 on Linux: 15px for auto, 10px for thin), and that
- *   thickness is the platform's, so only scrollbar-width: none or no gutter is laid out;
  * - overflow: visible, which Chrome turns into auto on a textarea and Dragon does not model.
  * At rest a textarea scrolls from offset 0 with hidden scrollbars, which the native lowering clips; overflowing text cannot be
- * scrolled natively until FORM-b2.
+ * scrolled natively until FORM-b2. The scrollbar thickness Chrome adds to its default size compiles: the lowering gives the
+ * engine the reference platform's (ios-layout.ts textAreaScrollbarOf), and its resize compiles (a phone has no resizer).
  */
 function checkTextAreaChrome(el: ResolvedElement, targets: readonly string[], refuse: (v: ResolvedValue | null, what: string, message: string, manual: string, code?: 'DRAGON_UNSUPPORTED_VALUE' | 'DRAGON_UNSUPPORTED_FONT', on?: readonly string[]) => void): void {
   const address = el.element.address;
@@ -1947,14 +1912,11 @@ function checkTextAreaChrome(el: ResolvedElement, targets: readonly string[], re
   if (el.element.children.some((c) => c.kind !== 'text')) {
     refuse(null, 'textarea-child', `<textarea> ${address} has an element child; a textarea's content is its text`, `Write only text inside <textarea> ${address}.`, 'DRAGON_UNSUPPORTED_VALUE', targets);
   }
-  // The resizer grip of resize: both (html.css) is refused natively by the scroll container check.
+  // resize: both (html.css) compiles: a phone has no resizer, and Dragon accepts resize there and does nothing (css/properties/resize.ts).
   const ox = keywordOf(el.props.get('overflow-x') as ResolvedValue);
   const oy = keywordOf(el.props.get('overflow-y') as ResolvedValue);
-  const scrollbarWidth = el.props.get('scrollbar-width') as ResolvedValue;
   if (ox === 'visible' || oy === 'visible') {
     refuse(el.props.get(ox === 'visible' ? 'overflow-x' : 'overflow-y') as ResolvedValue, 'overflow', `overflow: visible on <textarea> ${address}, which Chrome makes auto, is not modelled`, `Leave overflow at auto, or set hidden, on <textarea> ${address}.`, 'DRAGON_UNSUPPORTED_VALUE', native);
-  } else if (keywordOf(scrollbarWidth) !== 'none' && ((oy !== 'hidden' && oy !== 'clip') || ox === 'scroll')) {
-    refuse(scrollbarWidth, 'gutter', `<textarea> ${address} reserves a scrollbar gutter in its default size (scrollbar-width: ${valueToString(scrollbarWidth.value)}), whose thickness is the platform's`, `Set scrollbar-width: none (or overflow: hidden) on <textarea> ${address}.`, 'DRAGON_UNSUPPORTED_VALUE', native);
   }
 }
 
@@ -2620,9 +2582,7 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
     checkOverflow(el, targets, diagnostics, reported);
     checkLineClamp(el, here, targets, diagnostics, reported);
     if (!here) checkStartOverflowBackground(el, propagated, targets.filter((t) => t === 'ios' || t === 'android'), diagnostics, reported);
-    if (!here) checkRoundedScrollContainer(el, propagated, targets.filter((t) => t === 'ios' || t === 'android'), diagnostics, reported);
     if (!here) checkOverscrollChaining(el, around, targets.filter((t) => t === 'ios' || t === 'android'), diagnostics, reported);
-    if (!here) checkResize(el, propagated, targets.filter((t) => t === 'ios' || t === 'android'), diagnostics, reported);
     const self = nativePanner(el, propagated);
     const panners = self === null ? around : [...around, self];
     if (!here) checkTouchAction(el, panners, targets.filter((t) => t === 'ios' || t === 'android'), diagnostics, reported);
