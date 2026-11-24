@@ -1672,7 +1672,10 @@ function expandFlexibleTracks(ctx: Ctx, c: GridCollection, items: readonly GridI
 function growthLimitsUnused(ctx: Ctx, grid: GridState, c: GridCollection, available: GridAvailable, constraint: GridSizing): boolean {
   if (c.axis !== 'columns' || c.props.flexible || ctx.gridFaults.maximizeIgnoresLimit || ctx.gridFaults.stretchIgnoresAlignment) return false;
   // A later span group's minimums read the limits an earlier group's maximums set, so every item must span one track.
-  if (constraint === 'min-content') return grid.items.every((i) => !itemProps(i, c.axis).intrinsic || itemSpanSize(i, c.axis) === 1);
+  if (constraint === 'min-content') {
+    for (const i of grid.items) if (itemProps(i, c.axis).intrinsic && itemSpanSize(i, c.axis) !== 1) return false;
+    return true;
+  }
   if (constraint !== 'layout' || available.inline === INDEFINITE || !stretchesAutoTracks(grid, 'columns')) return false;
   const only = c.sets[0];
   return c.sets.length === 1 && only !== undefined && only.trackCount === 1 && isAuto(only.track.min) && isAuto(only.track.max) && !only.track.fitContent;
