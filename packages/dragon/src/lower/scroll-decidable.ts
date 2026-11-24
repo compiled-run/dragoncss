@@ -130,8 +130,8 @@ function flow(b: LayoutBox): void {
  */
 function controlsAsBoxes(b: LayoutBox): { readonly root: LayoutBox; readonly refused: Undecided | null } {
   let refused: Undecided | null = null;
-  const plain = (x: LayoutBox | ControlBox): LayoutBox => {
-    if (x.kind === 'control' && refused === null) {
+  const plain = (x: LayoutBox | ControlBox, hidden: boolean): LayoutBox => {
+    if (x.kind === 'control' && refused === null && !hidden) {
       const k = x.control.kind;
       // A placeholder, and a text field, textarea or editor that clips on both axes (as the native lowering makes them), add their border box.
       if (k === 'text-placeholder' || ((k === 'text-field' || k === 'text-area' || k === 'text-editor') && x.style.overflowX === 'clip' && x.style.overflowY === 'clip')) {
@@ -139,12 +139,14 @@ function controlsAsBoxes(b: LayoutBox): { readonly root: LayoutBox; readonly ref
       } else if (k !== 'button-block' && k !== 'fieldset' && k !== 'legend') refused = new Undecided(x.id, `a ${x.control.kind} form control: its scrollable overflow is not decided here (FORM-a)`);
       else if (scrollContainer(x)) refused = new Undecided(x.id, 'a form control that is a scroll container: its scrollable overflow is not decided here (FORM-a)');
     }
-    const children = x.children.map((k) => (k.kind === 'box' || k.kind === 'control' ? plain(k) : k));
+    // A clipping textarea's parts are in no box's scrollable overflow, so they are not checked.
+    const inner = hidden || (x.kind === 'control' && x.control.kind === 'text-area' && x.style.overflowX === 'clip' && x.style.overflowY === 'clip');
+    const children = x.children.map((k) => (k.kind === 'box' || k.kind === 'control' ? plain(k, inner) : k));
     const box = { kind: 'box', id: x.id, boxType: x.boxType, style: x.style, strut: x.strut, marker: x.kind === 'box' ? x.marker : null, children } as LayoutBox;
     if (x.kind === 'control') buttons.add(box);
     return box;
   };
-  const root = plain(b);
+  const root = plain(b, false);
   return { root, refused };
 }
 

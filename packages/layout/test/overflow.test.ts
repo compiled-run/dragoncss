@@ -166,7 +166,7 @@ describe('scrollable overflow (Blink ScrollableOverflowCalculator)', () => {
   it('a textarea that clips on both axes, as the native lowering makes it, adds its border box and none of its text', () => {
     // Chrome's textarea is a scroll container (html.css overflow: auto), so its ancestors take only its border box.
     const area = (style: Partial<LayoutStyle>): ControlBox =>
-      control('t', { kind: 'text-area', cols: 20, rows: 2, font: ahemFont(10), lineHeight: { kind: 'normal' }, avgChar: 'ahem', scrollbarInline: 0, scrollbarBlock: 0 }, { width: px(300), height: px(300), ...style }, [control('t::editor', { kind: 'text-editor' }, { overflowX: 'clip', overflowY: 'clip' }, [text('t::editor:text0', 'XX XX XX')])]);
+      control('t', { kind: 'text-area', cols: 20, rows: 2, font: ahemFont(10), lineHeight: { kind: 'normal' }, avgChar: 'ahem', scrollbarInline: 0, scrollbarBlock: 0 }, { width: px(300), height: px(300), ...style }, [control('t::editor', { kind: 'text-editor' }, {}, [text('t::editor:text0', 'XX XX XX')])]);
     const clip: Partial<LayoutStyle> = { overflowX: 'clip', overflowY: 'clip' };
     expect(scrollRanges(input([box('s', sc('auto'), [area(clip)])]), ahemMeasurer)).toEqual({ kind: 'ok', ranges: [{ id: 's', minX: 0, maxX: 200, minY: 0, maxY: 200 }], refused: [] });
     // The page: a 500 px textarea in a 300 px viewport scrolls the page by 200 px.

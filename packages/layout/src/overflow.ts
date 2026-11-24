@@ -215,7 +215,7 @@ function indexOf(ctx: Ctx, input: LayoutInput, abs: Map<string, LayoutRect>, inf
   const ix: Index = { ctx, nodes: new Map(), order: [], oofByCb: new Map(), flows: new Map(), gridInflow: new Map(), controls: new Map() };
   for (const f of inflow) ix.gridInflow.set(f.id, { x: f.x, y: f.y, width: f.width, height: f.height });
   const icbWidth = fromCssPx(input.viewport.width);
-  const walk = (b: OverflowNode, parent: LayoutBox | null, cbInline: LU, positioned: OverflowNode | null, basisKnown: boolean): void => {
+  const walk = (b: OverflowNode, parent: LayoutBox | null, cbInline: LU, positioned: OverflowNode | null, basisKnown: boolean, hidden = false): void => {
     const rect = abs.get(b.id);
     if (rect === undefined) throw new Error(`no laid-out box ${b.id}`);
     const border = resolveBorder(b.style, ctx.devicePixelRatio);
@@ -230,15 +230,17 @@ function indexOf(ctx: Ctx, input: LayoutInput, abs: Map<string, LayoutRect>, inf
     if (b.kind === 'replaced') return;
     for (const k of b.children) {
       if (k.kind === 'control') {
-        ix.controls.set(k.id, k.control);
-        walk(plainBox(k), b, content, nextPositioned, paddingKnown && !isGridContainer(b));
+        // A clipping textarea's parts are in no box's scrollable overflow (propagated stops at it), so they are not checked.
+        if (!hidden) ix.controls.set(k.id, k.control);
+        const clips = k.style.overflowX === 'clip' && k.style.overflowY === 'clip';
+        walk(plainBox(k), b, content, nextPositioned, paddingKnown && !isGridContainer(b), hidden || (k.control.kind === 'text-area' && clips));
         continue;
       }
       if (k.kind !== 'box' && k.kind !== 'replaced') continue;
       if (isOutOfFlow(ctx, k) && k.style.position === 'fixed') {
         // POSX-f: a fixed box's containing block is the viewport, and it is in no box's scrollable overflow, the viewport's
         // included: scrolling never moves it (css-overflow-3 §2.2; Blink skips fixed-position descendants of the LayoutView).
-        walk(k, b, icbWidth, nextPositioned, true);
+        walk(k, b, icbWidth, nextPositioned, true, hidden);
       } else if (isOutOfFlow(ctx, k)) {
         // CSS2 §10.1: the containing block is the padding box of the nearest positioned ancestor, or the initial one.
         const cb = nextPositioned;
@@ -247,10 +249,10 @@ function indexOf(ctx: Ctx, input: LayoutInput, abs: Map<string, LayoutRect>, inf
         if (list === undefined) ix.oofByCb.set(key, [k]);
         else list.push(k);
         // css-grid-2 §9.1: a positioned grid parent resolves the child's percentages against its grid area.
-        walk(k, b, cb === null ? icbWidth : cb === b ? paddingBoxWidth : paddingBoxWidthOf(ix, cb), nextPositioned, cb === null || cb.id !== b.id || !isGridContainer(b));
+        walk(k, b, cb === null ? icbWidth : cb === b ? paddingBoxWidth : paddingBoxWidthOf(ix, cb), nextPositioned, cb === null || cb.id !== b.id || !isGridContainer(b), hidden);
       } else {
         // A grid item's percentages resolve against its grid area (grid.ts layoutItem).
-        walk(k, b, content, nextPositioned, paddingKnown && !isGridContainer(b));
+        walk(k, b, content, nextPositioned, paddingKnown && !isGridContainer(b), hidden);
       }
     }
   };
