@@ -139,7 +139,8 @@ function controlsAsBoxes(b: LayoutBox): { readonly root: LayoutBox; readonly ref
       } else if (k !== 'button-block' && k !== 'fieldset' && k !== 'legend') refused = new Undecided(x.id, `a ${x.control.kind} form control: its scrollable overflow is not decided here (FORM-a)`);
       else if (scrollContainer(x)) refused = new Undecided(x.id, 'a form control that is a scroll container: its scrollable overflow is not decided here (FORM-a)');
     }
-    // A clipping textarea's parts are in no box's scrollable overflow, so they are not checked.
+    // A clipping textarea's or menulist select's parts are in no box's scrollable overflow, so they are not checked; checkSelect
+    // refuses a select's own overflow, so a menulist is never a scroll container here or in the engine.
     const menuList = x.kind === 'control' && x.control.kind === 'select-menulist';
     const inner = hidden || menuList || (x.kind === 'control' && x.control.kind === 'text-area' && x.style.overflowX === 'clip' && x.style.overflowY === 'clip');
     const children = x.children.map((k) => (k.kind === 'box' || k.kind === 'control' ? plain(k, inner) : k));

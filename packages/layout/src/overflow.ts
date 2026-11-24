@@ -233,7 +233,7 @@ function indexOf(ctx: Ctx, input: LayoutInput, abs: Map<string, LayoutRect>, inf
     if (b.kind === 'replaced') return;
     for (const k of b.children) {
       if (k.kind === 'control') {
-        // A clipping textarea's parts are in no box's scrollable overflow (propagated stops at it), so they are not checked.
+        // A clipping textarea's or menulist select's parts are in no box's scrollable overflow (propagated stops at it), so they are not checked.
         if (!hidden) ix.controls.set(k.id, k.control);
         const clips = k.style.overflowX === 'clip' && k.style.overflowY === 'clip';
         // Chrome clips a menulist select's contents (its control clip), so it adds its border box as a box that clips does.
