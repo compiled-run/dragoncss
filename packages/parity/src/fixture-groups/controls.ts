@@ -44,6 +44,11 @@ export const CONTROLS: readonly FixtureSpec[] = [
   // clipped to the rounded padding box as Chrome's scroll container clips it (pnt1-radius.test.ts).
   layout('controls-textarea-rounded'),
   layout('controls-textarea'),
+  // FORM-b: the scrollbar thickness Chrome adds to a textarea's default size (16 DIP at auto, 14 at thin, to the width unless
+  // overflow-y is hidden or clip and to the height at overflow-x: scroll), with no gutter under overlay scrollbars; the last case
+  // is the Markless notes form's field, resize: vertical included, which a phone draws no grip for, without its border-radius
+  // (a rounded scroll container: Dragon #682).
+  layout('controls-textarea-scrollbar'),
   layout('controls-text-field-inline'),
   reject('reject-controls-text-field-inline-dir', 'DRAGON_UNSUPPORTED_VALUE', 'rtl', 'the inline-block <input> f is on a right-to-left line of d'),
   reject('reject-controls-text-field-inline-valign', 'DRAGON_UNSUPPORTED_VALUE', 'middle', 'vertical-align: middle on the inline-block <input> f is not supported'),

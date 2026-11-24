@@ -519,7 +519,7 @@ function layoutOwnContents(ctx: Ctx, node: LayoutBox | ControlBox, a: ContentsAr
   if (control !== null && control.kind === 'text-area') {
     const lines = metricsOf(ctx, box.id, control.font, control.lineHeight, false);
     const pitch = add(lines.above, lines.below);
-    return layoutTextArea(box, r.placed, add(bor.top, pad.top), a.borderBoxWidth, fixedBorderBox !== null ? fixedBorderBox : constrain(add(mulInt(pitch, control.rows), vbp), minMax), { pitch, above: lines.above, insets: pad });
+    return layoutTextArea(box, r.placed, add(bor.top, pad.top), a.borderBoxWidth, fixedBorderBox !== null ? fixedBorderBox : constrain(add(add(mulInt(pitch, control.rows), fromCssPx(control.scrollbarBlock)), vbp), minMax), { pitch, above: lines.above, insets: pad });
   }
   if (control !== null && control.kind === 'button-block') {
     // block_layout_algorithm.cc:1442 AlignBlockContent: the in-flow contents, their baseline and the static positions move down.
