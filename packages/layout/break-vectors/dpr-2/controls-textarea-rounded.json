@@ -1,0 +1,12 @@
+{
+  "case": "controls-textarea-rounded",
+  "dpr": 2,
+  "texts": [
+    {"id":"c1:text0","lines":[[0,4]]},
+    {"id":"t1::editor:text0","lines":[[0,11]]},
+    {"id":"c3:text0","lines":[[0,4]]},
+    {"id":"t3::editor:text0","lines":[[0,5]]},
+    {"id":"c2:text0","lines":[[0,4]]},
+    {"id":"t2::editor:text0","lines":[[0,6]]}
+  ]
+}
