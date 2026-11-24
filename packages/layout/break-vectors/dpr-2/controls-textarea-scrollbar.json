@@ -1,0 +1,20 @@
+{
+  "case": "controls-textarea-scrollbar",
+  "dpr": 2,
+  "texts": [
+    {"id":"s1::editor:text0","lines":[[0,5]]},
+    {"id":"s2::editor:text0","lines":[[0,5]]},
+    {"id":"s3::editor:text0","lines":[[0,5]]},
+    {"id":"s4::editor:text0","lines":[[0,5]]},
+    {"id":"s5::editor:text0","lines":[[0,5]]},
+    {"id":"s6::editor:text0","lines":[[0,5]]},
+    {"id":"s7::editor:text0","lines":[[0,5]]},
+    {"id":"s8::editor:text0","lines":[[0,5]]},
+    {"id":"s9::editor:text0","lines":[[0,3],[3,5]]},
+    {"id":"s10::editor:text0","lines":[[0,21],[21,28]]},
+    {"id":"s11::editor:text0","lines":[[0,2]]},
+    {"id":"s12::editor:text0","lines":[[0,2]]},
+    {"id":"s13::editor:text0","lines":[[0,2]]},
+    {"id":"note::editor:text0","lines":[[0,25],[25,36]]}
+  ]
+}

@@ -1,8 +1,9 @@
 // resize (css-ui-4 §5.1): none | both | horizontal | vertical | block | inline, not inherited, initial none. Chrome 145 also parses
 // auto (css_parser_fast_paths.cc, under CSSResizeAuto, a stable feature), and Resize::ApplyValue in longhands_custom.cc stores it
 // as both where textareas are resizable, which every desktop Chrome is (WebPreferences text_areas_are_resizable), so it computes to
-// both; every other value computes as specified. No layout or paint aspect: Chrome draws a resizer and lets the user drag only on a
-// scroll container or an iframe, which native refuses (analysis/resize.ts); on any other box the value changes nothing.
+// both; every other value computes as specified. No layout or paint aspect: desktop Chrome draws a resizer and lets the user drag
+// only on a scroll container or an iframe. A phone has no resize handle (Chrome on Android and Safari on iOS draw none), so iOS and
+// Android accept every value on every box and do nothing with it (the planner's ruling, Markless #974); the web keeps it.
 import type { CssNode } from 'css-tree';
 import type { Span } from '../../types.ts';
 import type { ResolvedValue } from '../../analysis/computed.ts';
