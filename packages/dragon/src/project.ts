@@ -32,7 +32,7 @@ import type { InteractionPartition, InteractionValue } from './analysis/interact
 import { checkGeneratedIdentity, generatedRuleRefusals, markerRuleRefusals } from './analysis/generated.ts';
 import { checkStaticEmptyHosts } from './analysis/pseudo-hosts.ts';
 import { emptyPartition, firstInteractionPseudo, stateMembers, hitUnmodelledBox, hitUnmodelledControl, hitUnmodelledFact, interactionCapRefusal, interactionPartition, interactionRefusals, interactionRuleOrigin, focusReachable, gateInteractionFeatures, provesPointerRow, ruleIsInteractive } from './analysis/interaction.ts';
-import { isCheckboxType } from './analysis/elements/controls.ts';
+import { isCheckboxType, isTextFieldType } from './analysis/elements/controls.ts';
 import type { Linked, LinkedElement } from './analysis/link.ts';
 import type { InteractionState } from './analysis/match.ts';
 import { assignmentKey, linkDocument } from './analysis/link.ts';
@@ -79,7 +79,8 @@ import type { BrotliDecompress } from './fonts/woff.ts';
 import { candidates, foldFamily } from './fonts/selection.ts';
 import { isSystemFaceRole, systemFaceId } from './fonts/system-faces.ts';
 import type { SystemFaceRole } from './fonts/system-faces.ts';
-import { synthesisTraits } from './fonts/metrics.ts';
+import { faceMetrics, synthesisTraits } from './fonts/metrics.ts';
+import { computedLineHeightInt } from './css/chrome-number.ts';
 import type { SynthesisAllowed, TextFontValue } from './fonts/weight.ts';
 import { requestOf, serializeFontStyle, serializeFontWeight, synthesisOf } from './fonts/weight.ts';
 import { synthesisAllowedOf, textFontOfProps } from './analysis/computed.ts';
@@ -966,6 +967,50 @@ function checkCaseFonts(root: ResolvedElement, fonts: ProjectFonts, faults: Comp
 type InteractionResult = { value: InteractionValue; resolved: ResolvedElement; used: UsedKey[] };
 type CaseResult = { key: string; assignment: Assignment; isInitial: boolean; resolved: ResolvedElement | null; used: UsedKey[]; partition: InteractionPartition | null; interaction: InteractionResult[] };
 
+/**
+ * FORM-text-font: a single-line field whose inner editor falls back to line-height normal (its font size is at least its computed
+ * line height in whole px, or its height is a percentage or a length above it, as the engine's editorLineHeightIsNormal decides
+ * from text_control_inner_elements.cc) in a face with a line gap, which no Chrome capture measures; the engine refuses it too.
+ */
+function checkTextFieldLineGap(root: ResolvedElement, fonts: ProjectFonts | null, realFaces: ReadonlyMap<string, EngineFace>, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+  if (fonts === null) return;
+  const byId = new Map<string, DeclaredFace>();
+  for (const f of bundledFaces(fonts)) if (f.source !== null) byId.set(`sha256:${sha256HexBytes(f.source.bytes)}`, f);
+  const walk = (el: ResolvedElement): void => {
+    for (const c of el.children) if (c.kind === 'element') walk(c);
+    if (el.element.tag !== 'input' || !isTextFieldType(el.element.attributes.get('type'))) return;
+    const face = realFaces.get(el.element.address);
+    const declared = face === undefined || face.kind !== 'face' ? undefined : byId.get(face.id);
+    if (declared === undefined || declared.source === null) return;
+    const size = (el.props.get('font-size') as ResolvedValue).value;
+    const line = (el.props.get('line-height') as ResolvedValue).value;
+    if (size.kind !== 'length') return;
+    const lhPx = line.kind === 'number' ? line.value * size.value : line.kind === 'length' ? line.value : null;
+    if (lhPx === null) return;
+    const lh = computedLineHeightInt(lhPx);
+    const height = (el.props.get('height') as ResolvedValue).value;
+    const normal = size.value >= lh || height.kind === 'percentage' || (height.kind === 'length' && height.value > lh);
+    if (!normal) return;
+    const d = declared.descriptors;
+    const over = (v: number | 'normal' | undefined): number | undefined => (v === undefined || v === 'normal' ? undefined : v);
+    const measured = faceMetrics(declared.source.font, size.value, 1, { ...(d.sizeAdjust === undefined ? {} : { sizeAdjust: d.sizeAdjust }), ...(over(d.ascentOverride) === undefined ? {} : { ascentOverride: over(d.ascentOverride) as number }), ...(over(d.descentOverride) === undefined ? {} : { descentOverride: over(d.descentOverride) as number }), ...(over(d.lineGapOverride) === undefined ? {} : { lineGapOverride: over(d.lineGapOverride) as number }) });
+    if (!measured.ok || measured.metrics.lineGap === 0) return;
+    for (const target of targets) {
+      if (target !== 'ios' && target !== 'android') continue;
+      const id = `${target}|${el.element.address}|text-field-line-gap`;
+      if (reported.has(id)) continue;
+      reported.add(id);
+      diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', {
+        origin: el.element.node.origin,
+        target,
+        message: `<input> ${el.element.address} takes line-height normal in its field (its ${size.value}px font size is at least its ${lh}px line height, or its height overrides it) in a face with a line gap, whose field height Chrome is not measured for`,
+        manual: `Give <input> ${el.element.address} a line height of at least its font size + 1px, or use a face without a line gap.`,
+      }));
+    }
+  };
+  walk(root);
+}
+
 /** A case's used keys with those of every interaction state, for the value checks' context lists. */
 const allUsed = (c: CaseResult): UsedKey[] => [...c.used, ...c.interaction.flatMap((i) => i.used)];
 
@@ -1038,6 +1083,7 @@ function checkCases(linked: Linked, rules: readonly Rule[], targets: readonly Kn
     if (!options.interactionLanes) checkTranslucentPaint(resolved, NATIVE_TARGETS.filter((t) => targets.includes(t)), diagnostics, refused);
     const ahemDeclared = projectFonts !== null && [...projectFonts.keys.declared].some((d) => foldFamily(d) === foldFamily('Ahem'));
     for (const t of NATIVE_TARGETS) if (targets.includes(t)) checkFonts(resolved, diagnostics, fonts, t, ahemDeclared, fontDeferrals, realFaceAt);
+    if (options.nativeRealFaces) checkTextFieldLineGap(resolved, projectFonts, realFaces, targets, diagnostics, refused);
     if (projectFonts !== null) for (const t of NATIVE_TARGETS) if (targets.includes(t)) checkSyntheticStyles(resolved, projectFonts, t, diagnostics, fonts);
     if (projectFonts !== null) checkCaseFonts(resolved, projectFonts, options.faults, diagnostics, fenced);
     const used = usedKeys(resolved, keys);
@@ -1211,7 +1257,7 @@ function hitModelRefusals(cases: readonly CaseResult[], rules: readonly Rule[], 
           ? `:${pseudo} needs Dragon hit testing through ${fact.property} on ${fact.address}, which is not built yet (package SELD-R2b)`
           : control !== null
             ? `:${pseudo} needs Dragon hit testing through the form control ${control}, which is not built yet (FORM-a)`
-            : `:${pseudo} needs Dragon hit testing through the ${unmodelled?.kind} ${unmodelled?.address}, which is not built yet (package ${unmodelled?.pkg} hit model)`;
+            : `:${pseudo} needs Dragon hit testing through the ${unmodelled?.kind} ${unmodelled?.address}${unmodelled?.reason === undefined ? '' : ` (${unmodelled.reason})`}, which is not built yet (package ${unmodelled?.pkg} hit model)`;
         const id = `${t}|${JSON.stringify(origin)}|${message}`;
         if (seen.has(id)) continue;
         seen.add(id);
@@ -1222,7 +1268,7 @@ function hitModelRefusals(cases: readonly CaseResult[], rules: readonly Rule[], 
             : unmodelled?.pkg === 'INL2a'
               ? `Use lengths for the padding of ${unmodelled.address} in a document with :${pseudo} rules, or style the state with a component state.`
               : unmodelled?.pkg === 'INL2c'
-                ? `Keep ${unmodelled.address} from forming a stacking context (opacity, transform, containment, isolation and the like) in a document with :${pseudo} rules, or style the state with a component state.`
+                ? `Make ${unmodelled.address} a stacking context with opacity or a scale or translate transform only, not ${unmodelled.reason}, in a document with :${pseudo} rules, or style the state with a component state.`
                 : unmodelled?.pkg === 'INL2d'
                   ? `Make ${unmodelled.address} block-level, or put it outside a line of text, in a document with :${pseudo} rules, or style the state with a component state.`
                   : `Keep ${unmodelled?.address} in flow in a document with :${pseudo} rules, or style the state with a component state until its hit testing is built.`;

@@ -398,7 +398,7 @@ describe('FORM-a control boxes: what the engine and the validator refuse', () =>
     const editor = control('t::editor', { kind: 'text-editor' }, {}, [text('t::editor:text0', 'XX')]);
     const empty = control('t::editor', { kind: 'text-editor' }, {}, [], strut);
     const placeholder = control('t::placeholder', { kind: 'text-placeholder' }, {}, [text('t::placeholder:text0', 'PP')]);
-    const field = (children: (LayoutBox | ControlBox)[]): ControlBox => control('t', { kind: 'text-field', size: 20, font: ahemFont(10), lineHeight: { kind: 'normal' }, cancelButton: null }, {}, children);
+    const field = (children: (LayoutBox | ControlBox)[]): ControlBox => control('t', { kind: 'text-field', size: 20, font: ahemFont(10), lineHeight: { kind: 'normal' }, avgChar: 'ahem', cancelButton: null }, {}, children);
     const under = (n: LayoutBox | ControlBox): LayoutInput => ({ ...range({}, []), root: { ...box('root', {}), children: [n] } });
     expect(codes(under(field([editor])))).toEqual([]);
     expect(codes(under(field([placeholder, empty])))).toEqual([]);
@@ -411,14 +411,14 @@ describe('FORM-a control boxes: what the engine and the validator refuse', () =>
     expect(codes(under(field([placeholder, { ...placeholder, id: 'p2', children: [], strut: null }, editor])))).toEqual(['$.root.children[0].children a text field control holds at most one text-placeholder control']);
     expect(codes(under(box('d', {}, [editor])))).toEqual(['$.root.children[0].children[0].control a text-editor control is a part of a text field control: its parent is one']);
     expect(codes(under(field([{ ...empty, strut: null }])))).toEqual(['$.root.children[0].children[0].strut an empty text-editor control has a strut, whose one empty line it lays out']);
-    const search = (children: (LayoutBox | ControlBox)[]): ControlBox => ({ ...field(children), control: { kind: 'text-field', size: 20, font: ahemFont(10), lineHeight: { kind: 'normal' }, cancelButton: { marginStart: 1, marginEnd: 3 } } });
+    const search = (children: (LayoutBox | ControlBox)[]): ControlBox => ({ ...field(children), control: { kind: 'text-field', size: 20, font: ahemFont(10), lineHeight: { kind: 'normal' }, avgChar: 'ahem', cancelButton: { marginStart: 1, marginEnd: 3 } } });
     const cancel: LayoutBox = { ...box('t::cancel', {}), boxType: 'anonymous' };
     expect(codes(under(search([editor, cancel])))).toEqual([]);
     expect(codes(under(search([editor])))).toEqual(['$.root.children[0].children a search field control holds exactly one cancel-button box']);
     expect(codes(under(field([editor, cancel])))).toContainEqual('$.root.children[0].children[1] a text field control holds only its text-editor control, at most one text-placeholder control and, for a search field, its empty cancel-button box');
     // The engine's own guard names the validator, which now rejects that input.
     expect(() => layout(under(field([box('d', {})])), ahemMeasurer)).toThrow('validateLayoutInput rejects this input');
-    const area = (children: (LayoutBox | ControlBox)[]): ControlBox => control('t', { kind: 'text-area', cols: 20, rows: 2, font: ahemFont(10), lineHeight: { kind: 'normal' } }, {}, children);
+    const area = (children: (LayoutBox | ControlBox)[]): ControlBox => control('t', { kind: 'text-area', cols: 20, rows: 2, font: ahemFont(10), lineHeight: { kind: 'normal' }, avgChar: 'ahem' }, {}, children);
     expect(codes(under(area([placeholder, editor])))).toEqual([]);
     expect(codes(under(area([])))).toEqual(['$.root.children[0].children a text area control holds exactly one text-editor control']);
     // A readonly textarea's empty editor has no line (a null strut); an edited one holds one empty line in its strut, as an input's does.
@@ -465,7 +465,7 @@ describe('FORM-a control boxes: what the engine and the validator refuse', () =>
     const strut = { font: ahemFont(10), lineHeight: { kind: 'normal' } } as const;
     const edges = { borderTopWidth: px(2), borderRightWidth: px(2), borderBottomWidth: px(2), borderLeftWidth: px(2), paddingTop: px(1), paddingRight: px(2), paddingBottom: px(1), paddingLeft: px(2) };
     const editor = control('t::editor', { kind: 'text-editor' }, { overflowX: 'clip', overflowY: 'clip' }, [text('t::editor:text0', 'X')]);
-    const field = (display: 'inline-block' | 'block', parts: ControlBox = editor): ControlBox => control('t', { kind: 'text-field', size: 3, font: ahemFont(10), lineHeight: { kind: 'normal' }, cancelButton: null }, { ...edges, display, marginBottom: px(4) }, [parts]);
+    const field = (display: 'inline-block' | 'block', parts: ControlBox = editor): ControlBox => control('t', { kind: 'text-field', size: 3, font: ahemFont(10), lineHeight: { kind: 'normal' }, avgChar: 'ahem', cancelButton: null }, { ...edges, display, marginBottom: px(4) }, [parts]);
     const input = (f: ControlBox): LayoutInput => ({ ...env, root: box('root', {}, [text('root:text0', 'XX '), f], strut) });
     expect(codes(input(field('inline-block')))).toEqual([]);
     const r = layout(input(field('inline-block')), ahemMeasurer);

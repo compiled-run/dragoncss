@@ -248,7 +248,7 @@ public func box_resolvePaddingWith(_ style: LayoutStyle, _ cbInline: Double, _ f
 public func box_borderWidthPx(_ v: any U_DevicePx_LengthCalc_Px) throws -> Double {
   // ts: packages/layout/src/box.ts:117
   if (v.kind == S.s_calc) {
-    throw JsError(message: S.s564)
+    throw JsError(message: S.s569)
   }
   return (v as! any U_DevicePx_Px).value
 }
@@ -355,7 +355,7 @@ public func box_lengthHeight(_ nodeId: JsString, _ v: any U_Auto_FitContent_Leng
   }
   // ts: packages/layout/src/box.ts:214
   if ((((v as! any U_Auto_FitContent_LengthCalc_MaxContent_MinContent_Percent_Px).kind == S.s_min_content) || ((v as! any U_Auto_FitContent_LengthCalc_MaxContent_Percent_Px).kind == S.s_max_content)) || ((v as! any U_Auto_FitContent_LengthCalc_Percent_Px).kind == S.s_fit_content)) {
-    try unsupported_unsupported(S.s_intrinsic_size_keyword, nodeId, S.s720, jsConcat(S.s834, (v as! any U_FitContent_MaxContent_MinContent).kind, S.s167, nodeId, S.s232))
+    try unsupported_unsupported(S.s_intrinsic_size_keyword, nodeId, S.s725, jsConcat(S.s841, (v as! any U_FitContent_MaxContent_MinContent).kind, S.s168, nodeId, S.s235))
   }
   return (v as! any U_Auto_LengthCalc_Percent_Px)
 }
@@ -380,7 +380,7 @@ public func box_lengthMaxHeight(_ nodeId: JsString, _ v: any U_LengthCalc_NoneVa
 
 // ts: packages/layout/src/box.ts:228
 public func box_refuseKeyword(_ nodeId: JsString, _ prop: JsString, _ keyword: JsString) throws -> Never {
-  try unsupported_unsupported(S.s_intrinsic_size_keyword, nodeId, S.s720, jsConcat(prop, S.s266, keyword, S.s170))
+  try unsupported_unsupported(S.s_intrinsic_size_keyword, nodeId, S.s725, jsConcat(prop, S.s271, keyword, S.s171))
 }
 
 // ts: packages/layout/src/box.ts:233
@@ -403,7 +403,7 @@ public func box_percentBlockBasis(_ box: LayoutBox, _ basis: any U_HeightBasis_d
   }
   // ts: packages/layout/src/box.ts:253
   if ((basis as! any U_HeightBasis_flexDependent_HeightBasis_indefinite).kind == S.s_flex_dependent) {
-    try unsupported_unsupported(S.s_percent_height_flex, box.id, S.s707, jsConcat(prop, S.s173))
+    try unsupported_unsupported(S.s_percent_height_flex, box.id, S.s712, jsConcat(prop, S.s174))
   }
   return nil
 }
@@ -436,7 +436,7 @@ public func box_specifiedBlockSizeWith(_ box: LayoutBox, _ basis: any U_HeightBa
   }
   // ts: packages/layout/src/box.ts:291
   if ((((h as! any U_FitContent_LengthCalc_MaxContent_MinContent_Percent_Px).kind == S.s_min_content) || ((h as! any U_FitContent_LengthCalc_MaxContent_Percent_Px).kind == S.s_max_content)) || ((h as! any U_FitContent_LengthCalc_Percent_Px).kind == S.s_fit_content)) {
-    try unsupported_unsupported(S.s_intrinsic_size_keyword, box.id, S.s720, jsConcat(S.s834, (h as! any U_FitContent_MaxContent_MinContent).kind, S.s167, box.id, S.s232))
+    try unsupported_unsupported(S.s_intrinsic_size_keyword, box.id, S.s725, jsConcat(S.s841, (h as! any U_FitContent_MaxContent_MinContent).kind, S.s168, box.id, S.s235))
   }
   let v: Double? = try box_resolveLengthOrNull((h as! any U_LengthCalc_Percent_Px), box_blockBasisFor(box, (h as! any U_LengthCalc_Percent_Px), basis, S.s_height), faults)
   return try ((v == nil) ? (nil as Double?) : (box_borderBoxFromSpecified(jsUnwrap(v), borderPadding, box.style.boxSizing) as Double?))

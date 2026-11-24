@@ -62,7 +62,7 @@ public final class OverflowRefusal: JsError {
   public init(_ nodeId: JsString, _ detail: JsString) throws {
     self.nodeId = nodeId
     self.detail = detail
-    super.init(message: jsConcat(nodeId, S.s266, detail))
+    super.init(message: jsConcat(nodeId, S.s271, detail))
   }
 }
 
@@ -264,7 +264,7 @@ public func overflow_scrollMetricsWithFaults(_ given: LayoutInput, _ measurer: T
   let r: any U_LayoutResult_ok_LayoutResult_unsupported = placed.result
   // ts: packages/layout/src/overflow.ts:108
   if (r.kind != S.s_ok) {
-    return ScrollMetricsResult_refused(S.s_refused, (r as! LayoutResult_unsupported).unsupported.nodeId, jsConcat((r as! LayoutResult_unsupported).unsupported.code, S.s266, (r as! LayoutResult_unsupported).unsupported.detail))
+    return ScrollMetricsResult_refused(S.s_refused, (r as! LayoutResult_unsupported).unsupported.nodeId, jsConcat((r as! LayoutResult_unsupported).unsupported.code, S.s271, (r as! LayoutResult_unsupported).unsupported.detail))
   }
   let m: TextMeasurer = try layout_layoutMeasurer(measurer, faults)
   // ts: packages/layout/src/overflow.ts:110
@@ -276,11 +276,11 @@ public func overflow_scrollMetricsWithFaults(_ given: LayoutInput, _ measurer: T
     let containers: JsArray<ScrollMetrics> = JsArray<ScrollMetrics>([])
     // ts: packages/layout/src/overflow.ts:117
     do {
-      let _a187 = ix.order
-      var _i187 = 0
-      while _i187 < _a187.items.count {
-        let b: any U_LayoutBox_ReplacedLeaf = _a187.items[_i187]
-        _i187 += 1
+      let _a188 = ix.order
+      var _i188 = 0
+      while _i188 < _a188.items.count {
+        let b: any U_LayoutBox_ReplacedLeaf = _a188.items[_i188]
+        _i188 += 1
         // ts: packages/layout/src/overflow.ts:118
         if try (!box_isScrollContainer(b.style)) {
           continue
@@ -298,7 +298,7 @@ public func overflow_scrollMetricsWithFaults(_ given: LayoutInput, _ measurer: T
     }
     // ts: packages/layout/src/overflow.ts:126
     if (e is UnsupportedSignal) {
-      return ScrollMetricsResult_refused(S.s_refused, (e as! UnsupportedSignal).unsupported.nodeId, jsConcat((e as! UnsupportedSignal).unsupported.code, S.s266, (e as! UnsupportedSignal).unsupported.detail))
+      return ScrollMetricsResult_refused(S.s_refused, (e as! UnsupportedSignal).unsupported.nodeId, jsConcat((e as! UnsupportedSignal).unsupported.code, S.s271, (e as! UnsupportedSignal).unsupported.detail))
     }
     throw e
   }
@@ -315,7 +315,7 @@ public func overflow_scrollRangesWithFaults(_ given: LayoutInput, _ measurer: Te
   let r: any U_LayoutResult_ok_LayoutResult_unsupported = placed.result
   // ts: packages/layout/src/overflow.ts:163
   if (r.kind != S.s_ok) {
-    return ScrollRangesResult_refused(S.s_refused, (r as! LayoutResult_unsupported).unsupported.nodeId, jsConcat((r as! LayoutResult_unsupported).unsupported.code, S.s266, (r as! LayoutResult_unsupported).unsupported.detail))
+    return ScrollRangesResult_refused(S.s_refused, (r as! LayoutResult_unsupported).unsupported.nodeId, jsConcat((r as! LayoutResult_unsupported).unsupported.code, S.s271, (r as! LayoutResult_unsupported).unsupported.detail))
   }
   var ix: Index
   // ts: packages/layout/src/overflow.ts:165
@@ -326,7 +326,7 @@ public func overflow_scrollRangesWithFaults(_ given: LayoutInput, _ measurer: Te
   } catch let e {
     // ts: packages/layout/src/overflow.ts:171
     if (e is UnsupportedSignal) {
-      return ScrollRangesResult_refused(S.s_refused, (e as! UnsupportedSignal).unsupported.nodeId, jsConcat((e as! UnsupportedSignal).unsupported.code, S.s266, (e as! UnsupportedSignal).unsupported.detail))
+      return ScrollRangesResult_refused(S.s_refused, (e as! UnsupportedSignal).unsupported.nodeId, jsConcat((e as! UnsupportedSignal).unsupported.code, S.s271, (e as! UnsupportedSignal).unsupported.detail))
     }
     throw e
   }
@@ -334,11 +334,11 @@ public func overflow_scrollRangesWithFaults(_ given: LayoutInput, _ measurer: Te
   let refused: JsArray<ScrollRangeRefusal> = JsArray<ScrollRangeRefusal>([])
   // ts: packages/layout/src/overflow.ts:176
   do {
-    let _a188 = ix.order
-    var _i188 = 0
-    while _i188 < _a188.items.count {
-      let b: any U_LayoutBox_ReplacedLeaf = _a188.items[_i188]
-      _i188 += 1
+    let _a189 = ix.order
+    var _i189 = 0
+    while _i189 < _a189.items.count {
+      let b: any U_LayoutBox_ReplacedLeaf = _a189.items[_i189]
+      _i189 += 1
       // ts: packages/layout/src/overflow.ts:177
       if try (!box_isScrollContainer(b.style)) {
         continue
@@ -389,7 +389,7 @@ public func overflow_nodeOf(_ ix: Index, _ id: JsString) throws -> Node {
   let n: Node? = ix.nodes.get(id)
   // ts: packages/layout/src/overflow.ts:210
   if (n == nil) {
-    throw JsError(message: jsConcat(S.s960, id))
+    throw JsError(message: jsConcat(S.s967, id))
   }
   return try jsUnwrap(n)
 }
@@ -399,11 +399,11 @@ public func overflow_indexOf(_ ctx: Ctx, _ input: LayoutInput, _ abs: JsStringMa
   let ix: Index = Index(ctx, JsStringMap<Node>(), JsArray<any U_LayoutBox_ReplacedLeaf>([]), JsStringMap<JsArray<any U_LayoutBox_ReplacedLeaf>>(), JsStringMap<Flow>(), JsStringMap<OverflowRect>(), JsStringMap<any U_ControlKind_d084c13b74a53fa6>())
   // ts: packages/layout/src/overflow.ts:216
   do {
-    let _a189 = inflow
-    var _i189 = 0
-    while _i189 < _a189.items.count {
-      let f: InflowBounds = _a189.items[_i189]
-      _i189 += 1
+    let _a190 = inflow
+    var _i190 = 0
+    while _i190 < _a190.items.count {
+      let f: InflowBounds = _a190.items[_i190]
+      _i190 += 1
       _ = ix.gridInflow.set(f.id, OverflowRect(f.x, f.y, f.width, f.height))
     }
   }
@@ -413,7 +413,7 @@ public func overflow_indexOf(_ ctx: Ctx, _ input: LayoutInput, _ abs: JsStringMa
     let rect: LayoutRect? = abs.get(b.id)
     // ts: packages/layout/src/overflow.ts:220
     if (rect == nil) {
-      throw JsError(message: jsConcat(S.s960, b.id))
+      throw JsError(message: jsConcat(S.s967, b.id))
     }
     let border: Edges = try box_resolveBorder(b.style, ctx.devicePixelRatio)
     let padding: Edges = try box_resolvePaddingWith(b.style, cbInline, ctx.faults)
@@ -429,11 +429,11 @@ public func overflow_indexOf(_ ctx: Ctx, _ input: LayoutInput, _ abs: JsStringMa
     }
     // ts: packages/layout/src/overflow.ts:231
     do {
-      let _a190 = (b as! LayoutBox).children
-      var _i190 = 0
-      while _i190 < _a190.items.count {
-        let k: any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a190.items[_i190]
-        _i190 += 1
+      let _a191 = (b as! LayoutBox).children
+      var _i191 = 0
+      while _i191 < _a191.items.count {
+        let k: any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a191.items[_i191]
+        _i191 += 1
         // ts: packages/layout/src/overflow.ts:232
         if (k.kind == S.s_control) {
           _ = ix.controls.set((k as! ControlBox).id, (k as! ControlBox).control)
@@ -608,7 +608,7 @@ public func overflow_overflowOf(_ ix: Index, _ n: Node) throws -> OverflowRect {
   }
   // ts: packages/layout/src/overflow.ts:403
   if (!n.paddingKnown) {
-    throw try OverflowRefusal((b as! LayoutBox).id, S.s577)
+    throw try OverflowRefusal((b as! LayoutBox).id, S.s582)
   }
   let grid: Bool = try overflow_isGridContainer(b)
   // ts: packages/layout/src/overflow.ts:406
@@ -622,11 +622,11 @@ public func overflow_overflowOf(_ ix: Index, _ n: Node) throws -> OverflowRect {
   }
   // ts: packages/layout/src/overflow.ts:411
   do {
-    let _a191 = (b as! LayoutBox).children
-    var _i191 = 0
-    while _i191 < _a191.items.count {
-      let k: any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a191.items[_i191]
-      _i191 += 1
+    let _a192 = (b as! LayoutBox).children
+    var _i192 = 0
+    while _i192 < _a192.items.count {
+      let k: any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a192.items[_i192]
+      _i192 += 1
       // ts: packages/layout/src/overflow.ts:412
       if try ((((k.kind != S.s_box) && ((k as! any U_ControlBox_InlineBox_LineBreak_ReplacedLeaf_TextLeaf).kind != S.s_replaced)) && ((k as! any U_ControlBox_InlineBox_LineBreak_TextLeaf).kind != S.s_control)) || position_isOutOfFlow(ix.ctx, (k as! any U_ControlBox_LayoutBox_ReplacedLeaf))) {
         continue
@@ -654,11 +654,11 @@ public func overflow_overflowOf(_ ix: Index, _ n: Node) throws -> OverflowRect {
   if (oofs != nil) {
     // ts: packages/layout/src/overflow.ts:423
     do {
-      let _a192 = try jsUnwrap(oofs)
-      var _i192 = 0
-      while _i192 < _a192.items.count {
-        let k: any U_LayoutBox_ReplacedLeaf = _a192.items[_i192]
-        _i192 += 1
+      let _a193 = try jsUnwrap(oofs)
+      var _i193 = 0
+      while _i193 < _a193.items.count {
+        let k: any U_LayoutBox_ReplacedLeaf = _a193.items[_i193]
+        _i193 += 1
         let kn: Node = try overflow_nodeOf(ix, k.id)
         try overflow_addOverflow(c, overflow_shifted(overflow_propagated(ix, kn), units_sub(kn.rect.x, n.rect.x), units_sub(kn.rect.y, n.rect.y)))
       }
@@ -672,7 +672,7 @@ public func overflow_gridInflowOf(_ ix: Index, _ id: JsString) throws -> Overflo
   let r: OverflowRect? = ix.gridInflow.get(id)
   // ts: packages/layout/src/overflow.ts:433
   if (r == nil) {
-    throw JsError(message: jsConcat(S.s959, id))
+    throw JsError(message: jsConcat(S.s966, id))
   }
   return try jsUnwrap(r)
 }
@@ -690,11 +690,11 @@ public func overflow_controlChecked(_ n: Node, _ kind: any U_ControlKind_d084c13
   }
   // ts: packages/layout/src/overflow.ts:452
   if ((((kind as! any U_ControlKind_61a9e4564b150d13).kind != S.s_button_block) && ((kind as! any U_ControlKind_fieldset_ControlKind_legend_ControlKind_range_ControlKind_selectInner_ControlKind_selectMenulist_ControlKind_sliderThumb_ControlKind_textArea_ControlKind_textEditor_ControlKind_textField).kind != S.s_fieldset)) && ((kind as! any U_ControlKind_legend_ControlKind_range_ControlKind_selectInner_ControlKind_selectMenulist_ControlKind_sliderThumb_ControlKind_textArea_ControlKind_textEditor_ControlKind_textField).kind != S.s_legend)) {
-    throw try OverflowRefusal(n.box.id, jsConcat(S.s561, (kind as! any U_ControlKind_range_ControlKind_selectInner_ControlKind_selectMenulist_ControlKind_sliderThumb_ControlKind_textArea_ControlKind_textEditor_ControlKind_textField).kind, S.s43))
+    throw try OverflowRefusal(n.box.id, jsConcat(S.s566, (kind as! any U_ControlKind_range_ControlKind_selectInner_ControlKind_selectMenulist_ControlKind_sliderThumb_ControlKind_textArea_ControlKind_textEditor_ControlKind_textField).kind, S.s43))
   }
   // ts: packages/layout/src/overflow.ts:453
   if try box_isScrollContainer(n.box.style) {
-    throw try OverflowRefusal(n.box.id, S.s569)
+    throw try OverflowRefusal(n.box.id, S.s574)
   }
 }
 
@@ -733,22 +733,22 @@ public func overflow_refuseLineLevelBoxes(_ box: LayoutBox) throws -> Void {
   }
   // ts: packages/layout/src/overflow.ts:486
   do {
-    let _a193 = box.children
-    var _i193 = 0
-    while _i193 < _a193.items.count {
-      let k: any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a193.items[_i193]
-      _i193 += 1
+    let _a194 = box.children
+    var _i194 = 0
+    while _i194 < _a194.items.count {
+      let k: any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a194.items[_i194]
+      _i194 += 1
       // ts: packages/layout/src/overflow.ts:487
       if (((k.kind == S.s_box) || ((k as! any U_ControlBox_InlineBox_LineBreak_ReplacedLeaf_TextLeaf).kind == S.s_replaced)) || ((k as! any U_ControlBox_InlineBox_LineBreak_TextLeaf).kind == S.s_control)) {
-        throw try OverflowRefusal((k as! any U_ControlBox_LayoutBox_ReplacedLeaf).id, jsConcat(S.s608, box.id, S.s283))
+        throw try OverflowRefusal((k as! any U_ControlBox_LayoutBox_ReplacedLeaf).id, jsConcat(S.s613, box.id, S.s288))
       }
       // ts: packages/layout/src/overflow.ts:489
       if ((k as! any U_InlineBox_LineBreak_TextLeaf).kind == S.s_inline) {
-        throw try OverflowRefusal((k as! InlineBox).id, jsConcat(S.s613, box.id, S.s282))
+        throw try OverflowRefusal((k as! InlineBox).id, jsConcat(S.s618, box.id, S.s287))
       }
       // ts: packages/layout/src/overflow.ts:490
       if ((k as! any U_LineBreak_TextLeaf).kind == S.s_br) {
-        throw try OverflowRefusal((k as! LineBreak).id, jsConcat(S.s563, box.id, S.s282))
+        throw try OverflowRefusal((k as! LineBreak).id, jsConcat(S.s568, box.id, S.s287))
       }
     }
   }
@@ -761,11 +761,11 @@ public func overflow_addLines(_ ix: Index, _ n: Node, _ box: LayoutBox, _ c: Cal
   let content: Double = try units_clampNegativeToZero(units_sub(n.rect.width, box_sumEdges(n.border.left, n.border.right, n.padding.left, n.padding.right)))
   // ts: packages/layout/src/overflow.ts:499
   do {
-    let _a194 = try inline_placeLines(ix.ctx, box, content)
-    var _i194 = 0
-    while _i194 < _a194.items.count {
-      let line: PlacedLine = _a194.items[_i194]
-      _i194 += 1
+    let _a195 = try inline_placeLines(ix.ctx, box, content)
+    var _i195 = 0
+    while _i195 < _a195.items.count {
+      let line: PlacedLine = _a195.items[_i195]
+      _i195 += 1
       var first: Bool = true
       var l: Double = units_ZERO
       var r: Double = units_ZERO
@@ -777,11 +777,11 @@ public func overflow_addLines(_ ix: Index, _ n: Node, _ box: LayoutBox, _ c: Cal
       }
       // ts: packages/layout/src/overflow.ts:508
       do {
-        let _a195 = line.pieces
-        var _i195 = 0
-        while _i195 < _a195.items.count {
-          let p: LinePiece = _a195.items[_i195]
-          _i195 += 1
+        let _a196 = line.pieces
+        var _i196 = 0
+        while _i196 < _a196.items.count {
+          let p: LinePiece = _a196.items[_i196]
+          _i196 += 1
           try take(p.x, p.width)
         }
       }
@@ -802,11 +802,11 @@ public func overflow_addLines(_ ix: Index, _ n: Node, _ box: LayoutBox, _ c: Cal
       var hidden: Bool = false
       // ts: packages/layout/src/overflow.ts:517
       do {
-        let _a196 = line.pieces
-        var _i196 = 0
-        while _i196 < _a196.items.count {
-          let p: LinePiece = _a196.items[_i196]
-          _i196 += 1
+        let _a197 = line.pieces
+        var _i197 = 0
+        while _i197 < _a197.items.count {
+          let p: LinePiece = _a197.items[_i197]
+          _i197 += 1
           // ts: packages/layout/src/overflow.ts:518
           if hidden {
             continue
@@ -833,7 +833,7 @@ public func overflow_inflowBounds(_ ix: Index, _ p: Node, _ k: Node, _ dx: Doubl
   let direction: JsString = try block_directionOf(ix.ctx, (p.box as! any U_ControlBox_LayoutBox_ReplacedLeaf))
   // ts: packages/layout/src/overflow.ts:536
   if try ((s.position == S.s_relative) && (overflow_hasPercentInset(s.top) || overflow_hasPercentInset(s.bottom))) {
-    throw try OverflowRefusal(k.box.id, S.s581)
+    throw try OverflowRefusal(k.box.id, S.s586)
   }
   let rel: RelativeOffset = try position_relativeOffsetWith((k.box as! any U_ControlBox_LayoutBox_ReplacedLeaf), cb, box_INDEFINITE, direction, ix.ctx.faults)
   let x: Double = try units_sub(dx, rel.dx)
@@ -850,7 +850,7 @@ public func overflow_inflowBounds(_ ix: Index, _ p: Node, _ k: Node, _ dx: Doubl
     let end: EndStrut? = flow.ends.get(k.box.id)
     // ts: packages/layout/src/overflow.ts:551
     if (end == nil) {
-      throw JsError(message: jsConcat(S.s955, k.box.id))
+      throw JsError(message: jsConcat(S.s962, k.box.id))
     }
     let withOwn: Strut = try overflow_joinMargin(jsUnwrap(end).strut, mb)
     try blockEnd = (jsUnwrap(end).selfCollapsing ? units_sub(overflow_collapsed(withOwn), overflow_collapsed(jsUnwrap(end).strut)) : overflow_collapsed(withOwn))
@@ -928,11 +928,11 @@ public func overflow_readFlow(_ ix: Index, _ n: Node) throws -> Flow {
   var escapeTop: Strut = block_EMPTY_STRUT
   // ts: packages/layout/src/overflow.ts:633
   do {
-    let _a197 = (b as! LayoutBox).children
-    var _i197 = 0
-    while _i197 < _a197.items.count {
-      let k: any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a197.items[_i197]
-      _i197 += 1
+    let _a198 = (b as! LayoutBox).children
+    var _i198 = 0
+    while _i198 < _a198.items.count {
+      let k: any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a198.items[_i198]
+      _i198 += 1
       // ts: packages/layout/src/overflow.ts:634
       if try ((((k.kind != S.s_box) && ((k as! any U_ControlBox_InlineBox_LineBreak_ReplacedLeaf_TextLeaf).kind != S.s_replaced)) && ((k as! any U_ControlBox_InlineBox_LineBreak_TextLeaf).kind != S.s_control)) || position_isOutOfFlow(ix.ctx, (k as! any U_ControlBox_LayoutBox_ReplacedLeaf))) {
         continue
@@ -958,7 +958,7 @@ public func overflow_readFlow(_ ix: Index, _ n: Node) throws -> Flow {
       }
       // ts: packages/layout/src/overflow.ts:647
       if try (((k as! any U_ControlBox_LayoutBox_ReplacedLeaf).style.position == S.s_relative) && (overflow_hasPercentInset((k as! any U_ControlBox_LayoutBox_ReplacedLeaf).style.top) || overflow_hasPercentInset((k as! any U_ControlBox_LayoutBox_ReplacedLeaf).style.bottom))) {
-        throw try OverflowRefusal((k as! any U_ControlBox_LayoutBox_ReplacedLeaf).id, S.s580)
+        throw try OverflowRefusal((k as! any U_ControlBox_LayoutBox_ReplacedLeaf).id, S.s585)
       }
       let rel: RelativeOffset = try position_relativeOffsetWith((k as! any U_ControlBox_LayoutBox_ReplacedLeaf), cb, box_INDEFINITE, direction, f)
       try cursor = units_sub(units_add(units_sub(kn.rect.y, rel.dy), kn.rect.height), contentTop)
@@ -978,7 +978,7 @@ public func overflow_readFlow(_ ix: Index, _ n: Node) throws -> Flow {
 public func overflow_refuseFloat(_ ix: Index, _ b: LayoutBox, _ k: any U_ControlBox_LayoutBox_ReplacedLeaf) throws -> Void {
   // ts: packages/layout/src/overflow.ts:662
   if try (((b.style.display == S.s_block) || (b.style.display == S.s_inline_block)) && float_isFloat(ix.ctx, k)) {
-    throw try OverflowRefusal(k.id, jsConcat(S.s567, b.id, S.s281))
+    throw try OverflowRefusal(k.id, jsConcat(S.s572, b.id, S.s286))
   }
 }
 
@@ -1005,7 +1005,7 @@ public func overflow_readChild(_ ix: Index, _ n: Node) throws -> ChildMargins {
   let h: any U_Auto_FitContent_LengthCalc_MaxContent_MinContent_Percent_Px_Stretch = (b as! LayoutBox).style.height
   // ts: packages/layout/src/overflow.ts:681
   if try (((((h.kind == S.s_stretch) || ((((h as! any U_Auto_FitContent_LengthCalc_MaxContent_MinContent_Percent_Px).kind == S.s_percent) || ((h as! any U_Auto_FitContent_LengthCalc_MaxContent_MinContent_Px).kind == S.s_calc)) && box_hasPercent(((h as! any U_LengthCalc_Percent) as! any U_LengthCalc_Percent_Px)))) && (n.border.bottom == 0.0)) && (n.padding.bottom == 0.0)) && ((r.endStrut.positive != 0.0) || (r.endStrut.negative != 0.0))) {
-    throw try OverflowRefusal((b as! LayoutBox).id, S.s576)
+    throw try OverflowRefusal((b as! LayoutBox).id, S.s581)
   }
   let minMax: MinMax = try box_blockMinMaxWith((b as! LayoutBox), box_INDEFINITE, vbp, ix.ctx.faults, box_INDEFINITE_STRETCH)
   let specNoCollapse: Bool = (ix.ctx.faults.minMaxEndMarginSpec && (minMax.min > vbp))
@@ -1030,7 +1030,7 @@ public func overflow_viewportMetrics(_ ix: Index, _ input: LayoutInput, _ direct
   let mb: Double = try box_resolveMarginWith(s.marginBottom, width, f).value
   // ts: packages/layout/src/overflow.ts:712
   if try ((s.position == S.s_relative) && (overflow_hasPercentInset(s.top) || overflow_hasPercentInset(s.bottom))) {
-    throw try OverflowRefusal(root.box.id, S.s582)
+    throw try OverflowRefusal(root.box.id, S.s587)
   }
   let rel: RelativeOffset = try position_relativeOffsetWith((root.box as! any U_ControlBox_LayoutBox_ReplacedLeaf), width, box_INDEFINITE, block_directionOf(ix.ctx, (root.box as! any U_ControlBox_LayoutBox_ReplacedLeaf)), f)
   let x: Double = try units_sub(root.rect.x, rel.dx)
@@ -1046,11 +1046,11 @@ public func overflow_viewportMetrics(_ ix: Index, _ input: LayoutInput, _ direct
   if (oofs != nil) {
     // ts: packages/layout/src/overflow.ts:726
     do {
-      let _a198 = try jsUnwrap(oofs)
-      var _i198 = 0
-      while _i198 < _a198.items.count {
-        let k: any U_LayoutBox_ReplacedLeaf = _a198.items[_i198]
-        _i198 += 1
+      let _a199 = try jsUnwrap(oofs)
+      var _i199 = 0
+      while _i199 < _a199.items.count {
+        let k: any U_LayoutBox_ReplacedLeaf = _a199.items[_i199]
+        _i199 += 1
         let kn: Node = try overflow_nodeOf(ix, k.id)
         try overflow_addOverflow(c, overflow_shifted(overflow_propagated(ix, kn), kn.rect.x, kn.rect.y))
       }

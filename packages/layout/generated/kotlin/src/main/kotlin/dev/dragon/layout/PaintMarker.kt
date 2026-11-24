@@ -38,11 +38,11 @@ fun paintMarker_symbolCoverage(symbol: String, left: Double, top: Double, right:
   paintAa_antiFillPath(dev, paintAa_ovalPath(PaintAa_FRect(left, top, right, bottom)), b, paintAa_NO_AA_FAULTS)
   // ts: packages/layout/src/paint-marker.ts:29
   run {
-    val _a234 = paintAa_devicePixels(dev)
-    var _i234 = 0
-    while (_i234 < _a234.size) {
-      val v: Double = _a234[_i234]
-      _i234++
+    val _a235 = paintAa_devicePixels(dev)
+    var _i235 = 0
+    while (_i235 < _a235.size) {
+      val v: Double = _a235[_i235]
+      _i235++
       jsPush(out, (255.0 - v))
     }
   }
