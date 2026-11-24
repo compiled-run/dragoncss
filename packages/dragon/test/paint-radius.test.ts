@@ -531,7 +531,7 @@ describe('border-radius on a scroll container: the rounded clip stays put while 
     expect(kotlin).toContain('class DragonRoundedClipMask(private var path: Path, private val host: View)');
     expect(kotlin).toContain('canvas.translate(host.scrollX.toFloat(), host.scrollY.toFloat())');
     expect(kotlin).toContain('if (kept != null) kept.setPath(inner) else c.foreground = DragonRoundedClipMask(inner, c)');
-    expect(kotlin).toContain('c.foreground = mask');
+    expect(kotlin).toContain('fun setPath(next: Path)');
     expect(kotlin).not.toContain('c.overlay.');
   });
 });
