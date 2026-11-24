@@ -352,7 +352,7 @@ public func paintAa_cellAt(_ xs: JsArray<PaintAa_Cell>, _ i: Double) throws -> P
   let c: PaintAa_Cell? = jsAt(xs, i)
   // ts: packages/layout/src/paint-aa.ts:67
   if (c == nil) {
-    throw JsError(message: jsConcat(S.s490, jsNumberToString(i), S.s142))
+    throw JsError(message: jsConcat(S.s491, jsNumberToString(i), S.s142))
   }
   return try jsUnwrap(c)
 }
@@ -539,7 +539,7 @@ public func paintAa_sqrt32(_ x: Double) throws -> Double {
   }
   // ts: packages/layout/src/paint-aa.ts:214
   if (x < 0.0) {
-    throw JsError(message: S.s493)
+    throw JsError(message: S.s494)
   }
   var r: Double = ((x > 1.0) ? x : 1.0)
   // ts: packages/layout/src/paint-aa.ts:216
@@ -590,7 +590,7 @@ public func paintAa_sqrt32(_ x: Double) throws -> Double {
 public func paintAa_quickInverse(_ x: Double) throws -> Double {
   // ts: packages/layout/src/paint-aa.ts:319
   if try (paintAa_abs32(x) > paintAa_INVERSE_TABLE_SIZE) {
-    throw JsError(message: S.s491)
+    throw JsError(message: S.s492)
   }
   return try ((x > 0.0) ? (-paintAa_at(paintAa_INVERSE_TABLE, (paintAa_INVERSE_TABLE_SIZE - x))) : paintAa_at(paintAa_INVERSE_TABLE, (paintAa_INVERSE_TABLE_SIZE + x)))
 }
@@ -973,7 +973,7 @@ public func paintAa_translatePath(_ path: AaPath, _ dx: Double, _ dy: Double) th
 public func paintAa_scaleTranslatePath(_ path: AaPath, _ sx: Double, _ sy: Double, _ dx: Double, _ dy: Double) throws -> AaPath {
   // ts: packages/layout/src/paint-aa.ts:673
   if ((!(sx > 0.0)) || (!(sy > 0.0))) {
-    throw JsError(message: S.s489)
+    throw JsError(message: S.s490)
   }
   let pts: JsArray<Pt> = JsArray<Pt>([])
   // ts: packages/layout/src/paint-aa.ts:675
@@ -1072,7 +1072,7 @@ public func paintAa_conicToQuads(_ c: Conic) throws -> JsArray<Pt> {
   let out: JsArray<Pt> = JsArray<Pt>([c.p0])
   // ts: packages/layout/src/paint-aa.ts:756
   if (p == paintAa_MAX_CONIC_TO_QUAD_POW2) {
-    throw JsError(message: S.s488)
+    throw JsError(message: S.s489)
   }
   try paintAa_subdivideConic(c, out, p)
   return out
@@ -1423,7 +1423,7 @@ public func paintAa_newEdge() throws -> Edge {
 public func paintAa_nx(_ e: Edge?) throws -> Edge {
   // ts: packages/layout/src/paint-aa.ts:1057
   if (e == nil) {
-    throw JsError(message: S.s497)
+    throw JsError(message: S.s498)
   }
   return try jsUnwrap(e)
 }
@@ -1947,7 +1947,7 @@ public func paintAa_edgeAt(_ xs: JsArray<EdgeCell>, _ i: Double) throws -> EdgeC
   let c: EdgeCell? = jsAt(xs, i)
   // ts: packages/layout/src/paint-aa.ts:1455
   if (c == nil) {
-    throw JsError(message: S.s492)
+    throw JsError(message: S.s493)
   }
   return try jsUnwrap(c)
 }
@@ -2304,7 +2304,7 @@ public func paintAa_accAntiH(_ acc: Acc, _ x0: Double, _ y: Double, _ width: Dou
 public func paintAa_accAntiHArray(_ acc: Acc, _ x0: Double, _ y: Double, _ alphas: JsArray<PaintAa_Cell>, _ len0: Double) throws -> Void {
   // ts: packages/layout/src/paint-aa.ts:1684
   if (acc.kind == paintAa_KIND_MASK) {
-    throw JsError(message: S.s487)
+    throw JsError(message: S.s488)
   }
   try paintAa_accCheckY(acc, y)
   var x: Double = (x0 - acc.left)
@@ -2399,7 +2399,7 @@ public func paintAa_realBlitAntiRect(_ acc: Acc, _ x: Double, _ y: Double, _ wid
 public func paintAa_realOnDevice(_ acc: Acc) throws -> Void {
   // ts: packages/layout/src/paint-aa.ts:1729
   if (acc.kind == paintAa_KIND_MASK) {
-    throw JsError(message: S.s495)
+    throw JsError(message: S.s496)
   }
 }
 
@@ -3305,7 +3305,7 @@ public func paintAa_antiFillPath(_ dev: Device, _ path: AaPath, _ tileClip: Pain
     }
     // ts: packages/layout/src/paint-aa.ts:2385
     if (!curves) {
-      throw JsError(message: S.s496)
+      throw JsError(message: S.s497)
     }
     let acc: Acc = try paintAa_makeAcc(paintAa_KIND_MASK, dev, ir, tileClip, faults)
     try paintAa_aaaFillPath(path, tileClip, acc, ir.top, ir.bottom, true, contained)
@@ -3543,7 +3543,7 @@ public func paintAa_sqrt64(_ x: Double) throws -> Double {
   }
   // ts: packages/layout/src/paint-aa.ts:2522
   if (!(x > 0.0)) {
-    throw JsError(message: S.s494)
+    throw JsError(message: S.s495)
   }
   var xs: Double = x
   var scale: Double = 1.0
