@@ -51,9 +51,9 @@ describe('OVFL scroll metrics against Chrome', () => {
     // Every layout fixture of the overflow group, each in ltr and rtl (its -rtl twin), and the two earlier overflow: hidden
     // fixtures (ltr only) that the overflow- prefix also takes.
     // overflow-background and overflow-rounded-background run in ltr only (an rtl twin with a background would be refused on
-    // native: OVFL-B's start-overflow background refusal).
+    // native: OVFL-B's start-overflow background refusal), and so does overflow-textarea.
     const own = OVERFLOW.flatMap((f) => (f.kind === 'layout' ? f.environments.map((d) => (d === 'ltr' ? f.id : `${f.id}-rtl`)) : []));
-    expect(own.length).toBe(44);
+    expect(own.length).toBe(45);
     expect(ids.filter((id) => !own.includes(id))).toEqual(['overflow-hidden-bfc', 'overflow-hidden-flex-min-size']);
     expect(own.filter((id) => !ids.includes(id))).toEqual([]);
     for (const dpr of SCROLL_DPRS) {
