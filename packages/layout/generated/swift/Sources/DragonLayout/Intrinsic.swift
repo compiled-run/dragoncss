@@ -32,7 +32,7 @@ public func intrinsic_intrinsicContentInlineSize(_ ctx: Ctx, _ node: any U_Contr
   let kids: JsArray<any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf> = box.children
   // ts: packages/layout/src/intrinsic.ts:38
   if (box.style.multicol != nil) {
-    try unsupported_unsupported(S.s_multicol, box.id, S.s720, jsConcat(S.s1194, kind, S.s249, box.id, S.s133))
+    try unsupported_unsupported(S.s_multicol, box.id, S.s721, jsConcat(S.s1195, kind, S.s250, box.id, S.s133))
   }
   // ts: packages/layout/src/intrinsic.ts:39
   if (box.style.display == S.s_flex) {
@@ -50,7 +50,7 @@ public func intrinsic_intrinsicContentInlineSize(_ ctx: Ctx, _ node: any U_Contr
   if try jsSome(kids, { (k: any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf) throws -> Bool in
     return (((k.kind != S.s_box) && ((k as! any U_ControlBox_InlineBox_LineBreak_ReplacedLeaf_TextLeaf).kind != S.s_control)) && ((k as! any U_InlineBox_LineBreak_ReplacedLeaf_TextLeaf).kind != S.s_replaced))
 }) {
-    throw JsError(message: jsConcat(box.id, S.s285))
+    throw JsError(message: jsConcat(box.id, S.s286))
   }
   var widest: Double = units_ZERO
   var left: Double = units_ZERO
@@ -128,7 +128,7 @@ public func intrinsic_menuListNaturalInlineSize(_ ctx: Ctx, _ node: ControlBox) 
   }
   // ts: packages/layout/src/intrinsic.ts:80
   if (inners != 1.0) {
-    throw JsError(message: jsConcat(node.id, S.s278))
+    throw JsError(message: jsConcat(node.id, S.s279))
   }
   var widest: Double = 0.0
   // ts: packages/layout/src/intrinsic.ts:82
@@ -147,9 +147,9 @@ public func intrinsic_menuListNaturalInlineSize(_ ctx: Ctx, _ node: ControlBox) 
       if (!m.ok) {
         // ts: packages/layout/src/intrinsic.ts:86
         if ((m as! MeasureResult_okFalse).code == S.s_text_script) {
-          try unsupported_unsupported(S.s_text_script, o.id, S.s993, (m as! MeasureResult_okFalse).reason)
+          try unsupported_unsupported(S.s_text_script, o.id, S.s994, (m as! MeasureResult_okFalse).reason)
         }
-        try unsupported_unsupported(S.s_text_glyph, o.id, S.s714, (m as! MeasureResult_okFalse).reason)
+        try unsupported_unsupported(S.s_text_glyph, o.id, S.s715, (m as! MeasureResult_okFalse).reason)
       }
       let w: Double = try units_toPx((m as! MeasureResult_okTrue).measure.width)
       // ts: packages/layout/src/intrinsic.ts:90
@@ -187,7 +187,7 @@ public func intrinsic_inlineContribution(_ ctx: Ctx, _ node: any U_ControlBox_La
     }
     // ts: packages/layout/src/intrinsic.ts:112
     if try ratio_hasAspectRatio(s) {
-      try unsupported_unsupported(S.s_intrinsic_size_keyword, box.id, S.s727, jsConcat(k, S.s198))
+      try unsupported_unsupported(S.s_intrinsic_size_keyword, box.id, S.s728, jsConcat(k, S.s199))
     }
     return try units_add(intrinsic_intrinsicContentInlineSize(ctx, (((node as! any U_ControlBox_LayoutBox).kind == S.s_control) ? ((node as! ControlBox) as any U_ControlBox_LayoutBox) : (box as any U_ControlBox_LayoutBox)), ((k == S.s_min_content) ? S.s_min : ((k == S.s_max_content) ? S.s_max : kind))), bp)
   }
@@ -247,7 +247,7 @@ public func intrinsic_flexIntrinsicContent(_ ctx: Ctx, _ box: LayoutBox, _ kind:
   let isRow: Bool = ((s.flexDirection == S.s_row) || (s.flexDirection == S.s_row_reverse))
   // ts: packages/layout/src/intrinsic.ts:153
   if ((!isRow) && (s.flexWrap != S.s_nowrap)) {
-    try unsupported_unsupported(S.s_flex_intrinsic_wrap_column, box.id, S.s713, S.s878)
+    try unsupported_unsupported(S.s_flex_intrinsic_wrap_column, box.id, S.s714, S.s879)
   }
   // ts: packages/layout/src/intrinsic.ts:154
   if ((!isRow) || ((kind == S.s_min) && (s.flexWrap != S.s_nowrap))) {
@@ -267,7 +267,7 @@ public func intrinsic_flexIntrinsicContent(_ ctx: Ctx, _ box: LayoutBox, _ kind:
   let gap: any U_LengthCalc_NormalValue_Percent_Px = s.columnGap
   // ts: packages/layout/src/intrinsic.ts:160
   if try ((gap.kind != S.s_normal) && box_hasPercent((gap as! any U_LengthCalc_Percent_Px))) {
-    try unsupported_unsupported(S.s_percent_gap, box.id, S.s703, S.s1050)
+    try unsupported_unsupported(S.s_percent_gap, box.id, S.s704, S.s1051)
   }
   let gapLu: Double = try ((gap.kind == S.s_normal) ? units_ZERO : box_resolveLength((gap as! any U_LengthCalc_Percent_Px), units_ZERO, ctx.faults))
   let gaps: Double = try ((jsLength(items) > 1.0) ? units_mulInt(gapLu, (jsLength(items) - 1.0)) : units_ZERO)

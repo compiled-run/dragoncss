@@ -84,9 +84,10 @@ public struct DragonInteractionFact {
   /// The eight border-radius components when a corner is rounded, else empty.
   public let radii: [RadiusLength]
   public let context: Bool
+  public let otherContext: String
   public let transform: [TransformOp]
   public let origin: TransformOrigin
-  public init(_ id: String, _ pointerEvents: String, _ inherited: Bool, _ activation: Bool, _ radii: [RadiusLength], _ context: Bool, _ transform: [TransformOp], _ origin: TransformOrigin) { self.id = id; self.pointerEvents = pointerEvents; self.inherited = inherited; self.activation = activation; self.radii = radii; self.context = context; self.transform = transform; self.origin = origin }
+  public init(_ id: String, _ pointerEvents: String, _ inherited: Bool, _ activation: Bool, _ radii: [RadiusLength], _ context: Bool, _ otherContext: String, _ transform: [TransformOp], _ origin: TransformOrigin) { self.id = id; self.pointerEvents = pointerEvents; self.inherited = inherited; self.activation = activation; self.radii = radii; self.context = context; self.otherContext = otherContext; self.transform = transform; self.origin = origin }
 }
 
 /// One app assignment's interaction level: the rt-interaction tables, the element address of each table index, each interaction
@@ -354,7 +355,7 @@ public final class DragonInteractionMachine {
     var entry = hitTables[key]
     if entry == nil {
       let map = JsStringMap<HitFact>()
-      for r in facts[f] { map.set(JsString(r.id), HitFact(JsString(r.pointerEvents), r.inherited, r.activation, JsArray(r.radii), r.context, JsArray(r.transform), r.origin)) }
+      for r in facts[f] { map.set(JsString(r.id), HitFact(JsString(r.pointerEvents), r.inherited, r.activation, JsArray(r.radii), r.context, JsString(r.otherContext), JsArray(r.transform), r.origin)) }
       let t = dragonInteractionCall("hit table") { try rtHit_hitTableOf(dragonWithSafeArea(variants[laidOut](scale), safeArea), measurer, map, HitTableFaults(false, false, false)) }
       let prepared = dragonInteractionCall("prepare hit") { try rtHit_prepareHit(t.nodes, HitFaults(false, false)) }
       entry = (prepared, t.ids.items.map { $0.description })
@@ -455,7 +456,7 @@ function kotlinSupportText(): string {
 import dev.dragon.layout.*
 
 /** One element's hit facts in one interaction state (rt-hit.ts HitFact). */
-class DragonInteractionFact(val id: String, val pointerEvents: String, val inherited: Boolean, val activation: Boolean, val radii: List<RadiusLength>, val context: Boolean, val transform: List<TransformOp>, val origin: TransformOrigin)
+class DragonInteractionFact(val id: String, val pointerEvents: String, val inherited: Boolean, val activation: Boolean, val radii: List<RadiusLength>, val context: Boolean, val otherContext: String, val transform: List<TransformOp>, val origin: TransformOrigin)
 
 /**
  * One app assignment's interaction level: the rt-interaction tables, the element address of each table index, each interaction
@@ -700,7 +701,7 @@ class DragonInteractionMachine(
     val key = laidOut.toString() + "|" + f
     val entry = hitTables.getOrPut(key) {
       val map = JsStringMap<HitFact>()
-      for (r in facts[f]) map.set(r.id, HitFact(r.pointerEvents, r.inherited, r.activation, JsArray(r.radii.toMutableList()), r.context, ArrayList(r.transform), r.origin))
+      for (r in facts[f]) map.set(r.id, HitFact(r.pointerEvents, r.inherited, r.activation, JsArray(r.radii.toMutableList()), r.context, r.otherContext, ArrayList(r.transform), r.origin))
       val t = rtHit_hitTableOf(dragonWithSafeArea(variants[laidOut](scale), safeArea), measurer, map, HitTableFaults(false, false, false))
       Pair(rtHit_prepareHit(t.nodes, HitFaults(false, false)), t.ids.toList())
     }
@@ -830,7 +831,7 @@ function factsLit(lang: Lang, facts: ReadonlyMap<string, HitFact>): string {
     if (f.pointerEvents !== 'auto' && f.pointerEvents !== 'none') throw new InteractionEmitError(`${id}: pointer-events ${JSON.stringify(f.pointerEvents)}`);
     const b = lang === 'swift' ? 'uikit' : 'android-views';
     const ops = f.transform.map((o) => opLit(b, o)).join(', ');
-    return `DragonInteractionFact(${q(id)}, ${q(f.pointerEvents)}, ${f.inherited}, ${f.activation}, ${list(lang, f.radii.map((l) => radiusLengthLit(lang, l)))}, ${f.context}, ${lang === 'swift' ? `[${ops}]` : `listOf(${ops})`}, ${originLit(b, f.origin)})`;
+    return `DragonInteractionFact(${q(id)}, ${q(f.pointerEvents)}, ${f.inherited}, ${f.activation}, ${list(lang, f.radii.map((l) => radiusLengthLit(lang, l)))}, ${f.context}, ${q(f.otherContext)}, ${lang === 'swift' ? `[${ops}]` : `listOf(${ops})`}, ${originLit(b, f.origin)})`;
   });
   return list(lang, rows);
 }
