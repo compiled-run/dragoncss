@@ -47,6 +47,7 @@ import { computeResize } from '../css/properties/resize.ts';
 import { computeFontStretch } from '../css/properties/font-stretch.ts';
 import { computeTouchAction } from '../css/properties/touch-action.ts';
 import { applyWebkitScrollbar, hasScrollbarRules } from './webkit-scrollbar.ts';
+import { collapseInlineContext, preserveBreaksContext } from './white-space.ts';
 
 export { SUPPORTED_TAGS } from './elements.ts';
 export { selectorMatches } from './match.ts';
@@ -119,51 +120,7 @@ export function collapseInlineRun(texts: readonly string[]): string[] {
   return texts.map((_, run) => out.filter((c) => c.run === run).map((c) => c.ch).join(''));
 }
 
-/**
- * collapseInlineRun over a whole inline formatting context that may hold line breaks (<br>, null in runs): a white space sequence
- * collapses across run and inline box boundaries, but not across a <br>. The spaces at the start of the context and after a <br>
- * begin a line, and the spaces at its end end one, so §4.1.2 removes them; a space before a <br> is kept, as Blink keeps it (it
- * hangs at the end of its line, INL-P f2-after-space). Without a <br> this is collapseInlineRun.
- */
-export function collapseInlineContext(runs: readonly (string | null)[]): (string | null)[] {
-  type C = { readonly ch: string; readonly run: number } | { readonly br: true };
-  const chars: C[] = [];
-  runs.forEach((t, run) => {
-    if (t === null) chars.push({ br: true });
-    else for (const ch of t) chars.push({ ch, run });
-  });
-  const out: { ch: string; run: number }[] = [];
-  let lineStart = true;
-  let k = 0;
-  while (k < chars.length) {
-    const c = chars[k] as C;
-    if ('br' in c) {
-      lineStart = true;
-      k++;
-      continue;
-    }
-    if (!WHITE_SPACE.test(c.ch)) {
-      out.push(c);
-      lineStart = false;
-      k++;
-      continue;
-    }
-    let e = k;
-    let segmentBreak = false;
-    while (e < chars.length) {
-      const x = chars[e] as C;
-      if ('br' in x || !WHITE_SPACE.test(x.ch)) break;
-      if (x.ch === '\n' || x.ch === '\r') segmentBreak = true;
-      e++;
-    }
-    const before = lineStart ? undefined : out[out.length - 1];
-    const after = chars[e];
-    const nextToZwsp = (before !== undefined && before.ch === ZWSP) || (after !== undefined && !('br' in after) && after.ch === ZWSP);
-    if (before !== undefined && after !== undefined && !(segmentBreak && nextToZwsp)) out.push({ ch: ' ', run: c.run });
-    k = e;
-  }
-  return runs.map((t, run) => (t === null ? null : out.filter((c) => c.run === run).map((c) => c.ch).join('')));
-}
+export { collapseInlineContext };
 
 /** The computed white-space-collapse keyword of an element's props. */
 function collapseModeOf(props: ReadonlyMap<Longhand, ResolvedValue>): string {
@@ -192,32 +149,8 @@ export function phaseOne(text: string, mode: string, faults: CompilerFaults): st
 export function phaseOneContext(runs: readonly (string | null)[], modes: readonly string[], faults: CompilerFaults): (string | null)[] {
   const together = runs.every((t, i) => t !== null && modes[i] === 'preserve-breaks');
   // preserve and break-spaces keep their text as authored.
-  if (!together) return runs.map((t, i) => (t === null || modes[i] !== 'preserve-breaks' ? t : (phaseOneContext([t], ['preserve-breaks'], faults)[0] as string)));
-  type C = { ch: string; run: number };
-  const chars: C[] = [];
-  runs.forEach((t, run) => {
-    for (const ch of t as string) chars.push({ ch, run });
-  });
-  const out: C[] = [];
-  let k = 0;
-  while (k < chars.length) {
-    const c = chars[k] as C;
-    if (c.ch !== ' ' && c.ch !== '\t') {
-      out.push(c);
-      k++;
-      continue;
-    }
-    let e = k;
-    while (e < chars.length && ((chars[e] as C).ch === ' ' || (chars[e] as C).ch === '\t')) e++;
-    const before = out[out.length - 1];
-    const after = chars[e];
-    const atStart = before === undefined || before.ch === '\n';
-    const atNewline = after !== undefined && after.ch === '\n';
-    // Planted fault preLineKeepsSpaceBeforeNewline: the space before a preserved U+000A stays.
-    if (!atStart && after !== undefined && (!atNewline || faults.preLineKeepsSpaceBeforeNewline)) out.push({ ch: ' ', run: c.run });
-    k = e;
-  }
-  return runs.map((_, run) => out.filter((c) => c.run === run).map((c) => c.ch).join(''));
+  if (!together) return runs.map((t, i) => (t === null || modes[i] !== 'preserve-breaks' ? t : (preserveBreaksContext([t], faults.preLineKeepsSpaceBeforeNewline)[0] as string)));
+  return preserveBreaksContext(runs as readonly string[], faults.preLineKeepsSpaceBeforeNewline);
 }
 
 /**
