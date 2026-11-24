@@ -113,11 +113,11 @@ export function iosSystemFonts(dpr: number): SystemFonts {
       const d = ct.describe(face, 17);
       const units = (px: number): number => (px * d.unitsPerEm) / d.size;
       const v = vertical(id, d.size);
-      return { unitsPerEm: d.unitsPerEm, ascent: units(v.ascent), descent: units(v.descent), lineGap: units(v.leading), advances: [], xHeight: units(d.xTop), capHeight: units(d.capHeight), zeroAdvance: units(d.zeroAdvance), ellipsisAdvance: d.ellipsisAdvance < 0 ? -1 : units(d.ellipsisAdvance) };
+      return { unitsPerEm: d.unitsPerEm, ascent: units(v.ascent), descent: units(v.descent), lineGap: units(v.leading), advances: [], xHeight: units(d.xTop), capHeight: units(d.capHeight), zeroAdvance: units(d.zeroAdvance), ellipsisAdvance: d.ellipsisAdvance < 0 ? -1 : units(d.ellipsisAdvance), xAdvance: d.xAdvance < 0 ? -1 : units(d.xAdvance) };
     },
     lengths(id, sizePx) {
       const d = ct.describe(entryOf(id).face, sizePx / dpr);
-      return { xHeight: d.xTop * dpr, capHeight: d.capHeight * dpr, zeroWidth: d.zeroAdvance * dpr };
+      return { xHeight: d.xTop * dpr, capHeight: d.capHeight * dpr, zeroWidth: d.zeroAdvance * dpr, xWidth: d.xAdvance * dpr };
     },
     // Safari draws an author font with Core Text too, so the iOS target measures it as it measures a system face.
     authorFace(id, bytes) {
@@ -204,7 +204,7 @@ export function androidSystemFonts(files: AndroidSystemFiles = new AndroidSystem
       if (zero === 0 || extents === undefined) refuse(`${id}: ${d.file} maps no glyph to x or 0`);
       return {
         unitsPerEm: upem, ascent: hhea.getInt16(4), descent: -hhea.getInt16(6), lineGap: hhea.getInt16(8), advances: [],
-        xHeight: (extents as number[])[1] as number / 65536, capHeight: os2.getInt16(88), zeroAdvance: hb.glyphUnits(font, zero), ellipsisAdvance: ellipsis === 0 ? -1 : hb.glyphUnits(font, ellipsis),
+        xHeight: (extents as number[])[1] as number / 65536, capHeight: os2.getInt16(88), zeroAdvance: hb.glyphUnits(font, zero), ellipsisAdvance: ellipsis === 0 ? -1 : hb.glyphUnits(font, ellipsis), xAdvance: hb.glyphUnits(font, x),
       };
     },
     metrics: () => null,
@@ -212,7 +212,7 @@ export function androidSystemFonts(files: AndroidSystemFiles = new AndroidSystem
     lengths(id, sizePx) {
       const data = this.fontData(id);
       const k = sizePx / data.unitsPerEm;
-      return { xHeight: data.xHeight * k, capHeight: data.capHeight * k, zeroWidth: data.zeroAdvance * k };
+      return { xHeight: data.xHeight * k, capHeight: data.capHeight * k, zeroWidth: data.zeroAdvance * k, xWidth: data.xAdvance * k };
     },
     shaper: {
       shape(face, size, text, start, end, script, rtl, language, fs) {

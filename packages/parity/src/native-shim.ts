@@ -142,7 +142,7 @@ export function shimFaces(): readonly ShimFace[] {
 function faceDataRow(id: string): readonly number[] {
   const d = fontDataOf(id);
   if (d.advances.length !== 0) throw new Error(`the host's FontData of ${id} carries ${d.advances.length} advances; a shaped face carries none`);
-  return [d.unitsPerEm, d.ascent, d.descent, d.lineGap, d.xHeight, d.capHeight, d.zeroAdvance, d.ellipsisAdvance];
+  return [d.unitsPerEm, d.ascent, d.descent, d.lineGap, d.xHeight, d.capHeight, d.zeroAdvance, d.ellipsisAdvance, d.xAdvance];
 }
 
 const swiftString = (s: string): string => `"${[...s].map((ch) => { const cp = ch.codePointAt(0) as number; return cp >= 0x20 && cp < 0x7f && ch !== '"' && ch !== '\\' ? ch : `\\u{${cp.toString(16)}}`; }).join('')}"`;
@@ -221,7 +221,7 @@ func dragonCheckFaces() {
   if bridge.faces.keys.sorted() != want.sorted() { fatalError("dragon faces: the bridge holds \(bridge.faces.keys.sorted()), the build bundles \(want.sorted())") }
   for f in dragonShimFaceData {
     guard let d = bridge.faceData(f.id) else { fatalError("dragon faces: the bridge has no FontData for \(f.id)") }
-    let got = [d.unitsPerEm, d.ascent, d.descent, d.lineGap, d.xHeight, d.capHeight, d.zeroAdvance, d.ellipsisAdvance]
+    let got = [d.unitsPerEm, d.ascent, d.descent, d.lineGap, d.xHeight, d.capHeight, d.zeroAdvance, d.ellipsisAdvance, d.xAdvance]
     if got != f.data || !d.advances.items.isEmpty { fatalError("dragon faces: \(f.id) reads \(got) with \(d.advances.items.count) advances on the device, \(f.data) with none on the host") }
   }
 }
@@ -312,7 +312,7 @@ fun dragonCheckFaces(ctx: Context) {
   check(bridge.faces.keys.sorted() == want) { "dragon faces: the bridge holds " + bridge.faces.keys.sorted() + ", the build bundles " + want }
   for (f in DRAGON_SHIM_FACE_DATA) {
     val d = bridge.faceData(f.id) ?: throw IllegalStateException("dragon faces: the bridge has no FontData for " + f.id)
-    val got = doubleArrayOf(d.unitsPerEm, d.ascent, d.descent, d.lineGap, d.xHeight, d.capHeight, d.zeroAdvance, d.ellipsisAdvance)
+    val got = doubleArrayOf(d.unitsPerEm, d.ascent, d.descent, d.lineGap, d.xHeight, d.capHeight, d.zeroAdvance, d.ellipsisAdvance, d.xAdvance)
     check(got.contentEquals(f.data) && d.advances.isEmpty()) { "dragon faces: " + f.id + " reads " + got.toList() + " with " + d.advances.size + " advances on the device, " + f.data.toList() + " with none on the host" }
   }
 }

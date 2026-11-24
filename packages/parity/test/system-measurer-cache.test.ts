@@ -21,7 +21,7 @@ function countingFonts(): { readonly fonts: SystemFonts; readonly asked: string[
     fontData: () => AHEM_FONT_DATA,
     lengths(id, sizePx): FontLengths {
       asked.push(`lengths ${id} ${sizePx}`);
-      return { xHeight: sizePx / 2 + id.length, capHeight: sizePx * 0.7, zeroWidth: sizePx * 0.6 };
+      return { xHeight: sizePx / 2 + id.length, capHeight: sizePx * 0.7, zeroWidth: sizePx * 0.6, xWidth: sizePx * 0.55 };
     },
     metrics(id, sizePx, dpr): FontMetrics | null {
       asked.push(`metrics ${id} ${sizePx}`);

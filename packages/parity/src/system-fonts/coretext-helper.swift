@@ -101,6 +101,7 @@ func describe(_ spec: [String: Any], _ size: Double) throws -> [String: Any] {
 		"xTop": Double(rect.maxY),
 		"zeroAdvance": zero == 0 ? -1 : advance(f, zero),
 		"ellipsisAdvance": ellipsis == 0 ? -1 : advance(f, ellipsis),
+		"xAdvance": x == 0 ? -1 : advance(f, x),
 		"hhea": hhea.map { ["ascender": i16($0, 4), "descender": i16($0, 6), "lineGap": i16($0, 8)] } ?? NSNull(),
 		"os2": os2.map { ["sCapHeight": $0.count >= 90 ? i16($0, 88) : 0, "sxHeight": $0.count >= 88 ? i16($0, 86) : 0] } ?? NSNull(),
 	]

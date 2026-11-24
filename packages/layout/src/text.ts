@@ -12,7 +12,7 @@ import {
 export type FontMetrics = { readonly ascent: LU; readonly descent: LU; readonly lineGap: LU; readonly normalGapAbove: LU };
 
 /** The float font metrics ex, cap and ch read (css-values-4 §6.1.1), in px at a font instance size. */
-export type FontLengths = { readonly xHeight: number; readonly capHeight: number; readonly zeroWidth: number };
+export type FontLengths = { readonly xHeight: number; readonly capHeight: number; readonly zeroWidth: number; readonly xWidth: number };
 
 /** The advance of one run of text on one line. */
 export type TextMeasure = { readonly width: LU };
@@ -27,7 +27,7 @@ export interface TextMeasurer {
    * (ShapeResult::CachedWidth: the difference of the item's cached character positions).
    */
   measureRange(text: string, start: number, end: number, font: TextFont): MeasureResult;
-  /** The float x-height, cap height and advance of 0 of the font instance (fontMetricLengths). */
+  /** The float x-height, cap height and advances of 0 and x of the font instance (fontMetricLengths). */
   lengths(font: TextFont): FontLengths;
   /** The text shaped as one text item with HarfBuzz (shaping.ts), which real-font line breaking reads; the Ahem font data has none. */
   shaped(text: string, font: TextFont): ShapedItem;
@@ -59,6 +59,8 @@ export type FontData = {
   readonly zeroAdvance: number;
   /** The hmtx advance of the glyph cmap maps U+2026 to, or -1 when the font maps none (the ellipsis text-overflow draws). */
   readonly ellipsisAdvance: number;
+  /** The hmtx advance of the glyph cmap maps x to, or -1 when the font maps none. */
+  readonly xAdvance: number;
 };
 
 /** The Dragon covered-glyph predicate: the index of a code point in coveredCodePoints(), or -1 when Dragon does not cover it. */
@@ -82,19 +84,20 @@ export function coveredCodePoints(): number[] {
 /** The WPT Ahem v1.50 font data: every covered glyph advances 1em and U+200B advances 0 (css-fonts-4 §5). */
 export function ahemFontData(): FontData {
   const advances = coveredCodePoints().map((cp) => (cp === ZWSP ? 0 : AHEM_UNITS_PER_EM));
-  return { unitsPerEm: AHEM_UNITS_PER_EM, ascent: AHEM_ASCENT, descent: AHEM_DESCENT, lineGap: 0, advances, xHeight: AHEM_X_HEIGHT, capHeight: AHEM_CAP_HEIGHT, zeroAdvance: AHEM_UNITS_PER_EM, ellipsisAdvance: AHEM_UNITS_PER_EM };
+  return { unitsPerEm: AHEM_UNITS_PER_EM, ascent: AHEM_ASCENT, descent: AHEM_DESCENT, lineGap: 0, advances, xHeight: AHEM_X_HEIGHT, capHeight: AHEM_CAP_HEIGHT, zeroAdvance: AHEM_UNITS_PER_EM, ellipsisAdvance: AHEM_UNITS_PER_EM, xAdvance: AHEM_UNITS_PER_EM };
 }
 
 /**
  * The float metrics of a font instance, as Chrome 145 on macOS reads them (probed at 411 sizes, notes/T026-v2a-value-model.md):
  * the x-height from glyph x's bounds, size * float(units / unitsPerEm) (SimpleFontData::PlatformInit); the cap height as Skia's
- * fCapHeight, float(size * units / unitsPerEm); the advance of 0 as the glyph advance, float(size * units / unitsPerEm) (SkFont::getWidth).
+ * fCapHeight, float(size * units / unitsPerEm); the advances of 0 and x as the glyph advance, float(size * units / unitsPerEm) (SkFont::getWidth).
  */
 export function fontMetricLengths(data: FontData, instanceSizePx: number): FontLengths {
   return {
     xHeight: glyphBoundsMetricPx(instanceSizePx, data.unitsPerEm, data.xHeight),
     capHeight: fontMetricPx(instanceSizePx, data.unitsPerEm, data.capHeight),
     zeroWidth: fontMetricPx(instanceSizePx, data.unitsPerEm, data.zeroAdvance),
+    xWidth: fontMetricPx(instanceSizePx, data.unitsPerEm, data.xAdvance),
   };
 }
 

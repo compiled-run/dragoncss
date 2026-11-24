@@ -102,7 +102,7 @@ describe('the generated shim sources', () => {
       const rows = [...file.text.matchAll(re)].map((m) => [m[1], (m[2] as string).split(',').map((x) => Number(x.trim()))]);
       expect(rows).toEqual(real.map((f) => {
         const d = fontDataOf(f.id);
-        return [f.id, [d.unitsPerEm, d.ascent, d.descent, d.lineGap, d.xHeight, d.capHeight, d.zeroAdvance, d.ellipsisAdvance]];
+        return [f.id, [d.unitsPerEm, d.ascent, d.descent, d.lineGap, d.xHeight, d.capHeight, d.zeroAdvance, d.ellipsisAdvance, d.xAdvance]];
       }));
     });
   }

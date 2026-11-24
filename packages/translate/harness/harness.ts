@@ -1435,11 +1435,11 @@ function numbers(v: JsonValue, path: string): number[] {
 }
 
 function fontData(v: JsonValue, path: string): FontData {
-  const o = obj(v, ['unitsPerEm', 'ascent', 'descent', 'lineGap', 'advances', 'xHeight', 'capHeight', 'zeroAdvance', 'ellipsisAdvance'], path);
+  const o = obj(v, ['unitsPerEm', 'ascent', 'descent', 'lineGap', 'advances', 'xHeight', 'capHeight', 'zeroAdvance', 'ellipsisAdvance', 'xAdvance'], path);
   return {
     unitsPerEm: numField(o, 'unitsPerEm', path), ascent: numField(o, 'ascent', path), descent: numField(o, 'descent', path), lineGap: numField(o, 'lineGap', path),
     advances: numbers(field(o, 'advances', path), `${path}.advances`), xHeight: numField(o, 'xHeight', path), capHeight: numField(o, 'capHeight', path), zeroAdvance: numField(o, 'zeroAdvance', path),
-    ellipsisAdvance: numField(o, 'ellipsisAdvance', path),
+    ellipsisAdvance: numField(o, 'ellipsisAdvance', path), xAdvance: numField(o, 'xAdvance', path),
   };
 }
 
@@ -3343,8 +3343,8 @@ function planDensity(v: JsonValue, path: string): PlanDensity {
   arr(field(o, 'lengths', path), `${path}.lengths`).forEach((m, i) => {
     const at = `${path}.lengths[${i}]`;
     const a = arr(m, at);
-    if (a.length !== 5) fail(`${at}: expected 5 fields, got ${a.length}`);
-    lengths.set(planFontKey(str(a[0] as JsonValue, `${at}[0]`), num(a[1] as JsonValue, `${at}[1]`)), { xHeight: num(a[2] as JsonValue, `${at}[2]`), capHeight: num(a[3] as JsonValue, `${at}[3]`), zeroWidth: num(a[4] as JsonValue, `${at}[4]`) });
+    if (a.length !== 6) fail(`${at}: expected 6 fields, got ${a.length}`);
+    lengths.set(planFontKey(str(a[0] as JsonValue, `${at}[0]`), num(a[1] as JsonValue, `${at}[1]`)), { xHeight: num(a[2] as JsonValue, `${at}[2]`), capHeight: num(a[3] as JsonValue, `${at}[3]`), zeroWidth: num(a[4] as JsonValue, `${at}[4]`), xWidth: num(a[5] as JsonValue, `${at}[5]`) });
   });
   return { dpr: num(field(o, 'dpr', path), `${path}.dpr`), calls, metrics, ownMetrics, lengths };
 }
