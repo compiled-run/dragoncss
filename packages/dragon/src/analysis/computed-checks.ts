@@ -906,7 +906,7 @@ function checkPreservedText(el: ResolvedElement, t: ResolvedText, refuse: (at: R
   const breakWord = mode === 'preserve' && keywordOf(t.props.get('overflow-wrap') as ResolvedValue) === 'break-word' && keywordOf(t.props.get('word-break') as ResolvedValue) === 'normal';
   const breaks = breakWord ? [] : (['overflow-wrap', 'word-break'] as const).filter((p) => keywordOf(t.props.get(p) as ResolvedValue) !== 'normal');
   if (breaks.length > 0) refuse(el, 'preserved-break', `${breaks.map((p) => `${p}: ${keywordOf(t.props.get(p) as ResolvedValue)}`).join(' and ')} on ${t.node.address}, whose white-space-collapse is ${mode}: breaking preserved white space inside words is not laid out yet`, `Remove the ${breaks.join(' and ')} or the white-space declaration that reaches ${t.node.address}.`);
-  if (/^[ \t\n]*$/.test(t.text)) refuse(el, 'preserved-blank', `${t.node.address} is only white space kept by white-space-collapse: ${mode} (css-text-4 §4.1.1), which Dragon does not lay out yet`, `Remove the white space of ${t.node.address}, or the white-space declaration that reaches it.`);
+  if (t.text !== '' && /^[ \t\n]*$/.test(t.text)) refuse(el, 'preserved-blank', `${t.node.address} is only white space kept by white-space-collapse: ${mode} (css-text-4 §4.1.1), which Dragon does not lay out yet`, `Remove the white space of ${t.node.address}, or the white-space declaration that reaches it.`);
 }
 
 // CSS2 §9.2.1.1 and §10.3.7: an absolutely positioned box beside text in a block container would take its static position inside
@@ -1859,10 +1859,74 @@ function checkTextField(el: ResolvedElement, layoutParent: ResolvedElement | nul
     refuse(direction, 'search-rtl', `direction: rtl on <input type=search> ${address} is not supported: Chrome puts its cancel button at the inline end, which the engine lays out only for ltr`, `Set direction: ltr on <input> ${address}, or use type="text".`, 'DRAGON_UNSUPPORTED_VALUE', targets.filter((t) => t === 'ios' || t === 'android'));
   }
   if (state === 'search') checkSearchField(el, (v, what, message, manual) => refuse(v, what, message, manual, 'DRAGON_UNSUPPORTED_VALUE', targets.filter((t) => t === 'ios' || t === 'android')));
-  if (!(hostEdits && tag === 'input') && !el.element.attributes.has('readonly')) {
+  if (hostEdits && !el.element.attributes.has('readonly')) checkHostEditedText(el, (v, what, message, manual) => refuse(v, what, message, manual, 'DRAGON_UNSUPPORTED_VALUE', targets.filter((t) => t === 'ios' || t === 'android')));
+  if (!hostEdits && !el.element.attributes.has('readonly')) {
     refuse(null, 'editing', `<${tag}> ${address} is an editable text control: Dragon draws its value but has no caret, selection or keyboard input on iOS and Android yet (the FORM-b editing slice)`, `Add readonly to <${tag}> ${address}, or target web only, until native text editing lands.`, 'DRAGON_UNSUPPORTED_VALUE', targets.filter((t) => t === 'ios' || t === 'android'));
   }
   if (tag === 'textarea') checkTextAreaChrome(el, targets, refuse);
+}
+
+/** The text longhands Chrome's UA form-control rule resets on a textarea, which Dragon's UA dataset does not capture yet. */
+const FORM_CONTROL_RESETS: ReadonlySet<string> = new Set(['letter-spacing', 'word-spacing', 'text-indent', 'text-align', 'text-transform']);
+
+/** The wrapping longhands that do nothing to a single-line field's editor. */
+const SINGLE_LINE_IGNORES: ReadonlySet<string> = new Set(['white-space-collapse', 'text-wrap-mode', 'overflow-wrap', 'word-break']);
+
+/** The text longhands a host-edited text control must leave at the textarea's defaults: the host's own text view lays its text out from the exported font, colour, pitch and baseline only. */
+const HOST_EDITED_TEXT: readonly (readonly [Longhand, (v: CssValue) => boolean])[] = [
+  ['letter-spacing', (v) => (v.kind === 'keyword' && v.value === 'normal') || (v.kind === 'length' && v.value === 0)],
+  ['word-spacing', (v) => (v.kind === 'keyword' && v.value === 'normal') || (v.kind === 'length' && v.value === 0)],
+  ['text-indent', (v) => (v.kind === 'length' || v.kind === 'percentage') && v.value === 0],
+  ['text-align', (v) => v.kind === 'keyword' && (v.value === 'start' || v.value === 'left')],
+  ['text-transform', (v) => v.kind === 'keyword' && v.value === 'none'],
+  ['text-decoration-line', (v) => v.kind === 'keyword' && v.value === 'none'],
+  ['white-space-collapse', (v) => v.kind === 'keyword' && v.value === 'preserve'],
+  ['text-wrap-mode', (v) => v.kind === 'keyword' && v.value === 'wrap'],
+  ['overflow-wrap', (v) => v.kind === 'keyword' && v.value === 'break-word'],
+  ['word-break', (v) => v.kind === 'keyword' && v.value === 'normal'],
+  ['unicode-bidi', (v) => v.kind === 'keyword' && (v.value === 'normal' || v.value === 'isolate' || v.value === 'embed')],
+  ['direction', (v) => v.kind === 'keyword' && v.value === 'ltr'],
+  ['font-kerning', (v) => v.kind === 'keyword' && (v.value === 'auto' || v.value === 'normal')],
+  ['font-variation-settings', (v) => v.kind === 'keyword' && v.value === 'normal'],
+  ['font-optical-sizing', (v) => v.kind === 'keyword' && v.value === 'auto'],
+  ['font-synthesis-weight', (v) => v.kind === 'keyword' && v.value === 'auto'],
+  ['font-synthesis-style', (v) => v.kind === 'keyword' && v.value === 'auto'],
+  ['-webkit-text-stroke-width', (v) => v.kind === 'length' && v.value === 0],
+  ['tab-size', (v) => v.kind === 'number' && v.value === 8],
+  ['font-feature-settings', (v) => v.kind === 'keyword' && v.value === 'normal'],
+  ...(['font-variant-caps', 'font-variant-ligatures', 'font-variant-numeric', 'font-variant-east-asian', 'font-variant-alternates', 'font-variant-position'] as const).map((p): readonly [Longhand, (v: CssValue) => boolean] => [p, (v) => v.kind === 'keyword' && v.value === 'normal']),
+];
+
+/**
+ * A textarea the host edits: every text longhand HOST_EDITED_TEXT names at its default, and padding as lengths, the text insets
+ * the host view takes; otherwise the host's lines would differ from Chrome's, and move when editing starts.
+ */
+function checkHostEditedText(el: ResolvedElement, refuse: (v: ResolvedValue | null, what: string, message: string, manual: string) => void): void {
+  const address = el.element.address;
+  const tag = el.element.tag;
+  for (const [p, isDefault] of HOST_EDITED_TEXT) {
+    // A single-line field's editor lays its value out on one line whatever these say (html.css: white-space: pre on the editor).
+    if (tag === 'input' && SINGLE_LINE_IGNORES.has(p)) continue;
+    const v = el.props.get(p);
+    if (v === undefined || isDefault(v.value)) continue;
+    if (v.origin === 'inherited' && FORM_CONTROL_RESETS.has(p)) refuse(v, `edit-${p}`, `<${tag}> ${address} inherits ${p}: ${valueToString(v.value)}, which Chrome resets on a form control and Dragon does not model; the host edits it in its own text view`, `Set ${p} back to its initial value on <${tag}> ${address}, or move it off the ancestor.`);
+    else refuse(v, `edit-${p}`, `${p}: ${valueToString(v.value)} on <${tag}> ${address}, which the host edits in its own text view, laid out from the exported font, pitch and baseline only`, `Remove ${p} from <${tag}> ${address}.`);
+  }
+  // The host draws the placeholder too, in its box's font and colour only, so a rule on ::placeholder itself is held to the same list.
+  for (const c of el.children) {
+    if (c.kind !== 'element' || textFieldPartOf(c as ResolvedElement)?.part !== 'placeholder') continue;
+    for (const [p, isDefault] of HOST_EDITED_TEXT) {
+      if (tag === 'input' && SINGLE_LINE_IGNORES.has(p)) continue;
+      const v = (c as ResolvedElement).props.get(p);
+      if (v === undefined || v.origin === 'inherited' || isDefault(v.value)) continue;
+      refuse(v, `edit-placeholder-${p}`, `${p}: ${valueToString(v.value)} on the ::placeholder of <${tag}> ${address}, which the host draws in its own text view from the exported font and colour only`, `Remove ${p} from the ::placeholder rule of <${tag}> ${address}.`);
+    }
+  }
+  // A textarea's padding is the host view's text insets; a field's host view sits on the editor box Dragon lays out.
+  if (tag === 'textarea') for (const side of ['padding-top', 'padding-right', 'padding-bottom', 'padding-left'] as const) {
+    const pad = el.props.get(side) as ResolvedValue;
+    if (pad.value.kind !== 'length') refuse(pad, `edit-${side}`, `${side}: ${valueToString(pad.value)} on <${tag}> ${address}, which the host edits with its padding as text insets in px`, `Give <${tag}> ${address} a ${side} in px.`);
+  }
 }
 
 /**

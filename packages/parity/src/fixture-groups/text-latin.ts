@@ -41,7 +41,7 @@ export const TEXT_LATIN_FACES: ReadonlyMap<string, { readonly [id: string]: stri
   ['text-latin-words', { a: LATO, b: LATO, c: INTER, d: LATO, e: LATO }],
   ['text-latin-metrics', { r1: LATO, r2: LATO, r3: INTER, r4: INTER }],
   ['text-latin-declared', { regular: 'Roboto-Regular', wide: 'Roboto-Regular', bold: 'Inter-Bold' }],
-  ['controls-text-font', { c1: 'Roboto-Regular', c2: 'Roboto-Regular', c3: 'Roboto-Regular', 's1::placeholder': 'Roboto-Regular', 't1::editor': 'Roboto-Regular', 'b1::editor': 'Roboto-Regular', 't2::placeholder': 'Roboto-Regular', c4: 'Inter-Regular', c5: 'Inter-Regular', 's2::placeholder': 'Inter-Regular', 't3::editor': 'Inter-Regular', 'b2::editor': 'Inter-Regular' }],
+  ['controls-text-font', { c1: 'Roboto-Regular', c2: 'Roboto-Regular', c3: 'Roboto-Regular', 't1::editor': 'Roboto-Regular', 'b1::editor': 'Roboto-Regular', 't2::placeholder': 'Roboto-Regular', c4: 'Inter-Regular', c5: 'Inter-Regular', 't3::editor': 'Inter-Regular', 'b2::editor': 'Inter-Regular' }],
   ['controls-text-font-column-flex', { c1: 'Roboto-Regular', c2: 'Roboto-Regular', 's1::placeholder': 'Roboto-Regular', 't1::editor': 'Roboto-Regular', 'b1::editor': 'Roboto-Regular', c3: 'Inter-Regular', 's2::placeholder': 'Inter-Regular', 't2::editor': 'Inter-Regular', 't3::placeholder': 'Inter-Regular' }],
   ['controls-text-font-grid', { c1: 'Ahem', c2: 'Ahem', c3: 'Ahem', c4: 'Ahem', 't1::editor': 'Roboto-Regular', 'b1::editor': 'Roboto-Regular', 't2::editor': 'Inter-Regular', 'b2::editor': 'Inter-Regular', 't3::placeholder': 'Inter-Regular' }],
 ]);

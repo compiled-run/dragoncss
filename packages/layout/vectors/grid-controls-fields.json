@@ -2959,7 +2959,8 @@
           },
           "lineHeight": {
            "kind": "normal"
-          }
+          },
+          "avgChar": "ahem"
          },
          "strut": null,
          "children": [
@@ -5279,7 +5280,8 @@
           },
           "lineHeight": {
            "kind": "normal"
-          }
+          },
+          "avgChar": "ahem"
          },
          "strut": null,
          "children": [
