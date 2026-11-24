@@ -2,6 +2,8 @@
 // Dragon lays the page out under ids of its own (an input id that is not a Dragon id, such as a component edge's).
 import { describe, expect, it } from 'vitest';
 import type { ExportAssignment } from '../src/native-style-export.ts';
+import type { WriteKind } from 'dragon';
+import { renameWriteNodes } from 'dragon';
 import { marklessStyleExport } from '../src/markless-style-input.ts';
 
 const SHELL = JSON.stringify({
@@ -43,5 +45,14 @@ describe('node ids in the writes of the Markless style export', () => {
       }
       expect(pressed, t).toBeGreaterThan(0);
     }
+  });
+
+  // A Markless page cannot draw these in a real face yet, so their id fields are pinned on the writes themselves.
+  it('renames the text leaves a text-shadow or text-decoration entry names', () => {
+    const up = (id: string): string => `page/${id}`;
+    const shadow = { kind: 'text-shadow', entries: [{ text: 'm2:text0', shadows: [], under: [{ text: 'm3:text0', color: { r: 0, g: 0, b: 0, alpha: 255 }, shadows: [] }] }] } as const satisfies WriteKind;
+    expect(renameWriteNodes(shadow, up).entries.map((e) => [e.text, e.under.map((u) => u.text)])).toEqual([['page/m2:text0', ['page/m3:text0']]]);
+    const decoration = { kind: 'text-decoration', entries: [{ text: 'm2:text0', box: 'm4' }] } as unknown as WriteKind & { readonly kind: 'text-decoration' };
+    expect(renameWriteNodes(decoration, up).entries.map((e) => [e.text, e.box])).toEqual([['page/m2:text0', 'page/m4']]);
   });
 });
