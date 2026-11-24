@@ -21,7 +21,18 @@ const NONE: NoneValue = { kind: 'none' };
 // part (CSS2 §9.3.1). A range's is its default track length, whatever its children (length_utils.cc:1918-1928
 // CalculateMinMaxSizesIgnoringChildren). css-contain-2 §3.1: under size or inline-size containment it is contain-intrinsic-width, none
 // being 0.
+// Blink keeps a box's min and max-content sizes (LayoutBox::IntrinsicLogicalWidths) for the whole layout: nested intrinsic grids and flexes otherwise re-measure every descendant at every level.
+const intrinsicSizes = new WeakMap<Ctx, WeakMap<LayoutBox | ControlBox, { min?: LU; max?: LU }>>();
+
 export function intrinsicContentInlineSize(ctx: Ctx, node: LayoutBox | ControlBox, kind: IntrinsicKind): LU {
+  let byNode = intrinsicSizes.get(ctx);
+  if (byNode === undefined) intrinsicSizes.set(ctx, (byNode = new WeakMap()));
+  let sizes = byNode.get(node);
+  if (sizes === undefined) byNode.set(node, (sizes = {}));
+  return (sizes[kind] ??= measureIntrinsicContentInlineSize(ctx, node, kind));
+}
+
+function measureIntrinsicContentInlineSize(ctx: Ctx, node: LayoutBox | ControlBox, kind: IntrinsicKind): LU {
   if (node.kind === 'control' && node.control.kind === 'range') return fromCssPx(node.control.defaultInlineSize);
   // FORM-b: a text field's is size x its average character width, whatever its value (controls.ts textFieldInlineSize).
   if (node.kind === 'control' && node.control.kind === 'text-field') return textFieldInlineSize(ctx.measurer, node.control);

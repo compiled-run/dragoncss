@@ -405,7 +405,26 @@ function clampScrollBaseline(box: LayoutBox, baseline: LU | null, height: LU): L
 // CSS2 §10.6.3 and §10.7: lays out a box at a given border-box width and resolves its used height. A control box is laid out as
 // its plain box, and a block button then centres its contents (controls.ts). css-contain-2 §3.2: a box with layout containment has
 // no baseline for anything outside it to align to.
+// Blink reuses a formatting context root's layout result for the same constraint space (LayoutBox::CachedLayoutResult): sizing a
+// grid or flex container lays each item out more than once, so nested containers otherwise lay their contents out exponentially often.
+const rootLayouts = new WeakMap<Ctx, WeakMap<LayoutBox | ControlBox, Map<string, ContentsResult>>>();
+
+const basisKey = (b: HeightBasis): string => (b.kind === 'definite' ? `d${b.value}` : b.kind);
+
 export function layoutContents(ctx: Ctx, node: LayoutBox | ControlBox, a: ContentsArgs): ContentsResult {
+  if (!a.formattingContextRoot) return layoutContentsOnce(ctx, node, a);
+  let byNode = rootLayouts.get(ctx);
+  if (byNode === undefined) rootLayouts.set(ctx, (byNode = new WeakMap()));
+  let results = byNode.get(node);
+  if (results === undefined) byNode.set(node, (results = new Map()));
+  const stretch = a.blockStretch.kind === 'refused' ? 'r' : `a${basisKey(a.blockStretch.basis)}:${a.blockStretch.margins}`;
+  const key = `${a.cbInline} ${a.borderBoxWidth} ${a.forcedBorderBoxHeight} ${a.forcedHeightDefinite} ${basisKey(a.heightBasis)} ${a.bfcLineOffset} ${stretch}`;
+  let r = results.get(key);
+  if (r === undefined) results.set(key, (r = layoutContentsOnce(ctx, node, a)));
+  return r;
+}
+
+function layoutContentsOnce(ctx: Ctx, node: LayoutBox | ControlBox, a: ContentsArgs): ContentsResult {
   const r = layoutOwnContents(ctx, node, a);
   if (!node.style.containLayout) return r;
   return { ...r, frag: { ...r.frag, baseline: null }, lastBaseline: null, lastBaselineFlex: '', defaultLastBaseline: null, defaultLastBaselineFlex: '' };
