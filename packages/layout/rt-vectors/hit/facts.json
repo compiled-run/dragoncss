@@ -1329,6 +1329,7 @@
     "text-latin-declared": "shaped text (text-latin-run.ts isShapedInput): the hit lane runs the plain cases until TXT1a-2 proves real-face hit points",
     "text-latin-declared-rtl": "shaped text (text-latin-run.ts isShapedInput): the hit lane runs the plain cases until TXT1a-2 proves real-face hit points",
     "controls-text-font": "shaped text (text-latin-run.ts isShapedInput): the hit lane runs the plain cases until TXT1a-2 proves real-face hit points",
+    "controls-text-font-column-flex": "shaped text (text-latin-run.ts isShapedInput): the hit lane runs the plain cases until TXT1a-2 proves real-face hit points",
     "text-line-break-ahem": "e1 is an inline box, which the hit table does not model yet (INL1a; no Chrome hit capture)",
     "text-line-break-ahem-rtl": "e1 is an inline box, which the hit table does not model yet (INL1a; no Chrome hit capture)",
     "text-line-break-webkit-ahem": "e1 is an inline box, which the hit table does not model yet (INL1a; no Chrome hit capture)",
