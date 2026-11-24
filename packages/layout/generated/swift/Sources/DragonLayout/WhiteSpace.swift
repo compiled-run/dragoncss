@@ -10,7 +10,7 @@ public final class RunChar {
 }
 
 // ts: packages/layout/src/white-space.ts:3
-public let whiteSpace_ZWSP: JsString = S.s1258
+public let whiteSpace_ZWSP: JsString = S.s1259
 
 // ts: packages/layout/src/white-space.ts:9
 public func whiteSpace_isCollapsibleSpace(_ ch: JsString) throws -> Bool {
