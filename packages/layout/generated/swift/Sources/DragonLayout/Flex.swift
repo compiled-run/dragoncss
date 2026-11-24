@@ -165,14 +165,14 @@ public func flex_layoutFlexContainer(_ ctx: Ctx, _ box: LayoutBox, _ a: FlexArgs
   let absolute: JsArray<LayoutBox> = JsArray<LayoutBox>([])
   // ts: packages/layout/src/flex.ts:147
   do {
-    let _a36 = box.children
-    var _i36 = 0
-    while _i36 < _a36.items.count {
-      let k: any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a36.items[_i36]
-      _i36 += 1
+    let _a38 = box.children
+    var _i38 = 0
+    while _i38 < _a38.items.count {
+      let k: any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a38.items[_i38]
+      _i38 += 1
       // ts: packages/layout/src/flex.ts:149
       if (((k.kind != S.s_box) && ((k as! any U_ControlBox_InlineBox_LineBreak_ReplacedLeaf_TextLeaf).kind != S.s_control)) && ((k as! any U_InlineBox_LineBreak_ReplacedLeaf_TextLeaf).kind != S.s_replaced)) {
-        throw JsError(message: jsConcat((k as! any U_InlineBox_LineBreak_TextLeaf).id, S.s113, box.id, S.s309))
+        throw JsError(message: jsConcat((k as! any U_InlineBox_LineBreak_TextLeaf).id, S.s113, box.id, S.s312))
       }
       // ts: packages/layout/src/flex.ts:152
       if try (((k as! any U_ControlBox_LayoutBox_ReplacedLeaf).kind == S.s_box) && position_isOutOfFlow(ctx, (k as! LayoutBox))) {
@@ -198,7 +198,7 @@ public func flex_layoutFlexContainer(_ ctx: Ctx, _ box: LayoutBox, _ a: FlexArgs
   if (mainInner == nil) {
     // ts: packages/layout/src/flex.ts:169
     if (!singleLine) {
-      try unsupported_unsupported(S.s_flex_wrap_indefinite_main, box.id, S.s708, S.s942)
+      try unsupported_unsupported(S.s_flex_wrap_indefinite_main, box.id, S.s711, S.s946)
     }
     let hypo: Double = try units_add(units_sum(jsMap(items, { (i: Flex_Item) throws -> Double in
     return try flex_outerHypothetical(i)
@@ -208,11 +208,11 @@ public func flex_layoutFlexContainer(_ ctx: Ctx, _ box: LayoutBox, _ a: FlexArgs
   let lines: JsArray<Flex_Line> = try flex_collectLines(items, jsUnwrap(mainInner), mainGap, singleLine)
   // ts: packages/layout/src/flex.ts:176
   do {
-    let _a37 = lines
-    var _i37 = 0
-    while _i37 < _a37.items.count {
-      let line: Flex_Line = _a37.items[_i37]
-      _i37 += 1
+    let _a39 = lines
+    var _i39 = 0
+    while _i39 < _a39.items.count {
+      let line: Flex_Line = _a39.items[_i39]
+      _i39 += 1
       try flex_resolveFlexibleLengths(line.items, jsUnwrap(mainInner), mainGap)
     }
   }
@@ -220,11 +220,11 @@ public func flex_layoutFlexContainer(_ ctx: Ctx, _ box: LayoutBox, _ a: FlexArgs
   let hypoCross: JsObjectMap<Flex_Item, Double> = JsObjectMap<Flex_Item, Double>()
   // ts: packages/layout/src/flex.ts:181
   do {
-    let _a38 = items
-    var _i38 = 0
-    while _i38 < _a38.items.count {
-      let item: Flex_Item = _a38.items[_i38]
-      _i38 += 1
+    let _a40 = items
+    var _i40 = 0
+    while _i40 < _a40.items.count {
+      let item: Flex_Item = _a40.items[_i40]
+      _i40 += 1
       let leaf: any U_ControlBox_LayoutBox_ReplacedLeaf = item.box
       // ts: packages/layout/src/flex.ts:183
       if (leaf.kind == S.s_replaced) {
@@ -264,11 +264,11 @@ public func flex_layoutFlexContainer(_ ctx: Ctx, _ box: LayoutBox, _ a: FlexArgs
   }
   // ts: packages/layout/src/flex.ts:219
   do {
-    let _a39 = lines
-    var _i39 = 0
-    while _i39 < _a39.items.count {
-      let line: Flex_Line = _a39.items[_i39]
-      _i39 += 1
+    let _a41 = lines
+    var _i41 = 0
+    while _i41 < _a41.items.count {
+      let line: Flex_Line = _a41.items[_i41]
+      _i41 += 1
       // ts: packages/layout/src/flex.ts:220
       if (singleLine && (crossInner != nil)) {
         try line.cross = jsUnwrap(crossInner)
@@ -279,11 +279,11 @@ public func flex_layoutFlexContainer(_ ctx: Ctx, _ box: LayoutBox, _ a: FlexArgs
       var toEnd: Double = units_ZERO
       // ts: packages/layout/src/flex.ts:227
       do {
-        let _a40 = line.items
-        var _i40 = 0
-        while _i40 < _a40.items.count {
-          let i: Flex_Item = _a40.items[_i40]
-          _i40 += 1
+        let _a42 = line.items
+        var _i42 = 0
+        while _i42 < _a42.items.count {
+          let i: Flex_Item = _a42.items[_i42]
+          _i42 += 1
           // ts: packages/layout/src/flex.ts:228
           if try (isRow && participates(i)) {
             let b: ItemBaseline = try baselineOf(i)
@@ -326,11 +326,11 @@ public func flex_layoutFlexContainer(_ ctx: Ctx, _ box: LayoutBox, _ a: FlexArgs
     var autoCount: Double = 0.0
     // ts: packages/layout/src/flex.ts:263
     do {
-      let _a41 = flowItems
-      var _i41 = 0
-      while _i41 < _a41.items.count {
-        let i: Flex_Item = _a41.items[_i41]
-        _i41 += 1
+      let _a43 = flowItems
+      var _i43 = 0
+      while _i43 < _a43.items.count {
+        let i: Flex_Item = _a43.items[_i43]
+        _i43 += 1
         autoCount += ((i.autoMainStart ? 1.0 : 0.0) + (i.autoMainEnd ? 1.0 : 0.0))
       }
     }
@@ -351,11 +351,11 @@ public func flex_layoutFlexContainer(_ ctx: Ctx, _ box: LayoutBox, _ a: FlexArgs
     var groupCount: Double = 0.0
     // ts: packages/layout/src/flex.ts:276
     do {
-      let _a42 = flowItems
-      var _i42 = 0
-      while _i42 < _a42.items.count {
-        let i: Flex_Item = _a42.items[_i42]
-        _i42 += 1
+      let _a44 = flowItems
+      var _i44 = 0
+      while _i44 < _a44.items.count {
+        let i: Flex_Item = _a44.items[_i44]
+        _i44 += 1
         // ts: packages/layout/src/flex.ts:277
         if try (!participates(i)) {
           continue
@@ -473,7 +473,7 @@ public func flex_gapValue(_ box: LayoutBox, _ v: any U_LengthCalc_NormalValue_Pe
   }
   // ts: packages/layout/src/flex.ts:395
   if try box_hasPercent((v as! any U_LengthCalc_Percent_Px)) {
-    try unsupported_unsupported(S.s_percent_gap, box.id, S.s700, S.s1040)
+    try unsupported_unsupported(S.s_percent_gap, box.id, S.s703, S.s1044)
   }
   return try box_resolveLength((v as! any U_LengthCalc_Percent_Px), units_ZERO, faults)
 }
@@ -509,8 +509,8 @@ public func flex_effectiveAlign(_ ctx: Ctx, _ container: LayoutBox, _ item: any 
     return S.s_center
   case S.s_baseline:
     return S.s_baseline
-  case S.s894:
-    try unsupported_unsupported(S.s_flex_baseline, item.id, S.s702, S.s895)
+  case S.s898:
+    try unsupported_unsupported(S.s_flex_baseline, item.id, S.s705, S.s899)
   default:
     break
   }
@@ -603,12 +603,12 @@ public func flex_buildItem(_ ctx: Ctx, _ container: LayoutBox, _ box: any U_Cont
   let basis: any U_Auto_ContentValue_LengthCalc_Percent_Px = s.flexBasis
   // ts: packages/layout/src/flex.ts:548
   if (basis.kind == S.s_content) {
-    try unsupported_unsupported(S.s_flex_basis_content, box.id, S.s707, S.s793)
+    try unsupported_unsupported(S.s_flex_basis_content, box.id, S.s710, S.s797)
   } else if ((basis as! any U_Auto_LengthCalc_Percent_Px).kind != S.s_auto) {
     let resolved: Double? = try box_resolveLengthOrNull((basis as! any U_LengthCalc_Percent_Px), mainInner, ctx.faults)
     // ts: packages/layout/src/flex.ts:552
     if (resolved == nil) {
-      try unsupported_unsupported(S.s_flex_basis_content, box.id, S.s707, S.s1039)
+      try unsupported_unsupported(S.s_flex_basis_content, box.id, S.s710, S.s1043)
     }
     try base = box_contentBox(box_borderBoxFromSpecified(jsUnwrap(resolved), mainBp, s.boxSizing), mainBp)
   } else {
@@ -654,11 +654,11 @@ public func flex_columnIntrinsicBlockSize(_ ctx: Ctx, _ box: any U_ControlBox_La
   let columnFlex: Bool = ((box.style.display == S.s_flex) && ((box.style.flexDirection == S.s_column) || (box.style.flexDirection == S.s_column_reverse)))
   // ts: packages/layout/src/flex.ts:621
   do {
-    let _a43 = box.children
-    var _i43 = 0
-    while _i43 < _a43.items.count {
-      let k: any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a43.items[_i43]
-      _i43 += 1
+    let _a45 = box.children
+    var _i45 = 0
+    while _i45 < _a45.items.count {
+      let k: any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a45.items[_i45]
+      _i45 += 1
       // ts: packages/layout/src/flex.ts:622
       if try ((((k.kind == S.s_text) || ((k as! any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf).kind == S.s_inline)) || ((k as! any U_ControlBox_LayoutBox_LineBreak_ReplacedLeaf).kind == S.s_br)) || position_isOutOfFlow(ctx, (k as! any U_ControlBox_LayoutBox_ReplacedLeaf))) {
         continue
@@ -666,7 +666,7 @@ public func flex_columnIntrinsicBlockSize(_ ctx: Ctx, _ box: any U_ControlBox_La
       let ks: LayoutStyle = (k as! any U_ControlBox_LayoutBox_ReplacedLeaf).style
       // ts: packages/layout/src/flex.ts:624
       if try (((pct((ks.height as! any U_Auto_ContentValue_FitContent_LengthCalc_MaxContent_MinContent_NoneValue_Percent_Px_Stretch)) || pct((ks.minHeight as! any U_Auto_ContentValue_FitContent_LengthCalc_MaxContent_MinContent_NoneValue_Percent_Px_Stretch))) || pct((ks.maxHeight as! any U_Auto_ContentValue_FitContent_LengthCalc_MaxContent_MinContent_NoneValue_Percent_Px_Stretch))) || (columnFlex && pct((ks.flexBasis as! any U_Auto_ContentValue_FitContent_LengthCalc_MaxContent_MinContent_NoneValue_Percent_Px_Stretch)))) {
-        try unsupported_unsupported(S.s_percent_height_flex, (k as! any U_ControlBox_LayoutBox_ReplacedLeaf).id, S.s706, S.s1042)
+        try unsupported_unsupported(S.s_percent_height_flex, (k as! any U_ControlBox_LayoutBox_ReplacedLeaf).id, S.s709, S.s1046)
       }
     }
   }
@@ -697,7 +697,7 @@ public func flex_percentMainHeight(_ box: any U_ControlBox_LayoutBox_ReplacedLea
   if ((basis as! any U_HeightBasis_definite_HeightBasis_flexDependent).kind == S.s_definite) {
     return (basis as! HeightBasis_definite).value
   }
-  try unsupported_unsupported(S.s_percent_height_flex, box.id, S.s709, jsConcat(prop, S.s173))
+  try unsupported_unsupported(S.s_percent_height_flex, box.id, S.s712, jsConcat(prop, S.s174))
 }
 
 // ts: packages/layout/src/flex.ts:660
@@ -732,11 +732,11 @@ public func flex_collectLines(_ items: JsArray<Flex_Item>, _ mainInner: Double, 
   var used: Double = units_ZERO
   // ts: packages/layout/src/flex.ts:689
   do {
-    let _a44 = items
-    var _i44 = 0
-    while _i44 < _a44.items.count {
-      let item: Flex_Item = _a44.items[_i44]
-      _i44 += 1
+    let _a46 = items
+    var _i46 = 0
+    while _i46 < _a46.items.count {
+      let item: Flex_Item = _a46.items[_i46]
+      _i46 += 1
       let outer: Double = try flex_outerHypothetical(item)
       // ts: packages/layout/src/flex.ts:691
       if try ((jsLength(current) > 0.0) && (units_add(used, outer) > mainInner)) {
@@ -766,11 +766,11 @@ public func flex_resolveFlexibleLengths(_ items: JsArray<Flex_Item>, _ mainInner
   var totalWeighted: Double = units_FACTOR_ZERO
   // ts: packages/layout/src/flex.ts:712
   do {
-    let _a45 = items
-    var _i45 = 0
-    while _i45 < _a45.items.count {
-      let i: Flex_Item = _a45.items[_i45]
-      _i45 += 1
+    let _a47 = items
+    var _i47 = 0
+    while _i47 < _a47.items.count {
+      let i: Flex_Item = _a47.items[_i47]
+      _i47 += 1
       i.frozen = false
       try totalGrow = units_factorAdd(totalGrow, i.grow)
       try totalShrink = units_factorAdd(totalShrink, i.shrink)
@@ -782,11 +782,11 @@ public func flex_resolveFlexibleLengths(_ items: JsArray<Flex_Item>, _ mainInner
   func freeze(_ list: JsArray<Flex_Item>) throws -> Void {
     // ts: packages/layout/src/flex.ts:720
     do {
-      let _a46 = list
-      var _i46 = 0
-      while _i46 < _a46.items.count {
-        let i: Flex_Item = _a46.items[_i46]
-        _i46 += 1
+      let _a48 = list
+      var _i48 = 0
+      while _i48 < _a48.items.count {
+        let i: Flex_Item = _a48.items[_i48]
+        _i48 += 1
         try remaining = units_sub(remaining, units_sub(i.target, i.base))
         try totalGrow = units_factorSubClampZero(totalGrow, i.grow)
         try totalShrink = units_factorSubClampZero(totalShrink, i.shrink)
@@ -798,11 +798,11 @@ public func flex_resolveFlexibleLengths(_ items: JsArray<Flex_Item>, _ mainInner
   let inflexible: JsArray<Flex_Item> = JsArray<Flex_Item>([])
   // ts: packages/layout/src/flex.ts:730
   do {
-    let _a47 = items
-    var _i47 = 0
-    while _i47 < _a47.items.count {
-      let i: Flex_Item = _a47.items[_i47]
-      _i47 += 1
+    let _a49 = items
+    var _i49 = 0
+    while _i49 < _a49.items.count {
+      let i: Flex_Item = _a49.items[_i49]
+      _i49 += 1
       let factor: Double = (growing ? i.grow : i.shrink)
       // ts: packages/layout/src/flex.ts:732
       if (((factor == 0.0) || (growing && (i.base > i.hypothetical))) || ((!growing) && (i.base < i.hypothetical))) {
@@ -978,7 +978,7 @@ public func flex_alignContent(_ box: LayoutBox, _ axes: Axes, _ lines: JsArray<F
   let v: JsString = box.style.alignContent
   // ts: packages/layout/src/flex.ts:865
   if (v == S.s_baseline) {
-    try unsupported_unsupported(S.s_flex_baseline, box.id, S.s702, S.s604)
+    try unsupported_unsupported(S.s_flex_baseline, box.id, S.s705, S.s607)
   }
   let flowLines: JsArray<Flex_Line> = (axes.wrapReverse ? jsReverse(jsCopy(lines)) : lines)
   let n: Double = jsLength(flowLines)
@@ -1007,11 +1007,11 @@ public func flex_alignContent(_ box: LayoutBox, _ axes: Axes, _ lines: JsArray<F
     let extra: Double = try units_divInt(free, n)
     // ts: packages/layout/src/flex.ts:881
     do {
-      let _a48 = flowLines
-      var _i48 = 0
-      while _i48 < _a48.items.count {
-        let l: Flex_Line = _a48.items[_i48]
-        _i48 += 1
+      let _a50 = flowLines
+      var _i50 = 0
+      while _i50 < _a50.items.count {
+        let l: Flex_Line = _a50.items[_i50]
+        _i50 += 1
         try l.cross = units_add(l.cross, extra)
       }
     }

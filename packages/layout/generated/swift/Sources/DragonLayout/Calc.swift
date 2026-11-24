@@ -16,11 +16,11 @@ public func calc_calcHasPercent(_ e: any U_4133948d6cf9737b) throws -> Bool {
   case S.s_sum, S.s_product, S.s_min, S.s_max:
     // ts: packages/layout/src/calc.ts:52
     do {
-      let _a10 = (e as! any U_CalcMax_CalcMin_CalcProduct_CalcSum).terms
-      var _i10 = 0
-      while _i10 < _a10.items.count {
-        let t: any U_4133948d6cf9737b = _a10.items[_i10]
-        _i10 += 1
+      let _a12 = (e as! any U_CalcMax_CalcMin_CalcProduct_CalcSum).terms
+      var _i12 = 0
+      while _i12 < _a12.items.count {
+        let t: any U_4133948d6cf9737b = _a12.items[_i12]
+        _i12 += 1
         // ts: packages/layout/src/calc.ts:52
         if try calc_calcHasPercent(t) {
           return true
@@ -74,7 +74,7 @@ public func calc_evaluateCalc(_ e: any U_4133948d6cf9737b, _ maxValue: Double, _
   case S.s_percent:
     return try units_pixelsAndPercentAt(0.0, units_float32((e as! Percent).value), maxValue)
   case S.s_viewport, S.s_em, S.s_rem, S.s_font_metric, S.s_lh, S.s_env, S.s_font_percent, S.s_font_calc:
-    throw JsError(message: jsConcat(S.s563, (e as! any U_EmLength_EnvLength_FontCalc_FontMetricLength_FontPercent_LineHeightLength_RootFontLength_ViewportLength).kind, S.s150))
+    throw JsError(message: jsConcat(S.s566, (e as! any U_EmLength_EnvLength_FontCalc_FontMetricLength_FontPercent_LineHeightLength_RootFontLength_ViewportLength).kind, S.s150))
   case S.s_sum:
     var total: Double = try calc_evaluateCalc(jsUnwrap(jsAt((e as! CalcSum).terms, 0.0)), maxValue, faults)
     // ts: packages/layout/src/calc.ts:95
@@ -111,11 +111,11 @@ public func calc_evaluateCalc(_ e: any U_4133948d6cf9737b, _ maxValue: Double, _
     var m: Double = try calc_evaluateCalc(jsUnwrap(jsAt((e as! CalcMin).terms, 0.0)), maxValue, faults)
     // ts: packages/layout/src/calc.ts:114
     do {
-      let _a11 = (e as! CalcMin).terms
-      var _i11 = 0
-      while _i11 < _a11.items.count {
-        let t: any U_4133948d6cf9737b = _a11.items[_i11]
-        _i11 += 1
+      let _a13 = (e as! CalcMin).terms
+      var _i13 = 0
+      while _i13 < _a13.items.count {
+        let t: any U_4133948d6cf9737b = _a13.items[_i13]
+        _i13 += 1
         try m = units_floatMin(m, calc_evaluateCalc(t, maxValue, faults))
       }
     }
@@ -124,11 +124,11 @@ public func calc_evaluateCalc(_ e: any U_4133948d6cf9737b, _ maxValue: Double, _
     var m: Double = try calc_evaluateCalc(jsUnwrap(jsAt((e as! CalcMax).terms, 0.0)), maxValue, faults)
     // ts: packages/layout/src/calc.ts:119
     do {
-      let _a12 = (e as! CalcMax).terms
-      var _i12 = 0
-      while _i12 < _a12.items.count {
-        let t: any U_4133948d6cf9737b = _a12.items[_i12]
-        _i12 += 1
+      let _a14 = (e as! CalcMax).terms
+      var _i14 = 0
+      while _i14 < _a14.items.count {
+        let t: any U_4133948d6cf9737b = _a14.items[_i14]
+        _i14 += 1
         try m = units_floatMax(m, calc_evaluateCalc(t, maxValue, faults))
       }
     }

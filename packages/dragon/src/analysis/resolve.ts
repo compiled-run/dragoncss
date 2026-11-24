@@ -547,7 +547,8 @@ function resolveTreeWith(root: LinkedElement, rules: readonly Rule[], faults: Co
         if (value === '') kids.push(placeholder);
         else hiddenPlaceholders.set(self, placeholder);
       }
-      kids.push(visit(textAreaPart(el, 'editor', value), here, self, null, 'editor'));
+      // A text child the producer gives, even empty, stays the editor's leaf, so a text known only at run time can fill it.
+      kids.push(visit(textAreaPart(el, 'editor', value, el.children.some((c) => c.kind === 'text')), here, self, null, 'editor'));
     }
     if (part === 'inner') selectParts.set(self, { part, host: chain[chain.length - 1] as LinkedElement });
     if (menulist) {
@@ -653,7 +654,7 @@ function resolveTreeWith(root: LinkedElement, rules: readonly Rule[], faults: Co
         }
         const text = collapsed.get(kid);
         if (text === undefined) throw new Error(`${kid.address}: text outside any inline formatting context`);
-        if (text.length === 0) continue;
+        if (text.length === 0 && !keptEmptyTexts.has(kid)) continue;
         const refusal = refusals.get(kid);
         const resolvedText: ResolvedText = { kind: 'text', node: kid, text, props: textProps(ownerProps, faults, environment.ua), smallCaps: !faults.smallCapsUnsynthesized && synthesizesSmallCaps(ownerProps) };
         owner.children.push(refusal === undefined ? resolvedText : { ...resolvedText, transformRefusal: refusal });
@@ -830,17 +831,21 @@ export function textFieldPartOf(el: ResolvedElement): TextFieldPartInfo | undefi
  * A text field part as an element: a div at "<input address>::<part>" with one text child "<input address>::<part>:text0" (none
  * for an empty value or placeholder), located at the input.
  */
-function textPartElement(host: LinkedElement, part: TextFieldPart | SelectPart, text: string): LinkedElement {
+/** The empty editor texts of textareas whose producer gives a text child: resolve keeps them, so a run-time text can fill them. */
+const keptEmptyTexts = new WeakSet<LinkedText>();
+
+function textPartElement(host: LinkedElement, part: TextFieldPart | SelectPart, text: string, keepEmpty = false): LinkedElement {
   const address = `${host.address}::${part}`;
-  const children: LinkedText[] = text === '' ? [] : [{ kind: 'text', address: `${address}:text0`, node: { kind: 'text', id: `${host.node.id}::${part}:text0`, text, origin: host.node.origin }, instance: host.instance, owner: host.owner, text }];
+  const children: LinkedText[] = text === '' && !keepEmpty ? [] : [{ kind: 'text', address: `${address}:text0`, node: { kind: 'text', id: `${host.node.id}::${part}:text0`, text, origin: host.node.origin }, instance: host.instance, owner: host.owner, text }];
+  if (text === '' && keepEmpty) for (const c of children) keptEmptyTexts.add(c);
   return { kind: 'element', address, node: host.node, instance: host.instance, owner: host.owner, tag: 'div', classes: [], attributes: new Map(), children };
 }
 
 /** The parts of a textarea, whose UA shadow rules are TEXT_AREA_UA_SHADOW's. */
 const textAreaParts = new WeakSet<LinkedElement>();
 
-function textAreaPart(host: LinkedElement, part: TextFieldPart, text: string): LinkedElement {
-  const e = textPartElement(host, part, text);
+function textAreaPart(host: LinkedElement, part: TextFieldPart, text: string, keepEmpty = false): LinkedElement {
+  const e = textPartElement(host, part, text, keepEmpty);
   textAreaParts.add(e);
   return e;
 }

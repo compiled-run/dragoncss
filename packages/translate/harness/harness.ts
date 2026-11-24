@@ -88,7 +88,7 @@ import type {
   TrackSize,
 } from '../../layout/src/input.ts';
 import type { LayoutRect } from '../../layout/src/layout.ts';
-import type { StickyConstraint } from '../../layout/src/layout.ts';
+import type { StickyConstraint, TextAreaRow } from '../../layout/src/layout.ts';
 import { absoluteRects, layout, layoutWithFaults, layoutWithInflow, resolvedInput, stickyShift } from '../../layout/src/layout.ts';
 import type { Ctx } from '../../layout/src/block.ts';
 import { NO_ENGINE_FAULTS } from '../../layout/src/block.ts';
@@ -2856,18 +2856,19 @@ function rtHitResult(a: readonly JsonValue[]): string {
   arr(item(a, 3, '$'), '$[3]').forEach((f, i) => {
     const path = `$[3][${i.toString(16)}]`;
     const g = arr(f, path);
-    if (g.length !== 5 && g.length !== 8) return fail(`${path}: expected [id, pointerEvents, inherited, activation, radii] or those and [context, transform, origin]`);
+    if (g.length !== 5 && g.length !== 8 && g.length !== 9) return fail(`${path}: expected [id, pointerEvents, inherited, activation, radii], or those and [context, transform, origin], or those and otherContext`);
     const pe = str(item(g, 1, path), path);
     if (pe !== 'auto' && pe !== 'none') return fail(`${path}: pointer-events ${pe} is not auto or none`);
     const rs = arr(item(g, 4, path), `${path}[4]`);
     if (rs.length !== 0 && rs.length !== 8) return fail(`${path}[4]: ${rs.length} radius components, not 0 or 8`);
     const radii: RadiusLength[] = [];
     for (let k = 0; k < rs.length; k++) radii.push(factRadius(item(rs, k, `${path}[4]`), `${path}[4][${k}]`));
-    const painted = g.length === 8;
+    const painted = g.length >= 8;
+    const otherContext = g.length === 9 ? str(item(g, 8, path), `${path}[8]`) : '';
     const context = painted ? bool(item(g, 5, path), `${path}[5]`) : false;
     const transform = painted ? decodeOps(item(g, 6, path), `${path}[6]`) : [];
     const origin = painted ? decodeOrigin(item(g, 7, path), `${path}[7]`) : HIT_NO_ORIGIN;
-    facts.set(str(item(g, 0, path), path), { pointerEvents: pe, inherited: bool(item(g, 2, path), path), activation: bool(item(g, 3, path), path), radii, context, transform, origin });
+    facts.set(str(item(g, 0, path), path), { pointerEvents: pe, inherited: bool(item(g, 2, path), path), activation: bool(item(g, 3, path), path), radii, context, otherContext, transform, origin });
   });
   const m = measurerFor(platform);
   if (m.kind !== 'ok') return fail(`rt-hit: no measurer for ${platform}`);
@@ -4011,7 +4012,7 @@ export function checkMarklessPlan(line: string): string {
  * nodeId, detail]; per box and text node [id, [x, y, width, height] relative to its parent, borderWidths [top, right, bottom,
  * left] or null, lines or null, borderOps or null, scrollRange or null]; on a slotted page ("slots" given), then the slot
  * writes; with a menulist-button select, ["menulist-arrows", [[id, strokeWidth, segments]]], each arrow in device px from
- * its select's snapped border box; with a checkbox, last, ["checkbox-marks", marks] (checkboxesJson).
+ * its select's snapped border box; with a checkbox, last, ["checkbox-marks", marks] (checkboxesJson); when asked ("sticky": true), ["sticky", rows] (stickyJson); when asked ("textAreas": true), ["text-areas", [[id, pitch, above, [top, right, bottom, left] padding], ...]] (textAreasJson).
  */
 export function runMarklessLayout(line: string): string {
   try {
@@ -4019,6 +4020,7 @@ export function runMarklessLayout(line: string): string {
     const keys: string[] = ['assignment', 'dpr', 'viewport', 'safeArea', 'plan'];
     if (parsed.kind === 'obj' && parsed.values.has('slots')) keys.push('slots');
     if (parsed.kind === 'obj' && parsed.values.has('sticky')) keys.push('sticky');
+    if (parsed.kind === 'obj' && parsed.values.has('textAreas')) keys.push('textAreas');
     return marklessLayout(obj(parsed, keys, '$'), null);
   } catch (e) {
     if (e instanceof HarnessError) return `["harness-error",${q(e.detail)}]`;
@@ -4148,6 +4150,7 @@ export function runMarklessRowsLayout(line: string, shaper: GlyphShaper): string
     if (parsed.kind === 'obj' && parsed.values.has('slots')) keys.push('slots');
     if (parsed.kind === 'obj' && parsed.values.has('texts')) keys.push('texts');
     if (parsed.kind === 'obj' && parsed.values.has('sticky')) keys.push('sticky');
+    if (parsed.kind === 'obj' && parsed.values.has('textAreas')) keys.push('textAreas');
     return marklessLayout(obj(parsed, keys, '$'), shaper);
   } catch (e) {
     if (e instanceof HarnessError) return `["harness-error",${q(e.detail)}]`;
@@ -4403,7 +4406,8 @@ function marklessLayout(o: JsonObj, live: GlyphShaper | null): string {
     }
     // POSX-s scroll: a host that moves sticky views asks for their constraints ("sticky": true); an older host is answered as before.
     const wantsSticky = o.values.has('sticky') && bool(field(o, 'sticky', '$'), '$.sticky');
-    const arrows = `${arrowsJson(menuListArrows(input, boxes, measurer), abs)}${checkboxesJson(parts.checkboxes, abs, dpr)}${wantsSticky ? stickyJson(placed.sticky) : ''}`;
+    const wantsTextAreas = o.values.has('textAreas') && bool(field(o, 'textAreas', '$'), '$.textAreas');
+    const arrows = `${arrowsJson(menuListArrows(input, boxes, measurer), abs)}${checkboxesJson(parts.checkboxes, abs, dpr)}${wantsSticky ? stickyJson(placed.sticky) : ''}${wantsTextAreas ? textAreasJson(placed.textAreas) : ''}`;
     if (!o.values.has('slots')) return `${out}]${arrows}]`;
     out += `],${writeNumbers(parts, values, '$.slots')}`;
     if (spliced === null) return `${out}${arrows}]`;
@@ -4425,6 +4429,15 @@ function stickyJson(cs: readonly StickyConstraint[]): string {
   let out = ',["sticky",[';
   cs.forEach((c, i) => {
     out += `${i === 0 ? '' : ','}[${q(c.id)},${px(c.x)},${px(c.y)},${px(c.width)},${px(c.height)},${px(c.cbLeft)},${px(c.cbTop)},${px(c.cbRight)},${px(c.cbBottom)},${px(c.viewportWidth)},${px(c.viewportHeight)},${px(c.top)},${px(c.right)},${px(c.bottom)},${px(c.left)}]`;
+  });
+  return `${out}]]`;
+}
+
+function textAreasJson(rows: readonly TextAreaRow[]): string {
+  if (rows.length === 0) return '';
+  let out = ',["text-areas",[';
+  rows.forEach((r, i) => {
+    out += `${i === 0 ? '' : ','}[${q(r.id)},${h(r.pitch / LU_PER_PX)},${h(r.above / LU_PER_PX)},[${h(r.insets.top / LU_PER_PX)},${h(r.insets.right / LU_PER_PX)},${h(r.insets.bottom / LU_PER_PX)},${h(r.insets.left / LU_PER_PX)}]]`;
   });
   return `${out}]]`;
 }

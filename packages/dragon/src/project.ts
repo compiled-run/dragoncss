@@ -1257,7 +1257,7 @@ function hitModelRefusals(cases: readonly CaseResult[], rules: readonly Rule[], 
           ? `:${pseudo} needs Dragon hit testing through ${fact.property} on ${fact.address}, which is not built yet (package SELD-R2b)`
           : control !== null
             ? `:${pseudo} needs Dragon hit testing through the form control ${control}, which is not built yet (FORM-a)`
-            : `:${pseudo} needs Dragon hit testing through the ${unmodelled?.kind} ${unmodelled?.address}, which is not built yet (package ${unmodelled?.pkg} hit model)`;
+            : `:${pseudo} needs Dragon hit testing through the ${unmodelled?.kind} ${unmodelled?.address}${unmodelled?.reason === undefined ? '' : ` (${unmodelled.reason})`}, which is not built yet (package ${unmodelled?.pkg} hit model)`;
         const id = `${t}|${JSON.stringify(origin)}|${message}`;
         if (seen.has(id)) continue;
         seen.add(id);
@@ -1268,7 +1268,7 @@ function hitModelRefusals(cases: readonly CaseResult[], rules: readonly Rule[], 
             : unmodelled?.pkg === 'INL2a'
               ? `Use lengths for the padding of ${unmodelled.address} in a document with :${pseudo} rules, or style the state with a component state.`
               : unmodelled?.pkg === 'INL2c'
-                ? `Keep ${unmodelled.address} from forming a stacking context (opacity, transform, containment, isolation and the like) in a document with :${pseudo} rules, or style the state with a component state.`
+                ? `Make ${unmodelled.address} a stacking context with opacity or a scale or translate transform only, not ${unmodelled.reason}, in a document with :${pseudo} rules, or style the state with a component state.`
                 : unmodelled?.pkg === 'INL2d'
                   ? `Make ${unmodelled.address} block-level, or put it outside a line of text, in a document with :${pseudo} rules, or style the state with a component state.`
                   : `Keep ${unmodelled?.address} in flow in a document with :${pseudo} rules, or style the state with a component state until its hit testing is built.`;
