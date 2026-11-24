@@ -100,6 +100,38 @@ describe('the page background a Markless export gives the hosts', () => {
     expect(opaque.assignments.map((a) => a.bodyBackground === null)).toEqual(opaque.assignments.map((a) => a.values['@env#band'] === 0));
   });
 
+  it('accepts a page-wide :focus-visible outline and draws none on html or body, which neither Chrome nor a phone focuses', async () => {
+    const nodes = [
+      { kind: 'element', id: 'h0', element: 'div', parent: null, attributes: { class: 'box' } },
+      { kind: 'element', id: 'h1', element: 'a', parent: 'h0', attributes: { href: '/x' } },
+      { kind: 'text', id: 'h1:text0', parent: 'h1', text: 'Go' },
+    ];
+    const css = '.box { height: 100px; } a { display: block; height: 20px; text-decoration: none; color: #000; } :focus-visible { outline: 2px solid #c00; outline-offset: 2px; }';
+    const text = JSON.stringify({ version: 'markless.native-style-input/0', component: 'Page', nodes, css, states: [] });
+    // Chrome 145: html and body take no focus, so only CSS.forcePseudoState reaches their :focus-visible state; the link does.
+    const page = await browser.newPage({ viewport: { width: 200, height: 300 }, deviceScaleFactor: 1 });
+    try {
+      await page.setContent(marklessDocumentHtml(parseMarklessStyleInput(text), {}));
+      const focused = await page.evaluate(() => [document.documentElement, document.body, document.querySelector('a') as HTMLElement].map((e) => {
+        e.focus({ focusVisible: true } as FocusOptions);
+        return [document.activeElement === e && e !== document.body, e.matches(':focus-visible')];
+      }));
+      expect(focused).toEqual([[false, false], [false, false], [true, true]]);
+    } finally {
+      await page.close();
+    }
+    for (const t of ['ios', 'android'] as const) {
+      const level = marklessStyleExport(text, 'focus-ring.json').exported.targets[t]!.interaction!.levels[0]!;
+      const outlined = level.states.map((s, k) => [level.matches[k]!.focusVisible, s.nodes.filter((n) => n.writes.some((w) => w['kind'] === 'outline')).map((n) => n.id)]);
+      // Every element the rule reaches has a state; only html's and body's lose their ring, and a plain div keeps its own.
+      expect(outlined, t).toEqual([['h1', ['h1']], ['html', []], ['body', []], ['h0', ['h0']]]);
+    }
+  });
+
+  it('still refuses an outline on html outside its own focus state', () => {
+    expect(() => dragonPaint('html { outline: 2px solid red; }', 'ios')).toThrow('html has a outline write, which the hosts do not draw on html');
+  });
+
   it('refuses paint of html or body the hosts do not draw, naming it', () => {
     expect(() => dragonPaint('body { border: 2px solid red; }', 'ios')).toThrow('body has a border, which the hosts do not draw on body');
     expect(() => dragonPaint('html { border-top: 1px solid red; }', 'ios')).toThrow('html has a border');
