@@ -3257,7 +3257,7 @@ function anchorValue(lang: Lang, v: unknown, str: (s: string) => string): string
 /** The translated union of CalcExpr (V2 of the value model), named by the translator's unionName: its members' names pass 200 characters. */
 export const CALC_UNION = 'U_4133948d6cf9737b';
 
-const CALC_LISTS: Readonly<Record<string, string>> = { sum: 'CalcSum', product: 'CalcProduct', min: 'CalcMin', max: 'CalcMax' };
+export const CALC_LISTS: Readonly<Record<string, string>> = { sum: 'CalcSum', product: 'CalcProduct', min: 'CalcMin', max: 'CalcMax' };
 
 /** The translated classes of the AspectRatioValue members with parts (input.ts); auto is the shared Auto class. */
 const RATIO_CLASSES: Readonly<Record<string, string>> = { ratio: 'AspectRatioValue_ratio', 'auto-ratio': 'AspectRatioValue_autoRatio' };
