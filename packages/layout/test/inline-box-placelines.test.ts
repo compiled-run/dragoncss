@@ -108,7 +108,7 @@ describe('placeLines is exactly placeIfcLines(buildIfc(...)) (T058J2 (F))', () =
     // Batch 4c: TXT1a-2 phase R maps the real faces, so their font-family refusals became profile refusals and
     // profilePendingCaseIds holds the shaped cases back at the DPR sets; only text-ahem-fractional (shaped since 4c) writes there.
     // text-latin-declared and -rtl are shaped at DPR 1 since 4c. Batch 5 stops holding them back: all shaped cases at every DPR, 45 with
-    // FIELD-font-width FW1's controls-text-field-font-definite.
-    expect(shaped).toBe(45 * 4);
+    // FIELD-font-width FW1's controls-text-field-font-definite, 48 with batch 9's controls-text-font, -column-flex and -grid.
+    expect(shaped).toBe(48 * 4);
   });
 });
