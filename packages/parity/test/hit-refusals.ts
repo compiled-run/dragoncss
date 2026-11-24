@@ -3,10 +3,8 @@
 // hitRefusal) and the SVG-a1 svg cases (hit-capture.ts hitRefusal). Shared by hit-report.test.ts and lanes.test.ts so both judge
 // the same exact union.
 export const INLINE_OUT: readonly string[] = [
-  // contain-intrinsic-ahem and containment-layout hold inline-blocks (their contained boxes' stacking contexts are ordered now).
+  // INL2c: inline-blocks that containment makes stacking contexts, which no Chrome capture orders on their lines.
   'contain-intrinsic-ahem', 'contain-intrinsic-ahem-rtl', 'containment-layout', 'containment-layout-rtl',
-  // INL2c: an opacity inline-block on a line in the anonymous box beside a block child.
-  'hit-atomic-inline-context',
   // GRID-controls: the fixtures' inline-grid container sits on its line as an atomic inline.
   'grid-controls', 'grid-controls-rtl', 'grid-controls-fields',
   // GEN and TABLE (#443): an inline ::before or ::after box, and table-properties' inline boxes.
@@ -69,7 +67,7 @@ export const MARKER_REASON = /^outside text marker on .+: Chrome hits a list ite
 // before its inline box l9s).
 export const CLAMP_OUT: readonly string[] = ['line-clamp-lines', 'line-clamp-nested'];
 export const CLAMP_REASON = /^.+ clamps its lines \(-webkit-line-clamp\), and Chrome hit tests the content past the clamp point by rules the hit table does not model yet \(TXT2-g\)$/;
-export const INLINE_REASON = /is (an inline box|a <br>|an atomic inline), which the hit table does not model yet| is an atomic inline that forms a stacking context or is transformed, which no Chrome hit capture orders against its line yet \(INL2c\)/;
+export const INLINE_REASON = /is (an inline box|a <br>|an atomic inline), which the hit table does not model yet| is an atomic inline that .+ makes a stacking context, which no Chrome hit capture orders against its line yet \(INL2c\)/;
 // ALIAS-2's alias-paint writes a rotating -webkit-transform and backface-values rotates its boxes, so the hit lane refuses them with the
 // transform reason though their names are not transform-.
 export const TRANSFORM_NAMED: readonly string[] = ['alias-paint', 'backface-values', 'backface-values-rtl'];
