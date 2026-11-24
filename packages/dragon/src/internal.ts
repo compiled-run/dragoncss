@@ -15,7 +15,9 @@ import type { TextLonghand } from './css/properties.ts';
 import { TEXT_LONGHANDS } from './css/properties.ts';
 import type { ElementColors, NativeBackend, NativeProgram } from './lower/native-program.ts';
 import { colorChannels, lowerNativeProgram, lowerNativePrograms, movingTransforms, ProgramError, usedColors } from './lower/native-program.ts';
-import { isSymbolMarker, rootFontSizeOf } from './lower/ios-layout.ts';
+import type { LoweredTextFacts } from './lower/ios-layout.ts';
+import { isSymbolMarker, loweredTextFactsOf, rootFontSizeOf } from './lower/ios-layout.ts';
+export type { LoweredDroppedText, LoweredTextFacts } from './lower/ios-layout.ts';
 import type { InteractionPartition, InteractionValue } from './analysis/interaction.ts';
 import { pointerFocusVisible } from './analysis/interaction.ts';
 import type { InternalCase } from './project.ts';
@@ -233,6 +235,21 @@ export function resolvedTextTransforms(compiled: object, assignment: Assignment,
   };
   walk(c.resolved);
   return out;
+}
+
+/**
+ * The native lowering of one case in one @media band (0 without bands) with its text facts: each kept text leaf whose phase I input
+ * (after text-transform) differs from its text, and each text phase I dropped from a context that keeps a text; null when the case
+ * has no native lowering there.
+ */
+export function resolvedTextSources(compiled: object, assignment: Assignment, band: number): { readonly root: import('@dragon/layout').LayoutBox; readonly facts: LoweredTextFacts } | null {
+  const record = internalRecord(compiled);
+  if (record === undefined) return null;
+  const c = record.bands === null ? (band === 0 ? caseByAssignment(record, assignment) : undefined) : record.bands.cases[band]?.find((x) => x.key === keyOfAssignment(assignment));
+  if (c === undefined || c.nativeLowered === null) return null;
+  const facts = loweredTextFactsOf(c.nativeLowered);
+  if (facts === undefined) throw new Error(`the lowering of case ${keyOfAssignment(assignment)} in band ${band} kept no text facts`);
+  return { root: c.nativeLowered, facts };
 }
 
 /** resolvedTextTransforms of each interaction state of the case in the band, in its partition's state order. */

@@ -46,10 +46,10 @@ const EDGE_ROWS: readonly Row[] = [
 ];
 
 /** The page as the web renders it with these rows: each row's nodes named "<id>@<key>", its class its item's, its text its own. */
-function writtenOut(rows: readonly Row[], css = '', page: ReadonlyMap<string, string> = new Map()): MarklessStyleInput {
+function writtenOut(rows: readonly Row[], css = '', page: ReadonlyMap<string, string> = new Map(), src: MarklessStyleInput = input): MarklessStyleInput {
   const nodes: MarklessStyleInput['nodes'][number][] = [];
   let placed = false;
-  for (const n of input.nodes) {
+  for (const n of src.nodes) {
     if (n.row !== repeat.id) {
       nodes.push(n.kind === 'text' && page.has(n.id) ? { ...n, text: page.get(n.id)! } : n);
       continue;
@@ -58,7 +58,7 @@ function writtenOut(rows: readonly Row[], css = '', page: ReadonlyMap<string, st
     placed = true;
     for (const row of rows) {
       const values = { [rowState.cell]: pinnedOption(row.pinned) };
-      for (const t of input.nodes.filter((x) => x.row === repeat.id)) {
+      for (const t of src.nodes.filter((x) => x.row === repeat.id)) {
         const top = t.parent === repeat.parent;
         const parent = top ? t.parent : `${t.parent}@${row.key}`;
         const arm = repeat.arm !== undefined ? { arm: repeat.arm } : {};
@@ -73,8 +73,8 @@ function writtenOut(rows: readonly Row[], css = '', page: ReadonlyMap<string, st
       }
     }
   }
-  const { repeats: _, ...rest } = input;
-  return { ...rest, css: `${input.css}${css}`, nodes, states: input.states.filter((s) => s.row === undefined) };
+  const { repeats: _, ...rest } = src;
+  return { ...rest, css: `${src.css}${css}`, nodes, states: src.states.filter((s) => s.row === undefined) };
 }
 
 /** Each box of a variant tree (plan JSON) with its parent box, rows spliced in by the device's naming rule. */
@@ -145,10 +145,10 @@ describe('styled @for rows', () => {
     it(`lays a taller pinned row out on the ${t} device exactly as the build does`, () => expectAsBuilt(t, ROWS, '.note.pinned { padding: 18px; }'));
   }
 
-  function expectAsBuilt(t: 'ios' | 'android', rows: readonly Row[], css = '', page: ReadonlyMap<string, string> = new Map()): void {
+  function expectAsBuilt(t: 'ios' | 'android', rows: readonly Row[], css = '', page: ReadonlyMap<string, string> = new Map(), text = TEXT): void {
     {
-      const device = deviceBoxes(t, rows, css === '' ? exported.targets[t]! : marklessStyleExport(withCss(css), PATH, undefined, 'system', undefined, true).exported.targets[t]!, page);
-      const written = writtenOut(rows, css === '' ? '' : `\n${css}`, page);
+      const device = deviceBoxes(t, rows, css === '' && text === TEXT ? exported.targets[t]! : marklessStyleExport(css === '' ? text : withCss(css), PATH, undefined, 'system', undefined, true).exported.targets[t]!, page);
+      const written = writtenOut(rows, css === '' ? '' : `\n${css}`, page, parseMarklessStyleInput(text));
       const built = marklessStyleExport(JSON.stringify(written), PATH, undefined, 'system').exported.targets[t]!;
       const a = built.assignments.find((x) => x.values[branch.id] === '1')!;
       const byId = new Map(a.nodes.map((n) => [n.id, n]));
@@ -234,19 +234,15 @@ describe('styled @for rows', () => {
     expect(() => marklessStyleExport(withCss('.heading:first-child { margin-top: 0; } .action + .action { margin-top: 4px; }'), PATH, undefined, 'system', undefined, true)).not.toThrow();
   });
 
-  it('refuses edge white space and an empty text beside other inline content, where the build\'s result depends on it', () => {
+  // The phone runs phase I again over the title's whole context (harness.ts withPhaseOne), so edge white space and an empty title
+  // beside other inline content lay out as the build lays out the page written with them.
+  it('lays titles with edge white space, or empty, beside other inline content out exactly as the build does', () => {
     const o = JSON.parse(TEXT) as { nodes: Record<string, unknown>[] };
     const at = o.nodes.findIndex((n) => n['id'] === titleText);
     o.nodes.splice(at + 1, 0, { kind: 'element', id: 'h6b', element: 'b', parent: 'h6', attributes: {}, row: repeat.id }, { kind: 'text', id: 'h6b:text0', parent: 'h6b', text: '!', row: repeat.id });
-    const x = marklessStyleExport(JSON.stringify(o), PATH, undefined, 'system', undefined, true).exported.targets.android!;
-    const page = x.assignments.findIndex((a) => a.values[branch.id] === '1' && a.values[rowState.cell] === rowState.initial);
-    const leaf = new Map((x.planNames?.[page] ?? []).map(([d, m]) => [m, d])).get(titleText) ?? titleText;
-    for (const [title, detail] of [[' Groceries', 'begins with white space beside other inline content'], ['Groceries ', 'ends with white space beside other inline content'], ['', 'is empty']] as const) {
-      const out = JSON.parse(rowsLine(x, rowState.initial as string, [{ key: 'a', option: pinnedOption(false), texts: [[leaf, title]] }])) as unknown[];
-      expect(out[0], JSON.stringify(out)).toBe('harness-error');
-      expect(out[1], JSON.stringify(title)).toContain(detail);
+    for (const title of [' Groceries', 'Groceries ', '', 'Buy  milk']) {
+      for (const t of ['ios', 'android'] as const) expectAsBuilt(t, [{ key: 'a', title, pinned: false }, { key: 'b', title: 'Water the plants', pinned: true }], '', new Map(), JSON.stringify(o));
     }
-    expect((JSON.parse(rowsLine(x, rowState.initial as string, [{ key: 'a', option: pinnedOption(false), texts: [[leaf, 'Buy  milk']] }])) as unknown[])[0]).toBe('ok');
   });
 
   it('refuses a transition or animation inside a row, which the animator runs only for the page, and keeps one outside the rows', () => {
@@ -320,7 +316,9 @@ describe('styled @for rows', () => {
     expect(err(rowsLine(x, rowState.initial as string, [one([[leaf, 'A']]), { ...one([[leaf, 'B']]), key: 'a' }]))).toContain('row key a is listed twice');
     expect(err(rowsLine(x, rowState.initial as string, [one([['h6:text0-not-a-leaf', 'A']])]))).toContain('is no text leaf of the row\'s template');
     expect(err(rowsLine(x, rowState.initial as string, [one([[leaf, 'A'], [leaf, 'B']])]))).toContain('is given twice');
-    expect(err(rowsLine(x, rowState.initial as string, [one([[leaf, 'a\u200b\nb']])]))).toContain('U+200B');
+    expect(err(rowsLine(x, rowState.initial as string, [one([[leaf, 'a\rb']])]))).toContain('U+000D');
+    expect(err(rowsLine(x, rowState.initial as string, [one([[leaf, 'a\fb']])]))).toContain('U+000C');
+    expect((JSON.parse(rowsLine(x, rowState.initial as string, [one([[leaf, 'a\u200b\nb']])])) as unknown[])[0]).toBe('ok');
     expect(err(rowsLine(x, rowState.initial as string, [one([])], (line) => {
       const rows = line['rows'] as Record<string, unknown>[];
       line['rows'] = [rows[0], rows[0]];

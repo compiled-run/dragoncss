@@ -3,7 +3,7 @@
 // shaping the build measured, recorded at every root width a phone in PLAN_WIDTHS can have, so the device never shapes text.
 // The text is recorded at one viewport height: a page whose text changes with the height is refused.
 import { pathToFileURL } from 'node:url';
-import type { CalcExpr, ControlBox, FontData, FontLengths, FontMetrics, FontSpec, InlineChild, LayoutBox, LayoutInput, LayoutStyle, LineHeightValue, ReplacedLeaf, TextMeasurer } from '@dragon/layout';
+import type { CalcExpr, ControlBox, FontData, FontLengths, FontMetrics, FontSpec, InlineChild, LayoutBox, LayoutInput, LayoutStyle, LineHeightValue, LineStrut, ReplacedLeaf, TextLeaf, TextMeasurer } from '@dragon/layout';
 import { layout } from '@dragon/layout';
 import type { InteractionProgram, NativeProgram, NativeStyleTarget, StateProgram } from 'dragon';
 import { interactionProgramAt, programAt } from 'dragon';
@@ -67,7 +67,18 @@ export type MarklessPlan = {
   readonly slots?: readonly (readonly [id: string, type: 'number' | 'integer'])[];
   /** The text leaves the build lays out with a text-transform; the phone refuses a page text for one (harness.ts withPageTexts). */
   readonly transformed?: readonly string[];
+  /** Of those, the leaves laid out with text-transform: capitalize, which reads the character before the text (harness.ts withPhaseOne). */
+  readonly capitalized?: readonly string[];
+  /**
+   * What a phone runs white space phase I again with when a text changes (harness.ts withPhaseOne), per variant: [variant, leaf,
+   * source] for a kept leaf whose phase I input (after text-transform) differs from its text; [variant, parent, next, leaf, source]
+   * for a text phase I dropped, in tree order, before the sibling next (null: last) among parent's children, with the strut of its
+   * block container appended ([..., container, strut]) when that box has none in the variant.
+   */
+  readonly texts?: readonly PlanText[];
 };
+
+export type PlanText = readonly [variant: number, leaf: string, source: string] | readonly [variant: number, parent: string, next: string | null, leaf: TextLeaf, source: string] | readonly [variant: number, parent: string, next: string | null, leaf: TextLeaf, source: string, container: string, strut: LineStrut];
 
 type Write = { readonly kind: string } & Readonly<Record<string, unknown>>;
 

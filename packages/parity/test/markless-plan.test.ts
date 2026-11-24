@@ -1,6 +1,6 @@
 // The layout plan of a Markless export: the device's function (harness.ts runMarklessLayout, translated to Swift and Kotlin)
 // gives exactly the geometry the export computes at build time, at the proof devices and at other sizes and ratios.
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import type { ControlBox, LayoutBox } from '@dragon/layout';
 import { checkboxMarks, fromRaw, LU_PER_PX, menuListArrow, menuListArrowBox, snapRect, stickyShift } from '@dragon/layout';
 import { describe, expect, it } from 'vitest';
@@ -13,7 +13,8 @@ import { repoPath } from '../src/paths.ts';
 import { checkboxColors } from '../../dragon/src/forms/checkbox.ts';
 
 // The translate harness is loaded by path at run time, as text-latin-engine.test.ts does.
-const { checkMarklessPlan, runMarklessLayout, runMarklessSticky } = (await import(new URL('../../translate/harness/harness.ts', import.meta.url).href)) as { checkMarklessPlan(line: string): string; runMarklessLayout(line: string): string; runMarklessSticky(line: string): string };
+type RowTextFaults = { readonly givenTextCollapsedAlone: boolean; readonly fixedTextsAsLaidOut: boolean };
+const { checkMarklessPlan, marklessPhaseOneSelfCheck, runMarklessLayout, runMarklessSticky } = (await import(new URL('../../translate/harness/harness.ts', import.meta.url).href)) as { checkMarklessPlan(line: string): string; marklessPhaseOneSelfCheck(line: string, faults: RowTextFaults): string; runMarklessLayout(line: string): string; runMarklessSticky(line: string): string };
 const { bitsHex, hexBits } = (await import(new URL('../../translate/harness/host.ts', import.meta.url).href)) as { bitsHex(x: number): string; hexBits(s: string): number };
 
 const INPUTS = ['fluid', 'width-media', 'borders-dashed', 'scheme', 'tabs'].map((n) => `examples/markless-styles/input/${n}.native-style-input.json`);
@@ -399,4 +400,19 @@ describe('the layout plan of a Markless export', () => {
       }
     }
   });
+
+  // The phone's white space pass (harness.ts withPhaseOne), run over a plan with every text given at its phase I input and every
+  // dropped text inserted, lays out each variant's tree byte for byte as the build does, on every Markless input here.
+  const NO_FAULTS: RowTextFaults = { givenTextCollapsedAlone: false, fixedTextsAsLaidOut: false };
+  const ALL = readdirSync(repoPath('examples/markless-styles/input')).filter((f) => f.endsWith('.native-style-input.json')).map((f) => `examples/markless-styles/input/${f}`);
+  for (const path of ALL) {
+    it(`runs phase I again over ${path.split('/').pop()} as the build ran it, byte for byte`, () => {
+      const exported = marklessStyleExport(readFileSync(repoPath(path), 'utf8'), path, undefined, 'system', undefined, true).exported;
+      for (const t of ['ios', 'android'] as const) {
+        const plan = exported.targets[t]?.plan;
+        expect(plan, t).toBeDefined();
+        expect(marklessPhaseOneSelfCheck(JSON.stringify(plan), NO_FAULTS), t).toBe('["ok"]');
+      }
+    });
+  }
 });

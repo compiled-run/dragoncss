@@ -189,6 +189,7 @@ import type { BandAtom, BandComparison, BandEnvironment, BandFaults, BandFeature
 import { androidPointerReadings, bandAtPx, mediaSize } from '../../layout/src/rt-band.ts';
 import { bitsHex, fromCodePoints, hexBits, parseNumber } from './host.ts';
 import { symbolCoverage } from '../../layout/src/paint-marker.ts';
+import { collapseInlineContext, preserveBreaksContext } from '../../layout/src/white-space.ts';
 import type { RadiusFaults, RadiusLength } from '../../layout/src/paint-radius.ts';
 import { borderDoubleRings, constrainCornerRadii, doubleStripeWidth, hasRoundedCorner, innerCornerRadii, outlineOffsetPx, outlineRings, outlineWidthPx, radiiRenderable, radiusComponent, resolveCornerRadii, roundedShape } from '../../layout/src/paint-radius.ts';
 import type { BackdropFill, ShadowFaults, ShadowInput, ShadowLayer, ShadowShape, ShadowTransform } from '../../layout/src/paint-shadow.ts';
@@ -3903,10 +3904,137 @@ function planObj(v: JsonValue): JsonObj {
   const keys: string[] = ['version', 'faces', 'densities', 'variants', 'assignments'];
   if (v.kind === 'obj' && v.values.has('slots')) keys.push('slots');
   if (v.kind === 'obj' && v.values.has('transformed')) keys.push('transformed');
+  if (v.kind === 'obj' && v.values.has('capitalized')) keys.push('capitalized');
+  if (v.kind === 'obj' && v.values.has('texts')) keys.push('texts');
   const plan = obj(v, keys, '$.plan');
   if (str(field(plan, 'version', '$.plan'), '$.plan.version') !== 'dragon.markless-plan/1') fail('$.plan.version: not dragon.markless-plan/1');
   planTransformed(plan);
+  planCapitalized(plan);
   return plan;
+}
+
+/** The text leaves laid out with text-transform: capitalize ($.plan.capitalized), which read the character before them. */
+function planCapitalized(plan: JsonObj): Map<string, boolean> {
+  const out = new Map<string, boolean>();
+  if (!plan.values.has('capitalized')) return out;
+  for (const leaf of arr(field(plan, 'capitalized', '$.plan'), '$.plan.capitalized')) out.set(str(leaf, '$.plan.capitalized'), true);
+  return out;
+}
+
+/** A text phase I dropped at build time ($.plan.texts): its leaf, inserted before next (null: last) among parent's children. */
+type PlanDropped = { readonly parent: string; readonly next: string | null; readonly id: string; readonly leaf: JsonObj; readonly source: string };
+/**
+ * One variant's text facts ($.plan.texts): each leaf's phase I input where it differs from its text (a dropped leaf's too), the
+ * dropped texts in tree order, their sources by id, and the strut of each block container that has none and holds one of them.
+ */
+type PlanTexts = { readonly sources: Map<string, string>; readonly dropped: readonly PlanDropped[]; readonly droppedSources: Map<string, string>; readonly struts: Map<string, JsonValue> };
+
+function planTextRows(plan: JsonObj): readonly JsonValue[] {
+  return plan.values.has('texts') ? arr(field(plan, 'texts', '$.plan'), '$.plan.texts') : [];
+}
+
+/** The text facts of variant vi. */
+function planTextFacts(plan: JsonObj, vi: number): PlanTexts {
+  const sources = new Map<string, string>();
+  const dropped: PlanDropped[] = [];
+  const droppedSources = new Map<string, string>();
+  const struts = new Map<string, JsonValue>();
+  const rows = planTextRows(plan);
+  for (let i = 0; i < rows.length; i++) {
+    const at = `$.plan.texts[${i}]`;
+    const a = arr(rows[i] as JsonValue, at);
+    if (a.length !== 3 && a.length !== 5 && a.length !== 7) fail(`${at}: expected 3, 5 or 7 fields`);
+    if (num(a[0] as JsonValue, `${at}[0]`) !== vi) continue;
+    if (a.length === 3) {
+      sources.set(str(a[1] as JsonValue, `${at}[1]`), str(a[2] as JsonValue, `${at}[2]`));
+      continue;
+    }
+    const nv = a[2] as JsonValue;
+    const lv = a[3] as JsonValue;
+    if (lv.kind !== 'obj' || kindOf(lv, `${at}[3]`) !== 'text') return fail(`${at}[3]: expected a text leaf`);
+    const id = str(field(lv, 'id', `${at}[3]`), `${at}[3].id`);
+    const source = str(a[4] as JsonValue, `${at}[4]`);
+    sources.set(id, source);
+    droppedSources.set(id, source);
+    dropped.push({ parent: str(a[1] as JsonValue, `${at}[1]`), next: nv.kind === 'null' ? null : str(nv, `${at}[2]`), id, leaf: lv, source });
+    if (a.length === 7) struts.set(str(a[5] as JsonValue, `${at}[5]`), a[6] as JsonValue);
+  }
+  return { sources, dropped, droppedSources, struts };
+}
+
+/** Each node id of a variant's tree with its kind, its parent's id, and whether it has a null strut. */
+type VariantIndex = { readonly kinds: Map<string, string>; readonly parents: Map<string, string>; readonly noStrut: Map<string, boolean> };
+
+function indexVariant(v: JsonValue, parent: string, into: VariantIndex): void {
+  if (v.kind === 'arr') {
+    for (const item of v.items) indexVariant(item, parent, into);
+    return;
+  }
+  if (v.kind !== 'obj') return;
+  const id = v.values.get('id');
+  const kind = v.values.get('kind');
+  let own = parent;
+  if (id !== undefined && id.kind === 'str' && kind !== undefined && kind.kind === 'str') {
+    own = id.text;
+    into.kinds.set(own, kind.text);
+    into.parents.set(own, parent);
+    const strut = v.values.get('strut');
+    if (strut !== undefined && strut.kind === 'null') into.noStrut.set(own, true);
+  }
+  const children = v.values.get('children');
+  if (children !== undefined) indexVariant(children, own, into);
+}
+
+/**
+ * $.plan.texts read as the device reads it, and checked against the variants: each variant index in range; a source's leaf a text
+ * leaf of its variant; a dropped text's parent a box, inline box or control of it, its next a child of that parent, its leaf a text
+ * leaf with text "" and an id the variant does not have; a strut's container a box of it with no strut; no leaf listed twice.
+ */
+function checkPlanTexts(plan: JsonObj): void {
+  const variants = arr(field(plan, 'variants', '$.plan'), '$.plan.variants');
+  const indexes = new Map<number, VariantIndex>();
+  const seen = new Map<string, boolean>();
+  const rows = planTextRows(plan);
+  for (let i = 0; i < rows.length; i++) {
+    const at = `$.plan.texts[${i}]`;
+    const a = arr(rows[i] as JsonValue, at);
+    if (a.length !== 3 && a.length !== 5 && a.length !== 7) fail(`${at}: expected 3, 5 or 7 fields`);
+    const vi = num(a[0] as JsonValue, `${at}[0]`);
+    if (!Number.isInteger(vi) || vi < 0 || vi >= variants.length) fail(`${at}[0]: ${vi} is not a variant`);
+    let index = indexes.get(vi);
+    if (index === undefined) {
+      const made: VariantIndex = { kinds: new Map<string, string>(), parents: new Map<string, string>(), noStrut: new Map<string, boolean>() };
+      indexVariant(variantRootJson(plan, vi), '', made);
+      indexes.set(vi, made);
+      index = made;
+    }
+    if (a.length === 3) {
+      const leaf = str(a[1] as JsonValue, `${at}[1]`);
+      str(a[2] as JsonValue, `${at}[2]`);
+      if (index.kinds.get(leaf) !== 'text') fail(`${at}[1]: ${leaf} is no text leaf of variant ${vi}`);
+      if (seen.has(`${vi} ${leaf}`)) fail(`${at}: ${leaf} is listed twice in variant ${vi}`);
+      seen.set(`${vi} ${leaf}`, true);
+      continue;
+    }
+    const parent = str(a[1] as JsonValue, `${at}[1]`);
+    const pk = index.kinds.get(parent);
+    if (pk !== 'box' && pk !== 'inline' && pk !== 'control') fail(`${at}[1]: ${parent} is no box, inline box or control of variant ${vi}`);
+    const nv = a[2] as JsonValue;
+    if (nv.kind !== 'null' && index.parents.get(str(nv, `${at}[2]`)) !== parent) fail(`${at}[2]: ${str(nv, `${at}[2]`)} is no child of ${parent} in variant ${vi}`);
+    const lv = a[3] as JsonValue;
+    if (lv.kind !== 'obj' || kindOf(lv, `${at}[3]`) !== 'text') return fail(`${at}[3]: expected a text leaf`);
+    const leaf = decodeText(lv, `${at}[3]`);
+    if (leaf.text !== '') fail(`${at}[3]: a dropped text's leaf holds no text`);
+    if (index.kinds.has(leaf.id)) fail(`${at}[3]: variant ${vi} already has a node ${leaf.id}`);
+    if (seen.has(`${vi} ${leaf.id}`)) fail(`${at}: ${leaf.id} is listed twice in variant ${vi}`);
+    seen.set(`${vi} ${leaf.id}`, true);
+    str(a[4] as JsonValue, `${at}[4]`);
+    if (a.length === 7) {
+      const container = str(a[5] as JsonValue, `${at}[5]`);
+      if (index.kinds.get(container) !== 'box' || !index.noStrut.has(container)) fail(`${at}[5]: ${container} is no box of variant ${vi} without a strut`);
+      decodeStrut(a[6] as JsonValue, `${at}[6]`);
+    }
+  }
 }
 
 /** The text leaves the build lays out with a text-transform ($.plan.transformed), which a page text may not replace. */
@@ -3997,6 +4125,7 @@ export function checkMarklessPlan(line: string): string {
     for (let vi = 0; vi < variants.length; vi++) planVariant(plan, vi);
     const assignments = arr(field(plan, 'assignments', '$.plan'), '$.plan.assignments');
     for (let k = 0; k < assignments.length; k++) planAssignment(plan, k);
+    checkPlanTexts(plan);
     return '["ok"]';
   } catch (e) {
     if (e instanceof HarnessError) return `["harness-error",${q(e.detail)}]`;
@@ -4019,7 +4148,7 @@ export function runMarklessLayout(line: string): string {
     if (parsed.kind === 'obj' && parsed.values.has('slots')) keys.push('slots');
     if (parsed.kind === 'obj' && parsed.values.has('sticky')) keys.push('sticky');
     if (parsed.kind === 'obj' && parsed.values.has('textAreas')) keys.push('textAreas');
-    return marklessLayout(obj(parsed, keys, '$'), null);
+    return marklessLayout(obj(parsed, keys, '$'), null, NO_ROW_TEXT_FAULTS);
   } catch (e) {
     if (e instanceof HarnessError) return `["harness-error",${q(e.detail)}]`;
     return '["threw"]';
@@ -4142,6 +4271,15 @@ function marklessAnimation(o: JsonObj): string {
 }
 
 export function runMarklessRowsLayout(line: string, shaper: GlyphShaper): string {
+  return rowsLayout(line, shaper, NO_ROW_TEXT_FAULTS);
+}
+
+/** Test only: runMarklessRowsLayout with the white space pass's planted faults. The hosts never call it. */
+export function runMarklessRowsLayoutWithFaults(line: string, shaper: GlyphShaper, faults: RowTextFaults): string {
+  return rowsLayout(line, shaper, faults);
+}
+
+function rowsLayout(line: string, shaper: GlyphShaper, faults: RowTextFaults): string {
   try {
     const parsed = parseJson(line);
     const keys: string[] = ['assignment', 'dpr', 'viewport', 'safeArea', 'plan', 'rows'];
@@ -4149,49 +4287,40 @@ export function runMarklessRowsLayout(line: string, shaper: GlyphShaper): string
     if (parsed.kind === 'obj' && parsed.values.has('texts')) keys.push('texts');
     if (parsed.kind === 'obj' && parsed.values.has('sticky')) keys.push('sticky');
     if (parsed.kind === 'obj' && parsed.values.has('textAreas')) keys.push('textAreas');
-    return marklessLayout(obj(parsed, keys, '$'), shaper);
+    return marklessLayout(obj(parsed, keys, '$'), shaper, faults);
   } catch (e) {
     if (e instanceof HarnessError) return `["harness-error",${q(e.detail)}]`;
     return '["threw"]';
   }
 }
 
-/** Whether `c` is white space to phase I (css-text-3 §4.1.1). */
-function isPhaseOneSpace(c: string): boolean {
-  return c === ' ' || c === '\t' || c === '\n' || c === '\r' || c === '\f';
-}
+/** The planted faults of the phone's white space pass (withPhaseOne), set only by tests. */
+export type RowTextFaults = {
+  /** Each changed text collapses as an inline formatting context of its own, its edges removed, and no context collapses again. */
+  readonly givenTextCollapsedAlone: boolean;
+  /** Fixed leaves keep their laid-out strings instead of their phase I input, and the dropped texts are not inserted. */
+  readonly fixedTextsAsLaidOut: boolean;
+};
+
+const NO_ROW_TEXT_FAULTS: RowTextFaults = { givenTextCollapsedAlone: false, fixedTextsAsLaidOut: false };
 
 /**
- * A row's text as the build's phase I (resolve.ts) leaves it in a leaf of `mode`, '' when the build drops the leaf. In a collapsing
- * leaf each run of white space inside the text is one space; the white space at its edges is removed when the leaf is `alone` in its
- * box (collapseInlineContext over that one text), and refused beside other inline content, where the result depends on it.
+ * A changed text as the phone writes it into its leaf of `mode`: as typed, for withPhaseOne to collapse with its context. Refused by
+ * name: a preserve-breaks leaf, and U+000D or U+000C in a collapsing one, which Chrome does not collapse when script sets them.
  */
-function rowText(text: string, mode: string, at: string, alone: boolean): string {
+function givenText(text: string, mode: string, at: string, faults: RowTextFaults): string {
   if (mode === 'preserve-breaks') return fail(`${at}: the leaf is white-space-collapse: preserve-breaks (white-space: pre-line), whose white space a phone does not process as the build does`);
   if (mode !== 'collapse') return text;
-  let out = '';
-  let space = false;
-  let segmentBreak = false;
-  let before = '';
-  for (const c of text) {
-    if (isPhaseOneSpace(c)) {
-      if (out === '' && !alone) fail(`${at}: a row's text that begins with white space beside other inline content is not supported`);
-      if (out === '') continue;
-      space = true;
-      if (c === '\n' || c === '\r') segmentBreak = true;
-      continue;
-    }
-    if (space) {
-      if (segmentBreak && (before === '\u200b' || c === '\u200b')) fail(`${at}: a segment break beside U+200B in a row's text is not supported`);
-      out += ' ';
-    }
-    out += c;
-    before = c;
-    space = false;
-    segmentBreak = false;
-  }
-  if ((out === '' || space) && !alone) fail(`${at}: a row's text that is empty or ends with white space beside other inline content is not supported`);
-  return out;
+  for (const c of text) if (c === '\r' || c === '\f') fail(`${at}: a changed text holding ${c === '\r' ? 'U+000D' : 'U+000C'} is not supported: Chrome does not collapse it as white space`);
+  if (!faults.givenTextCollapsedAlone) return text;
+  for (const alone of collapseInlineContext([text])) if (alone !== null) return alone;
+  return '';
+}
+
+/** Refuses a changed string for a leaf the build dropped: a host has no view for it (an empty or white space only text at build time). */
+function checkDroppedGiven(id: string, text: string, facts: PlanTexts, at: string): void {
+  const source = facts.droppedSources.get(id);
+  if (source !== undefined && source !== text) fail(`${at}: ${id} had no text box at build time (its text was empty or white space only), so a phone has no view to draw a new text in`);
 }
 
 /** The box with id `id` in a variant's JSON tree, or null. */
@@ -4216,26 +4345,15 @@ function boxJson(v: JsonValue, id: string): JsonObj | null {
 /** What the row copies take from their rows' assignments (each copy's dashed borders and scrolling), and the lists placed. */
 type RowSink = { readonly dashed: Map<string, PlanDashed>; readonly scrollers: Map<string, boolean>; readonly placed: Map<string, boolean> };
 
-/** Whether `v` is a text leaf whose text is empty. */
-function emptyLeaf(v: JsonValue): boolean {
-  if (v.kind !== 'obj') return false;
-  const kind = v.values.get('kind');
-  const text = v.values.get('text');
-  return kind !== undefined && kind.kind === 'str' && kind.text === 'text' && text !== undefined && text.kind === 'str' && text.text === '';
-}
-
 /**
- * A copy of a row's box JSON for `row`: every id suffixed "@<key>", each text leaf named in its texts holding the row's text (and
- * dropped when that is empty, as the build drops it), and each box's dashed borders and scrolling those of the row's own
- * assignment; `used` gathers the text leaves it filled; `alone`: `v` is the children of a box that holds one leaf and nothing else.
+ * A copy of a row's box JSON for `row`: every id suffixed "@<key>", each text leaf named in its texts holding the row's text
+ * (givenText), and each box's dashed borders and scrolling those of the row's own assignment; `used` gathers the text leaves it
+ * filled, `changed` their copies' ids.
  */
-function rowCopy(v: JsonValue, row: RowEntry, sink: RowSink, used: Map<string, boolean>, alone: boolean): JsonValue {
+function rowCopy(v: JsonValue, row: RowEntry, sink: RowSink, used: Map<string, boolean>, changed: Map<string, boolean>, faults: RowTextFaults): JsonValue {
   if (v.kind === 'arr') {
     const items: JsonValue[] = [];
-    for (const item of v.items) {
-      const copy = rowCopy(item, row, sink, used, alone);
-      if (!emptyLeaf(copy)) items.push(copy);
-    }
+    for (const item of v.items) items.push(rowCopy(item, row, sink, used, changed, faults));
     return { kind: 'arr', items };
   }
   if (v.kind !== 'obj') return v;
@@ -4252,21 +4370,332 @@ function rowCopy(v: JsonValue, row: RowEntry, sink: RowSink, used: Map<string, b
       if (row.parts.scrollers.has(value.text)) sink.scrollers.set(copy, true);
     } else if (k === 'text' && kind !== undefined && kind.kind === 'str' && kind.text === 'text' && id !== undefined && id.kind === 'str' && row.texts.has(id.text)) {
       const mode = v.values.get('whiteSpaceCollapse');
+      const given = row.texts.get(id.text) as string;
+      const at = `${row.at}.texts: ${id.text}`;
       used.set(id.text, true);
-      values.set(k, { kind: 'str', text: rowText(row.texts.get(id.text) as string, mode !== undefined && mode.kind === 'str' ? mode.text : '', `${row.at}.texts: ${id.text}`, alone) });
-    } else values.set(k, rowCopy(value, row, sink, used, k === 'children' && kind !== undefined && kind.kind === 'str' && kind.text === 'box' && value.kind === 'arr' && value.items.length === 1));
+      checkDroppedGiven(id.text, given, row.facts, at);
+      if (row.facts.droppedSources.has(id.text)) values.set(k, value);
+      else {
+        changed.set(`${id.text}@${row.key}`, true);
+        values.set(k, { kind: 'str', text: givenText(given, mode !== undefined && mode.kind === 'str' ? mode.text : '', at, faults) });
+      }
+    } else values.set(k, rowCopy(value, row, sink, used, changed, faults));
   }
   return { kind: 'obj', keys: v.keys, values };
 }
 
-type RowEntry = { readonly key: string; readonly at: string; readonly parts: PlanAssignmentParts; readonly variant: JsonValue; readonly texts: Map<string, string>; readonly leaves: readonly string[]; readonly values: readonly number[] };
+/** `v` with each dropped text's leaf inserted before its next sibling, or last, among its parent's children; `placed` gathers their ids. */
+function withDropped(v: JsonValue, dropped: readonly PlanDropped[], placed: Map<string, boolean>): JsonValue {
+  if (v.kind === 'arr') {
+    const items: JsonValue[] = [];
+    for (const item of v.items) items.push(withDropped(item, dropped, placed));
+    return { kind: 'arr', items };
+  }
+  if (v.kind !== 'obj') return v;
+  const idv = v.values.get('id');
+  const id = idv !== undefined && idv.kind === 'str' ? idv.text : '';
+  const values = new Map<string, JsonValue>();
+  for (const k of v.keys) {
+    const value = v.values.get(k) as JsonValue;
+    if (k !== 'children' || value.kind !== 'arr' || id === '') {
+      values.set(k, withDropped(value, dropped, placed));
+      continue;
+    }
+    const items: JsonValue[] = [];
+    for (const child of value.items) {
+      const cv = child.kind === 'obj' ? child.values.get('id') : undefined;
+      const cid = cv !== undefined && cv.kind === 'str' ? cv.text : '';
+      for (const d of dropped) {
+        if (d.parent === id && d.next !== null && d.next === cid) {
+          items.push(d.leaf);
+          placed.set(d.id, true);
+        }
+      }
+      items.push(withDropped(child, dropped, placed));
+    }
+    for (const d of dropped) {
+      if (d.parent === id && d.next === null) {
+        items.push(d.leaf);
+        placed.set(d.id, true);
+      }
+    }
+    values.set(k, { kind: 'arr', items });
+  }
+  return { kind: 'obj', keys: v.keys, values };
+}
+
+/** A variant root with its dropped texts inserted, each where the plan places it. */
+function insertDropped(root: JsonValue, facts: PlanTexts, at: string): JsonValue {
+  const placed = new Map<string, boolean>();
+  const out = withDropped(root, facts.dropped, placed);
+  for (const d of facts.dropped) if (!placed.has(d.id)) fail(`${at}: the dropped text ${d.id} has no place: ${d.parent} holds no child ${d.next === null ? 'list' : d.next}`);
+  return out;
+}
+
+/** What withPhaseOne reads: the changed leaves, every fixed leaf's phase I input, the capitalize leaves, the struts to restore. */
+type PhaseOne = { readonly changed: ReadonlyMap<string, boolean>; readonly sources: ReadonlyMap<string, string>; readonly capitalized: ReadonlyMap<string, boolean>; readonly struts: ReadonlyMap<string, JsonValue>; readonly alone: boolean };
+
+/** One inline formatting context being gathered: each text leaf's id and string, '' for a <br> (string null) or an atomic inline (U+FFFC). */
+type ContextRun = { readonly ids: string[]; readonly strings: (string | null)[]; readonly modes: string[]; touched: boolean; changedSince: boolean };
+
+function newRun(): ContextRun {
+  return { ids: [], strings: [], modes: [], touched: false, changedSince: false };
+}
+
+function displayJson(v: JsonObj): string {
+  const style = v.values.get('style');
+  if (style === undefined || style.kind !== 'obj') return '';
+  const d = style.values.get('display');
+  return d !== undefined && d.kind === 'str' ? d.text : '';
+}
+
+/** An atomic inline among inline content (layout inline-box.ts isAtomicInline), in a variant's JSON. */
+function atomicJson(v: JsonObj, kind: string): boolean {
+  const d = displayJson(v);
+  if (kind === 'replaced') return d === 'inline' || d === 'inline-block' || d === 'inline-flex';
+  return (kind === 'box' || kind === 'control') && (d === 'inline-block' || d === 'inline-flex' || d === 'inline-grid');
+}
+
+function jsonKind(v: JsonValue): string {
+  if (v.kind !== 'obj') return '';
+  const k = v.values.get('kind');
+  return k !== undefined && k.kind === 'str' ? k.text : '';
+}
+
+/** The control kind of a plan box (text-area, text-editor, ...), '' for a box that is no control. */
+function controlKindJson(v: JsonValue): string {
+  if (v.kind !== 'obj') return '';
+  const c = v.values.get('control');
+  return c === undefined ? '' : jsonKind(c);
+}
+
+/** Whether a child of a box is inline-level: a text leaf, an inline box, a <br> or an atomic inline. */
+function inlineLevelJson(v: JsonValue): boolean {
+  const k = jsonKind(v);
+  return k === 'text' || k === 'inline' || k === 'br' || (v.kind === 'obj' && atomicJson(v, k));
+}
+
+/** Gathers inline-level items into run, flattened through inline boxes, as resolve.ts gather does. */
+function gatherContext(items: readonly JsonValue[], run: ContextRun, p: PhaseOne): void {
+  for (const item of items) {
+    if (item.kind !== 'obj') continue;
+    const k = jsonKind(item);
+    if (k === 'text') {
+      const id = str(field(item, 'id', 'text leaf'), 'text leaf id');
+      const text = str(field(item, 'text', id), `${id}.text`);
+      const changed = p.changed.has(id);
+      if (changed) {
+        run.touched = true;
+        run.changedSince = true;
+      } else if (p.capitalized.has(id) && run.changedSince) fail(`${id} is laid out with text-transform: capitalize after a changed text, which decides its first letter; a phone does not transform text`);
+      const source = p.sources.get(id);
+      const own = changed || source === undefined ? text : source;
+      if (!changed && own !== '') run.changedSince = false;
+      run.ids.push(id);
+      run.strings.push(own);
+      run.modes.push(str(field(item, 'whiteSpaceCollapse', id), `${id}.whiteSpaceCollapse`));
+    } else if (k === 'inline') gatherContext(arr(field(item, 'children', k), `${k}.children`), run, p);
+    else {
+      run.ids.push('');
+      run.strings.push(k === 'br' ? null : '\ufffc');
+      run.modes.push('collapse');
+    }
+  }
+}
+
+/** Phase I over a touched context, as resolve.ts flush runs it (white-space.ts), into results by leaf id. */
+function settleContext(run: ContextRun, results: Map<string, string>, p: PhaseOne): void {
+  if (!run.touched || p.alone) return;
+  let collapse = true;
+  let together = true;
+  let i = 0;
+  for (const t of run.strings) {
+    const mode = run.modes[i] as string;
+    if (mode !== 'collapse') collapse = false;
+    if (t === null || mode !== 'preserve-breaks') together = false;
+    i++;
+  }
+  const out: (string | null)[] = [];
+  if (collapse) for (const t of collapseInlineContext(run.strings)) out.push(t);
+  else if (together) {
+    const texts: string[] = [];
+    for (const t of run.strings) if (t !== null) texts.push(t);
+    for (const t of preserveBreaksContext(texts, false)) out.push(t);
+  } else {
+    let k = 0;
+    for (const t of run.strings) {
+      const mode = run.modes[k] as string;
+      if (t === null || mode !== 'preserve-breaks') out.push(t);
+      else for (const own of preserveBreaksContext([t], false)) out.push(own);
+      k++;
+    }
+  }
+  let at = 0;
+  for (const r of out) {
+    const id = run.ids[at] as string;
+    if (id !== '' && r !== null) results.set(id, r);
+    at++;
+  }
+}
+
+/**
+ * items with each text leaf holding its phase I result (results, else its own text) and dropped when that is "", unless keepEmpty
+ * (items of a textarea's editor, whose leaf the build keeps).
+ */
+function rebuildContext(items: readonly JsonValue[], results: ReadonlyMap<string, string>, p: PhaseOne, keepEmpty: boolean, inTextArea: boolean): JsonValue[] {
+  const out: JsonValue[] = [];
+  for (const item of items) {
+    if (item.kind !== 'obj') {
+      out.push(item);
+      continue;
+    }
+    const k = jsonKind(item);
+    if (k === 'text') {
+      const id = str(field(item, 'id', 'text leaf'), 'text leaf id');
+      const own = str(field(item, 'text', id), `${id}.text`);
+      const got = results.get(id);
+      const text = got === undefined ? own : got;
+      if (text === '' && !keepEmpty) continue;
+      if (text === own) out.push(item);
+      else {
+        const values = new Map<string, JsonValue>();
+        for (const key of item.keys) values.set(key, key === 'text' ? { kind: 'str', text } : (item.values.get(key) as JsonValue));
+        out.push({ kind: 'obj', keys: item.keys, values });
+      }
+    } else if (k === 'inline') {
+      const values = new Map<string, JsonValue>();
+      for (const key of item.keys) values.set(key, key === 'children' ? { kind: 'arr', items: rebuildContext(arr(field(item, 'children', k), `${k}.children`), results, p, keepEmpty, false) } : (item.values.get(key) as JsonValue));
+      out.push({ kind: 'obj', keys: item.keys, values });
+    } else if (k === 'box' || k === 'control') out.push(phaseOneBox(item, p, inTextArea && controlKindJson(item) === 'text-editor'));
+    else out.push(item);
+  }
+  return out;
+}
+
+/**
+ * A box with phase I run again over each of its inline formatting contexts that holds a changed text, with every fixed text at its
+ * phase I input, and each emptied leaf dropped (a textarea editor's kept, as the build keeps it); a box left with no inline-level
+ * children loses its strut, as the build emits it, and a box without one that gains inline content takes the strut the plan exported
+ * for it.
+ */
+function phaseOneBox(v: JsonObj, p: PhaseOne, keepEmpty: boolean): JsonObj {
+  const cv = v.values.get('children');
+  if (cv === undefined || cv.kind !== 'arr') return v;
+  const results = new Map<string, string>();
+  let run = newRun();
+  let hadInline = false;
+  for (const child of cv.items) {
+    if (inlineLevelJson(child)) {
+      hadInline = true;
+      gatherContext([child], run, p);
+    } else {
+      settleContext(run, results, p);
+      run = newRun();
+    }
+  }
+  settleContext(run, results, p);
+  const items = rebuildContext(cv.items, results, p, keepEmpty, controlKindJson(v) === 'text-area');
+  let hasInline = false;
+  for (const item of items) if (inlineLevelJson(item)) hasInline = true;
+  const idv = v.values.get('id');
+  const id = idv !== undefined && idv.kind === 'str' ? idv.text : '';
+  const restored = p.struts.get(id);
+  const values = new Map<string, JsonValue>();
+  for (const key of v.keys) {
+    const value = v.values.get(key) as JsonValue;
+    if (key === 'children') values.set(key, { kind: 'arr', items });
+    else if (key === 'strut' && hadInline && !hasInline) values.set(key, { kind: 'null' });
+    else if (key === 'strut' && hasInline && value.kind === 'null' && restored !== undefined) values.set(key, restored);
+    else values.set(key, value);
+  }
+  return { kind: 'obj', keys: v.keys, values };
+}
+
+/** The first place two JSON values differ, '' when they are equal byte for byte (numbers by bit pattern). */
+function jsonDiff(a: JsonValue, b: JsonValue, path: string): string {
+  if (a.kind !== b.kind) return `${path}: ${a.kind} and ${b.kind}`;
+  if (a.kind === 'str' && b.kind === 'str') return a.text === b.text ? '' : `${path}: ${q(a.text)} and ${q(b.text)}`;
+  if (a.kind === 'num' && b.kind === 'num') return bitsHex(a.num) === bitsHex(b.num) ? '' : `${path}: ${a.num} and ${b.num}`;
+  if (a.kind === 'bool' && b.kind === 'bool') return a.flag === b.flag ? '' : `${path}: ${a.flag} and ${b.flag}`;
+  if (a.kind === 'arr' && b.kind === 'arr') {
+    if (a.items.length !== b.items.length) return `${path}: ${a.items.length} and ${b.items.length} items`;
+    for (let i = 0; i < a.items.length; i++) {
+      const d = jsonDiff(a.items[i] as JsonValue, b.items[i] as JsonValue, `${path}[${i}]`);
+      if (d !== '') return d;
+    }
+    return '';
+  }
+  if (a.kind === 'obj' && b.kind === 'obj') {
+    if (a.keys.length !== b.keys.length) return `${path}: ${a.keys.length} and ${b.keys.length} keys`;
+    for (let i = 0; i < a.keys.length; i++) {
+      const k = a.keys[i] as string;
+      if (k !== b.keys[i]) return `${path}: key ${k} and ${b.keys[i] as string}`;
+      const d = jsonDiff(a.values.get(k) as JsonValue, b.values.get(k) as JsonValue, `${path}.${k}`);
+      if (d !== '') return d;
+    }
+    return '';
+  }
+  return '';
+}
+
+/** `v` with every text leaf holding its phase I input (sources, else its text), as a host would give each as a changed text. */
+function withSources(v: JsonValue, sources: ReadonlyMap<string, string>, faults: RowTextFaults): JsonValue {
+  if (v.kind === 'arr') {
+    const items: JsonValue[] = [];
+    for (const item of v.items) items.push(withSources(item, sources, faults));
+    return { kind: 'arr', items };
+  }
+  if (v.kind !== 'obj') return v;
+  const k = jsonKind(v);
+  const values = new Map<string, JsonValue>();
+  for (const key of v.keys) {
+    const value = v.values.get(key) as JsonValue;
+    if (k === 'text' && key === 'text') {
+      const id = str(field(v, 'id', 'text leaf'), 'text leaf id');
+      const mode = str(field(v, 'whiteSpaceCollapse', id), `${id}.whiteSpaceCollapse`);
+      const source = sources.get(id) ?? str(value, `${id}.text`);
+      values.set(key, { kind: 'str', text: faults.givenTextCollapsedAlone && mode === 'collapse' ? (collapseInlineContext([source])[0] as string) : source });
+    } else values.set(key, withSources(value, sources, faults));
+  }
+  return { kind: 'obj', keys: v.keys, values };
+}
+
+/**
+ * Test only, the pass's self-check over a plan (`line` its JSON): for each variant, withPhaseOne with every text leaf given at its
+ * phase I input and every dropped text inserted must lay the variant's tree out byte for byte. ["ok"], or ["differs", where].
+ */
+export function marklessPhaseOneSelfCheck(line: string, faults: RowTextFaults): string {
+  try {
+    const plan = planObj(parseJson(line));
+    checkPlanTexts(plan);
+    const variants = arr(field(plan, 'variants', '$.plan'), '$.plan.variants');
+    for (let vi = 0; vi < variants.length; vi++) {
+      const root = variantRootJson(plan, vi);
+      const facts = planTextFacts(plan, vi);
+      const inserted = faults.fixedTextsAsLaidOut ? root : insertDropped(root, facts, `$.plan.texts of variant ${vi}`);
+      const changed = new Map<string, boolean>();
+      textLeafIds(inserted, changed);
+      const given = withSources(inserted, facts.sources, faults);
+      if (given.kind !== 'obj') return fail(`$.plan.variants[${vi}].root: expected a box`);
+      const got = phaseOneBox(given, { changed, sources: new Map<string, string>(), capitalized: new Map<string, boolean>(), struts: facts.struts, alone: faults.givenTextCollapsedAlone }, false);
+      const d = jsonDiff(got, root, `$.plan.variants[${vi}].root`);
+      if (d !== '') return `["differs",${q(d)}]`;
+    }
+    return '["ok"]';
+  } catch (e) {
+    if (e instanceof HarnessError) return `["harness-error",${q(e.detail)}]`;
+    return '["threw"]';
+  }
+}
+
+type RowEntry = { readonly key: string; readonly at: string; readonly parts: PlanAssignmentParts; readonly variant: JsonValue; readonly facts: PlanTexts; readonly texts: Map<string, string>; readonly leaves: readonly string[]; readonly values: readonly number[] };
 type RowList = { readonly parent: string; readonly template: readonly string[]; readonly rows: readonly RowEntry[] };
 
 /** The variant's tree with each list's template children replaced by one copy per row, in row order. */
-function withRows(v: JsonValue, lists: ReadonlyMap<string, RowList>, sink: RowSink): JsonValue {
+function withRows(v: JsonValue, lists: ReadonlyMap<string, RowList>, sink: RowSink, changed: Map<string, boolean>, faults: RowTextFaults): JsonValue {
   if (v.kind === 'arr') {
     const items: JsonValue[] = [];
-    for (const item of v.items) items.push(withRows(item, lists, sink));
+    for (const item of v.items) items.push(withRows(item, lists, sink, changed, faults));
     return { kind: 'arr', items };
   }
   if (v.kind !== 'obj') return v;
@@ -4280,7 +4709,7 @@ function withRows(v: JsonValue, lists: ReadonlyMap<string, RowList>, sink: RowSi
   for (const k of v.keys) {
     const value = v.values.get(k) as JsonValue;
     if (k !== 'children' || list === null || value.kind !== 'arr') {
-      values.set(k, withRows(value, lists, sink));
+      values.set(k, withRows(value, lists, sink, changed, faults));
       continue;
     }
     const items: JsonValue[] = [];
@@ -4300,14 +4729,14 @@ function withRows(v: JsonValue, lists: ReadonlyMap<string, RowList>, sink: RowSi
           for (const tid of list.template) {
             const source = boxJson(row.variant, tid);
             if (source === null) return fail(`$.rows: the variant of row ${row.key} has no box ${tid}`);
-            items.push(rowCopy(source, row, sink, used, false));
+            items.push(rowCopy(source, row, sink, used, changed, faults));
           }
           for (const leaf of row.leaves) if (!used.has(leaf)) fail(`${row.at}.texts: ${leaf} is no text leaf of the row's template`);
         }
         at += list.template.length;
         placed = true;
       } else {
-        items.push(withRows(child, lists, sink));
+        items.push(withRows(child, lists, sink, changed, faults));
         at += 1;
       }
     }
@@ -4325,7 +4754,7 @@ function variantRootJson(plan: JsonObj, vi: number): JsonValue {
   return field(obj(variants[vi] as JsonValue, ['rootFontSize', 'root'], `$.plan.variants[${vi}]`), 'root', `$.plan.variants[${vi}]`);
 }
 
-function marklessLayout(o: JsonObj, live: GlyphShaper | null): string {
+function marklessLayout(o: JsonObj, live: GlyphShaper | null, faults: RowTextFaults): string {
     const plan = planObj(field(o, 'plan', '$'));
     const values = slotValues(o, planSlots(plan));
     const dpr = numField(o, 'dpr', '$');
@@ -4338,7 +4767,7 @@ function marklessLayout(o: JsonObj, live: GlyphShaper | null): string {
     if (density === null) return fail(`the plan holds no text measured at ratio ${dpr}`);
     const measurer = planMeasurer(faces, density, live);
     const parts = planAssignment(plan, numField(o, 'assignment', '$'));
-    const spliced = live === null ? null : rowsVariant(plan, parts, field(o, 'rows', '$'), values, o.values.has('texts') ? field(o, 'texts', '$') : null);
+    const spliced = live === null ? null : rowsVariant(plan, parts, field(o, 'rows', '$'), values, o.values.has('texts') ? field(o, 'texts', '$') : null, faults);
     const variant = spliced === null ? slottedVariant(plan, parts.variant, parts.fields, parts.refusals, values) : spliced.variant;
     const viewport = decodeViewport(field(o, 'viewport', '$'), '$.viewport');
     const safe = obj(field(o, 'safeArea', '$'), ['top', 'right', 'bottom', 'left'], '$.safeArea');
@@ -4484,11 +4913,11 @@ function pageTexts(textsValue: JsonValue | null): Map<string, string> {
   return texts;
 }
 
-/** `v` with each page text leaf named in `texts` holding its given string, white space processed as the build processes it. */
-function withPageTexts(v: JsonValue, texts: ReadonlyMap<string, string>, used: Map<string, boolean>, alone: boolean): JsonValue {
+/** `v` with each page text leaf named in `texts` holding its given string (givenText); `used` gathers them, `changed` too. */
+function withPageTexts(v: JsonValue, texts: ReadonlyMap<string, string>, used: Map<string, boolean>, changed: Map<string, boolean>, facts: PlanTexts, faults: RowTextFaults): JsonValue {
   if (v.kind === 'arr') {
     const items: JsonValue[] = [];
-    for (const item of v.items) items.push(withPageTexts(item, texts, used, alone));
+    for (const item of v.items) items.push(withPageTexts(item, texts, used, changed, facts, faults));
     return { kind: 'arr', items };
   }
   if (v.kind !== 'obj') return v;
@@ -4499,9 +4928,15 @@ function withPageTexts(v: JsonValue, texts: ReadonlyMap<string, string>, used: M
     const value = v.values.get(k) as JsonValue;
     if (k === 'text' && kind !== undefined && kind.kind === 'str' && kind.text === 'text' && id !== undefined && id.kind === 'str' && texts.has(id.text)) {
       const mode = v.values.get('whiteSpaceCollapse');
+      const given = texts.get(id.text) as string;
       used.set(id.text, true);
-      values.set(k, { kind: 'str', text: rowText(texts.get(id.text) as string, mode !== undefined && mode.kind === 'str' ? mode.text : '', `$.texts: ${id.text}`, alone) });
-    } else values.set(k, withPageTexts(value, texts, used, k === 'children' && kind !== undefined && kind.kind === 'str' && kind.text === 'box' && value.kind === 'arr' && value.items.length === 1));
+      checkDroppedGiven(id.text, given, facts, '$.texts');
+      if (facts.droppedSources.has(id.text)) values.set(k, value);
+      else {
+        changed.set(id.text, true);
+        values.set(k, { kind: 'str', text: givenText(given, mode !== undefined && mode.kind === 'str' ? mode.text : '', `$.texts: ${id.text}`, faults) });
+      }
+    } else values.set(k, withPageTexts(value, texts, used, changed, facts, faults));
   }
   return { kind: 'obj', keys: v.keys, values };
 }
@@ -4520,7 +4955,7 @@ function textLeafIds(v: JsonValue, into: Map<string, boolean>): void {
 }
 
 /** The page variant with each list's rows in place of its template ($.rows), with the page's and each row copy's dashed borders and scrolling. */
-function rowsVariant(plan: JsonObj, parts: PlanAssignmentParts, rowsValue: JsonValue, values: readonly number[], textsValue: JsonValue | null): RowsVariant {
+function rowsVariant(plan: JsonObj, parts: PlanAssignmentParts, rowsValue: JsonValue, values: readonly number[], textsValue: JsonValue | null, faults: RowTextFaults): RowsVariant {
   const slots = planSlots(plan);
   const vi = parts.variant;
   const assignments = arr(field(plan, 'assignments', '$.plan'), '$.plan.assignments');
@@ -4563,8 +4998,10 @@ function rowsVariant(plan: JsonObj, parts: PlanAssignmentParts, rowsValue: JsonV
       keys.set(key, true);
       const own = planAssignment(plan, k);
       const rowValues = withSlots ? slotList(field(ro, 'slots', rat), slots, `${rat}.slots`) : [];
-      const variant = slotted(plan) ? slottedRoot(variantRootJson(plan, own.variant), own.fields, own.refusals, rowValues, `${rat}.slots`) : variantRootJson(plan, own.variant);
-      const entry: RowEntry = { key, at: rat, parts: own, variant, texts, leaves, values: rowValues };
+      const laidOut = slotted(plan) ? slottedRoot(variantRootJson(plan, own.variant), own.fields, own.refusals, rowValues, `${rat}.slots`) : variantRootJson(plan, own.variant);
+      const facts = planTextFacts(plan, own.variant);
+      const variant = faults.fixedTextsAsLaidOut ? laidOut : insertDropped(laidOut, facts, `$.plan.texts of variant ${own.variant}`);
+      const entry: RowEntry = { key, at: rat, parts: own, variant, facts, texts, leaves, values: rowValues };
       rows.push(entry);
       all.push(entry);
     }
@@ -4583,12 +5020,25 @@ function rowsVariant(plan: JsonObj, parts: PlanAssignmentParts, rowsValue: JsonV
   const texts = pageTexts(textsValue);
   const transformed = planTransformed(plan);
   for (const [leaf, _text] of texts) if (transformed.has(leaf)) fail(`$.texts: ${leaf} is laid out with a text-transform, which a phone does not apply to the text it is given`);
+  const facts = planTextFacts(plan, vi);
+  // Fixed leaves are read at their phase I input: the page's by id, each row copy's from its own variant, by its copy's id.
+  const sources = new Map<string, string>();
+  const struts = new Map<string, JsonValue>();
+  if (!faults.fixedTextsAsLaidOut) {
+    for (const [id, source] of facts.sources) sources.set(id, source);
+    for (const row of all) for (const [id, source] of row.facts.sources) sources.set(`${id}@${row.key}`, source);
+  }
+  for (const [id, strut] of facts.struts) struts.set(id, strut);
+  for (const row of all) for (const [id, strut] of row.facts.struts) struts.set(`${id}@${row.key}`, strut);
   const usedTexts = new Map<string, boolean>();
-  const root = withRows(withPageTexts(page, texts, usedTexts, false), lists, sink);
+  const changed = new Map<string, boolean>();
+  const filled = withPageTexts(faults.fixedTextsAsLaidOut ? page : insertDropped(page, facts, `$.plan.texts of variant ${vi}`), texts, usedTexts, changed, facts, faults);
+  const spliced = withRows(filled, lists, sink, changed, faults);
   const kept = new Map<string, boolean>();
-  textLeafIds(root, kept);
+  textLeafIds(spliced, kept);
   for (const [leaf, _text] of texts) if (!usedTexts.has(leaf) || !kept.has(leaf)) fail(`$.texts: ${leaf} is no text leaf of the page outside its lists' rows`);
   for (const parent of parents) if (!sink.placed.has(parent) && (lists.get(parent) as RowList).rows.length > 0) fail(`$.rows: the page has no box ${parent} to hold its list's rows`);
-  if (root.kind !== 'obj' || kindOf(root, `${at}.root`) !== 'box') return fail(`${at}.root: expected a box`);
+  if (spliced.kind !== 'obj' || kindOf(spliced, `${at}.root`) !== 'box') return fail(`${at}.root: expected a box`);
+  const root = phaseOneBox(spliced, { changed, sources, capitalized: planCapitalized(plan), struts, alone: faults.givenTextCollapsedAlone }, false);
   return { variant: { rootFontSize: numField(vo, 'rootFontSize', at), root: decodeBox(root, `${at}.root`) }, dashed: sink.dashed, scrollers: sink.scrollers, rows: all };
 }
