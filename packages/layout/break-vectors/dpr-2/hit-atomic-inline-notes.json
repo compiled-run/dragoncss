@@ -1,0 +1,10 @@
+{
+  "case": "hit-atomic-inline-notes",
+  "dpr": 2,
+  "texts": [
+    {"id":"p1:text0","lines":[[0,9]]},
+    {"id":"p2:text0","lines":[[0,4]]},
+    {"id":"q1:text0","lines":[[0,9]]},
+    {"id":"q2:text0","lines":[[0,4]]}
+  ]
+}

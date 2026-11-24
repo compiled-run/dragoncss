@@ -67,11 +67,11 @@ fun intrinsic_intrinsicContentInlineSize(ctx: Ctx, node: U_ControlBox_LayoutBox,
   var right: Double = units_ZERO
   // ts: packages/layout/src/intrinsic.ts:55
   run {
-    val _a175 = kids
-    var _i175 = 0
-    while (_i175 < _a175.size) {
-      val k: U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a175[_i175]
-      _i175++
+    val _a176 = kids
+    var _i176 = 0
+    while (_i176 < _a176.size) {
+      val k: U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a176[_i176]
+      _i176++
       // ts: packages/layout/src/intrinsic.ts:56
       if ((((!jsStrEq(k.kind, "box") && !jsStrEq((k as U_ControlBox_InlineBox_LineBreak_ReplacedLeaf_TextLeaf).kind, "control")) && !jsStrEq((k as U_InlineBox_LineBreak_ReplacedLeaf_TextLeaf).kind, "replaced")) || position_isOutOfFlow(ctx, (k as U_ControlBox_LayoutBox_ReplacedLeaf)))) {
         continue
@@ -103,11 +103,11 @@ fun intrinsic_menuListNaturalInlineSize(ctx: Ctx, node: ControlBox): Double {
   var inners: Double = 0.0
   // ts: packages/layout/src/intrinsic.ts:77
   run {
-    val _a176 = node.children
-    var _i176 = 0
-    while (_i176 < _a176.size) {
-      val k: U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a176[_i176]
-      _i176++
+    val _a177 = node.children
+    var _i177 = 0
+    while (_i177 < _a177.size) {
+      val k: U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a177[_i177]
+      _i177++
       // ts: packages/layout/src/intrinsic.ts:78
       if ((!jsStrEq(k.kind, "control") || !jsStrEq((k as ControlBox).control.kind, "select-inner"))) {
         continue
@@ -123,11 +123,11 @@ fun intrinsic_menuListNaturalInlineSize(ctx: Ctx, node: ControlBox): Double {
       }
       // ts: packages/layout/src/intrinsic.ts:82
       run {
-        val _a177 = (k as ControlBox).children
-        var _i177 = 0
-        while (_i177 < _a177.size) {
-          val t: U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a177[_i177]
-          _i177++
+        val _a178 = (k as ControlBox).children
+        var _i178 = 0
+        while (_i178 < _a178.size) {
+          val t: U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a178[_i178]
+          _i178++
           // ts: packages/layout/src/intrinsic.ts:83
           if (jsStrEq(t.kind, "text")) {
             shown = (shown + (t as TextLeaf).text)
@@ -143,11 +143,11 @@ fun intrinsic_menuListNaturalInlineSize(ctx: Ctx, node: ControlBox): Double {
   var widest: Double = 0.0
   // ts: packages/layout/src/intrinsic.ts:88
   run {
-    val _a178 = (c as ControlKind_selectMenulist).options
-    var _i178 = 0
-    while (_i178 < _a178.size) {
-      val o: TextLeaf = _a178[_i178]
-      _i178++
+    val _a179 = (c as ControlKind_selectMenulist).options
+    var _i179 = 0
+    while (_i179 < _a179.size) {
+      val o: TextLeaf = _a179[_i179]
+      _i179++
       // ts: packages/layout/src/intrinsic.ts:89
       if ((ctx.faults.menuListShownLabelOnly && !jsStrEq(o.text, shown))) {
         continue
@@ -264,11 +264,11 @@ fun intrinsic_flexIntrinsicContent(ctx: Ctx, box: LayoutBox, kind: String): Doub
     var widest: Double = units_ZERO
     // ts: packages/layout/src/intrinsic.ts:162
     run {
-      val _a179 = contributions
-      var _i179 = 0
-      while (_i179 < _a179.size) {
-        val c: Double = _a179[_i179]
-        _i179++
+      val _a180 = contributions
+      var _i180 = 0
+      while (_i180 < _a180.size) {
+        val c: Double = _a180[_i180]
+        _i180++
         widest = units_max(widest, c)
       }
     }
