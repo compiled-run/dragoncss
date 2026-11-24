@@ -1,0 +1,15 @@
+{
+  "case": "controls-text-font-column-flex",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"s1::placeholder:text0","lines":[[0,12]]},
+    {"id":"c1:text0","lines":[[0,5]]},
+    {"id":"t1::editor:text0","lines":[[0,12]]},
+    {"id":"c2:text0","lines":[[0,4]]},
+    {"id":"b1::editor:text0","lines":[[0,17]]},
+    {"id":"s2::placeholder:text0","lines":[[0,12]]},
+    {"id":"c3:text0","lines":[[0,5]]},
+    {"id":"t2::editor:text0","lines":[[0,12]]},
+    {"id":"t3::placeholder:text0","lines":[[0,5]]}
+  ]
+}
