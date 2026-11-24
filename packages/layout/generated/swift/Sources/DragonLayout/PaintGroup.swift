@@ -10,7 +10,7 @@ public func paintGroup_at(_ xs: JsArray<Double>, _ i: Double) throws -> Double {
   let v: Double? = jsAt(xs, i)
   // ts: packages/layout/src/paint-group.ts:15
   if (v == nil) {
-    throw JsError(message: jsConcat(S.s1019, jsNumberToString(i)))
+    throw JsError(message: jsConcat(S.s1020, jsNumberToString(i)))
   }
   return try jsUnwrap(v)
 }
@@ -108,7 +108,7 @@ public func paintGroup_groupTileSpan(_ i: Double, _ tileSize: Double) throws -> 
 public func paintGroup_groupTileFoldIndex(_ draws: JsArray<Double>, _ tileLeft: Double, _ tileTop: Double, _ tileRight: Double, _ tileBottom: Double) throws -> Double {
   // ts: packages/layout/src/paint-group.ts:119
   if try ((jsLength(draws) - (5.0 * rtEasing_floorOf((jsLength(draws) / 5.0)))) != 0.0) {
-    throw JsError(message: jsConcat(S.s1015, jsNumberToString(jsLength(draws)), S.s166))
+    throw JsError(message: jsConcat(S.s1016, jsNumberToString(jsLength(draws)), S.s167))
   }
   var met: Double = 0.0
   var foldable: Bool = false
@@ -145,7 +145,7 @@ public func paintGroup_groupTileFolds(_ draws: JsArray<Double>, _ tileLeft: Doub
 public func paintGroup_groupFoldAlpha(_ ca: Double, _ opacity: Double) throws -> Double {
   // ts: packages/layout/src/paint-group.ts:154
   if (!((ca >= 0.0) && (ca <= 255.0))) {
-    throw JsError(message: jsConcat(S.s1014, jsNumberToString(ca), S.s123))
+    throw JsError(message: jsConcat(S.s1015, jsNumberToString(ca), S.s123))
   }
   let o: Double = try rtEasing_froundOf(((opacity < 0.0) ? 0.0 : ((opacity > 1.0) ? 1.0 : opacity)))
   let a: Double = try rtEasing_froundOf((rtEasing_froundOf((ca / 255.0)) * o))
@@ -192,11 +192,11 @@ public func paintGroup_colourRows(_ m0: Double, _ m1: Double, _ m2: Double, _ m4
 public func paintGroup_groupFilterMatrix(_ code: Double, _ amountIn: Double) throws -> JsArray<Double> {
   // ts: packages/layout/src/paint-group.ts:209
   if (!((amountIn >= 0.0) && (amountIn <= paintGroup_FLT_MAX))) {
-    throw JsError(message: jsConcat(S.s1017, jsNumberToString(amountIn), S.s129))
+    throw JsError(message: jsConcat(S.s1018, jsNumberToString(amountIn), S.s129))
   }
   // ts: packages/layout/src/paint-group.ts:210
   if ((((code >= 0.0) && (code <= 4.0)) && (code != 2.0)) && (amountIn > 1.0)) {
-    throw JsError(message: jsConcat(S.s1016, jsNumberToString(code), S.s17, jsNumberToString(amountIn), S.s104))
+    throw JsError(message: jsConcat(S.s1017, jsNumberToString(code), S.s17, jsNumberToString(amountIn), S.s104))
   }
   let a: Double = try rtEasing_froundOf(amountIn)
   // ts: packages/layout/src/paint-group.ts:212
@@ -243,14 +243,14 @@ public func paintGroup_groupFilterMatrix(_ code: Double, _ amountIn: Double) thr
     let c: Double = try paintGroup_addf(paintGroup_mulf(rtEasing_froundOf(-0.5), a), rtEasing_froundOf(0.5))
     return try paintGroup_colourRows(a, 0.0, 0.0, c, 0.0, a, 0.0, c, 0.0, 0.0, a, c)
   }
-  throw JsError(message: jsConcat(S.s1018, jsNumberToString(code)))
+  throw JsError(message: jsConcat(S.s1019, jsNumberToString(code)))
 }
 
 // ts: packages/layout/src/paint-group.ts:254
 public func paintGroup_groupFilterMatrices(_ ops: JsArray<Double>) throws -> JsArray<Double> {
   // ts: packages/layout/src/paint-group.ts:255
   if try ((jsLength(ops) == 0.0) || ((jsLength(ops) - (2.0 * rtEasing_floorOf((jsLength(ops) / 2.0)))) != 0.0)) {
-    throw JsError(message: jsConcat(S.s1013, jsNumberToString(jsLength(ops)), S.s165))
+    throw JsError(message: jsConcat(S.s1014, jsNumberToString(jsLength(ops)), S.s166))
   }
   let out: JsArray<Double> = JsArray<Double>([])
   // ts: packages/layout/src/paint-group.ts:257
@@ -287,7 +287,7 @@ public func paintGroup_unorm8(_ v: Double) throws -> Double {
 public func paintGroup_groupFilterComposite(_ lr: Double, _ lg: Double, _ lb: Double, _ la: Double, _ dr: Double, _ dg: Double, _ db: Double, _ da: Double, _ matrices: JsArray<Double>, _ a8: Double) throws -> Double {
   // ts: packages/layout/src/paint-group.ts:282
   if try ((jsLength(matrices) == 0.0) || ((jsLength(matrices) - (20.0 * rtEasing_floorOf((jsLength(matrices) / 20.0)))) != 0.0)) {
-    throw JsError(message: jsConcat(S.s1012, jsNumberToString(jsLength(matrices)), S.s157))
+    throw JsError(message: jsConcat(S.s1013, jsNumberToString(jsLength(matrices)), S.s158))
   }
   // ts: packages/layout/src/paint-group.ts:283
   if (a8 <= 0.0) {

@@ -18,8 +18,10 @@ export const ATOMIC_INLINE: readonly FixtureSpec[] = [
   layout('atomic-inline-disclosure'),
   // HIT-atomic-inline: atomic inlines hit in their line's paint order (notes/HIT-atomic-inline-spec.md).
   both('hit-atomic-inline'),
-  // INL2c: a stacking-context atomic inline on a line in the anonymous box beside a block child; both sides refuse its hit model.
-  layout('hit-atomic-inline-context'),
+  // HIT-INL2c: an atomic inline forming a stacking context hits as its own layer (notes/HIT-INL2c-spec.md), split to fit the viewport.
+  layout('hit-atomic-inline-context', ['ltr', 'rtl']),
+  layout('hit-atomic-inline-context-nest', ['ltr', 'rtl']),
+  layout('hit-atomic-inline-notes', ['ltr', 'rtl']),
   reject('reject-atomic-in-inline-box', 'DRAGON_UNPROVEN_CONTEXT', '<span data-dragon-id="a" class="ib">X</span>', 'inline-block <span> a is an atomic inline inside the inline box <span> s'),
   reject('reject-atomic-beside-shaped-text', 'DRAGON_UNPROVEN_CONTEXT', '<span data-dragon-id="a" class="ib"></span>', 'inline-block <span> a shares an inline formatting context of d with text d:text0 in a real face'),
 ];

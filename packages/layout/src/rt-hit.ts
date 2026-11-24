@@ -714,6 +714,8 @@ export type HitFact = {
   readonly radii: readonly RadiusLength[];
   /** A stacking context in the z-index 0 layer (opacity below 1, a transform). */
   readonly context: boolean;
+  /** What else makes it a stacking context, as a message names it (containment, a filter, isolation and the like), or ''. */
+  readonly otherContext: string;
   /** The transform functions (none when empty) and origin. */
   readonly transform: readonly TransformOp[];
   readonly origin: TransformOrigin;
@@ -1042,7 +1044,6 @@ function boxNodes(s: TableState, b: LayoutBox, parent: number, orders: Map<strin
     lengths = f.radii;
     paint = paintOf(b.id, f, r, s.dpr, ox, oy, sox, soy, s.faults);
   }
-  if (line >= 0 && (paint.context || paint.transformed)) throw new HitError(contextAtomicRefusal(b.id));
   if (own < 0) throw new HitError(`anonymous box ${b.id} has no element ancestor`);
   const border = resolveBorder(zoomedBox(s, b.id).style, s.ctx.devicePixelRatio);
   const order = orders === null ? undefined : orders.get(b.id);
@@ -1268,7 +1269,6 @@ function replacedNode(s: TableState, c: ReplacedLeaf, parent: number, orders: Ma
   const border = resolveBorder(style, s.ctx.devicePixelRatio);
   const order = orders === null ? undefined : orders.get(c.id);
   const paint = paintOf(c.id, f, r, s.dpr, ox, oy, sox, soy, s.faults);
-  if (line >= 0 && (paint.context || paint.transformed)) throw new HitError(contextAtomicRefusal(c.id));
   pushNode(s, {
     kind: 'box', parent, target: s.nodes.length, x: r.x, y: r.y, width: r.width, height: r.height, clips: c.style.overflowX === 'hidden',
     borderTop: border.top, borderRight: border.right, borderBottom: border.bottom, borderLeft: border.left, layer: c.style.position !== 'static',
@@ -1324,9 +1324,9 @@ function paddingRefusal(id: string): string {
   return `${id} has percentage padding around atomic inlines, whose lines the hit table does not place yet (INL2a)`;
 }
 
-/** No Chrome hit capture orders an atomic inline that is its own stacking context, or transformed, against its line's text yet. */
-function contextAtomicRefusal(id: string): string {
-  return `${id} is an atomic inline that forms a stacking context or is transformed, which no Chrome hit capture orders against its line yet (INL2c)`;
+/** The Chrome captures order an atomic inline's stacking context against its line only when opacity or a transform makes it. */
+function contextAtomicRefusal(id: string, other: string): string {
+  return `${id} is an atomic inline that ${other} makes a stacking context, which no Chrome hit capture orders against its line yet (INL2c)`;
 }
 
 /** An atomic inline outside an inline formatting context (which the compiler never builds) has no line to paint on. */
@@ -1371,13 +1371,15 @@ export function hitRefusal(input: LayoutInput): string | null {
   return boxHitRefusal(input.root);
 }
 
-/** The first atomic inline on a line under b whose hit facts make it a stacking context or transform it, or null. */
+/** The first atomic inline on a line under b that a source other than opacity or a transform makes a stacking context, or whose transform the hit table does not model, or null (INL2c). */
 function boxContextRefusal(b: LayoutBox, facts: ReadonlyMap<string, HitFact>): string | null {
   for (const child of b.children) {
     const c = child.kind === 'control' ? hitControlBox(child) : child;
     if ((c.kind === 'box' || c.kind === 'replaced') && isAtomicInline(c) && b.strut !== null) {
       const f = facts.get(c.id);
-      if (f !== undefined && (f.context || f.transform.length > 0)) return contextAtomicRefusal(c.id);
+      if (f !== undefined && f.otherContext !== '') return contextAtomicRefusal(c.id, f.otherContext);
+      const refused = f === undefined ? null : hitTransformRefusal(c.id, f.transform);
+      if (refused !== null) return refused;
     }
     if (c.kind === 'box') {
       const r = boxContextRefusal(c, facts);
@@ -1387,7 +1389,7 @@ function boxContextRefusal(b: LayoutBox, facts: ReadonlyMap<string, HitFact>): s
   return null;
 }
 
-/** Why hitTableOf refuses an input with these hit facts beyond hitRefusal: an atomic inline that is a stacking context (INL2c). */
+/** Why hitTableOf refuses an input with these hit facts beyond hitRefusal: an atomic inline on a line with a stacking context or a transform it does not model. */
 export function hitFactsRefusal(input: LayoutInput, facts: ReadonlyMap<string, HitFact>): string | null {
   return boxContextRefusal(input.root, facts);
 }
