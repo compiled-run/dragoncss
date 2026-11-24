@@ -14,7 +14,7 @@ import { checkPlan, HEIGHT_FEATURES, heightDependence, hexBits, PLAN_HEIGHTS, pl
 import type { MarklessPlan } from './markless-plan.ts';
 import { withFontMapAssets } from './fixture-groups/fonts.ts';
 import { DOCUMENT_ID, PROJECT_ID } from './fixture-reader.ts';
-import type { ExportAssignment, ExportDevice, ExportNode, ExportTarget, NativeStyleExport } from './native-style-export.ts';
+import type { ExportAssignment, ExportDevice, ExportInteractionMatch, ExportNode, ExportTarget, NativeStyleExport } from './native-style-export.ts';
 import { EXPORT_DEVICES, exportBands, nativeStyleExport, valuesOf } from './native-style-export.ts';
 import { programAt } from 'dragon';
 import { isWhitespaceText, rehostAddress, textAddresser } from './node-ids.ts';
@@ -964,12 +964,15 @@ function exportMarkless(parsed: MarklessStyleInput, inputText: string, inputPath
       })),
       ...(x.interaction === undefined ? {} : { interaction: { levels: x.interaction.levels.map((l, i) => ({
         ...l,
-        states: l.states.map((a, k) => ({
-          ...a,
-          values: cellValues(a),
-          colorScheme: (schemes[i] as UsedScheme).colorScheme,
-          ...rootPaint(a.nodes, `${t} assignment ${i} interaction state ${k}`, bandScheme(x.bands, a.values[BAND_KEY]), schemes[i] as UsedScheme),
-        })),
+        states: l.states.map((s, k) => {
+          const a = withoutRootFocusRing(s, l.matches[k]);
+          return {
+            ...a,
+            values: cellValues(a),
+            colorScheme: (schemes[i] as UsedScheme).colorScheme,
+            ...rootPaint(a.nodes, `${t} assignment ${i} interaction state ${k}`, bandScheme(x.bands, a.values[BAND_KEY]), schemes[i] as UsedScheme),
+          };
+        }),
       })) } }),
     }];
   }));
@@ -1280,6 +1283,22 @@ function checkHostGroups(nodes: readonly ExportNode[], where: string): void {
     };
     visit(g);
   }
+}
+
+/** The page's root boxes, whose paint the hosts draw as the canvas and the body's background only. */
+const ROOT_BOXES: ReadonlySet<string> = new Set(['html', 'body']);
+
+/**
+ * The planner's ruling (Markless #974): a phone cannot focus the root with a keyboard ring. Dragon gives every element that a
+ * page-wide `:focus-visible { outline }` rule reaches an interaction state, html and body included, which Chrome reaches only by
+ * forcing the pseudo-class: neither is focusable (markless-root-paint.test.ts). In a state whose focused element (:focus or :focus-visible) is html or body, that element's outline is
+ * accepted and not drawn: it loses its outline write. The base assignments keep checkRootPaint's refusal, and so does a root
+ * outline in a state that focuses another element.
+ */
+function withoutRootFocusRing<A extends { readonly nodes: readonly ExportNode[] }>(state: A, match: ExportInteractionMatch | undefined): A {
+  const focused = match === undefined ? null : (match.focusVisible ?? match.focus);
+  if (focused === null || !ROOT_BOXES.has(focused)) return state;
+  return { ...state, nodes: state.nodes.map((n) => (n.id === focused ? { ...n, writes: n.writes.filter((w) => w['kind'] !== 'outline') } : n)) };
 }
 
 function checkRootPaint(nodes: readonly ExportNode[], id: string, where: string): void {
