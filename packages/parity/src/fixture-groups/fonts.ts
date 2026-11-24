@@ -78,6 +78,7 @@ const MAPS: ReadonlyMap<string, FontMap> = new Map([
   ['reject-atomic-beside-shaped-text', FONT_REFERENCE_MAP],
   // TXT-FONTFEAT: font-stretch is accepted over Ahem, so the font shorthand's width keyword is refused over a real face.
   ['reject-font-shorthand-stretch', FONT_REFERENCE_MAP],
+  ['controls-text-field-font-definite', FONT_REFERENCE_MAP],
 ]);
 
 /** The font map a fixture compiles with; undefined for every fixture outside this group. */
