@@ -207,9 +207,15 @@ fun dragonHostsNoChildren(v: DragonBoxView, c: DragonClipView): Boolean {
  * hardware layer). As the view's foreground it draws after the scrollbars, in the host's scrolled canvas, so the path is moved by the
  * host's scroll offset and stays over the padding box.
  */
-class DragonRoundedClipMask(private val path: Path, private val host: View) : Drawable() {
+class DragonRoundedClipMask(private var path: Path, private val host: View) : Drawable() {
   private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply { xfermode = PorterDuffXfermode(PorterDuff.Mode.DST_OUT) }
   init { path.fillType = Path.FillType.INVERSE_WINDING }
+  /** A new padding-edge path for the same view: the mask is kept, so setForeground's relayout runs only when it is first set. */
+  fun setPath(next: Path) {
+    path = next
+    path.fillType = Path.FillType.INVERSE_WINDING
+    invalidateSelf()
+  }
   override fun draw(canvas: Canvas) {
     val saved = canvas.save()
     canvas.translate(host.scrollX.toFloat(), host.scrollY.toFloat())
@@ -252,10 +258,10 @@ fun dragonAfterLayoutRadius(v: DragonBoxView, shape: DragonBoxShape, scale: Doub
     c.clipToOutline = true
     c.invalidateOutline()
   } else {
-    val mask = DragonRoundedClipMask(inner, c)
-    mask.setBounds(0, 0, c.dragonFrame[2] - c.dragonFrame[0], c.dragonFrame[3] - c.dragonFrame[1])
+    // The view owns its foreground's bounds (setForeground sizes it to the view), and draw reads only the path.
     c.setLayerType(View.LAYER_TYPE_HARDWARE, null)
-    c.foreground = mask
+    val kept = c.foreground as? DragonRoundedClipMask
+    if (kept != null) kept.setPath(inner) else c.foreground = DragonRoundedClipMask(inner, c)
   }
 }
 
