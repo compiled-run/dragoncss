@@ -1,0 +1,16 @@
+{
+  "case": "controls-textarea-rounded",
+  "chrome": "145.0.7632.6",
+  "dpr": 3,
+  "texts": [
+    {"id":"c1:text0","data":"NOTE","lines":1,"units":[0,0,0,0],"blank":[]},
+    {"id":"t1:text0","data":"XXXX XX XXX","lines":0,"units":[-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1],"blank":[]},
+    {"id":"c3:text0","data":"WIDE","lines":1,"units":[0,0,0,0],"blank":[]},
+    {"id":"t3:text0","data":"XX XX","lines":0,"units":[-1,-1,-1,-1,-1],"blank":[]},
+    {"id":"c2:text0","data":"BODY","lines":1,"units":[0,0,0,0],"blank":[]},
+    {"id":"t2:text0","data":"XX XXX","lines":0,"units":[-1,-1,-1,-1,-1,-1],"blank":[]},
+    {"id":"t1::editor:text0","data":"XXXX XX XXX","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"t3::editor:text0","data":"XX XX","lines":1,"units":[0,0,0,0,0],"blank":[]},
+    {"id":"t2::editor:text0","data":"XX XXX","lines":1,"units":[0,0,0,0,0,0],"blank":[]}
+  ]
+}
