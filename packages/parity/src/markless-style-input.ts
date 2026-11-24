@@ -5,8 +5,8 @@
 import { createHash } from 'node:crypto';
 import { posix } from 'node:path';
 import { brotliDecompressSync } from 'node:zlib';
-import type { BrotliDecompress, ClassSymbol, Condition, FontMap, FrontEndResult, NativeStyles, NativeStylesConfig, NativeStyleTarget, Rgba8, SourceFile, TreeNode } from 'dragon';
-import { BAND_KEY, compiledCases, compileNativeStylesWith, decodeFontFile, isTreeNodeId, LISTED_OPTIONS_ATTRIBUTE, nativeBands, parseStylesheet, resolvedInteractionTextTransforms, resolvedTextTransforms, TREE_SCHEMA_REVISION } from 'dragon';
+import type { BrotliDecompress, ClassSymbol, Condition, FontMap, FrontEndResult, NativeStyles, NativeStylesConfig, NativeStyleTarget, Rgba8, SourceFile, TreeNode, WriteKind } from 'dragon';
+import { BAND_KEY, compiledCases, compileNativeStylesWith, decodeFontFile, isTreeNodeId, LISTED_OPTIONS_ATTRIBUTE, nativeBands, parseStylesheet, renameWriteNodes, resolvedInteractionTextTransforms, resolvedTextTransforms, TREE_SCHEMA_REVISION } from 'dragon';
 import type { rtBand } from '@dragon/layout';
 import { textDecoration } from '@dragon/layout';
 import { FONT_REFERENCE_MAP } from './font-reference.ts';
@@ -852,10 +852,20 @@ function exportMarkless(parsed: MarklessStyleInput, inputText: string, inputPath
   const dragonIds = dragonNodeIds(parsed);
   const rowOfNode = new Map(parsed.nodes.flatMap((n) => (n.row === undefined ? [] : [[n.id, n.row] as const])));
   const renameIn = (a: ExportAssignment): ((id: string) => string) => marklessNodeId(parsed, (id) => dragonIds.get(id) as string, cellValues(a));
-  const renamed = (a: ExportAssignment): ExportAssignment => {
-    const rename = renameIn(a);
-    return { ...a, nodes: a.nodes.map((n) => ({ ...n, id: rename(n.id), parent: n.parent === null ? null : rename(n.parent) })) };
+  // A write that names a node (a paint-order host, an outline's layer) names it as the nodes are named, or the export refuses it.
+  const renamedNodes = (nodes: readonly ExportNode[], rename: (id: string) => string): ExportNode[] => {
+    const have = new Set(nodes.map((n) => rename(n.id)));
+    return nodes.map((n) => ({
+      ...n,
+      id: rename(n.id),
+      parent: n.parent === null ? null : rename(n.parent),
+      writes: n.writes.map((w) => renameWriteNodes(w as unknown as WriteKind, (id) => {
+        const named = rename(id);
+        return have.has(named) ? named : fail(`${rename(n.id)}'s ${String(w['kind'])} write names ${id}, which the export has no node for`);
+      }) as unknown as ExportNode['writes'][number]),
+    }));
   };
+  const renamed = (a: ExportAssignment): ExportAssignment => ({ ...a, nodes: renamedNodes(a.nodes, renameIn(a)) });
   const exported: NativeStyleExport = {
     ...raw,
     targets: Object.fromEntries(Object.entries(raw.targets).map(([t, x]) => [t, {
@@ -874,7 +884,7 @@ function exportMarkless(parsed: MarklessStyleInput, inputText: string, inputPath
             const row = rowOfNode.get(id);
             return row === undefined ? [] : [[id, row] as const];
           })),
-          states: l.states.map((st) => ({ ...st, nodes: st.nodes.map((n) => ({ ...n, id: rename(n.id), parent: n.parent === null ? null : rename(n.parent) })) })),
+          states: l.states.map((st) => ({ ...st, nodes: renamedNodes(st.nodes, rename) })),
           matches: l.matches.map((m) => ({ hover: m.hover.map(rename), active: m.active.map(rename), focus: one(m.focus), focusVisible: one(m.focusVisible), force: m.force.map((f) => ({ ...f, address: rename(f.address) })) })),
         };
       }) } }),
