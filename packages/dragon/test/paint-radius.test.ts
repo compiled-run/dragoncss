@@ -528,9 +528,9 @@ describe('border-radius on a scroll container: the rounded clip stays put while 
 
   it('Android API 31 and 32 draw the mask as the foreground, after the scrollbars, moved by the host clip view\'s scroll offset; the API 33 outline needs no move', () => {
     const kotlin = RADIUS_EMITTER.native['android-views'].file ?? '';
-    expect(kotlin).toContain('class DragonRoundedClipMask(private val path: Path, private val host: View)');
+    expect(kotlin).toContain('class DragonRoundedClipMask(private var path: Path, private val host: View)');
     expect(kotlin).toContain('canvas.translate(host.scrollX.toFloat(), host.scrollY.toFloat())');
-    expect(kotlin).toContain('val mask = DragonRoundedClipMask(inner, c)');
+    expect(kotlin).toContain('if (kept != null) kept.setPath(inner) else c.foreground = DragonRoundedClipMask(inner, c)');
     expect(kotlin).toContain('c.foreground = mask');
     expect(kotlin).not.toContain('c.overlay.');
   });
