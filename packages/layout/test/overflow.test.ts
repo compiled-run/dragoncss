@@ -171,6 +171,9 @@ describe('scrollable overflow (Blink ScrollableOverflowCalculator)', () => {
     expect(scrollRanges(input([box('s', sc('auto'), [area(clip)])]), ahemMeasurer)).toEqual({ kind: 'ok', ranges: [{ id: 's', minX: 0, maxX: 200, minY: 0, maxY: 200 }], refused: [] });
     // The page: a 500 px textarea in a 300 px viewport scrolls the page by 200 px.
     expect(metrics(input([area({ ...clip, height: px(500) })])).viewport.scrollRect.height).toBe(lu(500));
+    // A menulist select clips its contents (Chrome's control clip) whatever its overflow, so a 12 px select's long label adds nothing.
+    const select = control('m', { kind: 'select-menulist', font: ahemFont(10), lineHeight: { kind: 'normal' }, arrowWidth: 0, options: [text('m:o', 'XXXXXXXXXXXXXXXXXXXX')] }, { display: 'flex', width: px(12), height: px(300) }, [control('m::inner', { kind: 'select-inner' }, {}, [text('m::inner:text0', 'XXXXXXXXXXXXXXXXXXXX')])]);
+    expect(scrollRanges(input([box('s', sc('auto'), [select])]), ahemMeasurer)).toEqual({ kind: 'ok', ranges: [{ id: 's', minX: 0, maxX: 0, minY: 0, maxY: 200 }], refused: [] });
     const visible = scrollRanges(input([box('s', sc('auto'), [area({})])]), ahemMeasurer);
     expect(visible).toEqual({ kind: 'ok', ranges: [], refused: [{ id: 's', nodeId: 't', detail: 'a text-area form control: its scrollable overflow is not decided here' }] });
   });

@@ -50,6 +50,8 @@ export const OVERFLOW: readonly FixtureSpec[] = [
   both('overflow-controls'),
   // A textarea scrolls its own text, so its ancestors and the page take only its border box (Chrome 145).
   layout('overflow-textarea'),
+  // A menulist select clips its contents (Chrome's control clip), so it too adds only its border box.
+  layout('overflow-select'),
   // OVFL-B with PNT1: rounded scroll containers, whose content Chrome clips to the rounded padding box (inner radius = outer radius
   // less the adjacent border widths): one border, uneven borders, elliptical and per-corner radii, an inner corner made square by a
   // thick border, a hidden x axis with overflow-y auto, padding, content that fits, and one inside another. No scroller paints a

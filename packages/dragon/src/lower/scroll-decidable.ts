@@ -134,15 +134,18 @@ function controlsAsBoxes(b: LayoutBox): { readonly root: LayoutBox; readonly ref
     if (x.kind === 'control' && refused === null && !hidden) {
       const k = x.control.kind;
       // A placeholder, and a text field, textarea or editor that clips on both axes (as the native lowering makes them), add their border box.
-      if (k === 'text-placeholder' || ((k === 'text-field' || k === 'text-area' || k === 'text-editor') && x.style.overflowX === 'clip' && x.style.overflowY === 'clip')) {
+      if (k === 'text-placeholder' || k === 'select-menulist' || ((k === 'text-field' || k === 'text-area' || k === 'text-editor') && x.style.overflowX === 'clip' && x.style.overflowY === 'clip')) {
         // Its border box, as a plain box's.
       } else if (k !== 'button-block' && k !== 'fieldset' && k !== 'legend') refused = new Undecided(x.id, `a ${x.control.kind} form control: its scrollable overflow is not decided here (FORM-a)`);
       else if (scrollContainer(x)) refused = new Undecided(x.id, 'a form control that is a scroll container: its scrollable overflow is not decided here (FORM-a)');
     }
     // A clipping textarea's parts are in no box's scrollable overflow, so they are not checked.
-    const inner = hidden || (x.kind === 'control' && x.control.kind === 'text-area' && x.style.overflowX === 'clip' && x.style.overflowY === 'clip');
+    const menuList = x.kind === 'control' && x.control.kind === 'select-menulist';
+    const inner = hidden || menuList || (x.kind === 'control' && x.control.kind === 'text-area' && x.style.overflowX === 'clip' && x.style.overflowY === 'clip');
     const children = x.children.map((k) => (k.kind === 'box' || k.kind === 'control' ? plain(k, inner) : k));
-    const box = { kind: 'box', id: x.id, boxType: x.boxType, style: x.style, strut: x.strut, marker: x.kind === 'box' ? x.marker : null, children } as LayoutBox;
+    // Chrome clips a menulist select's contents (its control clip), as overflow: clip does.
+    const style: LayoutStyle = menuList ? { ...x.style, overflowX: 'clip', overflowY: 'clip' } : x.style;
+    const box = { kind: 'box', id: x.id, boxType: x.boxType, style, strut: x.strut, marker: x.kind === 'box' ? x.marker : null, children } as LayoutBox;
     if (x.kind === 'control') buttons.add(box);
     return box;
   };

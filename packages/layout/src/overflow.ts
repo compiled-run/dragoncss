@@ -233,7 +233,11 @@ function indexOf(ctx: Ctx, input: LayoutInput, abs: Map<string, LayoutRect>, inf
         // A clipping textarea's parts are in no box's scrollable overflow (propagated stops at it), so they are not checked.
         if (!hidden) ix.controls.set(k.id, k.control);
         const clips = k.style.overflowX === 'clip' && k.style.overflowY === 'clip';
-        walk(plainBox(k), b, content, nextPositioned, paddingKnown && !isGridContainer(b), hidden || (k.control.kind === 'text-area' && clips));
+        // Chrome clips a menulist select's contents (its control clip), so it adds its border box as a box that clips does.
+        const menuList = k.control.kind === 'select-menulist';
+        const plain = plainBox(k);
+        const walked: LayoutBox = menuList ? { ...plain, style: { ...plain.style, overflowX: 'clip', overflowY: 'clip' } } : plain;
+        walk(walked, b, content, nextPositioned, paddingKnown && !isGridContainer(b), hidden || menuList || (k.control.kind === 'text-area' && clips));
         continue;
       }
       if (k.kind !== 'box' && k.kind !== 'replaced') continue;
@@ -450,7 +454,7 @@ function gridInflowOf(ix: Index, id: string): OverflowRect {
 function controlChecked(n: Node, kind: ControlKind): void {
   if (kind.kind === 'text-placeholder') return;
   const s = n.box.style;
-  if ((kind.kind === 'text-field' || kind.kind === 'text-area' || kind.kind === 'text-editor') && s.overflowX === 'clip' && s.overflowY === 'clip') return;
+  if ((kind.kind === 'text-field' || kind.kind === 'text-area' || kind.kind === 'text-editor' || kind.kind === 'select-menulist') && s.overflowX === 'clip' && s.overflowY === 'clip') return;
   if (kind.kind !== 'button-block' && kind.kind !== 'fieldset' && kind.kind !== 'legend') throw new OverflowRefusal(n.box.id, `a ${kind.kind} form control: its scrollable overflow is not decided here`);
   if (isScrollContainer(n.box.style)) throw new OverflowRefusal(n.box.id, 'a form control that is a scroll container: its scrollable overflow is not decided here');
 }
