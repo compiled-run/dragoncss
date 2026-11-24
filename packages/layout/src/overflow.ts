@@ -9,7 +9,7 @@ import { add, clampNegativeToZero, fromCssPx, LU_PER_PX, max, min, snapEdge, sub
 import type { Edges } from './box.ts';
 import { blockMinMaxWith, containsAbsolute, establishesFormattingContext, hasPercent, INDEFINITE, INDEFINITE_STRETCH, isScrollContainer, resolveBorder, resolveMarginWith, resolvePaddingWith, sumEdges } from './box.ts';
 import type { Ctx, EngineFaults, Strut } from './block.ts';
-import { directionOf, EMPTY_STRUT, NO_ENGINE_FAULTS } from './block.ts';
+import { directionOf, EMPTY_STRUT, newLayoutMemo, NO_ENGINE_FAULTS } from './block.ts';
 import { NO_GRID_FAULTS } from './grid.ts';
 import { plainBox } from './controls.ts';
 import type { InflowBounds, LayoutRect } from './layout.ts';
@@ -110,7 +110,7 @@ export function scrollMetricsWithFaults(given: LayoutInput, measurer: TextMeasur
   try {
     // The input as the layout above resolved it, with the caller's measurer.
     const input = resolvedInput(given, measurer, faults);
-    const ctx: Ctx = { measurer: m, devicePixelRatio: input.devicePixelRatio, faults, gridFaults: NO_GRID_FAULTS };
+    const ctx: Ctx = { measurer: m, devicePixelRatio: input.devicePixelRatio, faults, gridFaults: NO_GRID_FAULTS, memo: newLayoutMemo() };
     const ix = indexOf(ctx, input, absoluteRects(r.boxes), placed.inflow);
     controlRefusal(ix);
     const containers: ScrollMetrics[] = [];
@@ -165,7 +165,7 @@ export function scrollRangesWithFaults(given: LayoutInput, measurer: TextMeasure
   try {
     // The input as the layout above resolved it, with the caller's measurer (as scrollMetricsWithFaults).
     const input = resolvedInput(given, measurer, faults);
-    const ctx: Ctx = { measurer: layoutMeasurer(measurer, faults), devicePixelRatio: input.devicePixelRatio, faults, gridFaults: NO_GRID_FAULTS };
+    const ctx: Ctx = { measurer: layoutMeasurer(measurer, faults), devicePixelRatio: input.devicePixelRatio, faults, gridFaults: NO_GRID_FAULTS, memo: newLayoutMemo() };
     ix = indexOf(ctx, input, absoluteRects(r.boxes), placed.inflow);
   } catch (e) {
     if (e instanceof UnsupportedSignal) return { kind: 'refused', nodeId: e.unsupported.nodeId, detail: `${e.unsupported.code}: ${e.unsupported.detail}` };

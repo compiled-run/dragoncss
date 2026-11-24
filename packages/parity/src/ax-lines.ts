@@ -7,7 +7,7 @@
 // fragment's rect (<leaf>:line<j>). A leaf text-overflow truncates is exposed whole for now: one element named with its text, as
 // Chrome's StaticText is, since Chrome's InlineTextBoxes there (the hidden full run, the painted part and the ellipsis) are not lines.
 import type { CDPSession, Page } from 'playwright';
-import { NO_ENGINE_FAULTS } from '../../layout/src/block.ts';
+import { newLayoutMemo, NO_ENGINE_FAULTS } from '../../layout/src/block.ts';
 import { resolveBorder, resolvePadding } from '../../layout/src/box.ts';
 import { NO_GRID_FAULTS } from '../../layout/src/grid.ts';
 import { controlAsBox } from '../../layout/src/controls.ts';
@@ -53,7 +53,7 @@ export function axLinesOf(input: LayoutInput, measurer: TextMeasurer, hidden: re
   if (out.kind !== 'ok') throw new Error(`the engine refused the input (${out.unsupported.code} at ${out.unsupported.nodeId})`);
   const abs = absoluteRects(out.boxes);
   const zoomed = resolvedInput(input, measurer, NO_ENGINE_FAULTS);
-  const ctx = { measurer, devicePixelRatio: zoomed.devicePixelRatio, faults: NO_ENGINE_FAULTS, gridFaults: NO_GRID_FAULTS };
+  const ctx = { measurer, devicePixelRatio: zoomed.devicePixelRatio, faults: NO_ENGINE_FAULTS, gridFaults: NO_GRID_FAULTS, memo: newLayoutMemo() };
   const owners = new Map<string, string>();
   ownersOf(zoomed.root, zoomed.root.id, owners);
   const lines: AxLine[] = [];

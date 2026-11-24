@@ -24,7 +24,7 @@
 // whose visibility is hidden or collapse, floats, and any face but Ahem (a real face needs grapheme clusters and ligature carets). The compiler gives the
 // elements whose used user-select is none (SelectFacts); text, and none below it, is all native compiles (slice 1).
 import type { Ctx as EngineCtx } from './block.ts';
-import { NO_ENGINE_FAULTS } from './block.ts';
+import { newLayoutMemo, NO_ENGINE_FAULTS } from './block.ts';
 import { hasPercent, resolveBorder, resolvePadding } from './box.ts';
 import { NO_GRID_FAULTS } from './grid.ts';
 import { leafFontOf, placeLines } from './inline.ts';
@@ -307,7 +307,7 @@ export function selectionTableOf(input: LayoutInput, measurer: TextMeasurer, fac
   }
   const zmap = new Map<string, LayoutBox>();
   indexZoomed(zmap, zoomed.root);
-  const s: SelectState = { nodes: [], blocks: [], lines: [], abs: absoluteRects(out.boxes), zoomed: zmap, ctx: { measurer, devicePixelRatio: zoomed.devicePixelRatio, faults: NO_ENGINE_FAULTS, gridFaults: NO_GRID_FAULTS }, facts };
+  const s: SelectState = { nodes: [], blocks: [], lines: [], abs: absoluteRects(out.boxes), zoomed: zmap, ctx: { measurer, devicePixelRatio: zoomed.devicePixelRatio, faults: NO_ENGINE_FAULTS, gridFaults: NO_GRID_FAULTS, memo: newLayoutMemo() }, facts };
   blockOf(s, input.root, -1);
   const nodes: SelectNode[] = [];
   for (const n of s.nodes) nodes.push({ kind: n.kind, id: n.id, parent: n.parent, end: n.end, block: n.block, paragraph: n.paragraph, selectable: n.selectable, text: n.text, from: n.from, to: n.to });

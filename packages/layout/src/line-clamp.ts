@@ -6,7 +6,7 @@
 // of inline content in the container's formatting context. block.ts applies it as it lays the children out; clampedInput gives a
 // host the same children after layout, so a device and the break vectors place each child's lines as the layout did.
 import type { Ctx } from './block.ts';
-import { NO_ENGINE_FAULTS } from './block.ts';
+import { newLayoutMemo, NO_ENGINE_FAULTS } from './block.ts';
 import { contentBox, establishesFormattingContext, resolveBorder, resolvePaddingWith, sumEdges } from './box.ts';
 import { NO_GRID_FAULTS } from './grid.ts';
 import { placeLines } from './inline.ts';
@@ -43,7 +43,7 @@ export function clampChild(ctx: Ctx, box: LayoutBox, kid: LayoutBox, borderBoxWi
  * them (clampChild over the boxes' border-box widths), so a host's placeLines over a child gives the lines the layout placed.
  */
 export function clampedInput(input: LayoutInput, boxes: readonly LayoutRect[], measurer: TextMeasurer): LayoutInput {
-  const ctx: Ctx = { measurer, devicePixelRatio: input.devicePixelRatio, faults: NO_ENGINE_FAULTS, gridFaults: NO_GRID_FAULTS };
+  const ctx: Ctx = { measurer, devicePixelRatio: input.devicePixelRatio, faults: NO_ENGINE_FAULTS, gridFaults: NO_GRID_FAULTS, memo: newLayoutMemo() };
   const widths = new Map<string, LU>();
   for (const r of boxes) widths.set(r.id, r.width);
   const widthOf = (id: string): LU => {

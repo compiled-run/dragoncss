@@ -1,7 +1,7 @@
 // TXT-TW: the expected lines of text-wrap-balance-ahem (fixture group text-wrap) and the engine's lines of its compiled native input,
 // shared by text-wrap-style.test.ts (the engine, offline) and text-wrap-balance.test.ts (a live Chrome).
 import type { EngineFaults, LayoutBox, LU, TextLeaf } from '@dragon/layout';
-import { ahemMeasurer, layout, NO_ENGINE_FAULTS, NO_GRID_FAULTS, placeLines, zoomInput } from '@dragon/layout';
+import { ahemMeasurer, layout, newLayoutMemo, NO_ENGINE_FAULTS, NO_GRID_FAULTS, placeLines, zoomInput } from '@dragon/layout';
 import { engineLayoutProjection, NO_FAULTS } from 'dragon';
 import { layoutCases } from '../src/dpr.ts';
 import { compileFixture } from '../src/pipeline.ts';
@@ -45,7 +45,7 @@ export function engineLines(direction: 'ltr' | 'rtl', dpr: number, faults: Engin
   const r = layout(given, ahemMeasurer);
   if (r.kind !== 'ok') throw new Error(JSON.stringify(r.unsupported));
   const widths = new Map(r.boxes.map((b) => [b.id, b.width]));
-  const ctx = { measurer: ahemMeasurer, devicePixelRatio: 1, faults, gridFaults: NO_GRID_FAULTS };
+  const ctx = { measurer: ahemMeasurer, devicePixelRatio: 1, faults, gridFaults: NO_GRID_FAULTS, memo: newLayoutMemo() };
   const out: Record<string, string[]> = {};
   const walk = (b: LayoutBox): void => {
     const leaf = b.children.find((k): k is TextLeaf => k.kind === 'text');

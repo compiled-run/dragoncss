@@ -3,12 +3,12 @@
 // worked by hand through that code in 10px Ahem (10px lines); Chrome agreement is the parity fixtures' job.
 import { describe, expect, it } from 'vitest';
 import type { LayoutBox, LayoutResult, LayoutStyle, LU, MulticolStyle } from '../src/index.ts';
-import { absoluteRects, ahemMeasurer, fromCssPx, fromRaw, layoutWithFaults, NO_ENGINE_FAULTS, NO_GRID_FAULTS, placeLines, validateLayoutInput } from '../src/index.ts';
+import { absoluteRects, ahemMeasurer, fromCssPx, fromRaw, layoutWithFaults, newLayoutMemo, NO_ENGINE_FAULTS, NO_GRID_FAULTS, placeLines, validateLayoutInput } from '../src/index.ts';
 import { balanceColumns, columnGeometry, columnOffsets, usedColumnCount } from '../src/multicol.ts';
 import { box, neutralEnvironment, pct, px, span, text } from './helpers.ts';
 
 const L = 640;
-const ctx = { measurer: ahemMeasurer, devicePixelRatio: 1, faults: NO_ENGINE_FAULTS, gridFaults: NO_GRID_FAULTS };
+const ctx = { measurer: ahemMeasurer, devicePixelRatio: 1, faults: NO_ENGINE_FAULTS, gridFaults: NO_GRID_FAULTS, memo: newLayoutMemo() };
 const cols = (count: number, width: MulticolStyle['width'] = { kind: 'auto' }): Partial<LayoutStyle> => ({ multicol: { count, width } });
 const lu = (raw: number): LU => fromRaw(raw);
 

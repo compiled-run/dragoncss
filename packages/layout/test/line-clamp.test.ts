@@ -3,13 +3,13 @@
 // is proven by the line-clamp fixture group (packages/parity); these cases pin the port's decisions in 10px Ahem.
 import { describe, expect, it } from 'vitest';
 import type { EngineFaults, LayoutBox, LayoutResult, LayoutStyle } from '../src/index.ts';
-import { absoluteRects, ahemMeasurer, clampedInput, fromCssPx, layoutWithFaults, NO_ENGINE_FAULTS, NO_GRID_FAULTS, placeLines } from '../src/index.ts';
+import { absoluteRects, ahemMeasurer, clampedInput, fromCssPx, layoutWithFaults, newLayoutMemo, NO_ENGINE_FAULTS, NO_GRID_FAULTS, placeLines } from '../src/index.ts';
 import { ahemFont, box, neutralEnvironment, px, span, text } from './helpers.ts';
 
 const G = 640;
 const CLAMP = (n: number): Partial<LayoutStyle> => ({ width: px(55), overflowX: 'hidden', overflowY: 'hidden', lineClamp: n });
 const t = (id: string, value: string, size = 10) => text(id, value, { font: ahemFont(size) });
-const ctx = (faults: EngineFaults = NO_ENGINE_FAULTS) => ({ measurer: ahemMeasurer, devicePixelRatio: 1, faults, gridFaults: NO_GRID_FAULTS });
+const ctx = (faults: EngineFaults = NO_ENGINE_FAULTS) => ({ measurer: ahemMeasurer, devicePixelRatio: 1, faults, gridFaults: NO_GRID_FAULTS, memo: newLayoutMemo() });
 
 function run(root: LayoutBox, faults: EngineFaults = NO_ENGINE_FAULTS): LayoutResult {
   return layoutWithFaults({ viewport: { width: 400, height: 300 }, devicePixelRatio: 1, ...neutralEnvironment({ width: 400, height: 300 }), root }, ahemMeasurer, faults);

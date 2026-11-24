@@ -91,7 +91,7 @@ import type { LayoutRect } from '../../layout/src/layout.ts';
 import type { StickyConstraint, TextAreaRow } from '../../layout/src/layout.ts';
 import { absoluteRects, layout, layoutWithFaults, layoutWithInflow, resolvedInput, stickyShift } from '../../layout/src/layout.ts';
 import type { Ctx } from '../../layout/src/block.ts';
-import { NO_ENGINE_FAULTS } from '../../layout/src/block.ts';
+import { newLayoutMemo, NO_ENGINE_FAULTS } from '../../layout/src/block.ts';
 import { NO_GRID_FAULTS } from '../../layout/src/grid.ts';
 import type { Edges } from '../../layout/src/box.ts';
 import { resolveBorder, resolvePadding } from '../../layout/src/box.ts';
@@ -3517,7 +3517,7 @@ function planTextLines(input: LayoutInput, measurer: TextMeasurer, boxes: readon
     widths.set(id, w);
     return w;
   };
-  const ctx: Ctx = { measurer, devicePixelRatio: zoomed.devicePixelRatio, faults: NO_ENGINE_FAULTS, gridFaults: NO_GRID_FAULTS };
+  const ctx: Ctx = { measurer, devicePixelRatio: zoomed.devicePixelRatio, faults: NO_ENGINE_FAULTS, gridFaults: NO_GRID_FAULTS, memo: newLayoutMemo() };
   const out: PlanText[] = [];
   for (const r of boxes) {
     if (isLineRect(r)) continue;

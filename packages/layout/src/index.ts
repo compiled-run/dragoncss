@@ -6,7 +6,7 @@ export { layout, layoutWithFaults, layoutWithGridFaults, absoluteRects, stickyCo
 export type { GridFaults } from './grid.ts';
 export { NO_GRID_FAULTS } from './grid.ts';
 export type { EngineFaults } from './block.ts';
-export { NO_ENGINE_FAULTS } from './block.ts';
+export { newLayoutMemo, NO_ENGINE_FAULTS } from './block.ts';
 export type { LayoutUnsupported, UnsupportedCode } from './unsupported.ts';
 export type { FontMetrics, MeasureResult, TextMeasure, TextMeasurer } from './text.ts';
 export { ahemMeasurer } from './text.ts';

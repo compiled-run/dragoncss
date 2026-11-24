@@ -6,7 +6,7 @@
 import type { Browser } from 'playwright';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { InlineChild, LayoutBox, LU, LayoutInput, LayoutRect, LayoutStyle, LineHeightValue, PlacedLine } from '@dragon/layout';
-import { absoluteRects, inlineLeaves, layout, LU_PER_PX, measurerFor, NO_ENGINE_FAULTS, NO_GRID_FAULTS, placeLines, REFERENCE_PLATFORM, zoomInput } from '@dragon/layout';
+import { absoluteRects, inlineLeaves, layout, LU_PER_PX, measurerFor, newLayoutMemo, NO_ENGINE_FAULTS, NO_GRID_FAULTS, placeLines, REFERENCE_PLATFORM, zoomInput } from '@dragon/layout';
 import { CHROME_VERSION, launchChrome, openPage } from '../src/chrome.ts';
 import { hostPlatform, requireReferencePlatform } from '../src/platform.ts';
 
@@ -148,7 +148,7 @@ function engine(c: Case, dpr: number, direction: 'ltr' | 'rtl'): Seen {
   const unit = LU_PER_PX * dpr;
   const rect = absoluteRects(out.boxes).get(c.id) as LayoutRect;
   const content = rect.width - (pl + pr) * unit;
-  const ctx = { measurer: m.measurer, devicePixelRatio: 1, faults: NO_ENGINE_FAULTS, gridFaults: NO_GRID_FAULTS };
+  const ctx = { measurer: m.measurer, devicePixelRatio: 1, faults: NO_ENGINE_FAULTS, gridFaults: NO_GRID_FAULTS, memo: newLayoutMemo() };
   const texts = inlineLeaves(zoomed).map((t) => t.text);
   const lines: PlacedLine[] = placeLines(ctx, zoomed, content as LU);
   const advance = c.size * unit;

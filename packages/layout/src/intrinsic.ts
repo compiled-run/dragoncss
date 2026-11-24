@@ -21,15 +21,14 @@ const NONE: NoneValue = { kind: 'none' };
 // part (CSS2 §9.3.1). A range's is its default track length, whatever its children (length_utils.cc:1918-1928
 // CalculateMinMaxSizesIgnoringChildren). css-contain-2 §3.1: under size or inline-size containment it is contain-intrinsic-width, none
 // being 0.
-// Blink keeps a box's min and max-content sizes (LayoutBox::IntrinsicLogicalWidths) for the whole layout: nested intrinsic grids and flexes otherwise re-measure every descendant at every level.
-const intrinsicSizes = new WeakMap<Ctx, WeakMap<LayoutBox | ControlBox, { min?: LU; max?: LU }>>();
-
 export function intrinsicContentInlineSize(ctx: Ctx, node: LayoutBox | ControlBox, kind: IntrinsicKind): LU {
-  let byNode = intrinsicSizes.get(ctx);
-  if (byNode === undefined) intrinsicSizes.set(ctx, (byNode = new WeakMap()));
-  let sizes = byNode.get(node);
-  if (sizes === undefined) byNode.set(node, (sizes = {}));
-  return (sizes[kind] ??= measureIntrinsicContentInlineSize(ctx, node, kind));
+  if (node.kind !== 'box') return measureIntrinsicContentInlineSize(ctx, node, kind);
+  const sizes = kind === 'min' ? ctx.memo.intrinsicMin : ctx.memo.intrinsicMax;
+  const known = sizes.get(node);
+  if (known !== undefined) return known;
+  const measured = measureIntrinsicContentInlineSize(ctx, node, kind);
+  sizes.set(node, measured);
+  return measured;
 }
 
 function measureIntrinsicContentInlineSize(ctx: Ctx, node: LayoutBox | ControlBox, kind: IntrinsicKind): LU {

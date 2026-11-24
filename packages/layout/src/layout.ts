@@ -9,7 +9,7 @@ import { containsAbsolute, hasPercent, isScrollContainer, NO_STRETCH, resolveBor
 import type { EnvironmentDependencies } from './environment.ts';
 import { applyEnvironment, environmentDependencies, resolveEnvironment } from './environment.ts';
 import type { Ctx, EngineFaults } from './block.ts';
-import { blockLevelInlineSize, directionOf, layoutContents, NO_ENGINE_FAULTS } from './block.ts';
+import { blockLevelInlineSize, directionOf, layoutContents, newLayoutMemo, NO_ENGINE_FAULTS } from './block.ts';
 import type { GridFaults } from './grid.ts';
 import { NO_GRID_FAULTS } from './grid.ts';
 import type { ContainingBlock, RelativeOffset } from './position.ts';
@@ -91,7 +91,7 @@ export function layoutWithInflow(given: LayoutInput, measurer: TextMeasurer, fau
     const root = input.root;
     const icbWidth = fromCssPx(input.viewport.width);
     const icbHeight = fromCssPx(input.viewport.height);
-    const ctx: Ctx = { measurer: m, devicePixelRatio: input.devicePixelRatio, faults, gridFaults };
+    const ctx: Ctx = { measurer: m, devicePixelRatio: input.devicePixelRatio, faults, gridFaults, memo: newLayoutMemo() };
     const icbDirection = directionOf(ctx, root);
     // The root element establishes a block formatting context in the initial containing block.
     const inline = blockLevelInlineSize(ctx, root, icbWidth, icbDirection, { bfcLineOffset: ZERO, borderBoxWidth: icbWidth, lineLeft: ZERO, newFormattingContext: true, textAlign: 'start' });

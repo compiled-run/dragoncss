@@ -3,13 +3,13 @@
 // proven by the text-box fixture group (packages/parity); these cases pin the port's arithmetic in 10px Ahem (ascent 8, descent 2).
 import { describe, expect, it } from 'vitest';
 import type { EngineFaults, LayoutBox, LayoutResult, LayoutStyle, LineHeightValue, TextBoxTrim } from '../src/index.ts';
-import { absoluteRects, ahemMeasurer, fromCssPx, layoutWithFaults, NO_ENGINE_FAULTS, NO_GRID_FAULTS, placeLines, validateLayoutInput } from '../src/index.ts';
+import { absoluteRects, ahemMeasurer, fromCssPx, layoutWithFaults, newLayoutMemo, NO_ENGINE_FAULTS, NO_GRID_FAULTS, placeLines, validateLayoutInput } from '../src/index.ts';
 import { ahemFont, box, br, neutralEnvironment, px, span, text } from './helpers.ts';
 
 const LH2: LineHeightValue = { kind: 'number', value: 2 };
 const BOTH: TextBoxTrim = { start: true, end: true, alphabetic: false };
 const t = (id: string, value: string, lineHeight: LineHeightValue = LH2, size = 10) => text(id, value, { font: ahemFont(size), lineHeight });
-const ctx = (faults: EngineFaults = NO_ENGINE_FAULTS) => ({ measurer: ahemMeasurer, devicePixelRatio: 1, faults, gridFaults: NO_GRID_FAULTS });
+const ctx = (faults: EngineFaults = NO_ENGINE_FAULTS) => ({ measurer: ahemMeasurer, devicePixelRatio: 1, faults, gridFaults: NO_GRID_FAULTS, memo: newLayoutMemo() });
 const trimmed = (id: string, trim: TextBoxTrim, kids: Parameters<typeof box>[2], style: Partial<LayoutStyle> = {}): LayoutBox => box(id, { width: px(55), textBoxTrim: trim, ...style }, kids);
 
 function run(root: LayoutBox, faults: EngineFaults = NO_ENGINE_FAULTS): LayoutResult {
