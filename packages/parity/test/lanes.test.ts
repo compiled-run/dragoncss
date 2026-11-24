@@ -26,6 +26,7 @@ import type { NativeTarget, TargetConfig } from '../src/targets.ts';
 import { corpusSuites, declaredSuites, deviceCaseIds, deviceCheckCaseIds, extendedManifest, hitCaseIds, LANES, layoutCaseIds, m1CaseIds, nativeTargets, p1Manifest, vectorCaseIds } from '../src/targets.ts';
 import { forcedDeviceCaseIds } from '../src/forced-device.ts';
 import { shapedCaseIds } from '../src/text-latin-run.ts';
+import { IOS_FACE_REFUSED, iosRefusals } from '../src/ios-face-refused.ts';
 import { animSampleIds } from '../src/anim-samples.ts';
 
 const targets = nativeTargets();
@@ -125,6 +126,11 @@ describe('native targets', () => {
       for (const c of f.cases) {
         if (!device.has(c.id)) continue;
         const comp = enforcedCompile(f.spec, c.environment.direction);
+        const refused = IOS_FACE_REFUSED.get(f.spec.id);
+        if (refused !== undefined) {
+          expect(iosRefusals(comp.diagnostics), c.id).toEqual(refused);
+          continue;
+        }
         for (const dpr of [1, ...DPRS]) {
           const env = atDpr(c.environment, dpr);
           const native = nativeLayoutProjection(comp, env, c.assignment);
