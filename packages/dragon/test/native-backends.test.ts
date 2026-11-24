@@ -8,7 +8,6 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { describe, expect, it, onTestFinished } from 'vitest';
 import { CALC_UNION, checkedConversionSource, inputFunctions, STYLE_FIELDS } from '../src/emit/native-support.ts';
-import { unionName } from '../../translate/src/lower.ts';
 import type { EmitCase, NativeProgram } from '../src/internal.ts';
 import { createProjectWith, emitAndroidViewsCases, emitNativeSupport, emitUikitCases, nativeLayoutProjection, nativePrograms, NO_FAULTS, VOCABULARY, WRITE_CSS } from '../src/internal.ts';
 import { div, inputFor, text } from './helpers.ts';
@@ -104,7 +103,8 @@ describe('the emitted Swift and Kotlin', () => {
     }
     expect(emitNativeSupport('android-views').some((f) => f.text.includes('import dev.dragon.layout.grid_NO_GRID_FAULTS'))).toBe(true);
   });
-  it("name a calculation's operand list by the translator's name for the CalcExpr union, which is a hash once the member names pass 200 characters", () => {
+  it("name a calculation's operand list by the translator's name for the CalcExpr union, which is a hash once the member names pass 200 characters", async () => {
+    const { unionName } = (await import(pathToFileURL(join(root, 'packages/translate/src/lower.ts')).href)) as { unionName: (sorted: readonly string[]) => string };
     const members = ['CalcClamp', 'CalcInvert', 'CalcMax', 'CalcMin', 'CalcProduct', 'CalcSum', 'EmLength', 'EnvLength', 'FontCalc', 'FontMetricLength', 'FontPercent', 'LineHeightLength', 'NumberValue', 'Percent', 'PixelsAndPercent', 'Px', 'RootFontLength', 'ViewportLength'];
     expect(CALC_UNION).toBe(unionName(members));
   });

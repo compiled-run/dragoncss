@@ -235,11 +235,14 @@ function compareCase(nc: NativeCase, dpr: number, faults: DashFaults, mode: Mode
     // Glyphs that paint over this border (textPaintsOver) hide it too (text that overflows its line box); a translucent run still
     // changes the pixel, so it hides it; text painted below a positioned border is compared.
     if (!mode.preT116) for (const g of glyphs) if (textPaintsOver(order, layer, n.id, g.owner)) over.push(g.box);
+    // A border pixel outside its ancestors' overflow clips is not painted (a box wider than an overflow: hidden container).
+    const clip = mode.preT116 ? { left: -Infinity, top: -Infinity, right: Infinity, bottom: Infinity } : clipOf(n.id, false);
     for (let y = b.top; y < b.bottom; y++) {
       for (let x = b.left; x < b.right; x++) {
         const inBand = y < b.top + (w[0] as number) || y >= b.bottom - (w[2] as number) || x < b.left + (w[3] as number) || x >= b.right - (w[1] as number);
         // Pixels outside Chrome's raster (a box past the viewport) are not painted.
         if (!mode.preT116 && (x < 0 || y < 0 || x >= chrome.width || y >= chrome.height)) continue;
+        if (clip === null || !(x >= clip.left && x < clip.right && y >= clip.top && y < clip.bottom)) continue;
         if (!inBand || over.some((o) => x >= o.left && x < o.right && y >= o.top && y < o.bottom)) continue;
         const side = crispSide(ops, x, y);
         if (side === null) continue;
