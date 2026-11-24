@@ -448,7 +448,7 @@ function gridInflowOf(ix: Index, id: string): OverflowRect {
 function controlChecked(n: Node, kind: ControlKind): void {
   if (kind.kind === 'text-placeholder') return;
   const s = n.box.style;
-  if ((kind.kind === 'text-field' || kind.kind === 'text-editor') && s.overflowX === 'clip' && s.overflowY === 'clip') return;
+  if ((kind.kind === 'text-field' || kind.kind === 'text-area' || kind.kind === 'text-editor') && s.overflowX === 'clip' && s.overflowY === 'clip') return;
   if (kind.kind !== 'button-block' && kind.kind !== 'fieldset' && kind.kind !== 'legend') throw new OverflowRefusal(n.box.id, `a ${kind.kind} form control: its scrollable overflow is not decided here`);
   if (isScrollContainer(n.box.style)) throw new OverflowRefusal(n.box.id, 'a form control that is a scroll container: its scrollable overflow is not decided here');
 }

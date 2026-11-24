@@ -124,14 +124,19 @@ function flow(b: LayoutBox): void {
 }
 
 /**
- * overflow.ts controlChecked: a block button, fieldset or legend is its plain box, so the walk sees it as one; any other control, or a
- * control that is a scroll container, is refused (FORM-a).
+ * overflow.ts controlChecked: a block button, fieldset or legend is its plain box, so the walk sees it as one, and so is a placeholder
+ * or a text field, textarea or editor that clips on both axes; any other control, or a control that is a scroll container, is
+ * refused (FORM-a).
  */
 function controlsAsBoxes(b: LayoutBox): { readonly root: LayoutBox; readonly refused: Undecided | null } {
   let refused: Undecided | null = null;
   const plain = (x: LayoutBox | ControlBox): LayoutBox => {
     if (x.kind === 'control' && refused === null) {
-      if (x.control.kind !== 'button-block' && x.control.kind !== 'fieldset' && x.control.kind !== 'legend') refused = new Undecided(x.id, `a ${x.control.kind} form control: its scrollable overflow is not decided here (FORM-a)`);
+      const k = x.control.kind;
+      // A placeholder, and a text field, textarea or editor that clips on both axes (as the native lowering makes them), add their border box.
+      if (k === 'text-placeholder' || ((k === 'text-field' || k === 'text-area' || k === 'text-editor') && x.style.overflowX === 'clip' && x.style.overflowY === 'clip')) {
+        // Its border box, as a plain box's.
+      } else if (k !== 'button-block' && k !== 'fieldset' && k !== 'legend') refused = new Undecided(x.id, `a ${x.control.kind} form control: its scrollable overflow is not decided here (FORM-a)`);
       else if (scrollContainer(x)) refused = new Undecided(x.id, 'a form control that is a scroll container: its scrollable overflow is not decided here (FORM-a)');
     }
     const children = x.children.map((k) => (k.kind === 'box' || k.kind === 'control' ? plain(k) : k));
