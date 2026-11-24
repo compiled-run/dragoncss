@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+textarea { display: block; font: inherit; appearance: none; margin: 0 0 2px; color: #000; background-color: #fff; border: 2px solid #036; padding: 1px 2px; resize: none; }
+.wrap { width: 300px; background-color: #eee; }
+.thin { scrollbar-width: thin; }
+.none { scrollbar-width: none; }
+.yhidden { overflow-y: hidden; }
+.yclip { overflow-x: hidden; overflow-y: clip; }
+.xscroll { overflow-x: scroll; }
+.w40 { width: 40px; height: 20px; }
+.lh7 { line-height: 7px; }
+.big { font-size: 16px; }
+.row { display: flex; align-items: flex-start; background-color: #ddd; }
+.note { width: 100%; box-sizing: border-box; padding: 12px 14px; border: 1px solid #ccc; min-height: 180px; resize: vertical; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="wrap" class="wrap">
+<textarea data-dragon-id="s1" readonly="" cols="5" rows="3">XX XX</textarea>
+<textarea data-dragon-id="s2" readonly="" class="thin" cols="5" rows="3">XX XX</textarea>
+<textarea data-dragon-id="s3" readonly="" class="none" cols="5" rows="3">XX XX</textarea>
+<textarea data-dragon-id="s4" readonly="" class="yhidden" cols="5" rows="3">XX XX</textarea>
+<textarea data-dragon-id="s5" readonly="" class="thin yclip" cols="5" rows="3">XX XX</textarea>
+<textarea data-dragon-id="s6" readonly="" class="xscroll" cols="5" rows="3">XX XX</textarea>
+<textarea data-dragon-id="s7" readonly="" class="thin xscroll" cols="5" rows="3">XX XX</textarea>
+<textarea data-dragon-id="s8" readonly="" class="xscroll yhidden" cols="5" rows="3">XX XX</textarea>
+<textarea data-dragon-id="s9" readonly="" class="w40 xscroll" cols="5" rows="3">XX XX</textarea>
+<textarea data-dragon-id="s10" readonly="" class="lh7" rows="2">XXXXXXXXXXXXXXXXXXXXXXXXX XX</textarea>
+<textarea data-dragon-id="s11" readonly="" class="big thin" cols="3" rows="1">XX</textarea>
+<div data-dragon-id="r" class="row"><textarea data-dragon-id="s12" readonly="" cols="4" rows="2">XX</textarea><textarea data-dragon-id="s13" readonly="" class="thin" cols="4" rows="2">XX</textarea></div>
+<textarea data-dragon-id="note" readonly="" class="note" rows="8">Milk, eggs and bread for the weekend</textarea>
+</div>
+</body>
+</html>

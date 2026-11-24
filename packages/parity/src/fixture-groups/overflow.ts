@@ -48,5 +48,12 @@ export const OVERFLOW: readonly FixtureSpec[] = [
   // Block buttons inside scroll containers and past the viewport: a form control adds its border box to the scrollable overflow
   // when its contents stay inside it (overflow.ts controlContribution), so pages and boxes holding buttons have a decided range.
   both('overflow-controls'),
+  // OVFL-B with PNT1: rounded scroll containers, whose content Chrome clips to the rounded padding box (inner radius = outer radius
+  // less the adjacent border widths): one border, uneven borders, elliptical and per-corner radii, an inner corner made square by a
+  // thick border, a hidden x axis with overflow-y auto, padding, content that fits, and one inside another. No scroller paints a
+  // background, so both directions run; the background twin is ltr only, since an rtl scroller with a background is refused
+  // natively. The rounded textarea of the Markless notes form is controls-textarea-rounded (controls.ts).
+  both('overflow-rounded'),
+  layout('overflow-rounded-background', ['ltr']),
   reject('reject-overflow-percent-relative', 'DRAGON_UNPROVEN_CONTEXT', '10%', 'position: relative with a percentage top on k inside the scroll container sc'),
 ];

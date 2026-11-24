@@ -418,12 +418,35 @@ describe('FORM-a control boxes: what the engine and the validator refuse', () =>
     expect(codes(under(field([editor, cancel])))).toContainEqual('$.root.children[0].children[1] a text field control holds only its text-editor control, at most one text-placeholder control and, for a search field, its empty cancel-button box');
     // The engine's own guard names the validator, which now rejects that input.
     expect(() => layout(under(field([box('d', {})])), ahemMeasurer)).toThrow('validateLayoutInput rejects this input');
-    const area = (children: (LayoutBox | ControlBox)[]): ControlBox => control('t', { kind: 'text-area', cols: 20, rows: 2, font: ahemFont(10), lineHeight: { kind: 'normal' }, avgChar: 'ahem' }, {}, children);
+    const area = (children: (LayoutBox | ControlBox)[]): ControlBox => control('t', { kind: 'text-area', cols: 20, rows: 2, font: ahemFont(10), lineHeight: { kind: 'normal' }, avgChar: 'ahem', scrollbarInline: 0, scrollbarBlock: 0 }, {}, children);
     expect(codes(under(area([placeholder, editor])))).toEqual([]);
     expect(codes(under(area([])))).toEqual(['$.root.children[0].children a text area control holds exactly one text-editor control']);
     // A readonly textarea's empty editor has no line (a null strut); an edited one holds one empty line in its strut, as an input's does.
     expect(codes(under(area([{ ...empty, strut: null }])))).toEqual([]);
     expect(codes(under(area([empty])))).toEqual([]);
+  });
+
+  it('adds a textarea\'s scrollbar thickness to its default inline size and height as whole device px, whatever the zoom', () => {
+    // Chrome 145 on the reference (macOS overlay scrollbars): a 5-column, 3-row 10px Ahem textarea is 50 x 30, 66 wide at
+    // scrollbar-width auto (16 DIP) and 64 at thin (14 DIP), and 16 or 14 taller at overflow-x: scroll. At DPR 2.625 thin is
+    // trunc(14 x 2.625) = 36 device px; auto is 42. A CSS zoom does not scale it (zoom 2 at DPR 1: 100 + 16).
+    const area = (inline: number, block: number, style: Partial<LayoutStyle> = {}): ControlBox =>
+      control('t', { kind: 'text-area', cols: 5, rows: 3, font: ahemFont(10), lineHeight: { kind: 'normal' }, avgChar: 'ahem', scrollbarInline: inline, scrollbarBlock: block }, { ...style, display: 'block' }, [control('t::editor', { kind: 'text-editor' }, {}, [], null)]);
+    const size = (b: ControlBox, dpr = 1): [number, number] => {
+      const r = layoutRects(box('root', {}, [b]), layout, dpr).get('t') as LayoutRect;
+      return [r.width / 64, r.height / 64];
+    };
+    expect(size(area(0, 0))).toEqual([50, 30]);
+    expect(size(area(16, 0))).toEqual([66, 30]);
+    expect(size(area(14, 14))).toEqual([64, 44]);
+    expect(size(area(0, 16))).toEqual([50, 46]);
+    const [w, h] = size(area(0, 0), 2.625);
+    expect(size(area(14, 0), 2.625)).toEqual([w + 36, h]);
+    expect(size(area(16, 16), 2.625)).toEqual([w + 42, h + 42]);
+    expect(size(area(16, 0), 3)).toEqual([150 + 48, 90]);
+    expect(size(area(16, 0, { zoom: [2] }))).toEqual([100 + 16, 60]);
+    // An author width or height leaves no default size to add it to.
+    expect(size(area(16, 16, { width: px(40), height: px(20) }))).toEqual([40, 20]);
   });
 
   it('the validator refuses a select without exactly one inner element, a stray inner element, and an empty one without a strut', () => {

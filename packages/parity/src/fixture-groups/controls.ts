@@ -55,7 +55,16 @@ export const CONTROLS: readonly FixtureSpec[] = [
   reject('reject-controls-text-font-grid-min0', 'DRAGON_UNSUPPORTED_FONT', '100%', 'width: 100% on <input> t is not supported here: it is a grid item of <div> d, whose column is not its whole content box'),
   reject('reject-controls-text-font-min-width', 'DRAGON_UNSUPPORTED_FONT', '100%', 'width: 100% on <input> t is not supported here: <div> d takes its width from its content (min-width: max-content)'),
   layout('controls-text-field-search'),
+  // OVFL-B with PNT1: the Markless notes form's field, a rounded textarea (1px border, 10px radius, padding 12px 14px, a background),
+  // and the same field with a 4px border, whose corners the sampler can reach. Native clips a textarea at rest, so its content is
+  // clipped to the rounded padding box as Chrome's scroll container clips it (pnt1-radius.test.ts).
+  layout('controls-textarea-rounded'),
   layout('controls-textarea'),
+  // FORM-b: the scrollbar thickness Chrome adds to a textarea's default size (16 DIP at auto, 14 at thin, to the width unless
+  // overflow-y is hidden or clip and to the height at overflow-x: scroll), with no gutter under overlay scrollbars; the last case
+  // is the Markless notes form's field, resize: vertical included, which a phone draws no grip for, without its border-radius
+  // (a rounded scroll container: Dragon #682).
+  layout('controls-textarea-scrollbar'),
   layout('controls-text-field-inline'),
   reject('reject-controls-text-field-inline-dir', 'DRAGON_UNSUPPORTED_VALUE', 'rtl', 'the inline-block <input> f is on a right-to-left line of d'),
   reject('reject-controls-text-field-inline-valign', 'DRAGON_UNSUPPORTED_VALUE', 'middle', 'vertical-align: middle on the inline-block <input> f is not supported'),
