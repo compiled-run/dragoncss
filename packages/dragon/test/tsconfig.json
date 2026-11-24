@@ -2,5 +2,5 @@
   "extends": "../../../tsconfig.base.json",
   "compilerOptions": { "rootDir": ".", "outDir": "../dist-test", "types": ["node"], "customConditions": ["dragon-internal"] },
   "include": ["."],
-  "references": [{ "path": ".." }, { "path": "../../layout" }, { "path": "../../translate" }]
+  "references": [{ "path": ".." }, { "path": "../../layout" }]
 }
