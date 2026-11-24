@@ -604,7 +604,8 @@ export type CancelButton = { readonly marginStart: number; readonly marginEnd: n
  *   start. Its intrinsic content inline size is cols x the advance of 0, rounded up to a whole px, and its auto content height is
  *   rows x its line height, whatever its text; font and lineHeight are the textarea's own. scrollbarInline and scrollbarBlock are
  *   the platform's scrollbar thickness in DIP that Chrome adds to that inline size (overflow-y not hidden or clip) and to that
- *   height (overflow-x scroll), 0 where it adds none: trunc(thickness x the device scale) device px, whatever the zoom;
+ *   height (overflow-x scroll), 0 where it adds none. The environment pass (environment.ts, which runs once per layout) turns
+ *   them into trunc(thickness x the device scale) device px, whatever the zoom: in a resolved tree they are device px, not DIP;
  * - text-editor: the inner editor, a block container holding the value's text;
  * - text-placeholder: the placeholder, a block container holding the placeholder text, out of the field's flow;
  * - fieldset: a block fieldset, whose rendered legend sits in its block-start border and whose other contents flow in an anonymous
