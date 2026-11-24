@@ -15,7 +15,7 @@ public func intrinsic_intrinsicContentInlineSize(_ ctx: Ctx, _ node: any U_Contr
   if ((node.kind == S.s_control) && ((node as! ControlBox).control.kind == S.s_text_field)) {
     // ts: packages/layout/src/intrinsic.ts:28
     if (((node as! ControlBox).control as! ControlKind_textField).avgChar == S.s_unmeasured) {
-      try unsupported_unsupported(S.s_text_field_avg_char, (node as! ControlBox).id, S.s726, jsConcat(S.s1188, kind, S.s249, (node as! ControlBox).id, S.s182))
+      try unsupported_unsupported(S.s_text_field_avg_char, (node as! ControlBox).id, S.s724, jsConcat(S.s1186, kind, S.s249, (node as! ControlBox).id, S.s182))
     }
     return try controls_textFieldInlineSize(ctx.measurer, ((node as! ControlBox).control as! ControlKind_textField))
   }
@@ -27,7 +27,7 @@ public func intrinsic_intrinsicContentInlineSize(_ ctx: Ctx, _ node: any U_Contr
   if ((node.kind == S.s_control) && ((node as! ControlBox).control.kind == S.s_text_area)) {
     // ts: packages/layout/src/intrinsic.ts:34
     if (((node as! ControlBox).control as! ControlKind_textArea).avgChar == S.s_unmeasured) {
-      try unsupported_unsupported(S.s_text_field_avg_char, (node as! ControlBox).id, S.s726, jsConcat(S.s1188, kind, S.s250, (node as! ControlBox).id, S.s182))
+      try unsupported_unsupported(S.s_text_field_avg_char, (node as! ControlBox).id, S.s724, jsConcat(S.s1186, kind, S.s250, (node as! ControlBox).id, S.s182))
     }
     return try controls_textAreaInlineSize(ctx.measurer, ((node as! ControlBox).control as! ControlKind_textArea))
   }
@@ -40,7 +40,7 @@ public func intrinsic_intrinsicContentInlineSize(_ ctx: Ctx, _ node: any U_Contr
   let kids: JsArray<any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf> = box.children
   // ts: packages/layout/src/intrinsic.ts:44
   if (box.style.multicol != nil) {
-    try unsupported_unsupported(S.s_multicol, box.id, S.s720, jsConcat(S.s1188, kind, S.s248, box.id, S.s133))
+    try unsupported_unsupported(S.s_multicol, box.id, S.s718, jsConcat(S.s1186, kind, S.s248, box.id, S.s133))
   }
   // ts: packages/layout/src/intrinsic.ts:45
   if (box.style.display == S.s_flex) {
@@ -155,9 +155,9 @@ public func intrinsic_menuListNaturalInlineSize(_ ctx: Ctx, _ node: ControlBox) 
       if (!m.ok) {
         // ts: packages/layout/src/intrinsic.ts:92
         if ((m as! MeasureResult_okFalse).code == S.s_text_script) {
-          try unsupported_unsupported(S.s_text_script, o.id, S.s987, (m as! MeasureResult_okFalse).reason)
+          try unsupported_unsupported(S.s_text_script, o.id, S.s985, (m as! MeasureResult_okFalse).reason)
         }
-        try unsupported_unsupported(S.s_text_glyph, o.id, S.s714, (m as! MeasureResult_okFalse).reason)
+        try unsupported_unsupported(S.s_text_glyph, o.id, S.s712, (m as! MeasureResult_okFalse).reason)
       }
       let w: Double = try units_toPx((m as! MeasureResult_okTrue).measure.width)
       // ts: packages/layout/src/intrinsic.ts:96
@@ -195,7 +195,7 @@ public func intrinsic_inlineContribution(_ ctx: Ctx, _ node: any U_ControlBox_La
     }
     // ts: packages/layout/src/intrinsic.ts:118
     if try ratio_hasAspectRatio(s) {
-      try unsupported_unsupported(S.s_intrinsic_size_keyword, box.id, S.s728, jsConcat(k, S.s200))
+      try unsupported_unsupported(S.s_intrinsic_size_keyword, box.id, S.s726, jsConcat(k, S.s200))
     }
     return try units_add(intrinsic_intrinsicContentInlineSize(ctx, (((node as! any U_ControlBox_LayoutBox).kind == S.s_control) ? ((node as! ControlBox) as any U_ControlBox_LayoutBox) : (box as any U_ControlBox_LayoutBox)), ((k == S.s_min_content) ? S.s_min : ((k == S.s_max_content) ? S.s_max : kind))), bp)
   }
@@ -255,7 +255,7 @@ public func intrinsic_flexIntrinsicContent(_ ctx: Ctx, _ box: LayoutBox, _ kind:
   let isRow: Bool = ((s.flexDirection == S.s_row) || (s.flexDirection == S.s_row_reverse))
   // ts: packages/layout/src/intrinsic.ts:159
   if ((!isRow) && (s.flexWrap != S.s_nowrap)) {
-    try unsupported_unsupported(S.s_flex_intrinsic_wrap_column, box.id, S.s713, S.s876)
+    try unsupported_unsupported(S.s_flex_intrinsic_wrap_column, box.id, S.s711, S.s874)
   }
   // ts: packages/layout/src/intrinsic.ts:160
   if ((!isRow) || ((kind == S.s_min) && (s.flexWrap != S.s_nowrap))) {
@@ -275,7 +275,7 @@ public func intrinsic_flexIntrinsicContent(_ ctx: Ctx, _ box: LayoutBox, _ kind:
   let gap: any U_LengthCalc_NormalValue_Percent_Px = s.columnGap
   // ts: packages/layout/src/intrinsic.ts:166
   if try ((gap.kind != S.s_normal) && box_hasPercent((gap as! any U_LengthCalc_Percent_Px))) {
-    try unsupported_unsupported(S.s_percent_gap, box.id, S.s703, S.s1044)
+    try unsupported_unsupported(S.s_percent_gap, box.id, S.s701, S.s1042)
   }
   let gapLu: Double = try ((gap.kind == S.s_normal) ? units_ZERO : box_resolveLength((gap as! any U_LengthCalc_Percent_Px), units_ZERO, ctx.faults))
   let gaps: Double = try ((jsLength(items) > 1.0) ? units_mulInt(gapLu, (jsLength(items) - 1.0)) : units_ZERO)

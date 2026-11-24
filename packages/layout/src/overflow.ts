@@ -404,7 +404,8 @@ function overflowOf(ix: Index, n: Node): OverflowRect {
   // Blink GridLayoutAlgorithm::LayoutInternal: a grid scroll container's inflow bounds are its tracks (css-grid-2 §5.3), set by the layout.
   const grid = isGridContainer(b);
   if (grid && sc) c.inflow = gridInflowOf(ix, b.id);
-  if (hasInlineContent(b)) {
+  const inline = hasInlineContent(b);
+  if (inline) {
     refuseLineLevelBoxes(b);
     addLines(ix, n, b, c);
   }
@@ -416,7 +417,8 @@ function overflowOf(ix: Index, n: Node): OverflowRect {
     const dy = sub(kn.rect.y, n.rect.y);
     if (k.kind === 'control') controlChecked(kn, k.control);
     addOverflow(c, shifted(propagated(ix, kn), dx, dy));
-    if (sc && !grid) addInflow(c, inflowBounds(ix, n, kn, dx, dy));
+    // An atomic inline is a line item: its line's inflow holds its border box where the line placed it (ScrollableOverflowForLine).
+    if (sc && !grid) addInflow(c, inline ? { x: dx, y: dy, width: kn.rect.width, height: kn.rect.height } : inflowBounds(ix, n, kn, dx, dy));
   }
   const oofs = ix.oofByCb.get(b.id);
   if (oofs !== undefined) {
@@ -484,7 +486,6 @@ function hasInlineContent(box: LayoutBox): boolean {
 export function refuseLineLevelBoxes(box: LayoutBox): void {
   if (!hasInlineContent(box)) return;
   for (const k of box.children) {
-    if (k.kind === 'box' || k.kind === 'replaced' || k.kind === 'control') throw new OverflowRefusal(k.id, `an atomic inline in the inline formatting context of ${box.id}: its scrollable overflow is not decided here (R16, INL2)`);
     // INL1a's inline box fragments and <br>s are line items addLines does not measure (ScrollableOverflowForLine adds them).
     if (k.kind === 'inline') throw new OverflowRefusal(k.id, `an inline box in the inline formatting context of ${box.id}: its scrollable overflow is not decided here (R16, INL1a)`);
     if (k.kind === 'br') throw new OverflowRefusal(k.id, `a <br> in the inline formatting context of ${box.id}: its scrollable overflow is not decided here (R16, INL1a)`);

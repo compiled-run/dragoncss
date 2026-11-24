@@ -48,6 +48,9 @@ export const OVERFLOW: readonly FixtureSpec[] = [
   // Block buttons inside scroll containers and past the viewport: a form control adds its border box to the scrollable overflow
   // when its contents stay inside it (overflow.ts controlContribution), so pages and boxes holding buttons have a decided range.
   both('overflow-controls'),
+  // An atomic inline on a line (the Markless notes .button link, an inline-block, one whose child spills, one that clips) adds its
+  // border box at its line position, and its own overflow unless it clips, to its scroll container's (ScrollableOverflowForLine).
+  both('overflow-atomic-inlines'),
   // OVFL-B with PNT1: rounded scroll containers, whose content Chrome clips to the rounded padding box (inner radius = outer radius
   // less the adjacent border widths): one border, uneven borders, elliptical and per-corner radii, an inner corner made square by a
   // thick border, a hidden x axis with overflow-y auto, padding, content that fits, and one inside another. No scroller paints a

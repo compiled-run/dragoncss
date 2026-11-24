@@ -35,7 +35,6 @@ class Undecided {
 function lineLevel(b: LayoutBox): void {
   if (!hasInlineContent(b)) return;
   for (const k of b.children) {
-    if (k.kind === 'box' || k.kind === 'replaced') throw new Undecided(k.id, `an atomic inline in the inline formatting context of ${b.id}: its scrollable overflow is not decided here (R16, INL2)`);
     if (k.kind === 'inline') throw new Undecided(k.id, `an inline box in the inline formatting context of ${b.id}: its scrollable overflow is not decided here (R16, INL1a)`);
     if (k.kind === 'br') throw new Undecided(k.id, `a <br> in the inline formatting context of ${b.id}: its scrollable overflow is not decided here (R16, INL1a)`);
   }
