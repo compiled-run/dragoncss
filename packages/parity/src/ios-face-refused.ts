@@ -7,6 +7,7 @@ export type FaceRefusal = { readonly code: string; readonly feature: string | nu
 export const IOS_FACE_REFUSED: ReadonlyMap<string, readonly FaceRefusal[]> = new Map([
   ['controls-text-field-font-definite', [{ code: 'DRAGON_UNSUPPORTED_VALUE', feature: 'font-family:<pinned>' }]],
   ['controls-text-font', [{ code: 'DRAGON_UNSUPPORTED_VALUE', feature: 'font-family:<declared>' }, { code: 'DRAGON_UNSUPPORTED_VALUE', feature: 'font-family:<declared>' }]],
+  ['controls-text-font-column-flex', [{ code: 'DRAGON_UNSUPPORTED_VALUE', feature: 'font-family:<declared>' }, { code: 'DRAGON_UNSUPPORTED_VALUE', feature: 'font-family:<declared>' }]],
 ]);
 
 /** A compile's iOS errors as code and support-profile feature, in diagnostic order. */
