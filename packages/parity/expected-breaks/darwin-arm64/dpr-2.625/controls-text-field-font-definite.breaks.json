@@ -1,0 +1,20 @@
+{
+  "case": "controls-text-field-font-definite",
+  "chrome": "145.0.7632.6",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"a1::editor:text0","data":"Hello","lines":1,"units":[0,0,0,0,0],"blank":[]},
+    {"id":"a2::editor:text0","data":"Hello","lines":1,"units":[0,0,0,0,0],"blank":[]},
+    {"id":"a3::placeholder:text0","data":"Type here","lines":1,"units":[0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"a4::editor:text0","data":"Hello","lines":1,"units":[0,0,0,0,0],"blank":[]},
+    {"id":"a5::editor:text0","data":"Hello","lines":1,"units":[0,0,0,0,0],"blank":[]},
+    {"id":"a6::editor:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"c1::editor:text0","data":"Hello","lines":1,"units":[0,0,0,0,0],"blank":[]},
+    {"id":"c2::editor:text0","data":"Hello","lines":1,"units":[0,0,0,0,0],"blank":[]},
+    {"id":"r1::editor:text0","data":"Hello","lines":1,"units":[0,0,0,0,0],"blank":[]},
+    {"id":"r3::editor:text0","data":"Hello","lines":1,"units":[0,0,0,0,0],"blank":[]},
+    {"id":"k1::editor:text0","data":"Hello","lines":1,"units":[0,0,0,0,0],"blank":[]},
+    {"id":"k2::editor:text0","data":"Hello","lines":1,"units":[0,0,0,0,0],"blank":[]},
+    {"id":"k3::editor:text0","data":"Hello","lines":1,"units":[0,0,0,0,0],"blank":[]}
+  ]
+}

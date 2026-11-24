@@ -2,7 +2,7 @@
 // (the css-overflow-3 §3.1 pair rule, Chrome's user-agent defaults), on where a declaration applies (html and body), or on the
 // text and its direction (UAX #9).
 import { authored, diagnostic } from '../diagnostics/catalogue.ts';
-import { fontLoweringGap, viewportFontSize } from '../lower/ios-layout.ts';
+import { fontLoweringGap, textFieldAvgChar, viewportFontSize } from '../lower/ios-layout.ts';
 import { RADIUS_LONGHANDS } from '../css/properties/radius.ts';
 import type { Longhand } from '../css/properties.ts';
 import { INHERITED, LONGHANDS } from '../css/properties.ts';
@@ -73,6 +73,8 @@ import { MOTION_FAULTS } from '../faults/motion.ts';
 import { checkMotion } from './motion.ts';
 import type { FieldSizingFaults } from '../faults/field-sizing.ts';
 import { FIELD_SIZING_FAULTS } from '../faults/field-sizing.ts';
+import type { FieldFontWidthFaults } from '../faults/field-font-width.ts';
+import { FIELD_FONT_WIDTH_FAULTS } from '../faults/field-font-width.ts';
 import { checkFieldSizing } from './field-sizing.ts';
 import type { MaskFaults } from '../faults/mask.ts';
 import { MASK_FAULTS } from '../faults/mask.ts';
@@ -1765,11 +1767,12 @@ function checkButton(el: ResolvedElement, parentDisplay: string | null, targets:
  * appearance: none, or an author background or border). Refused: a themed field; a password field (Chrome masks its text with
  * the font's bullet, which no fixture proves); any display but block or inline-block; an inline-block field off the baseline
  * or right to left (checkInlineTextField); an absolutely positioned one or a grid item; one whose font is Chrome's UA control
- * font; on iOS and Android a right-to-left search field;
- * and on iOS and Android an editable field, as Dragon has no caret or keyboard input there yet (the FORM-b editing slice),
- * unless the host edits it (hostEdits: the compile's textEditing 'host'). A readonly field shows its value as drawn text.
+ * font; on iOS and Android an input (a search field among them) or textarea outside Ahem whose used width may read its intrinsic
+ * width (checkFieldWidth); on iOS and Android a right-to-left search field; and on iOS and Android an
+ * editable field, as Dragon has no caret or keyboard input there yet (the FORM-b editing slice), unless the host edits a
+ * single-line field (hostEdits: the compile's textEditing 'host'). A readonly field shows its value as drawn text.
  */
-function checkTextField(el: ResolvedElement, layoutParent: ResolvedElement | null, parentDisplay: string | null, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, hostEdits: boolean): void {
+function checkTextField(el: ResolvedElement, layoutParent: ResolvedElement | null, parentDisplay: string | null, chain: readonly ResolvedElement[], targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, hostEdits: boolean, faults: FieldFontWidthFaults): void {
   const address = el.element.address;
   const tag = el.element.tag;
   const state = inputTypeState(el.element.attributes.get('type'));
@@ -1812,13 +1815,12 @@ function checkTextField(el: ResolvedElement, layoutParent: ResolvedElement | nul
   if (family.origin === 'user-agent') {
     refuse(family, 'font', `<${tag}> ${address} uses Chrome's user-agent control font (${valueToString(family.value)}), which the font map does not pin`, `Set font: inherit (or a font-family) on <${tag}> ${address}.`, 'DRAGON_UNSUPPORTED_FONT');
   }
-  // Chrome sizes a field's intrinsic inline size by the primary face's OS/2 average character width unless that is invalid for
-  // the face (Blink's HasValidAvgCharWidth, in an LGPL file), and by the advance of 0 otherwise. The engine uses the advance of 0,
-  // proven only for Ahem, where both are 1em; any width, min-width, flex or shrink-to-fit sizing may read it, so a field in
-  // another face is refused natively whatever its width.
-  const first = valueToString(family.value).split(',')[0]?.trim().replace(/^["']|["']$/g, '').toLowerCase();
-  if (family.origin !== 'user-agent' && first !== 'ahem') {
-    refuse(family, 'width-font', `<${tag}> ${address} is in font-family: ${valueToString(family.value)}: Chrome sizes a text control by the face's average character width, which Dragon proves only for Ahem`, `Draw <${tag}> ${address} in Ahem, or target web only, until real faces are measured for text controls.`, 'DRAGON_UNSUPPORTED_FONT', targets.filter((t) => t === 'ios' || t === 'android'));
+  const native = targets.filter((t) => t === 'ios' || t === 'android');
+  if (family.origin !== 'user-agent' && native.length > 0 && textFieldAvgChar(family.value) === 'unmeasured') {
+    // A search field's cancel button is sized from the font size alone; controls-text-font matches Chrome at its ::cancel box in Roboto and Inter.
+    if (!faults.fieldWidthAnyContext) {
+      checkFieldWidth(el, parentDisplay, chain, (v, what, message, manual) => refuse(v, what, message, manual, 'DRAGON_UNSUPPORTED_FONT', native));
+    }
   }
   const direction = el.props.get('direction') as ResolvedValue;
   if (state === 'search' && keywordOf(direction) === 'rtl') {
@@ -1919,6 +1921,51 @@ function checkTextAreaChrome(el: ResolvedElement, targets: readonly string[], re
 }
 
 /**
+ * FIELD-font-width FW1: Chrome sizes a field's intrinsic inline size from its primary face's average character width (on macOS
+ * the advance of x, plus the ascent's excess), which the engine measures only for Ahem. So a field in another face is accepted
+ * natively only where its used width never reads that size: a length or percentage width (or, on a row flex item, a definite
+ * length basis with min-width set and no intrinsic max-width), no intrinsic min-width or max-width, no row flex item with
+ * min-width: auto, no grid item with min-width: auto unless a percentage width in a singleStretchColumn grid, no content-sized row
+ * flex basis, and no percentage width or basis under a content-sized ancestor.
+ */
+function checkFieldWidth(el: ResolvedElement, parentDisplay: string | null, chain: readonly ResolvedElement[], refuse: (v: ResolvedValue, what: string, message: string, manual: string) => void): void {
+  const address = el.element.address;
+  const tag = el.element.tag;
+  const family = valueToString((el.props.get('font-family') as ResolvedValue).value);
+  const why = `Chrome sizes a text field in font-family: ${family} from the face's average character width, which Dragon measures only for Ahem`;
+  const width = el.props.get('width') as ResolvedValue;
+  const minWidth = el.props.get('min-width') as ResolvedValue;
+  const maxWidth = el.props.get('max-width') as ResolvedValue;
+  const basis = el.props.get('flex-basis') as ResolvedValue;
+  const b = keywordOf(basis);
+  const rowItem = (parentDisplay === 'flex' || parentDisplay === 'inline-flex') && !keywordOf((chain.filter((a) => !isContents(a)).at(-1) as ResolvedElement).props.get('flex-direction') as ResolvedValue).startsWith('column');
+  const sized = contentSizedAncestor(chain);
+  // A row item's main size is its definite basis, clamped by a min-width and max-width that read no content, so its width is never used.
+  const basisSized = rowItem && b === '' && !hasPercentage(basis) && keywordOf(minWidth) !== 'auto' && ['', 'none'].includes(keywordOf(maxWidth)) && sized === null;
+  if (width.value.kind === 'keyword' && !basisSized) refuse(width, 'width-font', `width: ${valueToString(width.value)} on <${tag}> ${address} is not supported here: ${why}`, `Give <${tag}> ${address} a width (a length or percentage), or draw it in Ahem.`);
+  for (const [p, v] of [['min-width', minWidth], ['max-width', maxWidth]] as const) {
+    if (INTRINSIC_SIZES.has(keywordOf(v))) refuse(v, `${p}-font`, `${p}: ${keywordOf(v)} on <${tag}> ${address} is not supported here: ${why}`, `Give <${tag}> ${address} a ${p} in px or %, or remove it.`);
+  }
+  // Chrome compresses only a percentage width's min-content contribution; a length width with a percentage min-width or max-width
+  // contributes the length (measured: a 120px field with max-width: 100% in a 100px-wide float is 128px with its border and padding).
+  const relative = width.value.kind !== 'keyword' && hasPercentage(width) ? 'width' : rowItem && b === '' && hasPercentage(basis) ? 'flex-basis' : null;
+  const grid = chain.filter((a) => !isContents(a)).at(-1);
+  const gridItem = grid !== undefined && (parentDisplay === 'grid' || parentDisplay === 'inline-grid');
+  // A column flex item's automatic minimum is on the main axis, its height; a compressed field's in a stretched column is its border and padding.
+  const item = rowItem || (gridItem && !(relative === 'width' && singleStretchColumn(grid as ResolvedElement)));
+  if (item && keywordOf(minWidth) === 'auto') refuse(minWidth, 'min-width-font', `<${tag}> ${address} is a ${parentDisplay} item with min-width: auto, whose automatic minimum Chrome takes from the field's intrinsic width: ${why}`, `Set min-width (0 is fine) on <${tag}> ${address}.`);
+  if (rowItem && (b === 'content' || INTRINSIC_SIZES.has(b))) refuse(basis, 'flex-basis-font', `flex-basis: ${b} on <${tag}> ${address} is not supported: Chrome takes it from the field's intrinsic width, and ${why}`, `Give <${tag}> ${address} a flex-basis in px, or a width and flex-basis: auto.`);
+  if (relative === 'width' && gridItem && !singleStretchColumn(grid as ResolvedElement)) {
+    refuse(width, 'width-grid-font', `width: ${valueToString(width.value)} on <${tag}> ${address} is not supported here: it is a grid item of <${grid.element.tag}> ${grid.element.address}, whose column is not its whole content box, so Chrome sizes the column with the field's intrinsic width, and ${why}`, `Give <${grid.element.tag}> ${grid.element.address} one auto-placed column (no grid-template-columns), or give <${tag}> ${address} a width in px.`);
+  }
+  const through = relative === 'width' ? contentSizedAncestor(chain, true) : sized;
+  if (relative === null || through === null) return;
+  const v = relative === 'width' ? width : basis;
+  const at = `<${through.box.element.tag}> ${through.box.element.address}`;
+  refuse(v, 'width-content-font', `${relative}: ${valueToString(v.value)} on <${tag}> ${address} is not supported here: ${at} takes its width from its content (${through.why}), which Chrome measures with the field's intrinsic width, and ${why}`, `${contentSizedFix(at, through.why)} Or give <${tag}> ${address} a ${relative} in px.`);
+}
+
+/**
  * FORM-search (notes/FORM-search-spec.md R5): the cancel button narrows a search field's editor and placeholder at their inline
  * end, which no fixture measures under a text-align that moves text off the inline start, or under an author ::placeholder margin.
  * refuse refuses on the native targets only: on the web Chrome lays the field out itself.
@@ -1980,8 +2027,9 @@ function widthShape(v: ResolvedValue): 'intrinsic' | 'auto' | 'percent' | 'fixed
 /**
  * Where box's used width comes from, for a descendant whose min-content and max-content contributions it may read: fixed (its own
  * width, or a containing block its content cannot widen), parent (its layout parent's width), or why Chrome sizes it from its content.
+ * compressed: the descendant is a percentage-width field, whose min-content contribution is its border and padding.
  */
-function widthSource(box: ResolvedElement, parent: ResolvedElement | null): 'fixed' | 'parent' | string {
+function widthSource(box: ResolvedElement, parent: ResolvedElement | null, compressed = false): 'fixed' | 'parent' | string {
   if (parent === null) return 'fixed';
   const kw = (p: Longhand): string => keywordOf(box.props.get(p) as ResolvedValue);
   const width = widthShape(box.props.get('width') as ResolvedValue);
@@ -1996,15 +2044,25 @@ function widthSource(box: ResolvedElement, parent: ResolvedElement | null): 'fix
   const tag = box.element.tag;
   if (tag === 'button' || (tag === 'legend' && parent.element.tag === 'fieldset')) return step(tag === 'button' ? 'a button with an auto width' : 'a fieldset legend with an auto width');
   const pd = keywordOf(parent.props.get('display') as ResolvedValue);
-  if (pd === 'grid' || pd === 'inline-grid') return width === 'fixed' ? 'fixed' : 'a grid item';
+  if (pd === 'grid' || pd === 'inline-grid') {
+    // A stretched column sized at least by its items' min-content contributions, which read no intrinsic width when the field compresses.
+    if (width === 'fixed') return 'fixed';
+    if (!compressed) return 'a grid item';
+    const margin = (['margin-left', 'margin-right'] as const).find((m) => kw(m) === 'auto');
+    if (!singleStretchColumn(parent)) return 'a grid item in a grid whose column is not its whole content box';
+    if (!stretchesInline(box, parent)) return `a grid item with justify-self: ${kw('justify-self') === 'auto' ? `auto (justify-items: ${keywordOf(parent.props.get('justify-items') as ResolvedValue)})` : kw('justify-self')}`;
+    return margin === undefined ? step('parent') : `a grid item with ${margin}: auto`;
+  }
   if (pd === 'flex' || pd === 'inline-flex') {
     if (keywordOf(parent.props.get('flex-direction') as ResolvedValue).startsWith('column')) {
       const self = kw('align-self') === 'auto' ? keywordOf(parent.props.get('align-items') as ResolvedValue) : kw('align-self');
-      const stretched = (self === 'stretch' || self === 'normal') && kw('margin-left') !== 'auto' && kw('margin-right') !== 'auto';
+      const margin = (['margin-left', 'margin-right'] as const).find((m) => kw(m) === 'auto');
+      const stretched = (self === 'stretch' || self === 'normal') && margin === undefined;
       // css-flexbox-1 §9.4: a multi-line container's line is as wide as its items' contributions, which a stretched item fills.
       const wrap = keywordOf(parent.props.get('flex-wrap') as ResolvedValue);
       if (stretched && wrap !== 'nowrap') return step(`a stretched column flex item in a flex-wrap: ${wrap} container`);
-      return step(stretched ? 'parent' : `a column flex item with align-self: ${self} and an auto width`);
+      const by = kw('align-self') === 'auto' ? (['align-items', parent] as const) : (['align-self', box] as const);
+      return step(stretched ? 'parent' : margin !== undefined ? `a column flex item with ${margin}: auto and an auto width` : `a column flex item with ${by[0]}: ${valueToString((by[1].props.get(by[0]) as ResolvedValue).value)} and an auto width`);
     }
     const scroller = !['visible', 'clip'].includes(kw('overflow-x'));
     if (kw('min-width') === 'auto' && !scroller) return 'a row flex item with min-width: auto';
@@ -2014,7 +2072,40 @@ function widthSource(box: ResolvedElement, parent: ResolvedElement | null): 'fix
     if (b === 'auto' && width === 'auto') return 'a flex item with an auto flex basis and width';
     return 'parent';
   }
+  // css-align-3 §6.1: a block aligned to the start, center or end of its block container takes its fit-content width.
+  if (width === 'auto' && !stretchesInline(box, parent)) return `justify-self: ${keywordOr(box, 'justify-self', 'auto') === 'auto' ? keywordOr(parent, 'justify-items', 'legacy') : keywordOr(box, 'justify-self', 'auto')} with an auto width`;
   return step('parent');
+}
+
+/** A computed keyword, or the initial keyword where the longhand is missing; '' for any other value. */
+const keywordOr = (el: ResolvedElement, p: Longhand, initial: string): string => {
+  const v = el.props.get(p) as ResolvedValue | undefined;
+  return v === undefined ? initial : keywordOf(v);
+};
+
+/** An item's inline-axis self-alignment that stretches it to its slot (css-align-3 §6.1: auto takes the parent's justify-items). */
+const stretchesInline = (item: ResolvedElement, parent: ResolvedElement): boolean => {
+  const self = keywordOr(item, 'justify-self', 'auto');
+  const own = self === 'auto' ? keywordOr(parent, 'justify-items', 'legacy') : self;
+  return own === 'normal' || own === 'stretch' || own === 'legacy';
+};
+
+/**
+ * A grid container whose one column is its whole content box: no column template or areas, an auto implicit column, row
+ * auto-flow, stretched content distribution, and every item auto-placed. Chrome 145 sizes the column by the items' content in each
+ * other shape (two auto columns, justify-content: start, grid-auto-columns: max-content, two areas, grid-column: 2, column flow).
+ */
+function singleStretchColumn(grid: ResolvedElement): boolean {
+  if (keywordOf(grid.props.get('grid-template-columns') as ResolvedValue) !== 'none') return false;
+  if (keywordOr(grid, 'grid-template-areas', 'none') !== 'none') return false;
+  if (keywordOr(grid, 'grid-auto-columns', 'auto') !== 'auto') return false;
+  if (keywordOr(grid, 'grid-auto-flow', 'row') !== 'row') return false;
+  const distribution = keywordOr(grid, 'justify-content', 'normal');
+  if (distribution !== 'normal' && distribution !== 'stretch') return false;
+  // A row-locked item adds an implicit column beside another (Chrome 145: 232.48, 242.03 and 284px in Roboto, Inter and Ahem).
+  const autoPlaced = (c: ResolvedElement): boolean => (['grid-column-start', 'grid-column-end', 'grid-row-start', 'grid-row-end'] as const).every((p) => keywordOr(c, p, 'auto') === 'auto');
+  const items = (box: ResolvedElement): ResolvedElement[] => box.children.flatMap((c) => (c.kind !== 'element' ? [] : isContents(c as ResolvedElement) ? items(c as ResolvedElement) : [c as ResolvedElement]));
+  return items(grid).every(autoPlaced);
 }
 
 /** How to clear a refusal whose content-sized box is at, by why widthSource named it. */
@@ -2026,11 +2117,11 @@ function contentSizedFix(at: string, why: string): string {
 }
 
 /** The first box from the select's layout parent outward whose width Chrome takes from its content, with why, or null. */
-function contentSizedAncestor(chain: readonly ResolvedElement[]): { readonly box: ResolvedElement; readonly why: string } | null {
+function contentSizedAncestor(chain: readonly ResolvedElement[], compressed = false): { readonly box: ResolvedElement; readonly why: string } | null {
   const boxes = chain.filter((a) => !isContents(a));
   for (let i = boxes.length - 1; i >= 0; i--) {
     const box = boxes[i] as ResolvedElement;
-    const source = widthSource(box, boxes[i - 1] ?? null);
+    const source = widthSource(box, boxes[i - 1] ?? null, compressed);
     if (source === 'fixed') return null;
     if (source !== 'parent') return { box, why: source };
   }
@@ -2447,7 +2538,7 @@ function checkInsideButton(el: ResolvedElement, button: ResolvedElement, targets
   refuseOn(el, position, 'inside', 'DRAGON_UNSUPPORTED_VALUE', targets, diagnostics, reported, `position: ${pos} on <${el.element.tag}> ${el.element.address} inside <${button.element.tag}> ${button.element.address} is not supported yet: an absolutely positioned box inside a form control`, `Position the box outside <${button.element.tag}> ${button.element.address}.`);
 }
 
-export function checkComputed(root: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, profileOf: ProfileOf, fonts: FamilyKeyContext, realFaceAt: (address: string) => boolean, shapedAt: (address: string) => boolean, faults: GenBFaults & TxtWFaults & TxtFvFaults & TxtFtFaults & TxtFstretchFaults & TxtFfFaults & TxtFsFaults & TxtFillFaults & TxtFxFaults & FxFaults & MaskFaults & TransformExtraFaults & BorderImageFaults & ScrollContainmentFaults & Txt2IFaults & Txt2dFaults & Txt2lbFaults & Txt2talFaults & TextBoxFaults & BoxDecorationFaults & BackgroundBlendFaults & MulticolFaults & ContainIntrinsicFaults & MotionFaults & FieldSizingFaults = { ...GEN_B_FAULTS, ...TXT_W_FAULTS, ...TXT_FV_FAULTS, ...TXT_FT_FAULTS, ...TXT_FSTRETCH_FAULTS, ...TXT_FF_FAULTS, ...TXT_FS_FAULTS, ...TXT_FILL_FAULTS, ...TXT_FX_FAULTS, ...FX_FAULTS, ...MASK_FAULTS, ...TRANSFORM_EXTRA_FAULTS, ...BORDER_IMAGE_FAULTS, ...SCROLL_CONTAINMENT_FAULTS, ...TXT2_I_FAULTS, ...TXT2_D_FAULTS, ...TXT2_LB_FAULTS, ...TXT2_TAL_FAULTS, ...TEXT_BOX_FAULTS, ...BOX_DECORATION_FAULTS, ...BACKGROUND_BLEND_FAULTS, ...MULTICOL_FAULTS, ...CONTAIN_INTRINSIC_FAULTS, ...MOTION_FAULTS, ...FIELD_SIZING_FAULTS }): void {
+export function checkComputed(root: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, profileOf: ProfileOf, fonts: FamilyKeyContext, realFaceAt: (address: string) => boolean, shapedAt: (address: string) => boolean, faults: GenBFaults & TxtWFaults & TxtFvFaults & TxtFtFaults & TxtFstretchFaults & TxtFfFaults & TxtFsFaults & TxtFillFaults & TxtFxFaults & FxFaults & MaskFaults & TransformExtraFaults & BorderImageFaults & ScrollContainmentFaults & Txt2IFaults & Txt2dFaults & Txt2lbFaults & Txt2talFaults & TextBoxFaults & BoxDecorationFaults & BackgroundBlendFaults & MulticolFaults & ContainIntrinsicFaults & MotionFaults & FieldSizingFaults & FieldFontWidthFaults = { ...GEN_B_FAULTS, ...TXT_W_FAULTS, ...TXT_FV_FAULTS, ...TXT_FT_FAULTS, ...TXT_FSTRETCH_FAULTS, ...TXT_FF_FAULTS, ...TXT_FS_FAULTS, ...TXT_FILL_FAULTS, ...TXT_FX_FAULTS, ...FX_FAULTS, ...MASK_FAULTS, ...TRANSFORM_EXTRA_FAULTS, ...BORDER_IMAGE_FAULTS, ...SCROLL_CONTAINMENT_FAULTS, ...TXT2_I_FAULTS, ...TXT2_D_FAULTS, ...TXT2_LB_FAULTS, ...TXT2_TAL_FAULTS, ...TEXT_BOX_FAULTS, ...BOX_DECORATION_FAULTS, ...BACKGROUND_BLEND_FAULTS, ...MULTICOL_FAULTS, ...CONTAIN_INTRINSIC_FAULTS, ...MOTION_FAULTS, ...FIELD_SIZING_FAULTS, ...FIELD_FONT_WIDTH_FAULTS }): void {
   const propagated = propagatedFrom(root);
   if (!faults.maskLayerAccepted) for (const m of [...maskBackdropRefusals(root), ...maskDecorationRefusals(root, analyzeDecorations(root).applied)]) refuseMask(m.el, targets, diagnostics, reported, m.refusal);
   const parents = parentsOf(root);
@@ -2527,7 +2618,7 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
       checkSelect(el, parentDisplay, chain, targets, diagnostics, reported, environmentOf(root).ua);
       checkInline(el, targets, diagnostics, reported, shapedAt, environmentOf(root).ua);
     } else if (!here && ((el.element.tag === 'input' && isTextFieldType(el.element.attributes.get('type'))) || el.element.tag === 'textarea')) {
-      checkTextField(el, layoutParent, parentDisplay, targets, diagnostics, reported, environmentOf(root).hostTextEditing === true);
+      checkTextField(el, layoutParent, parentDisplay, chain, targets, diagnostics, reported, environmentOf(root).hostTextEditing === true, faults);
       checkInline(el, targets, diagnostics, reported, shapedAt, environmentOf(root).ua);
     } else if (!here && el.element.tag === 'input' && isCheckboxType(el.element.attributes.get('type'))) {
       checkCheckbox(el, parentDisplay, chain, targets, diagnostics, reported);

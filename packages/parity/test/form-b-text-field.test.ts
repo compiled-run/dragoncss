@@ -2,16 +2,22 @@
 // editor holding the value and a placeholder while the value is empty, laid out by the engine (controls.ts) and written for the
 // web with ::placeholder. Refused: a themed field, a password field, an inline-level one, and on iOS and Android an editable one
 // unless the host edits text fields (compileNativeStyles textEditing: 'host', as the Markless export compiles).
-import { describe, expect, it } from 'vitest';
+import type { Browser } from 'playwright';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { Compiled, Diagnostic, NativeStylesConfig } from 'dragon';
 import * as dragon from 'dragon';
+import { ahemMeasurer, layout as engineLayout, NO_ENGINE_FAULTS } from '@dragon/layout';
+import { CHROME_VERSION, launchChrome } from '../src/chrome.ts';
+import { captureFixture } from '../src/capture.ts';
+import { atDpr, DPRS, layoutCases, runDprCase, zoomGuard } from '../src/dpr.ts';
 import { marklessFrontEnd, parseMarklessStyleInput } from '../src/markless-style-input.ts';
-import { PROJECT_ID } from '../src/fixture-reader.ts';
-import { ahemMeasurer, layout as engineLayout } from '@dragon/layout';
-import { fixtureToInput } from '../src/fixture-reader.ts';
+import { fixtureToInput, PROJECT_ID } from '../src/fixture-reader.ts';
 import { withFontMapAssets } from '../src/fixture-groups/fonts.ts';
 import { FONT_REFERENCE_MAP } from '../src/font-reference.ts';
-import { ENVIRONMENT } from '../src/fixtures.ts';
+import { ENVIRONMENT, FIXTURES } from '../src/fixtures.ts';
+import { compileFixture, liveAuthored, runFixture } from '../src/pipeline.ts';
+import { hostPlatform, requireReferencePlatform } from '../src/platform.ts';
+import { referenceShapedMeasurer } from '../src/text-shaper-host.ts';
 
 const page = (css: string, body: string, base: string): string => `<!DOCTYPE html>
 <html data-dragon-id="html">
@@ -104,8 +110,30 @@ describe('FORM-b text fields', () => {
     expect(errors(compile('tf-password', '', '<input data-dragon-id="t" readonly="" type="password" value="XX">'))).toEqual([expect.stringMatching(/^all DRAGON_UNSUPPORTED_ELEMENT <input type=password> t is not supported/)]);
     expect(errors(compile('tf-inline', 'input { display: inline-flex; }', '<div data-dragon-id="d"><input data-dragon-id="t" readonly=""></div>'))).toContainEqual(expect.stringMatching(/display: inline-flex on <input> t is not supported on a text field: an inline-level field is laid out only as inline-block/));
     expect(errors(compile('tf-float', 'input { float: left; }', '<input data-dragon-id="t" readonly="">'))).toContainEqual(expect.stringMatching(/float: left on <input> t is not supported on a text control/));
-    expect(errors(compile('tf-font', 'input { font-family: Lato; }', '<input data-dragon-id="t" readonly="">', BASE, true))).toContainEqual(expect.stringMatching(/^ios DRAGON_UNSUPPORTED_FONT <input> t is in font-family: Lato: Chrome sizes a text control by the face's average character width/));
-    expect(errors(compile('tf-font-width', 'input { font-family: Lato; width: 40px; }', '<input data-dragon-id="t" readonly="">', BASE, true)).filter((e) => e.includes('average character width'))).toHaveLength(2);
+    // A textarea in a face Dragon does not measure takes #665's width guard, as an input does: its cols width is read only without one.
+    expect(errors(compile('tf-textarea-font', 'textarea { font-family: Lato; }', '<textarea data-dragon-id="a" readonly=""></textarea>', BASE, true)).filter((e) => e.includes('average character width'))).toHaveLength(2);
+    expect(errors(compile('tf-textarea-font-width', 'textarea { font-family: Lato; width: 40px; }', '<textarea data-dragon-id="a" readonly=""></textarea>', BASE, true)).filter((e) => e.includes('average character width'))).toEqual([]);
+  });
+
+  it("lifts the font refusal only where a field's width cannot read its face's average character width (FORM-text-font)", () => {
+    // Chrome 145: a length width, or a percentage width in boxes whose widths do not depend on content, is the same size in Roboto,
+    // Inter and Ahem; a percentage width in a float, an inline-block, a max-content box, an auto-width absolute box or a two-column
+    // grid is 197, 217 and 350px.
+    const font = (id: string, css: string, body: string): string[] => errors(compile(id, `input { font-family: Lato; } ${css}`, body, BASE, true)).filter((e) => e.includes('average character width'));
+    const field = '<input data-dragon-id="t" readonly="" class="f">';
+    expect(font('tf-font-length', '.f { width: 40px; }', field)).toEqual([]);
+    // #665's guard accepts a grid item only with min-width set (its automatic minimum would read the intrinsic width).
+    expect(font('tf-font-percent', '.f { width: 100%; min-width: 0; } .g { display: grid; }', `<div data-dragon-id="g" class="g">${field}</div>`)).toEqual([]);
+    const cyclic: readonly [string, string, RegExp][] = [
+      ['tf-font-float', '.w { float: left; }', /<div> d takes its width from its content \(float: left with an auto width\)/],
+      ['tf-font-ib', '.w { display: inline-block; }', /<div> d takes its width from its content \(display: inline-block with an auto width\)/],
+      ['tf-font-maxc', '.w { width: max-content; }', /<div> d takes its width from its content \(width: max-content\)/],
+      ['tf-font-abs', '.w { position: absolute; }', /<div> d takes its width from its content \(position: absolute with an auto width\)/],
+      ['tf-font-grid2', '.w { display: grid; grid-template-columns: auto auto; }', /<input> t is a grid item with min-width: auto, whose automatic minimum Chrome takes from the field's intrinsic width/],
+      ['tf-font-flex', '.w { display: flex; }', /<input> t is a flex item with min-width: auto, whose automatic minimum Chrome takes from the field's intrinsic width/],
+    ];
+    for (const [id, css, why] of cyclic) expect(font(id, `.f { width: 100%; } ${css}`, `<div data-dragon-id="d" class="w">${field}</div>`), id).toContainEqual(expect.stringMatching(why));
+    expect(font('tf-font-minc', '.f { width: 100%; min-width: min-content; }', field)).toContainEqual(expect.stringMatching(/min-width: min-content on <input> t is not supported here/));
   });
 
   it('lays out a search field with its cancel button at the end of the editor\'s line, as Chrome 145 does', () => {
@@ -212,6 +240,200 @@ describe('FORM-b text fields', () => {
     expect(refusals(config)).toEqual([expect.stringMatching(/^android <input> h1 is an editable text control/), expect.stringMatching(/^ios <input> h1 is an editable text control/)]);
     expect(() => dragon.compileNativeStyles({ ...config, textEditing: 'device' as 'host' }, input)).toThrow("textEditing \"device\" is not 'host'");
   });
+});
+
+describe('FIELD-font-width FW1: a field outside Ahem is accepted natively only where its width never reads its intrinsic width', () => {
+  const avg = (c: Compiled<string>): string[] => errors(c).filter((e) => e.includes('average character width'));
+  const lato = (id: string, css: string, body: string, faults = dragon.NO_FAULTS, direction: 'ltr' | 'rtl' = 'ltr'): Compiled<'ios' | 'android' | 'web'> => {
+    const project = dragon.createProjectWith({ projectId: 'dragon-parity', targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} }, fonts: FONT_REFERENCE_MAP }, { faults, profiles: 'derive', direction, rootFont: 'ahem' });
+    return project.compile(withFontMapAssets(fixtureToInput(id, page(`input { font-family: Lato; } ${css}`, body, BASE)), FONT_REFERENCE_MAP));
+  };
+  const field = '<input data-dragon-id="t" readonly="" value="Hello">';
+  const inRow = (css: string): readonly [string, string] => [`.r { display: flex; width: 200px; } ${css}`, `<div data-dragon-id="r" class="r">${field}</div>`];
+  const inBox = (box: string, css: string): readonly [string, string] => [`.wrap { ${box.startsWith('position') ? 'position: relative; height: 60px; ' : ''}width: 300px; } .w { ${box} } ${css}`, `<div data-dragon-id="wrap" class="wrap"><div data-dragon-id="w" class="w">${field}</div></div>`];
+
+  const inColumn = `<div data-dragon-id="c" class="c"><div data-dragon-id="i" class="i">${field}</div></div>`;
+  const inForm = `<div data-dragon-id="f" class="f"><label data-dragon-id="l" class="l">${field}</label></div>`;
+  const ACCEPTED: readonly (readonly [string, string, string])[] = [
+    ['fw-px', 'input { width: 40px; }', field],
+    ['fw-pct', 'input { width: 100%; max-width: 50px; min-width: 10%; }', field],
+    ['fw-calc', 'input { width: calc(50% + 10px); }', field],
+    ['fw-float-cap', ...inBox('float: left;', 'input { width: 120px; max-width: 100%; }')],
+    ['fw-ib-cap', ...inBox('display: inline-block;', 'input { width: 120px; max-width: 100%; }')],
+    ['fw-float-least', ...inBox('float: left;', 'input { width: 120px; min-width: 50%; }')],
+    ['fw-row-basis', ...inRow('input { flex: 1 1 0; min-width: 0; }')],
+    ['fw-row-basis-px', ...inRow('input { flex: 0 0 80px; min-width: 10px; max-width: 50%; }')],
+    ['fw-row-fill', ...inRow('input { width: 100%; min-width: 0; }')],
+    ['fw-col', '.c { display: flex; flex-direction: column; } input { width: 100%; min-width: 0; }', `<div data-dragon-id="c" class="c">${field}</div>`],
+    // FORM-text-font column flex (Chrome 145: 412px, or 372px for the notes shape, in Roboto, Inter and Ahem alike).
+    ['fw-col-min-auto', '.c { display: flex; flex-direction: column; } input { width: 100%; }', `<div data-dragon-id="c" class="c">${field}</div>`],
+    ['fw-col-center-pct', '.c { display: flex; flex-direction: column; align-items: center; } input { width: 100%; }', `<div data-dragon-id="c" class="c">${field}</div>`],
+    ['fw-col-reverse-item', '.c { display: flex; flex-direction: column-reverse; } input { width: 100%; }', inColumn],
+    ['fw-col-self-stretch', '.c { display: flex; flex-direction: column; align-items: center; } .i { align-self: stretch; } input { width: 100%; }', inColumn],
+    // FORM-text-font grid (Chrome 145: 320px at 362px, and the captions' min-content when wider, in Roboto, Inter and Ahem alike).
+    ['fw-grid-notes', '.f { display: grid; gap: 18px; padding: 20px; } .l { display: grid; gap: 6px; } input { width: 100%; }', inForm],
+    ['fw-grid-narrow', '.f { display: grid; width: 40px; } .l { display: grid; } input { width: 100%; }', inForm],
+    ['fw-grid-direct', '.g { display: grid; } input { width: 100%; }', `<div data-dragon-id="g" class="g">${field}</div>`],
+    ['fw-grid-col-flex', '.f { display: grid; width: 40px; } .l { display: flex; flex-direction: column; } input { width: 100%; }', inForm],
+    ['fw-col-notes', '.c { min-height: 100vh; display: flex; flex-direction: column; } .i { width: 100%; max-width: 880px; margin: 0 auto; padding: 20px; } input { width: 100%; }', inColumn],
+  ];
+  for (const [id, css, body] of ACCEPTED) {
+    it(`accepts ${id} on every target, and the engine lays out its iOS projection`, () => {
+      const c = lato(id, css, body);
+      expect(errors(c)).toEqual([]);
+      const p = dragon.iosLayoutProjection(c, ENVIRONMENT, []);
+      if (p.kind !== 'ready') throw new Error(p.reason);
+      const r = engineLayout(p.input, referenceShapedMeasurer());
+      expect(r.kind === 'unsupported' ? `${r.unsupported.code} at ${r.unsupported.nodeId}` : r.kind).toBe('ok');
+    });
+  }
+
+  // Each refused shape, refused by name on iOS and Android only, would read the intrinsic width: with fieldWidthAnyContext the engine throws.
+  const REFUSED: readonly (readonly [string, string, string, string, string?])[] = [
+    ['fw-auto', '', field, 'width: auto on <input> t is not supported here'],
+    ['fw-margin-auto', 'input { margin: 0 auto; }', field, 'width: auto on <input> t is not supported here'],
+    ['fw-fit', 'input { width: fit-content; }', field, 'width: fit-content on <input> t is not supported here'],
+    ['fw-max-content', 'input { width: max-content; }', field, 'width: max-content on <input> t is not supported here'],
+    ['fw-min-intrinsic', 'input { width: 40px; min-width: min-content; }', field, 'min-width: min-content on <input> t is not supported here'],
+    ['fw-max-intrinsic', 'input { width: 40px; max-width: max-content; }', field, 'max-width: max-content on <input> t is not supported here'],
+    ['fw-flex-min', ...inRow('.r { width: 100px; } input { flex: 1; width: 100%; }'), '<input> t is a flex item with min-width: auto'],
+    ['fw-row-auto', ...inRow('input { min-width: 0; }'), 'width: auto on <input> t is not supported here'],
+    // The engine refuses flex-basis: content itself, before it reads the field.
+    ['fw-basis-content', ...inRow('input { flex-basis: content; width: 10px; min-width: 0; }'), 'flex-basis: content on <input> t is not supported', 'flex-basis-content'],
+    ['fw-col-auto', '.c { display: flex; flex-direction: column; align-items: start; } input { min-width: 0; }', `<div data-dragon-id="c" class="c">${field}</div>`, 'width: auto on <input> t is not supported here'],
+    ['fw-ib-pct', ...inBox('display: inline-block;', 'input { width: 100%; }'), 'width: 100% on <input> t is not supported here: <div> w takes its width from its content (display: inline-block with an auto width)'],
+    ['fw-float-pct', ...inBox('float: left;', 'input { width: 100%; }'), 'width: 100% on <input> t is not supported here: <div> w takes its width from its content (float: left with an auto width)'],
+    ['fw-abspos-pct', ...inBox('position: absolute; top: 0; left: 0;', 'input { width: 100%; }'), 'width: 100% on <input> t is not supported here: <div> w takes its width from its content (position: absolute with an auto width)'],
+    ['fw-col-item-row', '.c { display: flex; } input { width: 100%; }', inColumn, 'width: 100% on <input> t is not supported here: <div> i takes its width from its content (a row flex item with min-width: auto)'],
+    ['fw-col-item-wrap', '.c { display: flex; flex-direction: column; flex-wrap: wrap; } input { width: 100%; }', inColumn, 'width: 100% on <input> t is not supported here: <div> i takes its width from its content (a stretched column flex item in a flex-wrap: wrap container)'],
+    ['fw-col-item-center', '.c { display: flex; flex-direction: column; align-items: center; } input { width: 100%; }', inColumn, 'width: 100% on <input> t is not supported here: <div> i takes its width from its content (a column flex item with align-items: center and an auto width)'],
+    ['fw-col-item-margin', '.c { display: flex; flex-direction: column; } .i { margin-left: auto; } input { width: 100%; }', inColumn, 'width: 100% on <input> t is not supported here: <div> i takes its width from its content (a column flex item with margin-left: auto and an auto width)'],
+    ['fw-col-item-logical-margin', '.c { display: flex; flex-direction: column; } .i { align-self: stretch; margin-inline-end: auto; } input { width: 100%; }', inColumn, 'width: 100% on <input> t is not supported here: <div> i takes its width from its content (a column flex item with margin-right: auto and an auto width)'],
+    ['fw-col-item-self-start', '.c { display: flex; flex-direction: column; } .i { align-self: self-start; } input { width: 100%; }', inColumn, 'width: 100% on <input> t is not supported here: <div> i takes its width from its content (a column flex item with align-self: self-start and an auto width)'],
+    ['fw-col-item-inline-start', '.c { display: flex; flex-direction: column; } .i { margin-inline-start: auto; } input { width: 100%; }', inColumn, 'width: 100% on <input> t is not supported here: <div> i takes its width from its content (a column flex item with margin-left: auto and an auto width)'],
+    ['fw-grid-item-start', '.f { display: grid; } .l { justify-self: start; } input { width: 100%; }', inForm, 'width: 100% on <input> t is not supported here: <label> l takes its width from its content (a grid item with justify-self: start)'],
+    ['fw-grid-items-start', '.f { display: grid; justify-items: center; } input { width: 100%; }', inForm, 'width: 100% on <input> t is not supported here: <label> l takes its width from its content (a grid item with justify-self: auto (justify-items: center))'],
+    ['fw-grid-item-margin', '.f { display: grid; } .l { margin-right: auto; } input { width: 100%; }', inForm, 'width: 100% on <input> t is not supported here: <label> l takes its width from its content (a grid item with margin-right: auto)'],
+    ['fw-grid-two-cols', '.f { display: grid; grid-template-columns: auto auto; } input { width: 100%; }', inForm, 'width: 100% on <input> t is not supported here: <label> l takes its width from its content (a grid item in a grid whose column is not its whole content box)'],
+    ['fw-grid-justify-content', '.f { display: grid; justify-content: start; } input { width: 100%; }', inForm, 'width: 100% on <input> t is not supported here: <label> l takes its width from its content (a grid item in a grid whose column is not its whole content box)'],
+    ['fw-grid-row-locked', '.f { display: grid; } .l, .s { grid-row: 1; } input { width: 100%; }', `<div data-dragon-id="f" class="f"><label data-dragon-id="l" class="l">${field}</label><div data-dragon-id="s" class="s">X</div></div>`, 'width: 100% on <input> t is not supported here: <label> l takes its width from its content (a grid item in a grid whose column is not its whole content box)'],
+    ['fw-grid-contents-col2', '.f { display: grid; } .k { display: contents; } .s { grid-column: 2; } input { width: 100%; }', `<div data-dragon-id="f" class="f"><label data-dragon-id="l" class="l">${field}</label><div data-dragon-id="k" class="k"><div data-dragon-id="s" class="s">X</div></div></div>`, 'width: 100% on <input> t is not supported here: <label> l takes its width from its content (a grid item in a grid whose column is not its whole content box)'],
+    ['fw-grid-before-row', '.f { display: grid; } .f::before, .f::after { content: "X"; grid-row: 1; } input { width: 100%; }', inForm, 'width: 100% on <input> t is not supported here: <label> l takes its width from its content (a grid item in a grid whose column is not its whole content box)'],
+    ['fw-grid-flex-basis', '.f { display: grid; width: 40px; } .l { display: flex; } input { flex: 1 1 0px; min-width: 0; }', inForm, 'width: auto on <input> t is not supported here'],
+    ['fw-col-inline-flex', '.c { display: inline-flex; flex-direction: column; } input { width: 100%; }', inColumn, 'width: 100% on <input> t is not supported here: <div> c takes its width from its content (display: inline-flex with an auto width)'],
+  ];
+  for (const [id, css, body, prefix, thrown = 'text-field-avg-char'] of REFUSED) {
+    it(`refuses ${id} on iOS and Android only, and with fieldWidthAnyContext the engine throws ${thrown}`, () => {
+      const c = lato(id, css, body);
+      expect(avg(c).map((e) => e.slice(0, e.indexOf(' ', e.indexOf(' ') + 1)))).toEqual(['android DRAGON_UNSUPPORTED_FONT', 'ios DRAGON_UNSUPPORTED_FONT']);
+      expect(c.diagnostics.find((d) => d.message.includes('average character width'))?.message.startsWith(prefix)).toBe(true);
+      expect(errors(c).filter((e) => e.startsWith('web ') || e.startsWith('all '))).toEqual([]);
+      const faulted = lato(id, css, body, { ...dragon.NO_FAULTS, fieldWidthAnyContext: true });
+      expect(errors(faulted)).toEqual([]);
+      const p = dragon.iosLayoutProjection(faulted, ENVIRONMENT, []);
+      if (p.kind !== 'ready') throw new Error(p.reason);
+      const r = engineLayout(p.input, referenceShapedMeasurer());
+      expect(r.kind === 'unsupported' ? `${r.unsupported.code} at ${r.unsupported.nodeId}` : r.kind).toBe(`${thrown} at t`);
+    });
+  }
+
+  // Refused by ruling, not because the engine reads the intrinsic width there, so no fault can make them throw.
+  const RULED: readonly (readonly [string, string, string, string])[] = [
+    ['fw-stretch', 'input { width: stretch; }', field, 'width: stretch on <input> t'],
+    ['fw-row-pct-basis', ...inRow('input { flex: 1 1 50%; min-width: 0; }'), 'width: auto on <input> t'],
+    ['fw-basis-pct-shrink', ...inBox('display: inline-flex;', 'input { flex: 0 0 50%; width: 10px; min-width: 0; }'), 'flex-basis: 50% on <input> t is not supported here: <div> w takes its width from its content (display: inline-flex with an auto width)'],
+  ];
+  for (const [id, css, body, prefix] of RULED) {
+    it(`refuses ${id} on iOS and Android only (out of FW1's scope by ruling)`, () => {
+      const c = lato(id, css, body);
+      expect(avg(c).map((e) => e.slice(0, e.indexOf(' ', e.indexOf(' ') + 1)))).toEqual(['android DRAGON_UNSUPPORTED_FONT', 'ios DRAGON_UNSUPPORTED_FONT']);
+      expect(c.diagnostics.find((d) => d.message.includes('average character width'))?.message.startsWith(prefix)).toBe(true);
+      expect(errors(c).filter((e) => e.startsWith('web ') || e.startsWith('all '))).toEqual([]);
+    });
+  }
+
+  it("keeps a min-content grid's spanning items reading the growth limits of the span group before them (Chrome 145: 225px, columns 30, 120 and 75px)", () => {
+    const c = compile('fw-grid-span-min', '.g { display: grid; width: min-content; grid-template-columns: auto auto auto; } .a { grid-column: 1; } .b { grid-column: 1 / 3; } .c { grid-column: 2 / 4; }', '<div data-dragon-id="g" class="g"><div data-dragon-id="a" class="a">X X</div><div data-dragon-id="b" class="b">XXXXXXXXXXXXXXX</div><div data-dragon-id="c" class="c">XXXXXXXXXXXXXXX</div></div>');
+    expect(errors(c)).toEqual([]);
+    const p = dragon.iosLayoutProjection(c, ENVIRONMENT, []);
+    if (p.kind !== 'ready') throw new Error(p.reason);
+    const r = engineLayout(p.input, ahemMeasurer);
+    if (r.kind !== 'ok') throw new Error(r.kind);
+    expect(r.boxes.find((b) => b.id === 'g')?.width).toBe(225 * 64);
+  });
+
+  it('reads the first listed family with its case: only Ahem first is measured', () => {
+    const auto = (id: string, family: string): number => avg(compile(id, `input { font-family: ${family}; }`, field, BASE, true)).length;
+    expect([auto('fw-ahem', 'Ahem'), auto('fw-ahem-list', 'Ahem, Lato'), auto('fw-ahem-quoted', '"Ahem", sans-serif')]).toEqual([0, 0, 0]);
+    expect([auto('fw-ahem-lower', 'ahem'), auto('fw-lato-ahem', 'Lato, Ahem'), auto('fw-generic', 'sans-serif')]).toEqual([2, 2, 2]);
+  });
+
+  it('an rtl field in Lato is refused by its editor white space (DRAGON_UNSUPPORTED_BIDI), so the fixture is ltr only', () => {
+    expect(errors(lato('fw-rtl', 'input { width: 100%; }', field, dragon.NO_FAULTS, 'rtl'))).toContainEqual(expect.stringMatching(/^all DRAGON_UNSUPPORTED_BIDI t::editor:text0 keeps its white space/));
+  });
+
+  it('accepts a set-width search field in Lato on every target and lays out its iOS projection, and refuses an auto-width one by the field-width guard', () => {
+    // controls-text-font-column-flex is the Chrome proof: its search fields match at every node, ::cancel included, in Roboto and Inter.
+    const search = lato('fw-search', 'input { width: 120px; }', '<input data-dragon-id="t" readonly="" type="search" value="Hello">');
+    expect(errors(search)).toEqual([]);
+    const p = dragon.iosLayoutProjection(search, ENVIRONMENT, []);
+    if (p.kind !== 'ready') throw new Error(p.reason);
+    expect(engineLayout(p.input, referenceShapedMeasurer()).kind).toBe('ok');
+    expect(avg(lato('fw-search-auto', '', '<input data-dragon-id="t" readonly="" type="search" value="Hello">'))).toEqual([
+      expect.stringMatching(/^android DRAGON_UNSUPPORTED_FONT width: auto on <input> t is not supported here/),
+      expect.stringMatching(/^ios DRAGON_UNSUPPORTED_FONT width: auto on <input> t is not supported here/),
+    ]);
+  });
+});
+
+const ACCEPT = 'controls-text-field-font-definite';
+const specOf = (id: string) => {
+  const f = FIXTURES.find((x) => x.id === id);
+  if (f === undefined) throw new Error(`no fixture ${id}`);
+  return f;
+};
+
+describe('the FW1 fixtures against live Chrome', () => {
+  let browser: Browser;
+  beforeAll(async () => {
+    requireReferencePlatform(hostPlatform());
+    browser = await launchChrome();
+    expect(browser.version()).toBe(CHROME_VERSION);
+  });
+  afterAll(async () => {
+    await browser.close();
+  });
+  const live = () => ({ authored: liveAuthored(browser), faults: dragon.NO_FAULTS, engineFaults: NO_ENGINE_FAULTS, profiles: 'derive' as const });
+
+  it(`${ACCEPT} passes chrome-dual and linux-dragon-layout`, async () => {
+    const out = await runFixture(specOf(ACCEPT), browser, live());
+    expect(out.reason).toBeNull();
+    expect(out.cases.map((c) => [c.direction, c.lanes['chrome-dual'], c.lanes['linux-dragon-layout']])).toEqual([['ltr', 'pass', 'pass']]);
+  }, 300_000);
+});
+
+describe(`${ACCEPT} equals live Chrome at every DPR`, () => {
+  const cases = layoutCases().filter((f) => f.spec.id === ACCEPT).flatMap((f) => f.cases);
+  const compiled = { ltr: compileFixture(specOf(ACCEPT), dragon.NO_FAULTS, 'derive', 'ltr').compiled };
+  for (const dpr of DPRS) {
+    it(`at DPR ${dpr}`, async () => {
+      expect(cases.length).toBe(1);
+      const b = await launchChrome(dpr);
+      try {
+        await zoomGuard(b, dpr);
+        const failed: string[] = [];
+        for (const c of cases) {
+          const capture = await captureFixture(b, c.id, c.authoredHtml, atDpr(c.environment, dpr), [], c.authoredPrepare ?? undefined);
+          expect(capture.devicePixelRatio).toBe(dpr);
+          const o = runDprCase(c, compiled.ltr, dpr, capture, NO_ENGINE_FAULTS);
+          if (o.status === 'fail') failed.push(`${o.id}@${o.dpr}: ${o.reason}`);
+        }
+        expect(failed).toEqual([]);
+      } finally {
+        await b.close();
+      }
+    }, 300_000);
+  }
 });
 
 /** BASE without its display: the field keeps Chrome's UA display, inline-block. */

@@ -7,7 +7,7 @@ import { ahemMeasurer, layoutWithFaults, NO_ENGINE_FAULTS } from '../src/index.t
 import { ahemFont, box, control, neutralEnvironment, px, text } from './helpers.ts';
 
 const field = (search: boolean, size = 16, direction: 'ltr' | 'rtl' = 'ltr'): ControlBox =>
-  control('s', { kind: 'text-field', size: 20, font: ahemFont(size), lineHeight: { kind: 'normal' }, cancelButton: search ? { marginStart: 1, marginEnd: 3 } : null }, { width: px(300), direction }, [
+  control('s', { kind: 'text-field', size: 20, font: ahemFont(size), lineHeight: { kind: 'normal' }, avgChar: 'ahem', cancelButton: search ? { marginStart: 1, marginEnd: 3 } : null }, { width: px(300), direction }, [
     control('s::placeholder', { kind: 'text-placeholder' }, { direction }, [text('s::placeholder:text0', 'PP')]),
     control('s::editor', { kind: 'text-editor' }, { direction }, [], { font: ahemFont(size), lineHeight: { kind: 'normal' } }),
   ]);

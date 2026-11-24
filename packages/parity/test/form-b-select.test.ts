@@ -163,7 +163,7 @@ describe('FORM-b select S1', () => {
     expect(inside('.w { position: absolute; left: 0; }', 'one')).toContainEqual(expect.stringMatching(content('w', 'position: absolute with an auto width')));
     expect(inside('.w { display: flex; width: 300px; } .c { flex: none; min-width: 0; }', 'two')).toContainEqual(expect.stringMatching(content('c', 'a flex item with an auto flex basis and width')));
     expect(inside('.w { display: flex; width: 300px; }', 'two')).toContainEqual(expect.stringMatching(content('c', 'a row flex item with min-width: auto')));
-    expect(inside('.w { display: flex; flex-direction: column; align-items: start; width: 300px; }', 'two')).toContainEqual(expect.stringMatching(content('c', 'a column flex item with align-self: start and an auto width')));
+    expect(inside('.w { display: flex; flex-direction: column; align-items: start; width: 300px; }', 'two')).toContainEqual(expect.stringMatching(content('c', 'a column flex item with align-items: start and an auto width')));
     expect(inside('.w { display: grid; grid-template-columns: auto; width: 300px; }', 'two')).toContainEqual(expect.stringMatching(content('c', 'a grid item')));
     // A block with an auto width fills its containing block, so the walk goes on to the shrink-to-fit box around it.
     expect(inside('.w { float: left; }', 'two')).toContainEqual(expect.stringMatching(content('w', 'float: left with an auto width')));

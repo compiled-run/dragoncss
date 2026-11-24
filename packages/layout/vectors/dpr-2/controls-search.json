@@ -618,6 +618,7 @@
           "lineHeight": {
            "kind": "normal"
           },
+          "avgChar": "ahem",
           "cancelButton": {
            "marginStart": 1,
            "marginEnd": 3
@@ -1280,6 +1281,7 @@
           "lineHeight": {
            "kind": "normal"
           },
+          "avgChar": "ahem",
           "cancelButton": {
            "marginStart": 1,
            "marginEnd": 3
@@ -1782,6 +1784,7 @@
           "lineHeight": {
            "kind": "normal"
           },
+          "avgChar": "ahem",
           "cancelButton": {
            "marginStart": 1,
            "marginEnd": 3
@@ -2284,6 +2287,7 @@
           "lineHeight": {
            "kind": "normal"
           },
+          "avgChar": "ahem",
           "cancelButton": null
          },
          "strut": null,
@@ -2637,6 +2641,7 @@
           "lineHeight": {
            "kind": "normal"
           },
+          "avgChar": "ahem",
           "cancelButton": {
            "marginStart": 1,
            "marginEnd": 3
@@ -3138,6 +3143,7 @@
           "lineHeight": {
            "kind": "normal"
           },
+          "avgChar": "ahem",
           "cancelButton": null
          },
          "strut": null,
@@ -3491,6 +3497,7 @@
           "lineHeight": {
            "kind": "normal"
           },
+          "avgChar": "ahem",
           "cancelButton": {
            "marginStart": 1,
            "marginEnd": 3
@@ -4152,6 +4159,7 @@
           "lineHeight": {
            "kind": "normal"
           },
+          "avgChar": "ahem",
           "cancelButton": {
            "marginStart": 1,
            "marginEnd": 3
@@ -4653,6 +4661,7 @@
           "lineHeight": {
            "kind": "normal"
           },
+          "avgChar": "ahem",
           "cancelButton": {
            "marginStart": 1,
            "marginEnd": 3
@@ -5154,6 +5163,7 @@
           "lineHeight": {
            "kind": "normal"
           },
+          "avgChar": "ahem",
           "cancelButton": {
            "marginStart": 1,
            "marginEnd": 3
@@ -5655,6 +5665,7 @@
           "lineHeight": {
            "kind": "normal"
           },
+          "avgChar": "ahem",
           "cancelButton": {
            "marginStart": 1,
            "marginEnd": 3
@@ -6156,6 +6167,7 @@
           "lineHeight": {
            "kind": "normal"
           },
+          "avgChar": "ahem",
           "cancelButton": {
            "marginStart": 1,
            "marginEnd": 3
@@ -6657,6 +6669,7 @@
           "lineHeight": {
            "kind": "normal"
           },
+          "avgChar": "ahem",
           "cancelButton": {
            "marginStart": 1,
            "marginEnd": 3

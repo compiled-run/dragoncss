@@ -27,7 +27,7 @@ import { buttonContentShift, controlOf, plainBox, searchCancelButtonSize, search
 import { layoutFlexContainer } from './flex.ts';
 import type { GridFaults } from './grid.ts';
 import { gridOutOfFlow, layoutGridContainer } from './grid.ts';
-import { layoutInline, metricsOf } from './inline.ts';
+import { fontMetricsOf, layoutInline, metricsOf } from './inline.ts';
 import type { MarkerAlignment, MarkerBox } from './marker.ts';
 import { alignMarker, layoutMarker, markerX } from './marker.ts';
 import { intrinsicContentInlineSize } from './intrinsic.ts';
@@ -515,7 +515,7 @@ function layoutOwnContents(ctx: Ctx, node: LayoutBox | ControlBox, a: ContentsAr
   const height = fromRatio !== null
     ? ratioFinalBlockSize(box, fromRatio, add(a.formattingContextRoot || bor.bottom !== 0 || pad.bottom !== 0 ? intrinsic : r.cursor, vbp), minMax)
     : fixedBorderBox !== null ? fixedBorderBox : constrain(add(intrinsic, vbp), minMax);
-  if (control !== null && control.kind === 'text-field') return layoutTextField(box, control, r.placed, add(bor.top, pad.top), a.borderBoxWidth, fixedBorderBox, minMax, vbp);
+  if (control !== null && control.kind === 'text-field') return layoutTextField(ctx, box, control, r.placed, add(bor.top, pad.top), a.borderBoxWidth, fixedBorderBox, minMax, vbp);
   if (control !== null && control.kind === 'text-area') {
     const lines = metricsOf(ctx, box.id, control.font, control.lineHeight, false);
     const pitch = add(lines.above, lines.below);
@@ -559,9 +559,18 @@ function endsInLineFeed(text: string): boolean {
  * search field centres its decoration container (the editor beside the cancel button, as tall as the taller) instead, and the
  * editor in it (align-items: center).
  */
-function layoutTextField(box: LayoutBox, field: Extract<ControlKind, { kind: 'text-field' }>, flow: readonly Placed[], contentTop: LU, width: LU, fixedBorderBox: LU | null, minMax: MinMax, vbp: LU): ContentsResult {
+function layoutTextField(ctx: Ctx, box: LayoutBox, field: Extract<ControlKind, { kind: 'text-field' }>, flow: readonly Placed[], contentTop: LU, width: LU, fixedBorderBox: LU | null, minMax: MinMax, vbp: LU): ContentsResult {
   let editorId = '';
-  for (const k of box.children) if (k.kind === 'control' && k.control.kind === 'text-editor') editorId = k.id;
+  let editorNormal = false;
+  for (const k of box.children) {
+    if (k.kind === 'control' && k.control.kind === 'text-editor') {
+      editorId = k.id;
+      editorNormal = k.strut !== null && k.strut.lineHeight.kind === 'normal' && field.lineHeight.kind !== 'normal';
+    }
+  }
+  // FORM-text-font: an editor that took line-height normal (environment.ts editorLineHeightIsNormal) in a face with a line gap is not
+  // measured against Chrome; the compiler refuses the same case (project.ts checkTextFieldLineGap).
+  if (editorNormal && fontMetricsOf(ctx, box.id, field.font).lineGap !== 0) unsupported('text-field-line-height', box.id, 'css-ui-4 §6', `${box.id} takes line-height normal in its field in a face with a line gap, which Chrome's field height is not measured for; give it a line height of at least its font size + 1px`);
   const editor = flow.find((p) => p.frag.id === editorId);
   if (editor === undefined) throw new Error(`${box.id} is a text field without an inner editor; validateLayoutInput rejects this input`);
   const height = fixedBorderBox !== null ? fixedBorderBox : constrain(add(editor.frag.height, vbp), minMax);
@@ -760,8 +769,8 @@ export function blockLevelInlineSize(ctx: Ctx, node: LayoutBox | ControlBox, cbI
   // A block button's or range's auto width fits its content (block_layout_algorithm.cc:3341-3352: a form control is never stretched
   // by its block container), measured in Chrome 145 (packages/parity/fixtures/controls-button-block.html, controls-range-block.html).
   const fits = node.kind === 'control' && (node.control.kind === 'button-block' || node.control.kind === 'range' || node.control.kind === 'text-field' || node.control.kind === 'text-area' || node.control.kind === 'select-menulist' || node.control.kind === 'legend');
-  const auto = fits ? min(add(intrinsicContentInlineSize(ctx, node, 'max'), hbp), max(add(intrinsicContentInlineSize(ctx, node, 'min'), hbp), stretched)) : stretched;
-  const raw = keywordWidth !== null ? keywordWidth : specified === null ? auto : borderBoxFromSpecified(specified, hbp, s.boxSizing);
+  const auto = (): LU => (fits ? min(add(intrinsicContentInlineSize(ctx, node, 'max'), hbp), max(add(intrinsicContentInlineSize(ctx, node, 'min'), hbp), stretched)) : stretched);
+  const raw = keywordWidth !== null ? keywordWidth : specified === null ? auto() : borderBoxFromSpecified(specified, hbp, s.boxSizing);
   const lengths = inlineMinMaxWith(s, keywordMin !== null ? AUTO : lengthMinWidth(box.id, s.minWidth), keywordMax !== null ? NONE : lengthMaxWidth(box.id, s.maxWidth), cbInline, hbp, ctx.faults);
   const mm: MinMax = { min: keywordMin !== null ? keywordMin : lengths.min, max: keywordMax !== null ? keywordMax : lengths.max };
   const width = keywordWidth === null && specified === null && hasAspectRatio(s) ? ratioBlockLevelInlineSize(ctx, box, cbInline, raw) : max(constrain(raw, mm), hbp);

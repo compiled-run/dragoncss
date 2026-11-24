@@ -1,0 +1,17 @@
+{
+  "case": "controls-text-font-column-flex",
+  "chrome": "145.0.7632.6",
+  "dpr": 2,
+  "texts": [
+    {"id":"c1:text0","data":"Title","lines":1,"units":[0,0,0,0,0],"blank":[]},
+    {"id":"c2:text0","data":"Note","lines":1,"units":[0,0,0,0],"blank":[]},
+    {"id":"b1:text0","data":"Milk, eggs, bread","lines":0,"units":[-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1],"blank":[]},
+    {"id":"c3:text0","data":"Title","lines":1,"units":[0,0,0,0,0],"blank":[]},
+    {"id":"s1::placeholder:text0","data":"Search notes","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"t1::editor:text0","data":"Groceries Hg","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"b1::editor:text0","data":"Milk, eggs, bread","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"t3::placeholder:text0","data":"Title","lines":1,"units":[0,0,0,0,0],"blank":[]},
+    {"id":"s2::placeholder:text0","data":"Search notes","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"t2::editor:text0","data":"Groceries Hg","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]}
+  ]
+}
