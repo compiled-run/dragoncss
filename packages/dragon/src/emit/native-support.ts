@@ -3254,10 +3254,10 @@ function anchorValue(lang: Lang, v: unknown, str: (s: string) => string): string
   return `AnchorStyle(${a.anchor === null ? none : str(a.anchor)}, ${engineArray(lang, 'AnchorOption', false, a.options.map(option))}, ${str(a.order)})`;
 }
 
-/** The translated union of CalcExpr (V2 of the value model): the element type of a calculation's operand list. */
-const CALC_UNION = 'U_CalcClamp_CalcInvert_CalcMax_CalcMin_CalcProduct_CalcSum_EmLength_EnvLength_FontCalc_FontMetricLength_FontPercent_LineHeightLength_NumberValue_Percent_PixelsAndPercent_Px_RootFontLength_ViewportLength';
+/** The translated union of CalcExpr (V2 of the value model), named by the translator's unionName: its members' names pass 200 characters. */
+export const CALC_UNION = 'U_4133948d6cf9737b';
 
-const CALC_LISTS: Readonly<Record<string, string>> = { sum: 'CalcSum', product: 'CalcProduct', min: 'CalcMin', max: 'CalcMax' };
+export const CALC_LISTS: Readonly<Record<string, string>> = { sum: 'CalcSum', product: 'CalcProduct', min: 'CalcMin', max: 'CalcMax' };
 
 /** The translated classes of the AspectRatioValue members with parts (input.ts); auto is the shared Auto class. */
 const RATIO_CLASSES: Readonly<Record<string, string>> = { ratio: 'AspectRatioValue_ratio', 'auto-ratio': 'AspectRatioValue_autoRatio' };
@@ -3408,9 +3408,9 @@ export function inputFunctions(lang: Lang, root: import('@dragon/layout').Layout
         : c.kind === 'button-block'
           ? `ControlKind_buttonBlock(${str('button-block')})`
           : c.kind === 'text-field'
-            ? `ControlKind_textField(${str('text-field')}, ${doubleLit(c.size)}, ${fontSpecValue(lang, c.font)}, ${lineHeightValue(lang, c.lineHeight)}, ${c.cancelButton === null ? none : `CancelButton(${doubleLit(c.cancelButton.marginStart)}, ${doubleLit(c.cancelButton.marginEnd)})`})`
+            ? `ControlKind_textField(${str('text-field')}, ${doubleLit(c.size)}, ${fontSpecValue(lang, c.font)}, ${lineHeightValue(lang, c.lineHeight)}, ${str(c.avgChar)}, ${c.cancelButton === null ? none : `CancelButton(${doubleLit(c.cancelButton.marginStart)}, ${doubleLit(c.cancelButton.marginEnd)})`})`
             : c.kind === 'text-area'
-              ? `ControlKind_textArea(${str('text-area')}, ${doubleLit(c.cols)}, ${doubleLit(c.rows)}, ${fontSpecValue(lang, c.font)}, ${lineHeightValue(lang, c.lineHeight)}, ${doubleLit(c.scrollbarInline)}, ${doubleLit(c.scrollbarBlock)})`
+              ? `ControlKind_textArea(${str('text-area')}, ${doubleLit(c.cols)}, ${doubleLit(c.rows)}, ${fontSpecValue(lang, c.font)}, ${lineHeightValue(lang, c.lineHeight)}, ${str(c.avgChar)}, ${doubleLit(c.scrollbarInline)}, ${doubleLit(c.scrollbarBlock)})`
               : c.kind === 'text-editor'
                 ? `ControlKind_textEditor(${str('text-editor')})`
                 : c.kind === 'text-placeholder'

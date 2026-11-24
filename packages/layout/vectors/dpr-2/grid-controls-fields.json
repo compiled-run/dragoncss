@@ -1294,6 +1294,7 @@
           "lineHeight": {
            "kind": "normal"
           },
+          "avgChar": "ahem",
           "cancelButton": null
          },
          "strut": null,
@@ -1658,6 +1659,7 @@
           "lineHeight": {
            "kind": "normal"
           },
+          "avgChar": "ahem",
           "cancelButton": null
          },
          "strut": null,
@@ -2592,6 +2594,7 @@
           "lineHeight": {
            "kind": "normal"
           },
+          "avgChar": "ahem",
           "cancelButton": null
          },
          "strut": null,
@@ -2957,6 +2960,7 @@
           "lineHeight": {
            "kind": "normal"
           },
+          "avgChar": "ahem",
           "scrollbarInline": 0,
           "scrollbarBlock": 0
          },
@@ -4316,6 +4320,7 @@
           "lineHeight": {
            "kind": "normal"
           },
+          "avgChar": "ahem",
           "cancelButton": null
          },
          "strut": null,
@@ -5278,6 +5283,7 @@
           "lineHeight": {
            "kind": "normal"
           },
+          "avgChar": "ahem",
           "scrollbarInline": 0,
           "scrollbarBlock": 0
          },
@@ -5984,6 +5990,7 @@
             "lineHeight": {
              "kind": "normal"
             },
+            "avgChar": "ahem",
             "cancelButton": null
            },
            "strut": null,

@@ -22,7 +22,7 @@ public func paintMenulist_menuListArrows(_ input: LayoutInput, _ boxes: JsArray<
   try paintMenulist_collectArrows(zoomed.root, zoomed.devicePixelRatio, input.devicePixelRatio, zooms, layout_absoluteRects(boxes), out)
   // ts: packages/layout/src/paint-menulist.ts:29
   if (jsLength(out) != selects) {
-    throw JsError(message: jsConcat(S.s370, jsNumberToString(selects), S.s156, jsNumberToString(jsLength(out)), S.s18))
+    throw JsError(message: jsConcat(S.s374, jsNumberToString(selects), S.s156, jsNumberToString(jsLength(out)), S.s18))
   }
   return out
 }
@@ -41,11 +41,11 @@ public func paintMenulist_collectArrowZooms(_ b: any U_ControlBox_LayoutBox, _ d
   }
   // ts: packages/layout/src/paint-menulist.ts:43
   do {
-    let _a235 = b.children
-    var _i235 = 0
-    while _i235 < _a235.items.count {
-      let k: any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a235.items[_i235]
-      _i235 += 1
+    let _a236 = b.children
+    var _i236 = 0
+    while _i236 < _a236.items.count {
+      let k: any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a236.items[_i236]
+      _i236 += 1
       // ts: packages/layout/src/paint-menulist.ts:44
       if ((k.kind == S.s_box) || ((k as! any U_ControlBox_InlineBox_LineBreak_ReplacedLeaf_TextLeaf).kind == S.s_control)) {
         try found = (found + paintMenulist_collectArrowZooms((k as! any U_ControlBox_LayoutBox), device, out))
@@ -66,7 +66,7 @@ public func paintMenulist_collectArrows(_ b: any U_ControlBox_LayoutBox, _ zoome
       let r: LayoutRect? = abs.get((b as! ControlBox).id)
       // ts: packages/layout/src/paint-menulist.ts:56
       if (r == nil) {
-        throw JsError(message: jsConcat(S.s371, (b as! ControlBox).id, S.s59))
+        throw JsError(message: jsConcat(S.s375, (b as! ControlBox).id, S.s59))
       }
       let s: SnappedRect = try snap_snapRect(jsUnwrap(r))
       let border: Edges = try box_resolveBorder((b as! ControlBox).style, zoomedRatio)
@@ -76,11 +76,11 @@ public func paintMenulist_collectArrows(_ b: any U_ControlBox_LayoutBox, _ zoome
   }
   // ts: packages/layout/src/paint-menulist.ts:63
   do {
-    let _a236 = b.children
-    var _i236 = 0
-    while _i236 < _a236.items.count {
-      let k: any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a236.items[_i236]
-      _i236 += 1
+    let _a237 = b.children
+    var _i237 = 0
+    while _i237 < _a237.items.count {
+      let k: any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a237.items[_i237]
+      _i237 += 1
       // ts: packages/layout/src/paint-menulist.ts:64
       if ((k.kind == S.s_box) || ((k as! any U_ControlBox_InlineBox_LineBreak_ReplacedLeaf_TextLeaf).kind == S.s_control)) {
         try paintMenulist_collectArrows((k as! any U_ControlBox_LayoutBox), zoomedRatio, device, zooms, abs, out)

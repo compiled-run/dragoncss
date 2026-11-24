@@ -618,6 +618,7 @@
           "lineHeight": {
            "kind": "normal"
           },
+          "avgChar": "ahem",
           "scrollbarInline": 16,
           "scrollbarBlock": 0
          },
@@ -973,6 +974,7 @@
           "lineHeight": {
            "kind": "normal"
           },
+          "avgChar": "ahem",
           "scrollbarInline": 14,
           "scrollbarBlock": 0
          },
@@ -1328,6 +1330,7 @@
           "lineHeight": {
            "kind": "normal"
           },
+          "avgChar": "ahem",
           "scrollbarInline": 0,
           "scrollbarBlock": 0
          },
@@ -1683,6 +1686,7 @@
           "lineHeight": {
            "kind": "normal"
           },
+          "avgChar": "ahem",
           "scrollbarInline": 0,
           "scrollbarBlock": 0
          },
@@ -2038,6 +2042,7 @@
           "lineHeight": {
            "kind": "normal"
           },
+          "avgChar": "ahem",
           "scrollbarInline": 0,
           "scrollbarBlock": 0
          },
@@ -2393,6 +2398,7 @@
           "lineHeight": {
            "kind": "normal"
           },
+          "avgChar": "ahem",
           "scrollbarInline": 16,
           "scrollbarBlock": 16
          },
@@ -2748,6 +2754,7 @@
           "lineHeight": {
            "kind": "normal"
           },
+          "avgChar": "ahem",
           "scrollbarInline": 14,
           "scrollbarBlock": 14
          },
@@ -3103,6 +3110,7 @@
           "lineHeight": {
            "kind": "normal"
           },
+          "avgChar": "ahem",
           "scrollbarInline": 0,
           "scrollbarBlock": 16
          },
@@ -3460,6 +3468,7 @@
           "lineHeight": {
            "kind": "normal"
           },
+          "avgChar": "ahem",
           "scrollbarInline": 16,
           "scrollbarBlock": 16
          },
@@ -3816,6 +3825,7 @@
            "kind": "px",
            "value": 7
           },
+          "avgChar": "ahem",
           "scrollbarInline": 16,
           "scrollbarBlock": 0
          },
@@ -4173,6 +4183,7 @@
           "lineHeight": {
            "kind": "normal"
           },
+          "avgChar": "ahem",
           "scrollbarInline": 14,
           "scrollbarBlock": 0
          },
@@ -4672,6 +4683,7 @@
             "lineHeight": {
              "kind": "normal"
             },
+            "avgChar": "ahem",
             "scrollbarInline": 16,
             "scrollbarBlock": 0
            },
@@ -5027,6 +5039,7 @@
             "lineHeight": {
              "kind": "normal"
             },
+            "avgChar": "ahem",
             "scrollbarInline": 14,
             "scrollbarBlock": 0
            },
@@ -5386,6 +5399,7 @@
           "lineHeight": {
            "kind": "normal"
           },
+          "avgChar": "ahem",
           "scrollbarInline": 16,
           "scrollbarBlock": 0
          },
