@@ -286,8 +286,8 @@ describe('hitTableOf and hitRefusal refuse a form control by name', () => {
     const { ahemMeasurer } = await import('../src/index.ts');
     const strut = { font: ahemFont(10), lineHeight: { kind: 'normal' } } as const;
     const select = control('s', { kind: 'select-menulist', font: ahemFont(10), lineHeight: { kind: 'normal' }, arrowWidth: 0, options: [] }, { display: 'flex', width: px(60) }, [control('s::inner', { kind: 'select-inner' }, {}, [text('s::inner:text0', 'XX')], strut)]);
-    const field = control('f', { kind: 'text-field', size: 4, font: ahemFont(10), lineHeight: { kind: 'normal' }, cancelButton: null }, { display: 'block', width: px(60) }, [control('f::editor', { kind: 'text-editor' }, {}, [text('f::editor:text0', 'XX')], strut)], null);
-    const area = control('a', { kind: 'text-area', cols: 4, rows: 2, font: ahemFont(10), lineHeight: { kind: 'normal' } }, { display: 'block' }, [control('a::editor', { kind: 'text-editor' }, {}, [text('a::editor:text0', 'XX XX')], strut)], null);
+    const field = control('f', { kind: 'text-field', size: 4, font: ahemFont(10), lineHeight: { kind: 'normal' }, avgChar: 'ahem', cancelButton: null }, { display: 'block', width: px(60) }, [control('f::editor', { kind: 'text-editor' }, {}, [text('f::editor:text0', 'XX')], strut)], null);
+    const area = control('a', { kind: 'text-area', cols: 4, rows: 2, font: ahemFont(10), lineHeight: { kind: 'normal' }, avgChar: 'ahem', scrollbarInline: 0, scrollbarBlock: 0 }, { display: 'block' }, [control('a::editor', { kind: 'text-editor' }, {}, [text('a::editor:text0', 'XX XX')], strut)], null);
     const root = { ...box('html', { width: px(100) }), children: [select, field, area] };
     const input = { viewport: { width: 400, height: 300 }, devicePixelRatio: 1, ...neutralEnvironment({ width: 400, height: 300 }), root };
     expect(hitRefusal(input)).toBeNull();

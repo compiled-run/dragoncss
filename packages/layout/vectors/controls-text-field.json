@@ -617,6 +617,7 @@
           "lineHeight": {
            "kind": "normal"
           },
+          "avgChar": "ahem",
           "cancelButton": null
          },
          "strut": null,
@@ -970,6 +971,7 @@
           "lineHeight": {
            "kind": "normal"
           },
+          "avgChar": "ahem",
           "cancelButton": null
          },
          "strut": null,
@@ -1484,6 +1486,7 @@
            "kind": "px",
            "value": 4
           },
+          "avgChar": "ahem",
           "cancelButton": null
          },
          "strut": null,
@@ -1840,6 +1843,7 @@
            "kind": "px",
            "value": 30
           },
+          "avgChar": "ahem",
           "cancelButton": null
          },
          "strut": null,
@@ -2196,6 +2200,7 @@
           "lineHeight": {
            "kind": "normal"
           },
+          "avgChar": "ahem",
           "cancelButton": null
          },
          "strut": null,
@@ -2550,6 +2555,7 @@
           "lineHeight": {
            "kind": "normal"
           },
+          "avgChar": "ahem",
           "cancelButton": null
          },
          "strut": null,
@@ -2905,6 +2911,7 @@
            "kind": "px",
            "value": 30
           },
+          "avgChar": "ahem",
           "cancelButton": null
          },
          "strut": null,
@@ -3419,6 +3426,7 @@
           "lineHeight": {
            "kind": "normal"
           },
+          "avgChar": "ahem",
           "cancelButton": null
          },
          "strut": null,
@@ -3772,6 +3780,7 @@
           "lineHeight": {
            "kind": "normal"
           },
+          "avgChar": "ahem",
           "cancelButton": null
          },
          "strut": null,
@@ -4241,6 +4250,7 @@
           "lineHeight": {
            "kind": "normal"
           },
+          "avgChar": "ahem",
           "cancelButton": null
          },
          "strut": null,
@@ -4595,6 +4605,7 @@
           "lineHeight": {
            "kind": "normal"
           },
+          "avgChar": "ahem",
           "cancelButton": null
          },
          "strut": null,
@@ -4950,6 +4961,7 @@
           "lineHeight": {
            "kind": "normal"
           },
+          "avgChar": "ahem",
           "cancelButton": null
          },
          "strut": null,
@@ -5303,6 +5315,7 @@
           "lineHeight": {
            "kind": "normal"
           },
+          "avgChar": "ahem",
           "cancelButton": null
          },
          "strut": null,
@@ -5816,6 +5829,7 @@
           "lineHeight": {
            "kind": "normal"
           },
+          "avgChar": "ahem",
           "cancelButton": null
          },
          "strut": null,
@@ -6171,6 +6185,7 @@
            "kind": "px",
            "value": 12
           },
+          "avgChar": "ahem",
           "cancelButton": null
          },
          "strut": null,
@@ -6528,6 +6543,7 @@
            "kind": "px",
            "value": 12
           },
+          "avgChar": "ahem",
           "cancelButton": null
          },
          "strut": null,
@@ -6883,6 +6899,7 @@
           "lineHeight": {
            "kind": "normal"
           },
+          "avgChar": "ahem",
           "cancelButton": null
          },
          "strut": null,
@@ -7542,6 +7559,7 @@
           "lineHeight": {
            "kind": "normal"
           },
+          "avgChar": "ahem",
           "cancelButton": null
          },
          "strut": null,
@@ -7896,6 +7914,7 @@
           "lineHeight": {
            "kind": "normal"
           },
+          "avgChar": "ahem",
           "cancelButton": null
          },
          "strut": null,

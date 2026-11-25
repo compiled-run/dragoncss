@@ -14,6 +14,7 @@ import { checkAgainstChrome, checkAgainstEngine, checkApplied, checkPixels, DUMP
 import type { DumpNode, NativeDump } from '../src/native-dump.ts';
 import { frameOf, validateNativeDump } from '../src/native-dump.ts';
 import { REFERENCE_PLATFORM } from '../src/platform.ts';
+import { IOS_FACE_REFUSED, iosRefusals } from '../src/ios-face-refused.ts';
 import { enforcedCompile } from '../src/pipeline.ts';
 import { referenceShapedMeasurer } from '../src/text-shaper-host.ts';
 import type { GlyphBox, SampleBox } from '../src/samples.ts';
@@ -58,7 +59,14 @@ describe('reference proof: TS engine plus snapRect dumps pass (a) and (d)', () =
     return p;
   };
   it.each(all.map((f) => [f.spec.id, f] as const))('%s at every device DPR of each target', (_id, f) => {
-    expect(proofOf(f).flatMap((p) => p.rows.flatMap((r) => r.failures))).toEqual([]);
+    const failures = proofOf(f).flatMap((p) => p.rows.flatMap((r) => r.failures));
+    const refused = IOS_FACE_REFUSED.get(f.spec.id);
+    if (refused === undefined) {
+      expect(failures).toEqual([]);
+      return;
+    }
+    expect(iosRefusals(enforcedCompile(f.spec, 'ltr').diagnostics)).toEqual(refused);
+    expect(failures).toEqual(nativeTargets().flatMap((t) => t.dprs.map((d) => `${f.spec.id}@${d}: projection blocked: the ios output is blocked or not configured`)));
   });
   it('every device case at 2 and 3 on ios and at 2, 3 and 2.625 on android', () => {
     const sum = (rows: readonly (ReferenceRow | undefined)[]): ReferenceRow => {

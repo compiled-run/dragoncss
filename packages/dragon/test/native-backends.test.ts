@@ -7,7 +7,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { describe, expect, it, onTestFinished } from 'vitest';
-import { checkedConversionSource, inputFunctions, STYLE_FIELDS } from '../src/emit/native-support.ts';
+import { CALC_LISTS, CALC_UNION, checkedConversionSource, inputFunctions, STYLE_FIELDS } from '../src/emit/native-support.ts';
 import type { EmitCase, NativeProgram } from '../src/internal.ts';
 import { createProjectWith, emitAndroidViewsCases, emitNativeSupport, emitUikitCases, nativeLayoutProjection, nativePrograms, NO_FAULTS, VOCABULARY, WRITE_CSS } from '../src/internal.ts';
 import { div, inputFor, text } from './helpers.ts';
@@ -103,6 +103,16 @@ describe('the emitted Swift and Kotlin', () => {
     }
     expect(emitNativeSupport('android-views').some((f) => f.text.includes('import dev.dragon.layout.grid_NO_GRID_FAULTS'))).toBe(true);
   });
+  it("name every calculation's operand list by the union the translator lowers its element type to", async () => {
+    type Ty = { readonly k: string; readonly name?: string; readonly elem?: Ty };
+    type Decl = { readonly kind: string; readonly name: string; readonly fields?: readonly { readonly name: string; readonly ty: Ty }[] };
+    const { lowerAll } = (await import(pathToFileURL(join(root, 'packages/translate/src/generate.ts')).href)) as { lowerAll: () => { engine: { decls: readonly Decl[] } } };
+    const decls = lowerAll().engine.decls;
+    for (const cls of Object.values(CALC_LISTS)) {
+      const lists = (decls.find((d) => d.kind === 'class' && d.name === cls)?.fields ?? []).filter((f) => f.ty.k === 'array' && f.ty.elem?.k === 'union');
+      expect(lists.map((f) => f.ty.elem?.name), cls).toEqual([CALC_UNION]);
+    }
+  }, 120_000);
 });
 
 describe('the LayoutStyle constructor arguments', () => {

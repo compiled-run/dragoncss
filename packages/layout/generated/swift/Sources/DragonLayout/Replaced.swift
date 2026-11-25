@@ -127,11 +127,11 @@ public final class PixelRect {
 
 // ts: packages/layout/src/replaced.ts:60
 public func replaced_runtimeNaturalRead(_ nodeId: JsString, _ s: LayoutStyle, _ what: JsString, _ reader: JsString) throws -> Never {
-  let by: JsString = ((reader == S.s_used_size) ? S.s888 : ((reader == S.s_min_content) ? S.s887 : ((reader == S.s_max_content) ? S.s886 : S.s885)))
-  let axis: JsString = ((reader != S.s_used_size) ? S.s0 : ((s.height.kind == S.s_auto) ? S.s230 : ((s.width.kind == S.s_auto) ? S.s231 : S.s0)))
-  let before: JsString = (((what == S.s_ratio) && (s.aspectRatio.kind == S.s_auto_ratio)) ? S.s233 : S.s0)
-  let fix: JsString = ((reader == S.s_flex_content) ? S.s825 : ((what == S.s_ratio) ? S.s824 : S.s826))
-  try unsupported_unsupported(S.s_runtime_image_size, nodeId, S.s728, jsConcat(by, S.s182, what, axis, before, S.s271, fix))
+  let by: JsString = ((reader == S.s_used_size) ? S.s894 : ((reader == S.s_min_content) ? S.s893 : ((reader == S.s_max_content) ? S.s892 : S.s891)))
+  let axis: JsString = ((reader != S.s_used_size) ? S.s0 : ((s.height.kind == S.s_auto) ? S.s232 : ((s.width.kind == S.s_auto) ? S.s233 : S.s0)))
+  let before: JsString = (((what == S.s_ratio) && (s.aspectRatio.kind == S.s_auto_ratio)) ? S.s235 : S.s0)
+  let fix: JsString = ((reader == S.s_flex_content) ? S.s831 : ((what == S.s_ratio) ? S.s830 : S.s832))
+  try unsupported_unsupported(S.s_runtime_image_size, nodeId, S.s733, jsConcat(by, S.s183, what, axis, before, S.s275, fix))
 }
 
 // ts: packages/layout/src/replaced.ts:69
@@ -446,7 +446,7 @@ public func replaced_replacedBlockBasis(_ leaf: ReplacedLeaf, _ basis: any U_Hei
   }
   // ts: packages/layout/src/replaced.ts:318
   if try (((basis as! any U_HeightBasis_flexDependent_HeightBasis_indefinite).kind == S.s_flex_dependent) && replaced_blockLengthsHavePercent(leaf.style)) {
-    try unsupported_unsupported(S.s_percent_height_flex, leaf.id, S.s713, S.s1052)
+    try unsupported_unsupported(S.s_percent_height_flex, leaf.id, S.s717, S.s1058)
   }
   return nil
 }

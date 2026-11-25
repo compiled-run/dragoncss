@@ -40,6 +40,7 @@ const SWIFT = String.raw`import UIKit
 
 /// A scroll container's padding box: UIKit scrolls it (bounce, deceleration and indicators are native) between the engine's
 /// offsets. contentInset gives the start side (offset minX) and contentSize the end (offset maxX); safe areas never adjust it.
+/// A rounded clip's mask is kept over the visible bounds at every offset (dragonPinMask).
 public final class DragonScrollView: UIScrollView {
   public let scrollsX: Bool
   public let scrollsY: Bool
@@ -70,6 +71,21 @@ public final class DragonScrollView: UIScrollView {
   public override func layoutSubviews() {
     super.layoutSubviews()
     if !dragonUserScrolled && contentOffset != .zero { contentOffset = .zero }
+    dragonPinMask()
+  }
+
+  public override var contentOffset: CGPoint {
+    didSet { dragonPinMask() }
+  }
+
+  /// The rounded clip's mask (radius module) lies in the layer's bounds coordinates, whose origin is the scroll offset, so it is
+  /// kept over the visible bounds: the padding-edge curve stays put while the content scrolls under it, as Chrome's clip does.
+  func dragonPinMask() {
+    guard let m = layer.mask, m.frame != bounds else { return }
+    CATransaction.begin()
+    CATransaction.setDisableActions(true)
+    m.frame = bounds
+    CATransaction.commit()
   }
 
   /// Sets the offset range [minX, maxX, minY, maxY] in device px (a locked axis takes [0, 0]) and clamps the current offset into it.

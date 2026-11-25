@@ -1,9 +1,9 @@
 // resize (css-ui-4 §5.1): a longhand appended after text-transform, not inherited, with no layout or paint aspect. Chrome 145 parses
-// none, both, horizontal, vertical, block, inline and auto (CSSResizeAuto), and computes auto to both. Chrome draws a resizer only on
-// a scroll container or an iframe, so native refuses any other value than none there and compiles every value elsewhere.
+// none, both, horizontal, vertical, block, inline and auto (CSSResizeAuto), and computes auto to both. Desktop Chrome draws a resizer
+// only on a scroll container or an iframe; a phone draws none, so native compiles every value everywhere and does nothing with it.
 import { describe, expect, it } from 'vitest';
 import type { Diagnostic } from '../src/index.ts';
-import { createProjectWith, NO_FAULTS } from '../src/internal.ts';
+import { createProjectWith, nativePrograms, NO_FAULTS } from '../src/internal.ts';
 import { properties as grammar } from '../src/css/grammar.generated.ts';
 import { INHERITED, LONGHANDS, PROPERTY_ASPECTS } from '../src/css/properties.ts';
 import { RESIZE_LONGHANDS } from '../src/css/properties/resize.ts';
@@ -12,7 +12,7 @@ import { ANIMATION_KINDS } from '../src/css/animation-kinds.ts';
 import { DISCRETE } from '../src/css/animation-kinds/kinds.ts';
 import { parseStylesheet } from '../src/css/stylesheet.ts';
 import type { ElementNode, Targets } from '../src/types.ts';
-import { div, expectCatalogued, explainOne, inputFor, text } from './helpers.ts';
+import { div, explainOne, inputFor, text } from './helpers.ts';
 
 const SOURCE = { uri: 'dragon-source://test/rz.css', revision: 'r1', hash: 'sha256:0' };
 const NATIVE: Targets = { ios: { minimum: '15.0' }, android: { minSdk: 31 }, web: {} };
@@ -66,46 +66,34 @@ describe('resize: computed values', () => {
   }
 });
 
-describe('resize: native refuses it on a scroll container or an iframe', () => {
-  it('any value but none on an overflow hidden, auto or scroll box is refused on ios and android, at the declaration, and compiles for web', () => {
-    for (const [overflow, v] of [['hidden', 'both'], ['auto', 'vertical'], ['scroll', 'auto'], ['visible hidden', 'horizontal']] as const) {
+describe('resize: a phone has no resizer, so native accepts it on a scroll container or an iframe and does nothing', () => {
+  // The planner's ruling (Markless #974): Chrome on Android and Safari on iOS draw no resize handle, so iOS and Android accept the
+  // declaration wherever desktop Chrome would draw a resizer, and lower the box exactly as at resize: none.
+  const programs = (c: ReturnType<typeof compile>) => {
+    const p = nativePrograms(c, []);
+    if (p.kind !== 'ready') throw new Error(p.reason);
+    return p.programs;
+  };
+
+  it('every value on an overflow hidden, auto or scroll box compiles on ios and android, with the native programs of resize: none', () => {
+    for (const [overflow, v] of [['hidden', 'both'], ['auto', 'vertical'], ['scroll', 'auto'], ['visible hidden', 'horizontal'], ['auto', 'block'], ['auto', 'inline']] as const) {
       const css = `.a { overflow: ${overflow}; resize: ${v}; }`;
       const c = compile(css, NATIVE);
-      const errs = errors(c);
-      expect(errs.map((d) => [d.code, d.target]).sort(), css).toEqual([['DRAGON_UNSUPPORTED_VALUE', 'android'], ['DRAGON_UNSUPPORTED_VALUE', 'ios']]);
-      const computed = v === 'auto' ? 'both' : v;
-      expect(errs.find((d) => d.target === 'ios')?.message, css).toBe(`the scroll container a has resize ${computed}, so Chrome draws a resizer on it that the user can drag; ios draws no resizer, so Dragon compiles resize on a scroll container or an iframe at none only`);
-      expect(c.outputs.web.kind, css).toBe('ready');
-      expect(c.outputs.ios.kind, css).toBe('blocked');
-      expectCatalogued(errs);
+      expect(errors(c), css).toEqual([]);
+      expect([c.outputs.web.kind, c.outputs.ios.kind, c.outputs.android.kind], css).toEqual(['ready', 'analysis-only', 'analysis-only']);
+      expect(explainOne(c, 'web', 'a', 'resize').value, css).toBe(v === 'auto' ? 'both' : v);
+      expect(programs(c), css).toEqual(programs(compile(`.a { overflow: ${overflow}; resize: none; }`, NATIVE)));
     }
   });
 
-  it('none on a scroll container, and any value on an overflow clip or visible box, compiles', () => {
-    for (const css of ['.a { overflow: hidden; resize: none; }', '.a { overflow: clip; resize: both; }', '.a { resize: both; }', '.a { resize: both; } .b { overflow: hidden; }']) {
-      expect(errors(compile(css, NATIVE)), css).toEqual([]);
-    }
-  });
-
-  it('an inline box with overflow hidden is no scroll container, so resize on it compiles', () => {
-    const css = '.b { display: inline; overflow: hidden; resize: both; }';
-    expect(errors(compile(css, NATIVE)).filter((d) => d.message.includes('resize')), css).toEqual([]);
-  });
-
-  it('a resize the cascade drops to none compiles; one the child inherits onto its scroll container is refused there only', () => {
-    expect(errors(compile('.a { overflow: auto; resize: both; } .a { resize: none; }', NATIVE))).toEqual([]);
+  it('a resize the child inherits onto its scroll container compiles, and lowers as without it', () => {
     const c = compile('.a { resize: both; } .b { overflow: hidden; resize: inherit; }', NATIVE);
-    expect(errors(c).map((d) => d.message.slice(0, 27))).toEqual(['the scroll container b has ', 'the scroll container b has ']);
+    expect(errors(c)).toEqual([]);
+    expect(programs(c)).toEqual(programs(compile('.b { overflow: hidden; }', NATIVE)));
   });
 
-  it('the root, whose overflow goes to the viewport, is no scroll container', () => {
-    const input = inputFor('html { overflow: hidden; resize: both; } body { margin: 0; }', (r) => [div(r, 'a', ['a'])]);
-    const c = createProjectWith({ projectId: 'test', targets: NATIVE }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(input);
-    expect(errors(c).filter((d) => d.message.includes('resize'))).toEqual([]);
-  });
-
-  it('an iframe with any value but none is refused on native', () => {
+  it('an iframe with any value but none compiles on native', () => {
     const c = compile('.a { display: block; width: 100px; height: 50px; resize: both; }', NATIVE, 'iframe');
-    expect(errors(c).filter((d) => d.message.includes('resize')).map((d) => [d.target, d.message.slice(0, 33)]).sort()).toEqual([['android', 'the iframe a has resize both, so '], ['ios', 'the iframe a has resize both, so ']]);
+    expect(errors(c).filter((d) => d.message.includes('resize'))).toEqual([]);
   });
 });

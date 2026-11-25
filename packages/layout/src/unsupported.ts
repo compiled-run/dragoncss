@@ -5,6 +5,7 @@ export type UnsupportedCode =
   | 'percent-gap'
   | 'text-align'
   | 'text-glyph'
+  | 'text-field-line-height'
   | 'text-script'
   | 'bidi-neutral'
   | 'abspos-in-inline'
@@ -45,7 +46,8 @@ export type UnsupportedCode =
   | 'multicol'
   | 'text-box-trim'
   | 'anchor-order'
-  | 'runtime-image-size';
+  | 'runtime-image-size'
+  | 'text-field-avg-char';
 
 /** The refusals a TextMeasurer returns: a code point with no glyph, or text outside the measurer's scripts (R4, notes/T056-txt1a-spec.md). */
 export type TextRefusalCode = 'text-glyph' | 'text-script';

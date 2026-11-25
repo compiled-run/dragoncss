@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Lato; font-size: 16px; }
+input { display: block; font: inherit; appearance: none; margin: 0 0 2px; color: #000; background-color: #fff; border: 2px solid #036; padding: 1px 2px; }
+.wrap { width: 300.5px; background-color: #eee; }
+.pct { width: 100%; }
+.px { width: 120px; }
+.calc { width: calc(50% + 10px); }
+.cap { width: 100%; max-width: 50px; }
+.bb { box-sizing: border-box; width: 100%; padding: 3px 7px; }
+.col { display: flex; flex-direction: column; width: 200.25px; background-color: #ddd; }
+.row { display: flex; width: 250.75px; background-color: #ccc; }
+.grow { flex: 1 1 0; min-width: 0; }
+.fill { width: 100%; min-width: 0; }
+.z { min-width: 0; }
+.narrow { width: 100px; overflow: hidden; background-color: #bbb; }
+.fl { float: left; }
+.ib { display: inline-block; }
+.cap { width: 120px; max-width: 100%; }
+.least { width: 120px; min-width: 50%; }
+.ahem-fit { font-family: Ahem; font-size: 10px; width: fit-content; }
+.rigid { flex: none; width: 60px; height: 10px; background-color: #f90; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="wrap" class="wrap">
+<input data-dragon-id="a1" readonly="" class="pct" value="Hello">
+<input data-dragon-id="a2" readonly="" class="px" size="3" value="Hello">
+<input data-dragon-id="a3" readonly="" class="calc" placeholder="Type here">
+<input data-dragon-id="a4" readonly="" class="cap" value="Hello">
+<input data-dragon-id="a5" readonly="" class="bb" size="40" value="Hello">
+<input data-dragon-id="a6" readonly="" class="ahem-fit" value="XX">
+</div>
+<div data-dragon-id="col" class="col">
+<input data-dragon-id="c1" readonly="" class="pct z" value="Hello">
+<input data-dragon-id="c2" readonly="" class="px z" value="Hello">
+</div>
+<div data-dragon-id="row" class="row">
+<input data-dragon-id="r1" readonly="" class="grow" value="Hello">
+<div data-dragon-id="r2" class="rigid"></div>
+</div>
+<div data-dragon-id="row2" class="row">
+<input data-dragon-id="r3" readonly="" class="fill" value="Hello">
+<div data-dragon-id="r4" class="rigid"></div>
+</div>
+<div data-dragon-id="n1" class="narrow"><div data-dragon-id="n1f" class="fl"><input data-dragon-id="k1" readonly="" class="cap" value="Hello"></div></div>
+<div data-dragon-id="n2" class="narrow"><div data-dragon-id="n2i" class="ib"><input data-dragon-id="k2" readonly="" class="cap" value="Hello"></div></div>
+<div data-dragon-id="n3" class="narrow"><div data-dragon-id="n3f" class="fl"><input data-dragon-id="k3" readonly="" class="least" value="Hello"></div></div>
+</body>
+</html>
