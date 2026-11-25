@@ -648,3 +648,14 @@ describe('replaced elements and block buttons as grid items (GRID-items, pinned 
     expect(inGrid(area([button], tall, 300), ['b6', 'b6-t'])).toEqual([[0, 0, at(300), at(60)], [0, at(25), at(300), at(10)]]);
   });
 });
+
+describe('an absolutely positioned child beside text in a grid container (css-grid-2 §9.2)', () => {
+  it('takes its static position as the sole item of its area, so the anonymous text item never moves it', () => {
+    const g = gridStyle({ templateColumns: [{ count: 2, sizes: [px(40)] }], explicitColumnCount: 2, justifyItems: 'center' });
+    const a = box('a', { position: 'absolute', width: { kind: 'px', value: 10 }, height: { kind: 'px', value: 6 } });
+    const container = (kids: LayoutBox[]) => box('g', { display: 'grid', position: 'relative', width: { kind: 'px', value: 100 }, grid: g }, kids.map((b) => ({ ...b, style: { ...b.style, gridItem: autoItem } })));
+    const withText = boxesOf(container([anon('g:anon0', {}, [text('t', 'XX')]), a]));
+    expect(withText.get('a')).toEqual(boxesOf(container([a])).get('a'));
+    expect(withText.get('g:anon0')?.width).toBeGreaterThan(0);
+  });
+});
