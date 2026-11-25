@@ -88,7 +88,7 @@ describe('the Android API floor check', () => {
     expect(r.violations[0]).toMatchObject({ since: 30, reason: 'since API 30 (declared on android.content.Context)' });
     expect(checkFloor(api, parseDexdump(planted), 33).violations.map((v) => v.ref)).toEqual([]);
   });
-  it('reads dumps line by line across files and chunk edges, as split text would, so a dump past the longest string still parses', () => {
+  it('reads dumps line by line across files and chunk edges, giving the lines and the floor result of the split text', () => {
     const dir = mkdtempSync(join(tmpdir(), 'api-floor-lines-'));
     try {
       const half = DEX.indexOf('\n', DEX.length >> 1) + 1;
