@@ -4,7 +4,7 @@
 import { join } from 'node:path';
 import type { Browser, Page } from 'playwright';
 import type { NativeStyleTarget } from 'dragon';
-import { BAND_KEY } from 'dragon';
+import { BAND_KEY, sniffImage } from 'dragon';
 import { authoredFontHtml } from './cases.ts';
 import type { WebCapture } from './capture.ts';
 import { captureFixture } from './capture.ts';
@@ -12,7 +12,7 @@ import { launchChrome, openPage } from './chrome.ts';
 import { GATE_DEVICE_PX } from './compare.ts';
 import { FONT_REFERENCE_MAP, fontReferencePrepare } from './font-reference.ts';
 import type { CapturedNode } from './capture.ts';
-import type { MarklessCompiledTarget, MarklessExportAssignment, MarklessFontFile, MarklessFonts, MarklessStyleExport, MarklessStyleInput } from './markless-style-input.ts';
+import type { MarklessCompiledTarget, MarklessExportAssignment, MarklessFontFile, MarklessFonts, MarklessImageFile, MarklessStyleExport, MarklessStyleInput } from './markless-style-input.ts';
 import { armShown, assignmentCombinations, checkMarklessExport, filledAtInitial, MARKLESS_BOXLESS_ATTRIBUTE, marklessCompiledTargets, marklessDocumentCss, marklessNodeId, marklessShownModal, schemeOf, shownText, valueUnder } from './markless-style-input.ts';
 import type { ExportAssignment, ExportInteractionMatch, ExportNode, ExportTarget, NativeStyleExport } from './native-style-export.ts';
 import type { ForcedPseudo } from './cases.ts';
@@ -535,6 +535,26 @@ export function pairBoxes(input: MarklessStyleInput, assignment: ExportAssignmen
 }
 
 /** A measured box, or (maxDeltaDevicePx null, never passing) a box only one side has, with the problem named. */
+/** The input as Chrome loads it: each `<img src>` that is one of the input's image files becomes a data: URL of the file's bytes. */
+export function withImageDataUrls(input: MarklessStyleInput, images: readonly MarklessImageFile[]): MarklessStyleInput {
+  if (images.length === 0) return input;
+  const bytes = new Map(images.map((i) => [i.src, i.bytes]));
+  const dataUrl = (src: string): string => {
+    const b = bytes.get(src) as Uint8Array;
+    const format = sniffImage(b, null);
+    if (format === null) throw new Error(`the image file for ${src} is not an image Chrome decodes`);
+    return `data:${format === 'svg' ? 'image/svg+xml' : `image/${format}`};base64,${Buffer.from(b).toString('base64')}`;
+  };
+  return {
+    ...input,
+    nodes: input.nodes.map((n) =>
+      n.kind === 'element' && n.element === 'img' && n.attributes['src'] !== undefined && bytes.has(n.attributes['src'])
+        ? { ...n, attributes: { ...n.attributes, src: dataUrl(n.attributes['src']) } }
+        : n,
+    ),
+  };
+}
+
 export type CompareRow = { readonly target: string; readonly values: Values; readonly state?: string; readonly id: string; readonly maxDeltaDevicePx: number | null; readonly pass: boolean; readonly problem?: string };
 
 /** Chrome's computed background-color as 8-bit RGBA, or null when it is not an rgb() or rgba() colour. */
@@ -607,14 +627,16 @@ export function interactionPaintRows(target: string, state: string, base: Export
  * (system-fonts/reference.ts), else the pinned reference faces. `mode`, when given, must be the export's. `failed` counts the box
  * rows and the page's paint rows (`paint`) that fail.
  */
-export async function compareMarklessExport(input: MarklessStyleInput, given: NativeStyleExport, screenshots?: string, unbanded: 'light' | 'dark' = 'light', fonts: readonly MarklessFontFile[] = [], mode: MarklessFonts | null = null, only: readonly string[] | null = null): Promise<{ readonly fontMode: MarklessFonts; readonly compared: number; readonly failed: number; readonly rows: readonly CompareRow[]; readonly paint: readonly PaintRow[] }> {
+export async function compareMarklessExport(input: MarklessStyleInput, given: NativeStyleExport, screenshots?: string, unbanded: 'light' | 'dark' = 'light', fonts: readonly MarklessFontFile[] = [], mode: MarklessFonts | null = null, only: readonly string[] | null = null, images: readonly MarklessImageFile[] = []): Promise<{ readonly fontMode: MarklessFonts; readonly compared: number; readonly failed: number; readonly rows: readonly CompareRow[]; readonly paint: readonly PaintRow[] }> {
   const exported: MarklessStyleExport = checkMarklessExport(given);
   if (mode !== null && mode !== exported.fontMode) throw new Error(`the export resolved fonts as ${exported.fontMode}, not the ${mode} the comparison was asked for`);
   const fontMode = exported.fontMode;
   const rows: CompareRow[] = [];
   const paint: PaintRow[] = [];
   const files = new Map(fonts.map((f) => [f.url, f.bytes]));
-  const compiled = marklessCompiledTargets(input, fonts, fontMode);
+  const compiled = marklessCompiledTargets(input, fonts, fontMode, undefined, images);
+  // Chrome loads each image file from a data: URL in place of its src, so it draws the bytes Dragon read.
+  const web = withImageDataUrls(input, images);
   checkTargets(input, exported, compiled, only);
   checkInputFonts(exported, fonts);
   for (const [target, t] of Object.entries(exported.targets)) if (t !== undefined) checkCoverage(input, compiled[target as NativeStyleTarget], target, t);
@@ -647,8 +669,8 @@ export async function compareMarklessExport(input: MarklessStyleInput, given: Na
           await fontPrepare(page);
           await force(page);
         };
-        const capture = await captureMarklessAssignment(browser, input, t, assignment.values, scheme, { mode: fontMode, files, prepare }, screenshots === undefined ? undefined : join(screenshots, `${target}-${label}.png`));
-        if (base === null) paint.push(...paintRows(target, assignment, await chromePagePaint(browser, authoredFontHtml(marklessDocumentHtml(input, assignment.values, fontMode), files), input, t, assignment.values, scheme)));
+        const capture = await captureMarklessAssignment(browser, web, t, assignment.values, scheme, { mode: fontMode, files, prepare }, screenshots === undefined ? undefined : join(screenshots, `${target}-${label}.png`));
+        if (base === null) paint.push(...paintRows(target, assignment, await chromePagePaint(browser, authoredFontHtml(marklessDocumentHtml(web, assignment.values, fontMode), files), web, t, assignment.values, scheme)));
         else rows.push(...interactionPaintRows(target, label, base, assignment, capture.nodes, t.dpr));
         const paired = pairBoxes(input, assignment, capture.nodes);
         for (const { id, kind } of paired.problems) rows.push({ target, values: assignment.values, ...(base === null ? {} : { state: label }), id, maxDeltaDevicePx: null, pass: false, problem: CHROME_PROBLEM[kind] });

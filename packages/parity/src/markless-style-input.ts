@@ -59,6 +59,11 @@ export type MarklessStyleInput = {
    * to the directory of the input file.
    */
   readonly fonts?: readonly { readonly url: string; readonly file: string }[];
+  /**
+   * Each image an `<img src>` of `nodes` shows that is a file of the app: the src exactly as the node's attribute spells it, and the
+   * file's path relative to the directory of the input file. Dragon sizes the `<img>` from the file's natural size, as Chrome does.
+   */
+  readonly images?: readonly { readonly src: string; readonly file: string }[];
   /** The numbers the app writes into styleTemplates while it runs (markless-slots.ts), each with its value at the initial state. */
   readonly slots?: readonly MarklessSlot[];
   /**
@@ -145,7 +150,19 @@ export function parseMarklessStyleInput(text: string): MarklessStyleInput {
   const v: unknown = JSON.parse(text);
   if (!isRecord(v) || v['version'] !== MARKLESS_STYLE_INPUT_VERSION) fail(`not ${MARKLESS_STYLE_INPUT_VERSION}`);
   const o = v as Record<string, unknown>;
-  onlyKeys('the input', o, ['version', 'component', 'nodes', 'css', 'states', 'viewports', 'fonts', 'branches', 'repeats', 'slots']);
+  onlyKeys('the input', o, ['version', 'component', 'nodes', 'css', 'states', 'viewports', 'fonts', 'images', 'branches', 'repeats', 'slots']);
+  if (o['images'] !== undefined) {
+    if (!Array.isArray(o['images'])) fail('images is not a list');
+    const srcs = new Set<string>();
+    for (const f of o['images'] as unknown[]) {
+      const ok = isRecord(f) && Object.keys(f).sort().join() === 'file,src' && isString(f['src']) && f['src'] !== '' && isString(f['file']) && f['file'] !== '';
+      if (!ok) fail(`bad images entry ${JSON.stringify(f)}: an image is { src, file }`);
+      const { src, file } = f as { src: string; file: string };
+      if (posix.isAbsolute(file) || file.split('/').includes('')) fail(`images: ${file} is not a path relative to the input file`);
+      if (srcs.has(src)) fail(`images: ${src} is listed twice`);
+      srcs.add(src);
+    }
+  }
   const repeats = new Map<string, { parent: string | null; arm: unknown }>();
   if (o['repeats'] !== undefined) {
     if (!Array.isArray(o['repeats'])) fail('repeats is not a list');
@@ -447,6 +464,21 @@ export function dragonNodeIds(input: MarklessStyleInput): Map<string, string> {
 }
 
 /** The input's author font files, read by the caller (who owns file access) from each path relative to the input file. */
+/** An image file of the input, read by the caller: the `<img src>` it is, its path relative to the input, and its bytes. */
+export type MarklessImageFile = { readonly src: string; readonly file: string; readonly bytes: Uint8Array };
+
+/** The input's image files, read by the caller (who owns file access) from each path relative to the input file. */
+export function marklessImageFiles(input: MarklessStyleInput, read: (file: string) => Uint8Array): MarklessImageFile[] {
+  return (input.images ?? []).map(({ src, file }) => ({ src, file, bytes: read(file) }));
+}
+
+/** The snapshot asset id of an image file. */
+const imageAssetId = (file: string): string => `markless-image:${file}`;
+
+/** The image map the compile reads each `<img src>` through: src to the snapshot asset of its file. */
+export const marklessImageMap = (images: readonly MarklessImageFile[]): Readonly<Record<string, string>> =>
+  Object.fromEntries(images.map((i) => [i.src, imageAssetId(i.file)]));
+
 export function marklessFontFiles(input: MarklessStyleInput, read: (file: string) => Uint8Array): MarklessFontFile[] {
   return (input.fonts ?? []).map(({ url, file }) => {
     const bytes = read(file);
@@ -484,7 +516,9 @@ export function marklessNodeId(input: MarklessStyleInput, elementId: (id: string
   return (address) => textOf.get(address) ?? rehostAddress(address, (tree) => elementOf.get(tree));
 }
 
-export function marklessFrontEnd(slotted: MarklessStyleInput, inputText: string, inputPath: string, fonts: readonly MarklessFontFile[] = [], mode: MarklessFonts = 'pinned'): FrontEndResult {
+export function marklessFrontEnd(slotted: MarklessStyleInput, inputText: string, inputPath: string, fonts: readonly MarklessFontFile[] = [], mode: MarklessFonts = 'pinned', images: readonly MarklessImageFile[] = []): FrontEndResult {
+  const unreadImages = (slotted.images ?? []).filter((f) => !images.some((r) => r.src === f.src && r.file === f.file));
+  if (unreadImages.length > 0) fail(`the image file ${unreadImages.map((f) => f.file).join(', ')} was not read`);
   const input = filledAtInitial(slotted);
   const unread = (input.fonts ?? []).filter((f) => !fonts.some((r) => r.url === f.url && r.file === f.file));
   if (unread.length > 0) fail(`the font file ${unread.map((f) => f.file).join(', ')} was not read`);
@@ -601,7 +635,10 @@ export function marklessFrontEnd(slotted: MarklessStyleInput, inputText: string,
       projectId: PROJECT_ID,
       revision: 'markless',
       sources: [src, css, doc],
-      assets: [...new Map(fonts.map((f) => [fontAssetId(f.file), { id: fontAssetId(f.file), hash: `sha256:${createHash('sha256').update(f.bytes).digest('hex')}`, bytes: f.bytes }])).values()],
+      assets: [
+        ...new Map(fonts.map((f) => [fontAssetId(f.file), { id: fontAssetId(f.file), hash: `sha256:${createHash('sha256').update(f.bytes).digest('hex')}`, bytes: f.bytes }])).values(),
+        ...new Map(images.map((f) => [imageAssetId(f.file), { id: imageAssetId(f.file), hash: `sha256:${createHash('sha256').update(f.bytes).digest('hex')}`, bytes: f.bytes }])).values(),
+      ],
       resolutions: fonts.map((f) => ({ from: css.ref, specifier: f.url, kind: 'asset', to: fontAssetId(f.file) })),
     },
     diagnostics: [],
@@ -658,11 +695,11 @@ function marklessRuntimeLayout(devices: { readonly [T in NativeStyleTarget]: Exp
 }
 
 /** The input compiled as the device lanes compile (support 'lanes'), with the font map of its font mode; a compile error is refused. */
-function compileMarkless(parsed: MarklessStyleInput, inputText: string, inputPath: string, fonts: readonly MarklessFontFile[], mode: MarklessFonts, at?: MarklessAtSize): { readonly input: FrontEndResult; readonly styles: NativeStyles; readonly compiled: object; readonly devices: { readonly [T in NativeStyleTarget]: ExportDevice } } {
+function compileMarkless(parsed: MarklessStyleInput, inputText: string, inputPath: string, fonts: readonly MarklessFontFile[], mode: MarklessFonts, at?: MarklessAtSize, images: readonly MarklessImageFile[] = []): { readonly input: FrontEndResult; readonly styles: NativeStyles; readonly compiled: object; readonly devices: { readonly [T in NativeStyleTarget]: ExportDevice } } {
   const map = mode === 'system' ? MARKLESS_SYSTEM_FONT_MAP : FONT_REFERENCE_MAP;
-  const input = withFontMapAssets(marklessFrontEnd(parsed, inputText, inputPath, fonts, mode), map);
+  const input = withFontMapAssets(marklessFrontEnd(parsed, inputText, inputPath, fonts, mode, images), map);
   const devices = marklessDevices(parsed, at);
-  const config: NativeStylesConfig = { projectId: PROJECT_ID, name: parsed.component, targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 } }, fonts: map, viewport: devices.ios.viewport, support: 'lanes', topLayer: 'host', canvas: 'host', forms: 'host', textEditing: 'host', output: 'program', brotliDecompress: NODE_BROTLI, ...(mode === 'system' ? { systemFonts: 'measured' as const } : {}), runtimeImageLayout: marklessRuntimeLayout(devices, fonts, mode) };
+  const config: NativeStylesConfig = { projectId: PROJECT_ID, name: parsed.component, targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 } }, fonts: map, viewport: devices.ios.viewport, support: 'lanes', topLayer: 'host', canvas: 'host', forms: 'host', textEditing: 'host', imagePaint: 'host', output: 'program', brotliDecompress: NODE_BROTLI, ...(mode === 'system' ? { systemFonts: 'measured' as const } : {}), runtimeImageLayout: marklessRuntimeLayout(devices, fonts, mode), ...(images.length > 0 ? { images: marklessImageMap(images) } : {}) };
   const { styles, compiled } = compileNativeStylesWith(config, input);
   const errors = styles.diagnostics.filter((d) => d.severity === 'error');
   if (errors.length > 0) fail(`${parsed.component} does not compile:\n${errors.map((d) => `  ${d.code} [${d.target ?? 'all'}] ${d.message}`).join('\n')}`);
@@ -687,8 +724,8 @@ function cellKey(parsed: MarklessStyleInput): (key: string) => string {
 export type MarklessCompiledTarget = Pick<ExportTarget, 'states' | 'bands' | 'viewport' | 'dpr' | 'initial' | 'next'> & { readonly assignments: readonly Readonly<Record<string, unknown>>[] };
 
 /** The targets the input compiles to, compiled as marklessStyleExport compiles it with these font files in this font mode (and `at`). */
-export function marklessCompiledTargets(parsed: MarklessStyleInput, fonts: readonly MarklessFontFile[] = [], mode: MarklessFonts = 'pinned', at?: MarklessAtSize): { readonly [T in NativeStyleTarget]?: MarklessCompiledTarget } {
-  const { styles, devices } = compileMarkless(parsed, JSON.stringify(parsed), `${parsed.component}.native-style-input.json`, fonts, mode, at);
+export function marklessCompiledTargets(parsed: MarklessStyleInput, fonts: readonly MarklessFontFile[] = [], mode: MarklessFonts = 'pinned', at?: MarklessAtSize, images: readonly MarklessImageFile[] = []): { readonly [T in NativeStyleTarget]?: MarklessCompiledTarget } {
+  const { styles, devices } = compileMarkless(parsed, JSON.stringify(parsed), `${parsed.component}.native-style-input.json`, fonts, mode, at, images);
   const rekey = cellKey(parsed);
   const out: { [T in NativeStyleTarget]?: MarklessCompiledTarget } = {};
   for (const [t, o] of Object.entries(styles.targets) as [NativeStyleTarget, (typeof styles.targets)[NativeStyleTarget]][]) {
@@ -713,17 +750,18 @@ export function marklessCompiledTargets(parsed: MarklessStyleInput, fonts: reado
  * `decoded`: the sfnt of each WOFF or WOFF2 author font, by its path relative to the input (DECODED_FONTS_DIR), which the export
  * lists with `from: 'input'` and the caller writes there.
  */
-export function marklessStyleExport(inputText: string, inputPath: string, readFont?: (file: string) => Uint8Array, mode: MarklessFonts = 'pinned', at?: MarklessAtSize, plan = false): { readonly input: FrontEndResult; readonly exported: MarklessStyleExport; readonly decoded: readonly { readonly file: string; readonly bytes: Uint8Array }[] } {
+export function marklessStyleExport(inputText: string, inputPath: string, readFile?: (file: string) => Uint8Array, mode: MarklessFonts = 'pinned', at?: MarklessAtSize, plan = false): { readonly input: FrontEndResult; readonly exported: MarklessStyleExport; readonly decoded: readonly { readonly file: string; readonly bytes: Uint8Array }[] } {
   const parsed = parseMarklessStyleInput(inputText);
-  if ((parsed.fonts ?? []).length > 0 && readFont === undefined) fail('the input names font files, and no reader for them was given');
-  const fonts = readFont === undefined ? [] : marklessFontFiles(parsed, readFont);
-  const done = exportMarkless(parsed, inputText, inputPath, fonts, mode, at, plan);
+  if ((parsed.fonts ?? []).length + (parsed.images ?? []).length > 0 && readFile === undefined) fail('the input names font or image files, and no reader for them was given');
+  const fonts = readFile === undefined ? [] : marklessFontFiles(parsed, readFile);
+  const images = readFile === undefined ? [] : marklessImageFiles(parsed, readFile);
+  const done = exportMarkless(parsed, inputText, inputPath, fonts, mode, at, plan, images);
   const slots = parsed.slots ?? [];
   if (slots.length === 0) return done;
   if (!plan) fail(`${parsed.component} has style values that follow state (slots ${slots.map((s) => s.id).join(', ')}), which a phone applies only with the layout plan (--plan)`);
   const sampleOf = (values: readonly number[]): SlotSample => {
     const input = { ...parsed, slots: slots.map((s, k) => ({ ...s, initial: values[k] as number })) };
-    const { styles, exported } = exportMarkless(input, inputText, inputPath, fonts, mode, at, false);
+    const { styles, exported } = exportMarkless(input, inputText, inputPath, fonts, mode, at, false, images);
     return Object.fromEntries(Object.entries(exported.targets).map(([t, x]) => {
       const o = styles.targets[t as NativeStyleTarget];
       if (o?.kind !== 'emitted') return fail(`${t} is blocked`);
@@ -798,15 +836,15 @@ export function marklessTextHeightProof(inputText: string, inputPath: string, re
  * frame differs when the page is laid out at `width` and each of `heights` and PLAN_HEIGHTS' (vh units, percentage heights that
  * resolve against the viewport, text sized by the height). Empty when the page depends on the width alone.
  */
-export function marklessHeightDependence(parsed: MarklessStyleInput, fonts: readonly MarklessFontFile[], mode: MarklessFonts, t: NativeStyleTarget, width: number, dpr: number, heights: readonly number[]): string[] {
+export function marklessHeightDependence(parsed: MarklessStyleInput, fonts: readonly MarklessFontFile[], mode: MarklessFonts, t: NativeStyleTarget, width: number, dpr: number, heights: readonly number[], images: readonly MarklessImageFile[] = []): string[] {
   const text = JSON.stringify(parsed);
   const path = `${parsed.component}.native-style-input.json`;
   const out = new Set<string>();
-  const o = compileMarkless(parsed, text, path, fonts, mode).styles.targets[t];
+  const o = compileMarkless(parsed, text, path, fonts, mode, undefined, images).styles.targets[t];
   for (const a of o?.kind === 'emitted' ? o.bands?.table.atoms ?? [] : []) if (HEIGHT_FEATURES.has(a.feature)) out.add(`@media (${a.feature})`);
   const laidOut = [...new Set([...heights, PLAN_HEIGHTS.min, PLAN_HEIGHTS.max])].map((height) => {
     const device = { viewport: { width, height }, dpr };
-    const x = exportMarkless(parsed, text, path, fonts, mode, { ios: device, android: device }, false).exported.targets[t];
+    const x = exportMarkless(parsed, text, path, fonts, mode, { ios: device, android: device }, false, images).exported.targets[t];
     if (x === undefined) return fail(`the export has no ${t} target`);
     return x.assignments.map((a) => new Map(a.nodes.map((n) => [n.id, JSON.stringify(n.frame)])));
   });
@@ -870,8 +908,8 @@ const planNamesOf = (a: ExportAssignment, rename: (id: string) => string): (read
 /** Every interaction state's assignment of a target, in level order. */
 const interactionStates = (x: NativeStyleExport['targets'][NativeStyleTarget] & object): readonly ExportAssignment[] => x.interaction?.levels.flatMap((l) => l.states) ?? [];
 
-function exportMarkless(parsed: MarklessStyleInput, inputText: string, inputPath: string, fonts: readonly MarklessFontFile[], mode: MarklessFonts, at: MarklessAtSize | undefined, plan: boolean): { readonly input: FrontEndResult; readonly styles: NativeStyles; readonly exported: MarklessStyleExport; readonly decoded: readonly { readonly file: string; readonly bytes: Uint8Array }[] } {
-  const { input, styles, compiled, devices } = compileMarkless(parsed, inputText, inputPath, fonts, mode, at);
+function exportMarkless(parsed: MarklessStyleInput, inputText: string, inputPath: string, fonts: readonly MarklessFontFile[], mode: MarklessFonts, at: MarklessAtSize | undefined, plan: boolean, images: readonly MarklessImageFile[] = []): { readonly input: FrontEndResult; readonly styles: NativeStyles; readonly exported: MarklessStyleExport; readonly decoded: readonly { readonly file: string; readonly bytes: Uint8Array }[] } {
+  const { input, styles, compiled, devices } = compileMarkless(parsed, inputText, inputPath, fonts, mode, at, images);
   const raw = nativeStyleExport(styles, parsed.component, inputPath, devices, fonts.map((f) => ({ id: f.id, file: f.sfntFile, bytes: f.sfnt })), mode === 'system' ? systemFontsFor : null, plan);
   const rekey = cellKey(parsed);
   const cellValues = (a: ExportAssignment): Record<string, unknown> => Object.fromEntries(Object.entries(a.values).map(([k, v]) => [rekey(k), v]));

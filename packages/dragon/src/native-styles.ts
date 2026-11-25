@@ -1,5 +1,6 @@
 // The entry point a framework build calls for one component's native styles (docs/markless-native-styles.md): the component's CSS
 // and element tree in, per native backend the state program (plain data) and the Swift or Kotlin generated from that same program.
+import type { ImageAssetMap } from './images/manifest.ts';
 import { NO_FAULTS } from './faults.ts';
 import type { StateEmit } from './emit/runtime/state.ts';
 import { emitStatePrograms, StateEmitError } from './emit/runtime/state.ts';
@@ -61,6 +62,17 @@ export type NativeStylesConfig = {
    * box Dragon lays out, so an editable field is laid out as a readonly one is. Absent: an editable field is refused on native.
    */
   readonly textEditing?: 'host';
+  /**
+   * The image map (docs/api.md): each `<img src>` the component shows that is not a data: URL, to the snapshot asset holding its
+   * bytes. Dragon sizes the element from the file's natural size and lists its bytes for the native image paint.
+   */
+  readonly images?: ImageAssetMap;
+  /**
+   * 'host': the host draws each <img>'s picture itself from the file's bytes (a Markless host). Dragon sizes the <img> from the file's
+   * natural size and writes no image content for it, so a JPEG or GIF is laid out rather than refused; an object-fit other than fill
+   * is refused, as the host draws the picture filling its box.
+   */
+  readonly imagePaint?: 'host';
   /**
    * 'program-and-sources' (the default): the state program and the Swift or Kotlin generated from it. 'program': the state program
    * only, for a host that applies the program as data itself; files is empty, and a write only the generated runtime lacks does not
@@ -140,7 +152,7 @@ export function compileNativeStylesWith(config: NativeStylesConfig, input: Front
   const support = config.support ?? 'enforced';
   if (support !== 'enforced' && support !== 'lanes') throw new Error(`compileNativeStyles: support ${JSON.stringify(support)} is neither 'enforced' nor 'lanes'`);
   const project = createProjectWith(
-    { projectId: config.projectId, targets: { ...config.targets }, ...(config.fonts === undefined ? {} : { fonts: config.fonts }) },
+    { projectId: config.projectId, targets: { ...config.targets }, ...(config.fonts === undefined ? {} : { fonts: config.fonts }), ...(config.images === undefined ? {} : { images: config.images }) },
     {
       ...(support === 'enforced'
         ? { faults: NO_FAULTS, profiles: 'enforce' as const, direction: 'ltr' as const, nativeLanes: NATIVE_LANES }
@@ -149,6 +161,7 @@ export function compileNativeStylesWith(config: NativeStylesConfig, input: Front
       ...(config.canvas === 'host' ? { hostCanvas: true } : {}),
       ...(config.forms === 'host' ? { hostForms: true } : {}),
       ...(config.textEditing === 'host' ? { hostTextEditing: true } : {}),
+      ...(config.imagePaint === 'host' ? { hostImages: true } : {}),
       ...(config.brotliDecompress === undefined ? {} : { brotliDecompress: config.brotliDecompress }),
       ...(config.systemFonts === 'measured' ? { systemFonts: true } : {}),
       ...(config.runtimeImageLayout === undefined ? {} : { runtimeImageLayout: config.runtimeImageLayout }),

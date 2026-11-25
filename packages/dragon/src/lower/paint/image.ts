@@ -153,7 +153,7 @@ export const IMAGE_LOWERING: PaintLowering<ImageWrite | SvgShapesWrite | Runtime
     },
   },
   css: { 'replaced-image': ['object-fit', 'object-position', 'image-rendering'], 'svg-shapes': ['fill', 'stroke', 'stroke-width', 'fill-opacity', 'stroke-opacity', 'stroke-linecap', 'stroke-linejoin', 'stroke-miterlimit', 'fill-rule', 'stroke-dasharray', 'stroke-dashoffset', 'cx', 'cy', 'r', 'x', 'y', 'paint-order', 'rx', 'ry', 'vector-effect', 'd'], 'runtime-image': ['object-fit', 'object-position', 'image-rendering'] },
-  lower: ({ box, el, images, transformMoves }) => {
+  lower: ({ box, el, images, hostImages, transformMoves }) => {
     if (box.kind === 'replaced' && el !== null && el.element.tag === 'svg') {
       const scene = svgSceneOf(el);
       // A shape Chrome renders nothing for (svgShapeEmpty) is not drawn: a zero-size rect's closed outline would stroke as a line.
@@ -168,6 +168,8 @@ export const IMAGE_LOWERING: PaintLowering<ImageWrite | SvgShapesWrite | Runtime
       return [{ kind: 'runtime-image', fit: box.objectFit, position: [box.objectPositionX, box.objectPositionY], layer: !transformMoves, pixelated: isPixelated(el.props.get('image-rendering')?.value), absent: runtime.absent ? NO_IMAGE_OUTLINE : null }];
     }
     if (box.natural.kind !== 'image') throw new ProgramError(`${box.id}: an img leaf without a natural size`);
+    // The host draws a file's picture itself (InternalOptions.hostImages): Dragon writes no image content for it.
+    if (hostImages) return [];
     const src = el.element.attributes.get('src');
     const bytes = src === undefined ? undefined : images.get(src);
     if (bytes === undefined) throw new ProgramError(`${box.id}: no image bytes for its src`);
