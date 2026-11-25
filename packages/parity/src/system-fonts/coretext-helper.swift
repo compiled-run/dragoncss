@@ -53,6 +53,14 @@ func register(_ r: [String: Any]) throws {
 	registered[key] = cg
 }
 
+/// One face of a font file (a collection's by PostScript name), kept under key for later data faces: an iOS runtime's own font.
+func registerFile(_ r: [String: Any]) throws {
+	guard let key = r["key"] as? String, let path = r["path"] as? String, let name = r["postScriptName"] as? String else { throw Fail(message: "registerFile needs key, path and postScriptName") }
+	let descriptors = (CTFontManagerCreateFontDescriptorsFromURL(URL(fileURLWithPath: path) as CFURL) as? [CTFontDescriptor]) ?? []
+	guard let d = descriptors.first(where: { (CTFontDescriptorCopyAttribute($0, kCTFontNameAttribute) as? String) == name }) else { throw Fail(message: "\(path) has no face \(name)") }
+	registered[key] = CTFontCopyGraphicsFont(CTFontCreateWithFontDescriptor(d, 12, nil), nil)
+}
+
 func table(_ f: CTFont, _ tag: String) -> Data? {
 	let t = tag.utf8.reduce(UInt32(0)) { ($0 << 8) | UInt32($1) }
 	return CTFontCopyTable(f, CTFontTableTag(t), []) as Data?
@@ -208,6 +216,9 @@ while let line = readLine(strippingNewline: true) {
 			reply = ["ok": true, "face": try describe(spec, size)]
 		case "register":
 			try register(request)
+			reply = ["ok": true]
+		case "registerFile":
+			try registerFile(request)
 			reply = ["ok": true]
 		case "fallback":
 			reply = ["ok": true] .merging(try fallback(request)) { a, _ in a }

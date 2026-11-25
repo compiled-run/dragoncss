@@ -578,6 +578,20 @@ describe('a Markless export with system fonts', () => {
     expect(exported.systemFonts?.map((e) => e.id)).toEqual(['system:default:400', 'system:fallback:.CJKSymbolsFallbackSC-Regular', 'system:fallback:NotoSansSymbols-Regular-Subsetted.ttf#0', 'system:system-ui:400']);
   });
 
+  it('shapes an iOS fallback face from the iOS runtime\'s own file where the Mac\'s is another version', () => {
+    if (process.platform !== 'darwin' || androidSystemImagePathOrNull() === null) {
+      missingToolchain('system fonts', 'Core Text (macOS) and the Android SDK system image');
+      return;
+    }
+    // The Mac's AppleSDGothicNeo.ttc and the iOS 27.2 runtime's differ; the Mac's cascade picks the face for ▤, iOS's file shapes it.
+    const icon = input.replace('.page { padding: 24px; }', '.page { padding: 24px; } .ui { font-weight: 400; line-height: 1; }').replace('Tide almanac', 'Tide ▤ almanac');
+    const { exported } = marklessStyleExport(icon, 'almanac.json', undefined, 'system');
+    const id = 'system:fallback:.AppleSDGothicNeoI-Regular';
+    const runs = exported.targets.ios!.assignments[0]!.nodes.find((n) => n.id === 'h1:text0')!.lines!.flatMap((l) => l.runs.map((r) => r.face));
+    expect(runs).toEqual(['system:system-ui:400', id, 'system:system-ui:400']);
+    expect(exported.systemFonts?.find((e) => e.id === id)).toEqual({ id, fallback: true, ios: { face: { kind: 'cascade', base: { kind: 'system', weight: 0, design: 'default' }, text: '▤', postScriptName: '.AppleSDGothicNeoI-Regular' } } });
+  });
+
   it('refuses the fallback under line-height: normal, whose line box takes in the fallback face', () => {
     if (process.platform !== 'darwin' || androidSystemImagePathOrNull() === null) {
       missingToolchain('system fonts', 'Core Text (macOS) and the Android SDK system image');

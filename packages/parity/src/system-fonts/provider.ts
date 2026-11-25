@@ -2,7 +2,7 @@
 // and style (web-generics.ts, measured in Safari and the Android WebView), its FontData, and the shaper the engine lays text out
 // with (Core Text for iOS, Dragon's HarfBuzz on the image's font file at the fonts.xml instance for Android).
 import { createHash } from 'node:crypto';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync } from 'node:fs';
 import { basename, join } from 'node:path';
 import type { FontData, FontLengths, FontMetrics, GlyphShaper, LU } from '@dragon/layout';
 import { FEATURE_STRIDE, LU_PER_PX } from '@dragon/layout';
@@ -93,6 +93,7 @@ export function iosSystemFonts(dpr: number): SystemFonts {
     return pick(id, IOS_ROLE_FACES[(r as SystemFaceRequest).role], r as SystemFaceRequest, 'iOS');
   };
   const fallbacks = new Map<string, { readonly face: CoreTextFace; readonly lineMetrics?: undefined }>();
+  const fallbackDescriptors = new Map<string, CoreTextFace>();
   let sfui: { readonly upem: number; readonly ascent: number; readonly descent: number; readonly lineGap: number } | null = null;
   const systemMetrics = (): NonNullable<typeof sfui> => {
     if (sfui === null) {
@@ -115,7 +116,7 @@ export function iosSystemFonts(dpr: number): SystemFonts {
   };
   return {
     target: 'ios',
-    descriptor: (id) => ({ platform: 'ios', face: entryOf(id).face }),
+    descriptor: (id) => ({ platform: 'ios', face: fallbackDescriptors.get(id) ?? entryOf(id).face }),
     fontData(id) {
       const face = entryOf(id).face;
       const d = ct.describe(face, 17);
@@ -146,9 +147,11 @@ export function iosSystemFonts(dpr: number): SystemFonts {
         if (got === null) return face;
         const id = FALLBACK_FACE_PREFIX + got.postScriptName;
         if (!fallbacks.has(id)) {
-          // The build Mac's cascade picks the face; iOS draws it only if its runtime holds the same file.
-          if (!sameInIosRuntime(got.path)) refuse(`${face}: Core Text on the build Mac draws ${JSON.stringify(text.slice(start, end))} in ${got.postScriptName} (${got.path}), and the iOS runtime has no identical font file`);
-          fallbacks.set(id, { face: { kind: 'cascade', base: entryOf(face).face, text: text.slice(start, end), postScriptName: got.postScriptName } });
+          // The build Mac's cascade picks the face, and the iOS runtime's own file of it gives the glyphs (the Mac's can be another
+          // version); the phone draws it only if its own cascade gives the same PostScript name.
+          const file = iosRuntimeFile(got.path) ?? refuse(`${face}: Core Text on the build Mac draws ${JSON.stringify(text.slice(start, end))} in ${got.postScriptName} (${got.path}), which the iOS runtime has no file of`);
+          fallbacks.set(id, { face: ct.registerFile(`ios-runtime:${got.postScriptName}`, file, got.postScriptName) });
+          fallbackDescriptors.set(id, { kind: 'cascade', base: entryOf(face).face, text: text.slice(start, end), postScriptName: got.postScriptName });
         }
         return id;
       },
@@ -164,14 +167,14 @@ export function iosSystemFonts(dpr: number): SystemFonts {
 
 const IOS_FONT_DIRS = ['Core', 'CoreAddition', 'CoreUI', 'LanguageSupport', 'UnicodeSupport'] as const;
 
-/** Whether a font file of the build Mac is in the iOS runtime's System/Library/Fonts byte for byte. */
-function sameInIosRuntime(path: string): boolean {
+/** The iOS runtime's file of a build Mac font file, by name, in its System/Library/Fonts; null where it has none. */
+function iosRuntimeFile(path: string): string | null {
   const { root } = iosRuntimeRoot();
-  const want = createHash('sha256').update(readFileSync(path)).digest('hex');
-  return IOS_FONT_DIRS.some((dir) => {
+  for (const dir of IOS_FONT_DIRS) {
     const file = join(root, 'System/Library/Fonts', dir, basename(path));
-    return existsSync(file) && createHash('sha256').update(readFileSync(file)).digest('hex') === want;
-  });
+    if (existsSync(file)) return file;
+  }
+  return null;
 }
 
 type HB = {

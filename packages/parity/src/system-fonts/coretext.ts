@@ -130,6 +130,16 @@ export class CoreText {
     return { kind: 'data', sha256 };
   }
 
+  /** One face of a font file by PostScript name (a collection's too); the face that draws it is { kind: 'data', sha256: key }. */
+  registerFile(key: string, path: string, postScriptName: string): CoreTextFace {
+    if (!this.registered.has(key)) {
+      const reply = this.send({ op: 'registerFile', key, path, postScriptName });
+      if (reply['ok'] !== true) throw new Error(`Core Text: ${String(reply['error'])}`);
+      this.registered.add(key);
+    }
+    return { kind: 'data', sha256: key };
+  }
+
   describe(face: CoreTextFace, size: number): CoreTextDescription {
     return this.call({ op: 'describe', face, size })['face'] as CoreTextDescription;
   }
