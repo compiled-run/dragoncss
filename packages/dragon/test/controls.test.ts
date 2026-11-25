@@ -1,7 +1,8 @@
 // FORM-a: what the compiler refuses around a button or range, and what web writes for them (#496 landing review).
 import { describe, expect, it } from 'vitest';
 import type { Diagnostic, FrontEndResult } from '../src/internal.ts';
-import { createProjectWith, NO_FAULTS } from '../src/internal.ts';
+import { createProjectWith, iosLayoutProjection, NO_FAULTS } from '../src/internal.ts';
+import { ahemMeasurer, layout } from '@dragon/layout';
 import type { SourceRef } from '../src/types.ts';
 import { div, inputFor, text } from './helpers.ts';
 
@@ -78,6 +79,41 @@ describe('FORM-a controls', () => {
     // An absolutely positioned child is no flex item, and white space alone makes none, whatever its white-space (css-flexbox-1 §4).
     expect(refused((r) => [{ ...div(r, 'a', ['a']), tag: 'span' }])).toBe(true);
     expect(refused((r) => [{ ...div(r, 's', ['c', 'w'], [text(r, 'wt', '  ')]), tag: 'span' }])).toBe(true);
+  });
+
+  // Without the refusal each refused shape compiles and the engine returns flex-baseline, so the phone would stop at run time.
+  it('refuses an inline-block button exactly where the engine would take its last baseline from a flex or grid container (RF-INL)', () => {
+    const css = `${BODY}${BUTTON}.ib { display: inline-block; } .f { display: flex; } .g { display: grid; } .h { overflow: hidden; } `;
+    const kid = (r: SourceRef, id: string, cls: string[], kids: Kids = [text(r, `${id}t`, 'YY')]) => div(r, id, cls, kids);
+    const shapes: readonly [string, (r: SourceRef) => Kids, string[]][] = [
+      ['flex child', (r) => [kid(r, 'f', ['f'])], []],
+      ['grid child', (r) => [kid(r, 'g', ['g'])], []],
+      ['flex inside a block child', (r) => [div(r, 'w', [], [kid(r, 'f', ['f'])])], []],
+      ['text then a flex child', (r) => [text(r, 'lead', 'YY'), kid(r, 'f', ['f'])], []],
+      ['a clipped button over a flex child', (r) => [kid(r, 'f', ['f'])], ['h']],
+      ['a flex child then text', (r) => [kid(r, 'f', ['f']), text(r, 'tail', 'YY')], []],
+      ['a flex child then a clipped block', (r) => [kid(r, 'f', ['f']), kid(r, 'k', ['h'])], []],
+      ['text only', (r) => [text(r, 'only', 'YY')], []],
+    ];
+    const outcome = ([, kids, extra]: (typeof shapes)[number]): [boolean, string] => {
+      const body: Body = (r) => [div(r, 'p', ['p'], [text(r, 'pt', 'XX '), { ...div(r, 'b', ['b', 'ib', ...extra], kids(r)), tag: 'button' }])];
+      const c = createProjectWith({ projectId: 'test', targets: NATIVE }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(inputFor(css, body) as FrontEndResult);
+      const refused = errors(c.diagnostics).some((e) => e.includes('whose last baseline would come from a flex or grid container'));
+      const p = iosLayoutProjection(c, { viewport: { width: 400, height: 300 }, devicePixelRatio: 1, direction: 'ltr', rootFont: 'ua-default' }, []);
+      if (p.kind !== 'ready') return [refused, 'blocked'];
+      const r = layout(p.input, ahemMeasurer);
+      return [refused, r.kind === 'unsupported' ? r.unsupported.code : r.kind];
+    };
+    expect(shapes.map((sh) => [sh[0], ...outcome(sh)])).toEqual([
+      ['flex child', true, 'blocked'],
+      ['grid child', true, 'blocked'],
+      ['flex inside a block child', true, 'blocked'],
+      ['text then a flex child', true, 'blocked'],
+      ['a clipped button over a flex child', true, 'blocked'],
+      ['a flex child then text', false, 'ok'],
+      ['a flex child then a clipped block', false, 'ok'],
+      ['text only', false, 'ok'],
+    ]);
   });
 
   it('refuses on native a control that scrolls, or a scrolling box inside one, and keeps them on web', () => {

@@ -1337,6 +1337,7 @@
         { "lines": "3007-3191", "symbol": "BlockLayoutAlgorithm::FinalizeForFragmentation", "source": "cited" }
       ],
       "dragon": [
+        { "file": "packages/dragon/src/analysis/computed-checks.ts", "symbol": null, "use": "reference" },
         { "file": "packages/dragon/src/forms/range-geometry.ts", "symbol": null, "use": "port" },
         { "file": "packages/layout/src/block.ts", "symbol": "blockLevelInlineSize", "use": "port" },
         { "file": "packages/layout/src/block.ts", "symbol": "layoutBlockFlow", "use": "port" },
