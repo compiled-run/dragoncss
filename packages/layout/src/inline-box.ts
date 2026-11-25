@@ -2,8 +2,8 @@
 // container's inline-level children. It is laid out as its block-level equivalent at its shrink-to-fit width, and takes part in its line as
 // one U+FFFC item whose advance is its margin box and which sits on the baseline with its own baseline (INL-P family 5,
 // docs/research/inline-spike/blink-notes.md §2 and §7). RF-INL: an inline-level replaced box (CSS 2.2 §10.3.2, §10.6.2) is one too, sized
-// as a block-level replaced box is, with no baseline of its own. An inline-block single-line text field (a text-field control) is one,
-// laid out as its block-level field.
+// as a block-level replaced box is, with no baseline of its own. An inline-block single-line text field (a text-field control) or
+// button (a button-block control) is one, laid out as its block-level control.
 import type { ControlBox, LayoutBox, LayoutNode, LayoutStyle, ReplacedLeaf } from './input.ts';
 import type { LU } from './units.ts';
 import { add, max, min, sub, ZERO } from './units.ts';
@@ -16,18 +16,18 @@ import { inlineContribution, intrinsicContentInlineSize } from './intrinsic.ts';
 import { layoutReplacedInFlow } from './replaced.ts';
 import { unsupported } from './unsupported.ts';
 
-/** An atomic inline: an inline-level box, replaced leaf or text field (isAtomicInline). */
+/** An atomic inline: an inline-level box, replaced leaf, text field or button (isAtomicInline). */
 export type AtomicNode = LayoutBox | ControlBox | ReplacedLeaf;
 
 /**
  * Whether a node is an atomic inline: a box with display inline-block, inline-flex or inline-grid, a replaced leaf with an
  * inline-level display (inline, inline-block or inline-flex; css-display-3 §2.4: a replaced element is always atomic), or a
- * text field control with display inline-block.
+ * text field or block button control with display inline-block.
  */
 export function isAtomicInline(node: LayoutNode): boolean {
   const d = node.style.display;
   if (node.kind === 'replaced') return d === 'inline' || d === 'inline-block' || d === 'inline-flex';
-  if (node.kind === 'control') return node.control.kind === 'text-field' && d === 'inline-block';
+  if (node.kind === 'control') return (node.control.kind === 'text-field' || node.control.kind === 'button-block') && d === 'inline-block';
   return d === 'inline-block' || d === 'inline-flex' || d === 'inline-grid';
 }
 
@@ -43,7 +43,7 @@ export function blockLevelOf(box: LayoutBox): LayoutBox {
   return { kind: 'box', id: box.id, boxType: box.boxType, style, strut: box.strut, marker: box.marker, children: box.children };
 }
 
-/** An inline-block text field as the block-level field it lays out as. */
+/** An inline-block text field or button as the block-level control it lays out as. */
 export function blockLevelControlOf(c: ControlBox): ControlBox {
   if (!isAtomicInline(c)) return c;
   const style: LayoutStyle = { ...c.style, display: 'block' };
@@ -109,6 +109,26 @@ function atomicBaseline(ctx: Ctx, box: LayoutBox, frag: Frag, last: LU | null, l
 }
 
 /**
+ * An inline-block control's baseline from its border-box top. A text field's is its editor line's whatever its overflow
+ * (TextFieldInputType::AdjustStyle). A button is laid out by BlockLayoutAlgorithm like any inline-block (html_button_element.cc
+ * :59-74), so it takes its last line box's baseline, moved down with its centred contents (block_layout_algorithm.cc:1442-1451,
+ * box_fragment_builder.cc:402-410). Without one it synthesizes the baseline at its content box's block-end edge
+ * (html_button_element.cc:76-80 sets kContentBox; logical_box_fragment.cc:70-81), and overflow never forces the synthesis; a
+ * scroll container button clamps its last baseline to [0, its border-box height] (logical_box_fragment.h:61-70).
+ */
+function controlBaseline(ctx: Ctx, box: ControlBox, frag: Frag, last: LU | null, cbInline: LU): LU | null {
+  if (box.control.kind !== 'button-block') return last;
+  if (last === null) {
+    const pad = resolvePaddingWith(box.style, cbInline, ctx.faults);
+    const bor = resolveBorder(box.style, ctx.devicePixelRatio);
+    const top = add(bor.top, pad.top);
+    return add(top, max(sub(frag.height, add(top, add(bor.bottom, pad.bottom))), ZERO));
+  }
+  if (isScrollContainer(box.style) && !ctx.faults.overflowBaselineIgnored) return max(ZERO, min(last, frag.height));
+  return last;
+}
+
+/**
  * An inline-grid's baseline from its border-box top: its first baseline, which LogicalBoxFragment::FirstBaseline keeps within
  * [0, block size] for a scroll container (logical_box_fragment.h:42-51; layoutContents already clamps it to at most the height).
  */
@@ -150,8 +170,7 @@ export function layoutAtomic(ctx: Ctx, atom: AtomicNode, cbInline: LU): AtomicLa
     bfcLineOffset: ZERO,
     blockStretch: NO_STRETCH,
   });
-  // A text field's baseline is its editor line's whatever its overflow (TextFieldInputType::AdjustStyle).
-  const baseline = box.kind === 'control' ? r.lastBaseline : atomicBaseline(ctx, box, r.frag, r.lastBaseline, r.lastBaselineFlex);
+  const baseline = box.kind === 'control' ? controlBaseline(ctx, box, r.frag, r.lastBaseline, cbInline) : atomicBaseline(ctx, box, r.frag, r.lastBaseline, r.lastBaselineFlex);
   const marginBox = add(add(marginTop, r.frag.height), marginBottom);
   const above = baseline === null ? marginBox : add(marginTop, baseline);
   return { frag: r.frag, marginLeft, marginRight, marginTop, advance: add(add(marginLeft, width), marginRight), above, below: sub(marginBox, above) };
