@@ -48,6 +48,8 @@ const ACCEPTED: { readonly [name: string]: Shape } = {
   'the checkin thumb: a 64x64 img in a 64px track': (n) => box('g', { display: 'grid', grid: gridStyle(columns([track(64), fr(1)])) }, [img('i', { width: px(64), height: px(64), gridItem: autoItem }, n), box('x', { gridItem: autoItem, height: px(10) })]),
   'a 100% wide img with a height in 1fr 1fr': (n) => box('g', { display: 'grid', grid: gridStyle(columns([fr(1), fr(1)])) }, [img('i', { width: pct(100), height: px(50), gridItem: autoItem }, n), box('x', { gridItem: autoItem })]),
   'the ProductCard: a grid card in a repeat(2, 1fr) grid': (n) => box('g', { display: 'grid', grid: gridStyle(columns([fr(1), fr(1)])) }, [box('card', { display: 'grid', grid: gridStyle({}), gridItem: autoItem }, [img('i', { width: pct(100), height: px(300), aspectRatio: ratio(4, 3), gridItem: autoItem }, n)])]),
+  // One stretched auto column with definite free space never reads a max-content contribution (grid.ts growthLimitsUnused).
+  'the product photo: 100% wide in one auto track': (n) => box('g', { display: 'grid', grid: gridStyle({}) }, [img('i', { width: pct(100), height: px(300), aspectRatio: ratio(400, 300, true), gridItem: autoItem }, n)]),
 };
 
 describe('REPL-r1: a layout that does not read the run-time natural size', () => {
@@ -67,7 +69,6 @@ const REFUSED: readonly (readonly [string, Shape, string, boolean])[] = [
   ['a flex row item with min-width auto', (n) => box('f', { display: 'flex', width: px(150) }, [img('i', { width: px(200), height: px(100) }, n)]), "its content size as a flex item (its automatic minimum size or flex base size) reads the image's natural ratio: give it a min-width (a min-height in a column flex container)", true],
   ['a wide flex row item with min-width auto', (n) => box('f', { display: 'flex', width: px(400) }, [img('i', { width: px(200), height: px(100) }, n)]), "its content size as a flex item (its automatic minimum size or flex base size) reads the image's natural ratio: give it a min-width (a min-height in a column flex container)", false],
   ['a shrink-to-fit flex item holding a 100% wide img', (n) => box('f', { display: 'flex' }, [box('s', {}, [img('i', { width: pct(100), height: px(50) }, n)])]), "its max-content contribution (a shrink-to-fit width, an intrinsic grid track or a flex container's intrinsic size measures it) reads the image's natural ratio: give it a CSS aspect-ratio, or a width and a height", true],
-  ["the product photo: an auto track reads the attributes' ratio after the natural one", (n) => box('g', { display: 'grid', grid: gridStyle({}) }, [img('i', { width: pct(100), height: px(300), aspectRatio: ratio(400, 300, true), gridItem: autoItem }, n)]), "its max-content contribution (a shrink-to-fit width, an intrinsic grid track or a flex container's intrinsic size measures it) reads the image's natural ratio, which comes before the width and height attributes' ratio: give it a CSS aspect-ratio, or a width and a height", false],
 ];
 
 describe('REPL-r1: a layout that reads the run-time natural size is refused, naming the read and its fix', () => {

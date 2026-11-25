@@ -87,7 +87,7 @@ describe('REPL-r1 layout: the build lays the img out without its image', () => {
 
 describe('REPL-r1 selectors: a selector that tests the src of a runtimeSrc img is refused', () => {
   const body = (r: SourceRef): TreeNode[] => [div(r, 'c', ['c'], [img(r, 'a', ['ph'], { absent: true }, { alt: '' }), div(r, 'n', ['n'])])];
-  for (const sel of ['img[src]', 'img:not([src])', '[src^="https:"]', '.c > [src] + .n', '.c:has(img[src])']) {
+  for (const sel of ['img[src]', 'img:not([src])', '[src^="https:"]', '.c > [src] + .n', '.c:has(img[src])', 'img[src]:hover', '.c:hover img[src]']) {
     it(`refuses ${sel}`, () => {
       const c = compile(`${SIZED} ${sel} { margin-left: 3px; }`, body);
       expect(refusals(c, 'DRAGON_RUNTIME_IMAGE_SIZE').length, sel).toBe(1);
