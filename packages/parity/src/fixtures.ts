@@ -71,6 +71,7 @@ import { OUTLINE } from './fixture-groups/outline.ts';
 import { OVERFLOW } from './fixture-groups/overflow.ts';
 import { OVERSCROLL } from './fixture-groups/overscroll.ts';
 import { PHRASING_BLOCKIFIED } from './fixture-groups/phrasing-blockified.ts';
+import { POSITION_BESIDE_TEXT } from './fixture-groups/position-beside-text.ts';
 import { RADIUS } from './fixture-groups/radius.ts';
 import { REM_CONTEXTS } from './fixture-groups/rem-contexts.ts';
 import { REPLACED } from './fixture-groups/replaced.ts';
@@ -249,6 +250,7 @@ export const GROUPS = {
   overflow: OVERFLOW,
   overscroll: OVERSCROLL,
   'phrasing-blockified': PHRASING_BLOCKIFIED,
+  'position-beside-text': POSITION_BESIDE_TEXT,
   radius: RADIUS,
   'rem-contexts': REM_CONTEXTS,
   replaced: REPLACED,
