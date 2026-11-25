@@ -141,6 +141,7 @@ const XML = `<?xml version="1.0" encoding="utf-8"?>
   <alias name="helvetica" to="sans-serif" />
   <family name="serif"><font weight="400" style="italic" index="1" postScriptName="X">Serif.ttc</font></family>
   <family lang="und-Zsye"><font weight="400" style="normal">NotoColorEmoji.ttf</font></family>
+  <family variant="elegant"><font weight="400" style="normal">NotoSansSymbols.ttf</font><font weight="400" style="normal" fallbackFor="serif">NotoSerifSymbols.ttf</font></family>
 </familyset>
 `;
 
@@ -192,11 +193,19 @@ describe('fonts.xml', () => {
     const x = parseFontsXml(XML);
     expect([...x.families.keys()]).toEqual(['sans-serif', 'serif']);
     expect(x.families.get('sans-serif')!.fonts).toEqual([
-      { file: 'Roboto-Regular.ttf', weight: 400, style: 'normal', index: 0, axes: { wght: 400 }, postScriptName: null },
-      { file: 'Roboto-Regular.ttf', weight: 700, style: 'normal', index: 0, axes: { wght: 700 }, postScriptName: null },
+      { file: 'Roboto-Regular.ttf', weight: 400, style: 'normal', index: 0, axes: { wght: 400 }, postScriptName: null, fallbackFor: null },
+      { file: 'Roboto-Regular.ttf', weight: 700, style: 'normal', index: 0, axes: { wght: 700 }, postScriptName: null, fallbackFor: null },
     ]);
     expect(x.families.get('serif')!.fonts[0]).toMatchObject({ file: 'Serif.ttc', style: 'italic', index: 1, postScriptName: 'X' });
     expect(x.aliases.get('helvetica')).toEqual({ to: 'sans-serif', weight: null });
+  });
+
+  it('reads the unnamed families as the fallback chain, in file order, with their languages, variant and fallbackFor', () => {
+    const x = parseFontsXml(XML);
+    expect(x.fallbacks.map((f) => [f.lang, f.variant, f.fonts.map((font) => [font.file, font.fallbackFor])])).toEqual([
+      [['und-Zsye'], null, [['NotoColorEmoji.ttf', null]]],
+      [[], 'elegant', [['NotoSansSymbols.ttf', null], ['NotoSerifSymbols.ttf', 'serif']]],
+    ]);
   });
 
   it('refuses what is not fonts.xml', () => {
@@ -594,6 +603,21 @@ describe('a Markless export with system fonts', () => {
     const { exported } = marklessStyleExport(web, 'almanac.json', () => lato, 'system');
     const runs = exported.targets.ios!.assignments[0]!.nodes.find((n) => n.id === 'h2:text0')!.lines!.flatMap((l) => l.runs.map((r) => r.face));
     expect(runs.slice(0, 1)).toEqual(['system:fallback:.CJKSymbolsFallbackSC-Regular']);
+  });
+
+  it('refuses on both platforms a web font whose family list goes on to no system face, rather than take Core Text\'s cascade on iOS', () => {
+    if (process.platform !== 'darwin' || androidSystemImagePathOrNull() === null) {
+      missingToolchain('system fonts', 'Core Text (macOS) and the Android SDK system image');
+      return;
+    }
+    const lato = new Uint8Array(readFileSync(new URL('../../dragon/test/fonts/woff/Lato-Regular.woff2', import.meta.url)));
+    const face = "@font-face { font-family: 'Harbour Lato'; src: url('./fonts/Lato-Regular.woff2') format('woff2'); font-weight: 400; } ";
+    const web = JSON.stringify({
+      ...JSON.parse(input.replace('No font family at all', '◎ Shop')),
+      css: `${face}.page { padding: 24px; font-family: 'Harbour Lato'; line-height: 1; font-weight: 400; } .ui { font-size: 28px; font-weight: 400; }`,
+      fonts: [{ url: './fonts/Lato-Regular.woff2', file: '../styles/fonts/Lato-Regular.woff2' }],
+    });
+    expect(() => marklessStyleExport(web, 'almanac.json', () => lato, 'system')).toThrow(/U\+25CE has no glyph/);
   });
 
   it('shapes an iOS fallback face from the iOS runtime\'s own file where the Mac\'s is another version', () => {

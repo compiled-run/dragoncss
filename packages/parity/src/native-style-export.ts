@@ -23,7 +23,7 @@ import { heightDependence, marklessPlan, PLAN_DENSITIES, planInteractionAssignme
 import type { DensityJob, DensityResult } from './markless-plan-workers.ts';
 import { planWorkers, recordDensitiesInWorkers } from './markless-plan-workers.ts';
 import type { SystemFaceDescriptor, SystemFonts } from './system-fonts/provider.ts';
-import { isFallbackFace, systemFontsFor, systemRequestOf } from './system-fonts/provider.ts';
+import { isFallbackFace, isSystemFace, systemFontsFor, systemRequestOf } from './system-fonts/provider.ts';
 
 export const NATIVE_STYLE_EXPORT_SCHEMA = 'dragon.native-style-export/1';
 
@@ -408,9 +408,6 @@ export function nativeStyleExport(styles: NativeStyles, component: string, sourc
     targets,
   };
 }
-
-/** A face a host rebuilds from the platform: a system face's role, or a platform's fallback face. */
-const isSystemFace = (id: string): boolean => systemRequestOf(id) !== null || isFallbackFace(id);
 
 const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
 const isNumber = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);

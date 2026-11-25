@@ -5,7 +5,7 @@ import { deviceShapedMeasurer, platformFontSize } from '@dragon/layout';
 import { shimFaces } from '../native-shim.ts';
 import { fontDataOf, hostShaper } from '../text-shaper-host.ts';
 import type { SystemFonts } from './provider.ts';
-import { systemRequestOf } from './provider.ts';
+import { isSystemFace, systemRequestOf } from './provider.ts';
 
 /** Every font family a program value names (its font writes and text leaves), by walking it. */
 export function fontFamiliesOf(program: unknown): Set<string> {
@@ -46,7 +46,8 @@ export function systemMeasurer(system: SystemFonts, program: unknown, bundled: r
   const shaper: GlyphShaper = {
     fallback: (face, ...rest) => {
       const next = Object.hasOwn(fallbacks, face) ? (fallbacks[face] as string) : null;
-      const got = next === '' ? '' : next !== null ? system.shaper.fallback(next, ...rest) : platform.has(face) ? system.shaper.fallback(face, ...rest) : hostShaper.fallback(face, ...rest);
+      // A bundled or author face falls back only down its family list (the compile's map); a system face to the platform's.
+      const got = next === '' ? '' : next !== null ? system.shaper.fallback(next, ...rest) : isSystemFace(face) ? system.shaper.fallback(face, ...rest) : hostShaper.fallback(face, ...rest);
       if (got !== '') platform.add(got);
       recorder?.fallback([face, ...rest], got);
       return got;

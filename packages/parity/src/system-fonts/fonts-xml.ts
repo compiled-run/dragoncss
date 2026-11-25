@@ -10,6 +10,8 @@ export type FontsXmlFont = {
   /** Each variation axis the font is set to, by tag, as fonts.xml lists them (stylevalue). */
   readonly axes: Readonly<Record<string, number>>;
   readonly postScriptName: string | null;
+  /** fallbackFor: the one named family this font of a fallback family serves (a serif-only fallback); null for any. */
+  readonly fallbackFor: string | null;
 };
 export type FontsXmlFamily = { readonly name: string; readonly fonts: readonly FontsXmlFont[] };
 /** An unnamed family: the fallback chain, in file order, each with the languages and variant it serves. */
@@ -180,7 +182,7 @@ export function parseFontsXml(text: string): FontsXml {
         if (tag === undefined || tag.length !== 4 || !Number.isFinite(value)) fail(`family ${label}: a bad <axis>`);
         axes[tag as string] = value;
       }
-      return [{ file, weight: intAttr(f, 'weight', 400), style: style as 'normal' | 'italic', index: intAttr(f, 'index', 0), axes, postScriptName: f.attributes.get('postScriptName') ?? null }];
+      return [{ file, weight: intAttr(f, 'weight', 400), style: style as 'normal' | 'italic', index: intAttr(f, 'index', 0), axes, postScriptName: f.attributes.get('postScriptName') ?? null, fallbackFor: f.attributes.get('fallbackFor') ?? null }];
     });
     // Unnamed families are the fallback chain (by lang or variant); generics resolve only to named ones.
     if (name === undefined) {

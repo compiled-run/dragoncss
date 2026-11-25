@@ -673,7 +673,8 @@ function pushRun(item: ShapeItem, runs: ShapingRun[], g: readonly number[], s: n
     if (cluster < from || cluster >= to) continue;
     const gid = g[o] as number;
     const flags = g[o + 6] as number;
-    const safe = first ? true : cluster === (g[o + 1 - GLYPH_STRIDE] as number) ? false : Number.isInteger(flags / 2);
+    // A run after a fallback hole keeps its first glyph's own flag, as the segment's buffer shaped it.
+    const safe = first && (from === s || o === 0) ? true : cluster === (g[o + 1 - GLYPH_STRIDE] as number) ? false : Number.isInteger(flags / 2);
     first = false;
     const raw = g[o + 2] as number;
     const shaped = item.faults.wholePixelPositions && !Number.isInteger(raw / 65536) ? wholePixel(raw) : raw;
@@ -704,14 +705,14 @@ function shapeRange(item: ShapeItem, start: number, end: number, isLineStart: bo
     const g = ranges.lower ? item.shaper.shape(item.face, item.smallCapsSize, item.upper, s, e, seg.script, false, item.language, features) : item.shaper.shape(item.face, item.size, item.text, s, e, seg.script, false, item.language, features);
     const size = ranges.lower ? item.smallCapsSize : item.size;
     // HarfBuzzShaper::ShapeSegment: the clusters the face draws with no glyph are shaped again in the platform's fallback face.
-    // A synthesized small-caps run keeps them unresolved.
-    const holes = ranges.lower ? [] : notdefRanges(g, s, e);
+    // A synthesized small-caps run falls back nowhere, so its holes stay missing.
+    const holes = notdefRanges(g, s, e);
     let at = s;
     for (let h = 0; h < holes.length; h = h + 2) {
       const from = holes[h] as number;
       const to = holes[h + 1] as number;
       if (at < from) width = pushRun(item, runs, g, s, e, item.face, size, at, from, width);
-      const face = item.shaper.fallback(item.face, item.text, from, to, seg.script, item.language);
+      const face = ranges.lower ? '' : item.shaper.fallback(item.face, item.text, from, to, seg.script, item.language);
       const again = face === '' ? [] : item.shaper.shape(face, size, item.text, from, to, seg.script, false, item.language, features);
       if (face === '' || notdefRanges(again, from, to).length > 0) {
         if (missing < 0) missing = item.units[from] as number;

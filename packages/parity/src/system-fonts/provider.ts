@@ -28,6 +28,9 @@ const refuse = (what: string): never => {
 export const FALLBACK_FACE_PREFIX = 'system:fallback:';
 export const isFallbackFace = (id: string): boolean => id.startsWith(FALLBACK_FACE_PREFIX);
 
+/** A face a host rebuilds from the platform: a system face's role, or a platform's fallback face. */
+export const isSystemFace = (id: string): boolean => SYSTEM_FACES.has(id) || isFallbackFace(id);
+
 /** The request of a system face id; any other id is not a system face. */
 export const systemRequestOf = (id: string): SystemFaceRequest | null => SYSTEM_FACES.get(id) ?? null;
 
@@ -222,8 +225,9 @@ export function androidSystemFonts(files: AndroidSystemFiles = new AndroidSystem
     for (const elegant of [true, false]) for (const tag of tags) for (const family of xml.fallbacks) {
       if ((family.variant === 'elegant') !== elegant) continue;
       if (tag !== '' && !family.lang.some((l) => l.startsWith(tag))) continue;
-      const styled = family.fonts.filter((f) => f.style === r.style);
-      const f = matchWeight(styled.length > 0 ? styled : family.fonts, r.weight);
+      const serves = family.fonts.filter((f) => f.fallbackFor === null || f.fallbackFor === ANDROID_ROLE_FAMILIES[r.role]);
+      const styled = serves.filter((f) => f.style === r.style);
+      const f = matchWeight(styled.length > 0 ? styled : serves, r.weight);
       if (f === null) continue;
       const file = files.read(`/system/fonts/${f.file}`);
       if (!faces.has(`${file.sha256}#${f.index}`)) faces.set(`${file.sha256}#${f.index}`, hb.createFace(file.bytes, f.index));

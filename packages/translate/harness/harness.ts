@@ -1530,6 +1530,19 @@ function replayShaper(calls: readonly ReplayCall[], fallbacks: readonly ReplayFa
   };
 }
 
+/** R3's replay: a transcript records no fallback calls, as the host's recordingShaper answers them with no face. */
+function transcriptShaper(calls: readonly ReplayCall[]): GlyphShaper {
+  const replay = replayShaper(calls, []);
+  return {
+    fallback(face: string, text: string, start: number, end: number, script: string, language: string): string {
+      return '';
+    },
+    shape(face: string, size: number, text: string, start: number, end: number, script: string, rtl: boolean, language: string, features: readonly number[]): readonly number[] {
+      return replay.shape(face, size, text, start, end, script, rtl, language, features);
+    },
+  };
+}
+
 /**
  * The shaped measurer of a transcript from the engine's shaping primitives (shaping.ts makeItem, shapeItem and the view widths the
  * line breaker reads), as layout/src/shaping.ts shapedText composes them: the translated engine's roots do not reach shapedText,
@@ -1537,7 +1550,7 @@ function replayShaper(calls: readonly ReplayCall[], fallbacks: readonly ReplayFa
  * proves its layouts equal the Node host's.
  */
 function replayMeasurer(s: Shaping, faults: EngineFaults): TextMeasurer {
-  const shaper = replayShaper(s.calls, []);
+  const shaper = transcriptShaper(s.calls);
   const sf: ShapingFaults = {
     advanceNot16_16: faults.advanceNot16_16, doubleAccumulation: faults.doubleAccumulation, noReshapeAtBreak: faults.noReshapeAtBreak, kerningDropped: faults.kerningDropped,
     wholePixelPositions: faults.wholePixelPositions, softHyphenWidthMissing: faults.softHyphenWidthMissing, metricRoundingSwapped: faults.metricRoundingSwapped,
