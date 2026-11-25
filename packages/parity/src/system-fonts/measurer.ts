@@ -25,9 +25,10 @@ export function fontFamiliesOf(program: unknown): Set<string> {
   return out;
 }
 
-/** What a measurer was asked, for a device to replay: every shaper call with its glyphs, and each face's metrics (null: the engine's own) and lengths. */
+/** What a measurer was asked, for a device to replay: every shaper call with its glyphs, every fallback call with its face, and each face's metrics (null: the engine's own) and lengths. */
 export type MeasurerRecorder = {
   shape(call: readonly unknown[], glyphs: readonly number[]): void;
+  fallback(call: readonly unknown[], face: string): void;
   metrics(family: string, size: number, metrics: FontMetrics | null): void;
   lengths(family: string, size: number, lengths: FontLengths): void;
 };
@@ -39,7 +40,12 @@ export function systemMeasurer(system: SystemFonts, program: unknown, bundled: r
   const platform = new Set(used);
   for (const [id, bytes] of authorFiles) if (system.authorFace(id, bytes)) platform.add(id);
   const shaper: GlyphShaper = {
-    fallback: (): string => '',
+    fallback: (face, ...rest) => {
+      const got = platform.has(face) ? system.shaper.fallback(face, ...rest) : hostShaper.fallback(face, ...rest);
+      if (got !== '') platform.add(got);
+      recorder?.fallback([face, ...rest], got);
+      return got;
+    },
     shape: (face, ...rest) => {
       const glyphs = platform.has(face) ? system.shaper.shape(face, ...rest) : hostShaper.shape(face, ...rest);
       recorder?.shape([face, ...rest], glyphs);

@@ -11,7 +11,12 @@ import { repoPath } from '../paths.ts';
 export const CORETEXT_HELPER_SOURCE = new URL('./coretext-helper.swift', import.meta.url);
 
 /** A Core Text face: the system UI font at a UIFont.Weight value and design, a font by PostScript name, or a registered author file. */
-export type CoreTextFace = { readonly kind: 'system'; readonly weight: number; readonly design: 'default' | 'serif' | 'monospaced' } | { readonly kind: 'name'; readonly postScriptName: string } | { readonly kind: 'data'; readonly sha256: string };
+export type CoreTextFace =
+  | { readonly kind: 'system'; readonly weight: number; readonly design: 'default' | 'serif' | 'monospaced' }
+  | { readonly kind: 'name'; readonly postScriptName: string }
+  | { readonly kind: 'data'; readonly sha256: string }
+  /** The font Core Text's cascade gives base for text (CTFontCreateForString), which must be postScriptName: a hidden font has no name a host can ask for. */
+  | { readonly kind: 'cascade'; readonly base: CoreTextFace; readonly text: string; readonly postScriptName: string };
 
 /** What the helper reports for a face at a size (coretext-helper.swift describe). */
 export type CoreTextDescription = {
@@ -132,6 +137,12 @@ export class CoreText {
   /** HarfBuzz's integers (GLYPH_STRIDE per glyph) for text[start, end) shaped by Core Text with the whole text as context. */
   shape(face: CoreTextFace, size: number, text: string, start: number, end: number, language: string, features: readonly { readonly tag: string; readonly value: number; readonly start: number; readonly end: number }[]): readonly number[] {
     return this.call({ op: 'shape', face, size, text, start, end, language, features })['glyphs'] as number[];
+  }
+
+  /** The font Core Text's cascade draws all of text[start, end) in instead of the face, with its file; null where the face draws any of it. */
+  fallback(face: CoreTextFace, size: number, text: string, start: number, end: number, language: string): { readonly postScriptName: string; readonly path: string } | null {
+    const r = this.call({ op: 'fallback', face, size, text, start, end, language });
+    return r['postScriptName'] === '' ? null : { postScriptName: r['postScriptName'] as string, path: r['path'] as string };
   }
 
   close(): void {

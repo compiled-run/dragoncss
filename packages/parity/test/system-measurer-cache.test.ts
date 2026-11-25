@@ -43,6 +43,7 @@ function mapRecorder(): { readonly recorder: MeasurerRecorder; readonly metrics:
     lengths,
     recorder: {
       shape: () => {},
+      fallback: () => {},
       metrics: (family, size, m) => metrics.set(`${family}@${size}`, m === null ? [family, size] : [family, size, m.ascent, m.descent, m.lineGap, m.normalGapAbove]),
       lengths: (family, size, l) => lengths.set(`${family}@${size}`, [family, size, l.xHeight, l.capHeight, l.zeroWidth]),
     },
@@ -77,7 +78,7 @@ describe('systemMeasurer asked again answers and records as fresh measurers do',
 
   it('a recorder that refuses what it has not seen is told of each face and size, so the plan still refuses', () => {
     const missed: string[] = [];
-    const check: MeasurerRecorder = { shape: () => {}, metrics: (family, size) => missed.push(`metrics ${family}@${size}`), lengths: (family, size) => missed.push(`lengths ${family}@${size}`) };
+    const check: MeasurerRecorder = { shape: () => {}, fallback: () => {}, metrics: (family, size) => missed.push(`metrics ${family}@${size}`), lengths: (family, size) => missed.push(`lengths ${family}@${size}`) };
     const m = systemMeasurer(countingFonts().fonts, program, [], 1, new Map(), check);
     for (let round = 0; round < 3; round++) for (const f of asks) m.metrics(f);
     expect(new Set(missed)).toEqual(new Set(asks.map((f) => `metrics ${f.family}@${f.size}`)));

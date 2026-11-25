@@ -536,6 +536,34 @@ describe('a Markless export with system fonts', () => {
     }
   });
 
+  it('draws a symbol the face lacks in the platform\'s fallback face, as its own run, and plans it for the device', () => {
+    if (process.platform !== 'darwin' || androidSystemImagePathOrNull() === null) {
+      missingToolchain('system fonts', 'Core Text (macOS) and the Android SDK system image');
+      return;
+    }
+    const icon = input.replace('.page { padding: 24px; }', '.page { padding: 24px; } .ui { line-height: 1; }').replace('Tide almanac', 'Tide ◎ almanac');
+    const { exported } = marklessStyleExport(icon, 'almanac.json', undefined, 'system', undefined, true);
+    const ios = 'system:fallback:.CJKSymbolsFallbackSC-Bold';
+    const android = 'system:fallback:NotoSansSymbols-Regular-Subsetted.ttf#0';
+    expect(exported.systemFonts?.map((e) => e.id)).toEqual(['system:default:400', ios, android, 'system:system-ui:700'].sort());
+    expect(exported.systemFonts?.find((e) => e.id === ios)).toEqual({ id: ios, ios: { face: { kind: 'cascade', base: { kind: 'system', weight: 0.4, design: 'default' }, text: '◎', postScriptName: '.CJKSymbolsFallbackSC-Bold' } } });
+    expect(exported.systemFonts?.find((e) => e.id === android)).toMatchObject({ android: { file: 'NotoSansSymbols-Regular-Subsetted.ttf', index: 0 } });
+    for (const [t, face] of [['ios', ios], ['android', android]] as const) {
+      const text = exported.targets[t]!.assignments[0]!.nodes.find((n) => n.id === 'h1:text0')!;
+      expect(text.lines!.flatMap((l) => l.runs.map((r) => [r.face, r.glyphs.length]))).toEqual([['system:system-ui:700', 5], [face, 1], ['system:system-ui:700', 8]]);
+      const plan = (exported.targets[t] as unknown as { plan?: { densities: { fallbacks?: unknown[][] }[] } }).plan;
+      expect(plan?.densities.every((d) => d.fallbacks?.some((c) => c[6] === face))).toBe(true);
+    }
+  });
+
+  it('refuses the fallback under line-height: normal, whose line box takes in the fallback face', () => {
+    if (process.platform !== 'darwin' || androidSystemImagePathOrNull() === null) {
+      missingToolchain('system fonts', 'Core Text (macOS) and the Android SDK system image');
+      return;
+    }
+    expect(() => marklessStyleExport(input.replace('Tide almanac', 'Tide ◎ almanac'), 'almanac.json', undefined, 'system')).toThrow(/fallback face system:fallback:\S+ under line-height: normal/);
+  });
+
   it('pinned, it keeps the stated reference\'s bundled Inter', () => {
     const { exported } = marklessStyleExport(input.replace('font-family: system-ui; ', ''), 'almanac.json');
     expect(exported.systemFonts).toBeUndefined();

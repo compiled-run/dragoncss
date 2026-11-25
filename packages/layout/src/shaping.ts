@@ -632,6 +632,8 @@ function isSmallCapsLower(item: ShapeItem, offset: number): boolean {
 /** The [from, to) pairs of UTF-16 clusters in [start, end) that shaped glyphs g draws with glyph 0 (.notdef), merged when adjacent. */
 function notdefRanges(g: readonly number[], start: number, end: number): number[] {
   const out: number[] = [];
+  let from = -1;
+  let to = -1;
   for (let o = 0; o < g.length; o = o + GLYPH_STRIDE) {
     if ((g[o] as number) !== 0) continue;
     const cluster = g[o + 1] as number;
@@ -643,14 +645,21 @@ function notdefRanges(g: readonly number[], start: number, end: number): number[
         break;
       }
     }
-    if (out.length > 0 && (out[out.length - 1] as number) >= cluster) {
-      if ((out[out.length - 1] as number) < next) out[out.length - 1] = next;
+    if (from >= 0 && to >= cluster) {
+      if (to < next) to = next;
     } else {
-      out.push(cluster);
-      out.push(next);
+      if (from >= 0) {
+        out.push(from);
+        out.push(to);
+      }
+      from = cluster < start ? start : cluster;
+      to = next;
     }
   }
-  if (out.length > 0 && (out[0] as number) < start) out[0] = start;
+  if (from >= 0) {
+    out.push(from);
+    out.push(to);
+  }
   return out;
 }
 
