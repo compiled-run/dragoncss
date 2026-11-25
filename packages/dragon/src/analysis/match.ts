@@ -297,7 +297,7 @@ export function specificityFor(sel: Selector, faults: CompilerFaults): Specifici
 
 /**
  * REPL-r1: the selectors that read the src of an img the app sets at run time: on some element of the tree they match differently
- * when every such img has a src (any test of it holds) and when none has. Each is reported once, with the first element it differs on.
+ * when every such img has a src (any test of it holds) and when none has, at rest or with the chain hovered, active and focused. Each is reported once, with the first element it differs on.
  */
 export function runtimeSrcSelectors(rules: readonly Rule[], root: LinkedElement, faults: CompilerFaults): { readonly rule: Rule; readonly selector: Selector; readonly address: string }[] {
   const withSrc = (el: LinkedElement): LinkedElement => {
@@ -314,9 +314,13 @@ export function runtimeSrcSelectors(rules: readonly Rule[], root: LinkedElement,
     for (const rule of rules) {
       for (const sel of rule.selectors) {
         if (found.has(sel)) continue;
-        const differs = sel.pseudoElement === null
-          ? selectorMatches(rule, sel, a, a.length - 1, 0, faults) !== selectorMatches(rule, sel, b, b.length - 1, 0, faults)
-          : (['before', 'after', 'marker'] as const).some((p) => pseudoSelectorMatches(rule, sel, a, p, faults) !== pseudoSelectorMatches(rule, sel, b, p, faults));
+        // At rest and with the whole chain hovered, active and focused, so a src test under :hover or :focus is found too.
+        const all = new Set(a.map((e) => e.address));
+        const engaged: InteractionState = { hover: all, active: all, focus: all, focusVisible: all };
+        const differs = [NO_INTERACTION, engaged].some((ix) =>
+          sel.pseudoElement === null
+            ? selectorMatches(rule, sel, a, a.length - 1, 0, faults, ix) !== selectorMatches(rule, sel, b, b.length - 1, 0, faults, ix)
+            : (['before', 'after', 'marker'] as const).some((p) => pseudoSelectorMatches(rule, sel, a, p, faults, ix) !== pseudoSelectorMatches(rule, sel, b, p, faults, ix)));
         if (!differs) continue;
         found.add(sel);
         out.push({ rule, selector: sel, address: last(a).address });
