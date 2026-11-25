@@ -101,7 +101,7 @@ describe('small caps on the shaped path', () => {
   });
   it('gives the device each glyph, its pen and its size', () => {
     const g = pieceGlyphs(m, 'Ab cd', font(20), 1, 4);
-    expect(g).toEqual({ ok: true, glyphs: [0x42, 0x20, 0x43], xs: [0, 14, 34], chars: [0, 1, 2], sizes: [14, 20, 14] });
+    expect(g).toEqual({ ok: true, glyphs: [0x42, 0x20, 0x43], xs: [0, 14, 34], chars: [0, 1, 2], sizes: [14, 20, 14], faces: ['Ahem', 'Ahem', 'Ahem'] });
   });
   it('shapes as one run without small caps', () => {
     calls.length = 0;

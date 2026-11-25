@@ -65,10 +65,10 @@ describe('font fallback in the shaping core', () => {
 });
 
 describe('font fallback in layout', () => {
-  const lay = (lineHeight: { kind: 'normal' } | { kind: 'number'; value: number }) => {
+  const lay = (lineHeight: { kind: 'normal' } | { kind: 'number'; value: number }, justify = false, value = 'ab◎cd') => {
     const m = shapedMeasurer(faces, shaperWith('B').shaper, NO_SHAPING_FAULTS, 'en');
-    const leaf = text('t', 'ab◎cd', { font: { family: 'A', size: 10, specifiedSize: { kind: 'px', value: 10 }, absoluteSize: true }, lineHeight });
-    return layout({ viewport: { width: 400, height: 300 }, devicePixelRatio: 1, ...neutralEnvironment({ width: 400, height: 300 }), root: box('root', {}, [box('p', {}, [leaf])]) }, m);
+    const leaf = text('t', value, { font: { family: 'A', size: 10, specifiedSize: { kind: 'px', value: 10 }, absoluteSize: true }, lineHeight });
+    return layout({ viewport: { width: 400, height: 300 }, devicePixelRatio: 1, ...neutralEnvironment({ width: 400, height: 300 }), root: box('root', {}, [box('p', justify ? { textAlign: 'justify', width: { kind: 'px', value: 60 } } : {}, [leaf])]) }, m);
   };
 
   it('lays out a fallback run under a line height that is not normal, as wide as the fallback glyph', () => {
@@ -80,5 +80,11 @@ describe('font fallback in layout', () => {
   it('refuses it under line-height: normal, whose line box takes in the fallback face', () => {
     const r = lay({ kind: 'normal' });
     expect(r.kind === 'unsupported' ? [r.unsupported.code, r.unsupported.detail] : r.kind).toEqual(['text-glyph', expect.stringContaining('fallback face B under line-height: normal')]);
+  });
+
+  it('refuses a justified line holding the icon, which Chrome expands around as a CJK symbol', () => {
+    // The first line, ab ◎ (43px of 60px), is justified; the last is not.
+    const r = lay({ kind: 'number', value: 1 }, true, 'ab ◎ cd ef gh');
+    expect(r.kind === 'unsupported' ? r.unsupported.code : r.kind).toBe('text-align');
   });
 });

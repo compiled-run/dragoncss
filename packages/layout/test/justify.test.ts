@@ -119,7 +119,8 @@ describe('text-align: justify on the real-font path', () => {
     expect(refusal('XX XX XXX X')).toBeNull();
     const reachable: number[] = [];
     for (let cp = 0; cp <= 0x10ffff; cp++) if (maybeCjkIdeographOrSymbol(cp) && (latinBreakClass(cp) >= 0 || coveredIndex(cp) >= 0)) reachable.push(cp);
-    expect(reachable).toEqual([]);
+    // The icons a page draws in a fallback face (Geometric Shapes, U+2713) break as AL; justifyLine refuses a justified line holding one.
+    expect(reachable.filter((cp) => !((cp >= 0x25a0 && cp <= 0x25ff) || cp === 0x2713))).toEqual([]);
   });
   it('treats every code point of Blink 145 IsCJKIdeographOrSymbol as one, and Latin punctuation as not', () => {
     const exactRanges = [
