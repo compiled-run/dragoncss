@@ -197,6 +197,8 @@ The export writes it per target as `interaction: { levels }`, one level per assi
 
 `markless:style-compare` compares each state with Chrome forced into it (`forced-pseudo.ts`): every frame, and every background colour the state changes. A state that changes another write fails, naming it, until the comparison reads that property from Chrome (`packages/parity/test/markless-interaction.test.ts`).
 
+A forced `:focus` or `:focus-visible` state of an element nothing can focus (no link, control, `tabindex`, `contenteditable` or scroller) is the assignment's own styles in the export, with no match and no force: a Markless host never forces a state, so its outline or other styles are neither checked nor lowered (T064 R9a).
+
 Refused by name for now: interaction states together with transitions or animations (the animator's tables cover the program's assignments only), and together with style values that follow state (slots). A state's colour scheme is its assignment's, so a state that changes `color-scheme` keeps the assignment's.
 
 Hit testing still gates what compiles: a pressed or focused style through opacity, a transform, a box-shadow, a sticky or fixed box or a form control is refused until its hit model is built (SELD-R2b, POSX-s, FORM-a).
