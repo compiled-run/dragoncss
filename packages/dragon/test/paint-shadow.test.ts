@@ -95,7 +95,11 @@ describe('box-shadow: native refusals of what the companion view and the backdro
       [`.b { display: inline; box-shadow: ${SHADOW}; }`, 'span', 'until INL1b'],
       [`.b { position: relative; box-shadow: ${SHADOW}; }`, null, 'position: relative'],
       [`.b { position: absolute; box-shadow: ${SHADOW}; } .a { position: relative; }`, null, 'position: absolute'],
-      [`.b { transform: rotate(10deg); box-shadow: ${SHADOW}; }`, null, 'and a transform'],
+      [`.b { transform: rotate(10deg); box-shadow: ${SHADOW}; }`, null, 'and the transform function rotate(10deg)'],
+      [`.b { transform: scale(0.98) rotate(1deg); box-shadow: ${SHADOW}; }`, null, 'and the transform function rotate(1deg)'],
+      [`.b { rotate: 5deg; box-shadow: ${SHADOW}; }`, null, 'and the transform function'],
+      [`.b { transform: matrix(1, 0, 0, 1, 2, 3); box-shadow: ${SHADOW}; }`, null, 'and the transform function matrix'],
+      [`.b { transform: scale(-1, 1); box-shadow: ${SHADOW}; }`, null, 'a scale that flips or collapses'],
       [`.b { perspective: 100px; box-shadow: ${SHADOW}; }`, null, 'and a perspective'],
       [`.b { will-change: transform; box-shadow: ${SHADOW}; }`, null, 'and will-change: transform'],
       [`.b { will-change: opacity; box-shadow: ${SHADOW}; }`, null, 'and will-change: opacity'],
@@ -124,6 +128,48 @@ describe('box-shadow: native refusals of what the companion view and the backdro
       }
       expectCatalogued(refused);
     }
+  });
+
+  it('refuses an inset shadow on a scaled box, and a shadow on a scaled box that is also an opacity group, on ios and android', () => {
+    for (const [css, says] of [[`.b { transform: scale(0.98); box-shadow: inset ${SHADOW}, ${SHADOW}; }`, 'an inset box-shadow and a transform'], [`.b { transform: scale(0.98); opacity: 0.5; box-shadow: ${SHADOW}; }`, 'b has a box-shadow']] as const) {
+      const { c } = compileTree(css);
+      const refused = c.diagnostics.filter((d) => d.severity === 'error' && d.message.includes(says));
+      expect(refused.map((d) => d.target).sort(), css).toEqual(['android', 'ios']);
+    }
+  });
+
+  it('compiles an outer shadow on a box with a scale and translate on every target, the companion drawing it at the mapped geometry', () => {
+    for (const t of ['transform: scale(0.98)', 'transform: scale(0.9, 0.95) translate(4px, -2%)', 'translate: 6px 4px', 'scale: 0.9', 'transform: translateX(3px) scaleY(1.1); transform-origin: 0 0']) {
+      const { c } = compileTree(`.b { width: 40px; height: 20px; border-radius: 6px; background-color: white; ${t}; box-shadow: 0 1px 2px rgb(0 0 0 / 0.06), 0 4px 14px rgb(0 0 0 / 0.05); }`);
+      expect(c.diagnostics.filter((d) => d.severity === 'error'), t).toEqual([]);
+    }
+  });
+
+  it('compiles a shadow on a scaled box with paint after it in its stacking context: its shadow view sorts with the box, painted last', () => {
+    const SCALED = `.b { transform: scale(0.98); box-shadow: ${SHADOW}; }`;
+    const tree = (css: string, wrap: boolean) => {
+      const input = inputFor(`body { margin: 0; } ${css}`, (r) => [div(r, 'a', ['a'], [wrap ? div(r, 'w', ['w'], [div(r, 'b', ['b'])]) : div(r, 'b', ['b']), div(r, 'c', ['c'])])]);
+      return createProjectWith({ projectId: 'test', targets: ALL }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(input);
+    };
+    for (const wrap of [false, true]) expect(shadowRefusals(tree(SCALED, wrap)), String(wrap)).toEqual([]);
+  });
+
+  it('refuses a shadow on a scaled box painted over an earlier box its backdrop cannot hold: transformed, see-through, or clipping a filled box', () => {
+    const SCALED = `.b { transform: scale(0.98); box-shadow: ${SHADOW}; }`;
+    const tree = (css: string) => {
+      const input = inputFor(`body { margin: 0; } ${css}`, (r) => [div(r, 'a', ['a'], [div(r, 'p', ['p'], [div(r, 'k', ['k'])]), div(r, 'b', ['b'])])]);
+      return createProjectWith({ projectId: 'test', targets: ALL }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(input);
+    };
+    for (const [css, says] of [
+      ['.p { transform: translateX(20px); }', 'whose a transform'],
+      ['.p { opacity: 0.3; }', 'whose opacity 0.3'],
+      ['.p { overflow: hidden; height: 10px; } .k { height: 20px; background-color: rgb(0, 90, 200); }', 'whose overflow hidden'],
+    ] as const) {
+      const got = shadowRefusals(tree(`${SCALED} ${css}`));
+      expect(got.map((d) => d.target).sort(), css).toEqual(['android', 'ios']);
+      for (const d of got) expect(d.message, css).toContain(`so Chrome paints it after p, ${says}`);
+    }
+    expect(shadowRefusals(tree(`${SCALED} .p { overflow: hidden; height: 10px; } .k { height: 20px; }`))).toEqual([]);
   });
 
   it('refuses nothing for a static block shadow, none, a shadow beside a transformed sibling, or a group with no shadow below it', () => {
@@ -219,6 +265,6 @@ describe('box-shadow: lowering and emission', () => {
     if (w === undefined || w.kind !== 'box-shadow') throw new Error('no shadow write');
     expect(SHADOW_EMITTER.lines.uikit('v0', a as never, w)).toEqual(['  dragonSetShadows(t, v0, [ShadowInput(false, 1.0, 2.0, 3.0, 4.0, 1.0, 2.0, 3.0, 128.0), ShadowInput(true, 0.0, 0.0, 5.0, 0.0, 255.0, 0.0, 0.0, 255.0)])']);
     expect(SHADOW_EMITTER.lines['android-views']('v0', a as never, w)).toEqual(['  dragonSetShadows(t, v0, arrayOf(ShadowInput(false, 1.0, 2.0, 3.0, 4.0, 1.0, 2.0, 3.0, 128.0), ShadowInput(true, 0.0, 0.0, 5.0, 0.0, 255.0, 0.0, 0.0, 255.0)))']);
-    expect(SHADOW_EMITTER.applied({} as never, 'uikit', w, 2, { border: [0, 0, 0, 0], box: {} as never, size: [0, 0], fontSize: null, replaced: null, scroll: null })).toEqual([[0, 1, 2, 3, 4, 1, 2, 3, 128], [1, 0, 0, 5, 0, 255, 0, 0, 255]]);
+    expect(SHADOW_EMITTER.applied({} as never, 'uikit', w, 2, { border: [0, 0, 0, 0], box: {} as never, size: [0, 0], fontSize: null, replaced: null, scroll: null, selectArrow: null })).toEqual([[0, 1, 2, 3, 4, 1, 2, 3, 128], [1, 0, 0, 5, 0, 255, 0, 0, 255]]);
   });
 });

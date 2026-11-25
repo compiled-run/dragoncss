@@ -5,7 +5,8 @@ import type { TextContext } from './analysis/context.ts';
 import type { RootFont } from './analysis/resolve.ts';
 import { textContext } from './analysis/context.ts';
 import type { ResolvedElement } from './analysis/resolve.ts';
-import { environmentOf, markerStyleOf, selectOptionsOf } from './analysis/resolve.ts';
+import { environmentOf, markerStyleOf, selectOptionsOf, textFieldPartOf } from './analysis/resolve.ts';
+import { inputTypeState } from './analysis/elements/controls.ts';
 import type { SvgScene } from './analysis/elements/svg.ts';
 export type { SvgPaint, SvgScene, SvgShapeScene } from './analysis/elements/svg.ts';
 import { svgSceneOf } from './analysis/elements/svg.ts';
@@ -15,7 +16,8 @@ import { TEXT_LONGHANDS } from './css/properties.ts';
 import type { ElementColors, NativeBackend, NativeProgram } from './lower/native-program.ts';
 import { colorChannels, lowerNativeProgram, lowerNativePrograms, movingTransforms, ProgramError, usedColors } from './lower/native-program.ts';
 import { isSymbolMarker, rootFontSizeOf } from './lower/ios-layout.ts';
-import type { InteractionPartition } from './analysis/interaction.ts';
+import type { InteractionPartition, InteractionValue } from './analysis/interaction.ts';
+import { pointerFocusVisible } from './analysis/interaction.ts';
 import type { InternalCase } from './project.ts';
 import { caseByAssignment, internalRecord, originOfValue } from './project.ts';
 import { webrefVersion } from './css/grammar.generated.ts';
@@ -77,7 +79,7 @@ export type { FormattingContext, TextContext } from './analysis/context.ts';
 export { TEXT_LONGHANDS } from './css/properties.ts';
 export type { TextLonghand } from './css/properties.ts';
 export type { BorderStyleName, NativeBackend, NativeProgram, ProgramNode, ProgramWrite, Technique, WriteKind } from './lower/native-program.ts';
-export { BACKEND_TARGET, NATIVE_BACKENDS, NATIVE_CLASSES, PROGRAM_VERSIONS, VOCABULARY, WRITE_CSS } from './lower/native-program.ts';
+export { BACKEND_TARGET, NATIVE_BACKENDS, NATIVE_CLASSES, PROGRAM_VERSIONS, renameWriteNodes, VOCABULARY, WRITE_CSS } from './lower/native-program.ts';
 export type { ExpectedDump, ExpectedEngine, ExpectedNode, NodeGeometry } from './emit/expected-dump.ts';
 export { appliedKeyMap, appliedValue, borderDevicePx, cssCoverage, EXPECTED_SCHEMA, expectedDigest, expectedDump, programInput, replacedGeometries, textInstanceSize } from './emit/expected-dump.ts';
 export { clipPathInsets, clipPathRect, clipShapeGeometry, clipShapeKind, clipShapeValues } from './emit/paint/clip.ts';
@@ -209,6 +211,12 @@ export function resolvedColors(compiled: object, assignment: Assignment, state: 
     const color = usedColors(markerStyleOf(item)).color;
     out.set(`${m.address}::marker`, { color, 'background-color': TRANSPARENT, 'border-top-color': color, 'border-right-color': color, 'border-bottom-color': color, 'border-left-color': color });
   }
+  // FORM-b: a search field's cancel button box inherits the field's color, with its initial background and currentcolor borders.
+  for (const [address, el] of items) {
+    if (textFieldPartOf(el)?.part !== null || inputTypeState(el.element.attributes.get('type')) !== 'search') continue;
+    const color = usedColors(el).color;
+    out.set(`${address}::cancel`, { color, 'background-color': TRANSPARENT, 'border-top-color': color, 'border-right-color': color, 'border-bottom-color': color, 'border-left-color': color });
+  }
   return out;
 }
 
@@ -225,6 +233,23 @@ export function resolvedTextTransforms(compiled: object, assignment: Assignment,
   };
   walk(c.resolved);
   return out;
+}
+
+/** resolvedTextTransforms of each interaction state of the case in the band, in its partition's state order. */
+export function resolvedInteractionTextTransforms(compiled: object, assignment: Assignment, band: number): readonly ReadonlyMap<string, TextTransform>[] | null {
+  const record = internalRecord(compiled);
+  if (record === undefined) return null;
+  const c = record.bands === null ? (band === 0 ? caseByAssignment(record, assignment) : undefined) : record.bands.cases[band]?.find((x) => x.key === keyOfAssignment(assignment));
+  if (c === undefined) return null;
+  return c.interaction.map((i) => {
+    const out = new Map<string, TextTransform>();
+    const walk = (el: ResolvedElement): void => {
+      out.set(el.element.address, textTransformOf(el.props));
+      for (const ch of el.children) if (ch.kind === 'element') walk(ch);
+    };
+    walk(i.resolved);
+    return out;
+  });
 }
 
 /** SVG-a1: the scene of every rendered <svg> of a case, in document order (analysis/elements/svg.ts). */
@@ -412,12 +437,16 @@ export function engineLayoutProjection(compiled: object, environment: Environmen
 }
 
 // SELD-R1b (notes/T047-runtime-spec.md RT-9): the hit table and each element's hit facts.
+import { elementTransformWrite } from './lower/paint/transform.ts';
+import { hitFactContext, hitFactOtherContext } from './lower/paint/stacking.ts';
 export type { HitFact } from './emit/runtime/hit.ts';
 export { HIT_FACTS_VERSION } from './emit/runtime/hit.ts';
 
 /** The tags whose elements carry an activation handler (RT-9 tap dispatch): button, and a with an href (HTML §4.6.1). */
 export const ACTIVATION_TAGS: readonly string[] = ['a', 'button'];
 const activates = (tag: string, attributes: ReadonlyMap<string, string>): boolean => tag === 'button' || (tag === 'a' && attributes.has('href'));
+
+const NO_ORIGIN: import('@dragon/layout').TransformOrigin = { x: { kind: 'px', px: 0, percent: 0 }, y: { kind: 'px', px: 0, percent: 0 } };
 
 /** Every element's hit facts in one case: computed pointer-events, whether it was inherited, and whether it has a handler. */
 export function hitFacts(compiled: object, assignment: Assignment, state: string | null = null): ReadonlyMap<string, import('./emit/runtime/hit.ts').HitFact> | null {
@@ -427,7 +456,10 @@ export function hitFacts(compiled: object, assignment: Assignment, state: string
   const walk = (el: ResolvedElement): void => {
     const v = el.props.get('pointer-events');
     if (v === undefined || v.value.kind !== 'keyword' || (v.value.value !== 'auto' && v.value.value !== 'none')) throw new Error(`${el.element.address}: pointer-events did not resolve to auto or none`);
-    out.set(el.element.address, { pointerEvents: v.value.value, inherited: v.origin === 'inherited', activation: activates(el.element.tag, el.element.attributes) });
+    const lengths = radiusLengths(el.props, el.element.address);
+    const transform = elementTransformWrite(el);
+    const context = hitFactContext(el);
+    out.set(el.element.address, { pointerEvents: v.value.value, inherited: v.origin === 'inherited', activation: activates(el.element.tag, el.element.attributes), radii: roundsAnyCorner(lengths) ? lengths : [], context, otherContext: context ? hitFactOtherContext(el) : '', transform: transform === null ? [] : transform.ops, origin: transform === null ? NO_ORIGIN : transform.origin });
     for (const ch of el.children) if (ch.kind === 'element') walk(ch);
   };
   walk(c.resolved);
@@ -438,6 +470,7 @@ export function hitFacts(compiled: object, assignment: Assignment, state: string
 export type { ListItemMarker, MarkerType } from './analysis/markers.ts';
 import { listItemMarkers } from './analysis/markers.ts';
 import { markerTextId } from './lower/paint/list-marker.ts';
+import { radiusLengths, roundsAnyCorner } from './lower/paint/radius.ts';
 import type { GenCFaults } from './faults/gen-c.ts';
 
 /** The list items of one case in tree order, with their ordinals and marker text; null without a resolved case. */
@@ -623,9 +656,6 @@ export type { InteractionEmit, InteractionScript, InteractionScriptStep } from '
 export { emitInteractionPrograms, INTERACTION_FAULT_FIELDS, INTERACTION_RUNTIME_VERSION, INTERACTION_TABLE_FIELDS, InteractionEmitError, interactionFaultsLit, interactionTablesLit, TRACE_LINE, traceLineOf } from './emit/runtime/interaction.ts';
 import type { InteractionLevelInput as LevelInput } from './lower/interaction-program.ts';
 
-/** HTML text fields (input types whose element may show a virtual keyboard, R8, P6): pointer focus on them is focus-visible. */
-const TEXT_FIELD_TYPES: ReadonlySet<string> = new Set(['text', 'search', 'url', 'tel', 'email', 'password', 'number']);
-
 /**
  * The interaction level input of one app assignment for one backend: its partition, each partition state's per-case program, and
  * per element whether its control consumes a touch (input type=range, P7) and whether pointer focus on it is focus-visible (R8).
@@ -633,16 +663,41 @@ const TEXT_FIELD_TYPES: ReadonlySet<string> = new Set(['text', 'search', 'url', 
 export function interactionLevelInput(compiled: object, assignment: Assignment, backend: NativeBackend): LevelInput | string {
   const c = caseOf(compiled, assignment);
   if (typeof c === 'string') return c;
-  if (c.partition === null || c.resolved === null) return 'the case did not resolve';
+  return levelInputOf(c.partition, c.resolved, c.interaction, (key) => nativePrograms(compiled, assignment, key), backend);
+}
+
+/** interactionLevelInput in one @media band: the band's own partition and each state's lowering in that band. */
+export function interactionLevelInputIn(compiled: object, assignment: Assignment, band: number, backend: NativeBackend): LevelInput | string {
+  const record = internalRecord(compiled);
+  if (record === undefined) return 'not a compiled result from this package';
+  if (record.bands === null) return band === 0 ? interactionLevelInput(compiled, assignment, backend) : `the compile has no @media bands, so no band ${band}`;
+  const key = keyOfAssignment(assignment);
+  const c = record.bands.cases[band]?.find((x) => x.key === key);
+  if (c === undefined) return `no reachable case for the assignment ${JSON.stringify(assignment)} in band ${band}`;
+  const lower = (state: string): NativePrograms => {
+    const i = c.interaction.find((x) => x.value.key === state);
+    if (i === undefined || i.nativeLowered === null) return { kind: 'blocked', reason: `interaction state ${state} has no native lowering in band ${band}` };
+    try {
+      return { kind: 'ready', programs: lowerNativePrograms(i.nativeLowered, i.resolved, record.images, movingOf(record), record.textPlants) };
+    } catch (e) {
+      if (e instanceof ProgramError) return { kind: 'blocked', reason: e.message };
+      throw e;
+    }
+  };
+  return levelInputOf(c.partition, c.resolved, c.interaction, lower, backend);
+}
+
+function levelInputOf(partition: InteractionPartition | null, resolved: ResolvedElement | null, interaction: readonly { readonly value: InteractionValue }[], lower: (state: string) => NativePrograms, backend: NativeBackend): LevelInput | string {
+  if (partition === null || resolved === null) return 'the case did not resolve';
   const elements = new Map<string, ResolvedElement>();
   const walk = (el: ResolvedElement): void => {
     elements.set(el.element.address, el);
     for (const ch of el.children) if (ch.kind === 'element') walk(ch);
   };
-  walk(c.resolved);
+  walk(resolved);
   const programs: NativeProgram[] = [];
-  for (const i of c.interaction) {
-    const p = nativePrograms(compiled, assignment, i.value.key);
+  for (const i of interaction) {
+    const p = lower(i.value.key);
     if (p.kind === 'blocked') return `interaction state ${i.value.key}: ${p.reason}`;
     programs.push(p.programs[backend]);
   }
@@ -653,12 +708,13 @@ export function interactionLevelInput(compiled: object, assignment: Assignment, 
     return el.tag === 'input' ? (el.attributes.get('type')?.trim().toLowerCase() || 'text') : null;
   };
   return {
-    partition: c.partition,
+    partition,
     programs,
     touchConsumesTap: (address) => typeOf(address) === 'range',
     keyboardInput: (address) => {
-      const type = typeOf(address);
-      return type === 'textarea' || (type !== null && TEXT_FIELD_TYPES.has(type));
+      const el = elements.get(address)?.element;
+      return el !== undefined && pointerFocusVisible(el);
     },
   };
 }
+export { LISTED_OPTIONS_ATTRIBUTE } from './forms/select.ts';

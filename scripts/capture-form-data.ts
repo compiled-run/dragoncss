@@ -4,15 +4,21 @@
 // - the button matrix: button, text and child element rects;
 // - the button contexts: a block button in block flow and as a short column flex item;
 // - the devolve probe at DPR 2: control pixels against a CSS twin box with the control's computed background and border;
-// - the UA shadow styles of the range's container, track and thumb (CSS.getMatchedStylesForNode, user-agent origin).
-// Writes packages/dragon/test/forms/chrome-145/*.json and packages/dragon/src/forms/{appearance,ua-shadow}.generated.ts.
+// - the UA shadow styles of the range's container, track and thumb (CSS.getMatchedStylesForNode, user-agent origin);
+// - FORM-b: a menulist-button select's inner element margins and paddings through CDP pierce at DPR 1, 2, 2.625 and 3 and zoom 1
+//   and 2, and its arrow's pixels at DPR 2. The platform's arrow width (MenuListArrowWidthInDIP) is the end margin at DPR 1 less 1.
+// - FORM-b: the scrollbar thickness in DIP a textarea's default inline size adds at scrollbar-width auto and thin, at DPR 1.
+// Writes packages/dragon/test/forms/chrome-145/*.json, packages/dragon/src/forms/{appearance,ua-shadow}.generated.ts and
+// packages/dragon/src/forms/chrome-145.<platform>.forms.generated.ts (the per-platform UA data datasets.ts reads).
 // --check requires a byte-identical recapture and every comparison to pass; --plant <name> compares with that fault planted.
-// Run with: node --conditions=dragon-internal scripts/capture-form-data.ts [--check] [--plant thumb-unmirrored|step-tie-down|devolve-ignored]
+// Run with: node --conditions=dragon-internal scripts/capture-form-data.ts [--check] [--plant thumb-unmirrored|step-tie-down|devolve-ignored|arrow-unmirrored]
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { inflateSync } from 'node:zlib';
 import { CHROME_VERSION, launchChrome, openPage } from '../packages/parity/src/chrome.ts';
 import { repoPath } from '../packages/parity/src/paths.ts';
-import { authorStyleOf, compareForms, FORM_PLANTS, NO_FORM_FAULTS } from '../packages/dragon/src/forms/index.ts';
+import { hostPlatform } from '../packages/parity/src/platform.ts';
+import { menuListArrow, menuListArrowBox, menuListInnerInsets } from '../packages/layout/src/index.ts';
+import { authorStyleOf, compareForms, FORM_PLANTS, menuListArrowWidthOf, NO_FORM_FAULTS } from '../packages/dragon/src/forms/index.ts';
 import type {
   Box,
   ButtonCapture,
@@ -25,6 +31,9 @@ import type {
   DevolveSet,
   Direction,
   FormFaults,
+  MenuListCapture,
+  MenuListCase,
+  MenuListPixels,
   RangeAttributes,
   RangeGeometryCapture,
   RangeGeometryCase,
@@ -38,6 +47,7 @@ type Page = Awaited<ReturnType<typeof openPage>>;
 type CDPSession = Awaited<ReturnType<ReturnType<Page['context']>['newCDPSession']>>;
 
 const OUT_DIR = 'packages/dragon/test/forms/chrome-145';
+const FORMS_UA_PATH = `packages/dragon/src/forms/chrome-145.${hostPlatform()}.forms.generated.ts`;
 const APPEARANCE_PATH = 'packages/dragon/src/forms/appearance.generated.ts';
 const UA_SHADOW_PATH = 'packages/dragon/src/forms/ua-shadow.generated.ts';
 
@@ -508,18 +518,20 @@ function decodePng(png: Uint8Array): { width: number; height: number; rgb: Uint3
   return { width, height, rgb };
 }
 
-type DevolveControl = 'button' | 'range' | 'textfield';
+type DevolveControl = 'button' | 'range' | 'textfield' | 'textarea';
 const DEVOLVE_SETS: readonly { set: DevolveSet; css: string; thumbCss: string; controls: readonly DevolveControl[] }[] = [
-  { set: 'none', css: '', thumbCss: '', controls: ['button', 'range', 'textfield'] },
-  { set: 'background-color', css: 'background-color:rgb(0,128,0)', thumbCss: '', controls: ['button', 'range', 'textfield'] },
-  { set: 'border', css: 'border:4px solid rgb(0,0,255)', thumbCss: '', controls: ['button', 'range', 'textfield'] },
-  { set: 'appearance-none', css: 'appearance:none', thumbCss: 'appearance:none', controls: ['button', 'range', 'textfield'] },
+  { set: 'none', css: '', thumbCss: '', controls: ['button', 'range', 'textfield', 'textarea'] },
+  { set: 'background-color', css: 'background-color:rgb(0,128,0)', thumbCss: '', controls: ['button', 'range', 'textfield', 'textarea'] },
+  { set: 'border', css: 'border:4px solid rgb(0,0,255)', thumbCss: '', controls: ['button', 'range', 'textfield', 'textarea'] },
+  { set: 'appearance-none', css: 'appearance:none', thumbCss: 'appearance:none', controls: ['button', 'range', 'textfield', 'textarea'] },
   { set: 'input-none-thumb-auto', css: 'appearance:none', thumbCss: '', controls: ['range'] },
 ];
 const DEVOLVE_BASE = {
   button: 'width:80px;height:40px;padding:0;margin:0;font:inherit',
   range: 'width:120px;height:20px;margin:0',
   textfield: 'width:80px;height:20px;padding:0;margin:0;font:inherit',
+  // No resizer: Chrome draws its grip in the corner whatever the appearance, which the probe would read as theme paint.
+  textarea: 'width:80px;height:20px;padding:0;margin:0;font:inherit;resize:none',
 } as const;
 const COPIED = [
   'background-color',
@@ -530,13 +542,15 @@ const COPIED = [
 
 async function captureDevolve(chrome: string): Promise<DevolveCapture> {
   const dpr = 2;
-  const specs = (['button', 'range', 'textfield'] as const).flatMap((control) =>
+  const specs = (['button', 'range', 'textfield', 'textarea'] as const).flatMap((control) =>
     DEVOLVE_SETS.filter((s) => s.controls.includes(control)).map((s) => ({ control, set: s.set, css: s.css, thumbCss: control === 'range' ? s.thumbCss : '' })),
   );
   const rowTop = (k: number): number => 20 + k * 60;
   const tag = (control: DevolveControl, css: string, k: number): string =>
     control === 'button'
       ? `<button id="d${k}" style="position:absolute;left:20px;top:${rowTop(k)}px;${DEVOLVE_BASE.button};${css}"></button>`
+      : control === 'textarea'
+      ? `<textarea id="d${k}" style="position:absolute;left:20px;top:${rowTop(k)}px;${DEVOLVE_BASE.textarea};${css}"></textarea>`
       : `<input type="${control === 'range' ? 'range' : 'text'}" id="d${k}" style="position:absolute;left:20px;top:${rowTop(k)}px;${DEVOLVE_BASE[control]};${css}">`;
   const body = specs.map((s, k) => `${tag(s.control, s.css, k)}<div id="t${k}" style="position:absolute;left:240px;top:${rowTop(k)}px;box-sizing:border-box"></div>`).join('\n');
   const thumbRules = specs.map((s, k) => (s.thumbCss === '' ? '' : `#d${k}::-webkit-slider-thumb{${s.thumbCss}}`)).join('');
@@ -599,6 +613,126 @@ async function captureDevolve(chrome: string): Promise<DevolveCapture> {
   }
 }
 
+// ---------------------------------------------------------------- menulist-button select (FORM-b)
+
+const MENULIST_SPECS: readonly { id: string; css: string; zoom: number }[] = [
+  { id: 'm0', css: 'height:20px;border:1px solid rgb(0,0,0);background-color:rgb(255,255,255);color:rgb(255,0,0)', zoom: 1 },
+  { id: 'm1', css: 'height:21.5px;border:3px solid rgb(0,0,128);background-color:rgb(255,255,204);color:rgb(0,0,0)', zoom: 1 },
+  { id: 'm2', css: 'box-shadow:0 0 0 1px rgb(0,0,0);color:rgb(0,96,0)', zoom: 1 },
+  { id: 'm3', css: 'border:1px solid rgb(0,0,0);background-color:rgb(255,255,255);color:rgb(255,0,0);zoom:2', zoom: 2 },
+];
+const MENULIST_DPRS = [1, 2, 2.625, 3];
+const MENULIST_PIXEL_DPR = 2;
+
+const hex = (n: number): string => `#${n.toString(16).padStart(6, '0')}`;
+const rgbHex = (css: string): string => {
+  const m = /^rgb\((\d+), (\d+), (\d+)\)$/.exec(css);
+  if (m === null) throw new Error(`${css} is not an opaque rgb() colour`);
+  return hex((Number(m[1]) << 16) | (Number(m[2]) << 8) | Number(m[3]));
+};
+
+async function captureMenuList(chrome: string): Promise<MenuListCapture> {
+  const cases: MenuListCase[] = [];
+  const pixels: MenuListPixels[] = [];
+  for (const dpr of MENULIST_DPRS) {
+    const browser = await launchChrome(dpr);
+    try {
+      for (const direction of DIRECTIONS) {
+        const body = MENULIST_SPECS.map((s, k) => `<select id="${s.id}" style="position:absolute;left:20px;top:${20 + k * 60}px;width:120px;margin:0;padding:0;font:inherit;${s.css}"><option>AA</option></select>`).join('\n');
+        const html = `<!DOCTYPE html><html><head><style>html,body{margin:0;background:#fff;font-size:10px}</style></head><body>\n${body}\n</body></html>`;
+        const height = 20 + MENULIST_SPECS.length * 60;
+        const page = await openPage(browser, html, { viewport: { width: 200, height }, devicePixelRatio: dpr, direction, rootFont: 'ahem' });
+        const { cdp, ids } = await openCdp(page);
+        const shot = dpr === MENULIST_PIXEL_DPR ? decodePng(await page.screenshot({ clip: { x: 0, y: 0, width: 200, height }, scale: 'device', animations: 'disabled', caret: 'hide' })) : null;
+        for (const s of MENULIST_SPECS) {
+          const select = ids.get(s.id);
+          const inner = (select?.shadowRoots?.[0]?.children ?? []).filter((k) => (k.attributes ?? []).includes('-internal-select-inner-element'));
+          if (select === undefined || inner.length !== 1) throw new Error(`${s.id}: CDP exposed no one select inner element`);
+          const style = async (n: DomNode): Promise<Map<string, string>> => new Map(((await cdp.send('CSS.getComputedStyleForNode', { nodeId: n.nodeId })) as { computedStyle: { name: string; value: string }[] }).computedStyle.map((e) => [e.name, e.value]));
+          const cs = await style(inner[0] as DomNode);
+          const px = (p: string): number => {
+            const v = cs.get(p);
+            if (v === undefined || !v.endsWith('px')) throw new Error(`${s.id}: inner ${p} is ${String(v)}`);
+            return Number.parseFloat(v);
+          };
+          const sides = (p: string): [number, number, number, number] => [px(`${p}-top`), px(`${p}-right`), px(`${p}-bottom`), px(`${p}-left`)];
+          cases.push({ id: s.id, direction, dpr, zoom: s.zoom, css: s.css, margin: sides('margin'), padding: sides('padding') });
+          if (shot === null || s.zoom !== 1) continue;
+          const sel = await style(select);
+          const quad = (await boxOf(cdp, select, s.id)).border;
+          const ib = (await boxOf(cdp, inner[0] as DomNode, `${s.id} inner`)).border;
+          const dev = (v: number): number => (v * dpr) / 64;
+          const rect = [dev(quad[0]), dev(quad[1]), dev(quad[2]), dev(quad[3])] as const;
+          if (!rect.every(Number.isInteger)) throw new Error(`${s.id}: the select's border box ${rect.join(', ')} is not whole device px`);
+          const bw = (side: string): number => Math.floor(Number.parseFloat(sel.get(`border-${side}-width`) ?? 'NaN') * dpr);
+          const border = [bw('left'), bw('right')] as const;
+          // The inline-end 24 CSS px of the padding box hold the arrow box (16 px with its 1 px gap) and some of the inner element.
+          const span = 24 * dpr;
+          const region = [direction === 'ltr' ? rect[0] + rect[2] - border[1] - span : rect[0] + border[0], rect[1] + bw('top'), span, rect[3] - bw('top') - bw('bottom')] as const;
+          const rows: string[] = [];
+          for (let y = region[1]; y < region[1] + region[3]; y++) {
+            let row = '';
+            for (let x = region[0]; x < region[0] + region[2]; x++) row += hex(shot.rgb[y * shot.width + x] as number);
+            rows.push(row);
+          }
+          pixels.push({
+            id: s.id,
+            direction,
+            dpr,
+            css: s.css,
+            rect,
+            border,
+            color: rgbHex(sel.get('color') ?? ''),
+            background: rgbHex(sel.get('background-color') ?? ''),
+            inner: [Math.floor(dev(ib[0])), Math.floor(dev(ib[1])), Math.ceil(dev(ib[0] + ib[2])), Math.ceil(dev(ib[1] + ib[3]))],
+            region,
+            rows,
+          });
+        }
+        await cdp.detach();
+        await page.context().close();
+      }
+    } finally {
+      await browser.close();
+    }
+  }
+  return { chrome, cases, pixels };
+}
+
+/** A textarea's scrollbar thickness in DIP at scrollbar-width auto and thin. */
+type TextAreaScrollbar = { readonly auto: number; readonly thin: number };
+
+/**
+ * FORM-b: Chrome adds the platform's scrollbar thickness to a textarea's default inline size while overflow-y is not hidden or
+ * clip, even under overlay scrollbars, where no gutter is reserved. At DPR 1 and zoom 1, a 5-column 10px Ahem textarea with no
+ * padding or border is 50px wide at scrollbar-width: none, and each other value's width less 50 is its thickness.
+ */
+async function captureTextAreaScrollbar(browser: Browser): Promise<TextAreaScrollbar> {
+  const values = ['auto', 'thin', 'none'] as const;
+  const body = values.map((v) => `<textarea id="${v}" cols="5" rows="1" style="display:block;margin:0;padding:0;border:0;font:10px/10px Ahem;resize:none;scrollbar-width:${v}"></textarea>`).join('\n');
+  const page = await openPage(browser, `<!DOCTYPE html><html><head><style>body{margin:0}</style></head><body>\n${body}\n</body></html>`, { viewport: { width: 400, height: 300 }, devicePixelRatio: 1, direction: 'ltr', rootFont: 'ahem' });
+  const [auto, thin, none] = await page.evaluate((ids) => ids.map((id) => (document.getElementById(id) as HTMLElement).getBoundingClientRect().width), [...values]);
+  await page.context().close();
+  if (none !== 50) throw new Error(`a 5-column Ahem textarea at scrollbar-width: none is ${String(none)}px wide, not 50`);
+  const t = { auto: (auto as number) - 50, thin: (thin as number) - 50 };
+  if (![t.auto, t.thin].every((v) => Number.isInteger(v) && v > 0)) throw new Error(`textarea scrollbar thicknesses ${t.auto} and ${t.thin} are not whole positive DIP`);
+  return t;
+}
+
+function formsUaModule(c: MenuListCapture, textArea: TextAreaScrollbar): string {
+  return `${HEADER}
+
+/** The capture platform (process.platform-process.arch) this data was read on. */
+export const platform = ${JSON.stringify(hostPlatform())};
+
+/** MenuListArrowWidthInDIP: a menulist-button select's inner element inline-end margin less 1, at zoom 1 (menulist.json). */
+export const menuListArrowWidth = ${menuListArrowWidthOf(c)};
+
+/** The scrollbar thickness in DIP a textarea's default inline size adds at scrollbar-width auto and thin, at DPR 1 and zoom 1. */
+export const textAreaScrollbar = ${JSON.stringify(textArea)} as const;
+`;
+}
+
 // ---------------------------------------------------------------- output
 
 const HEADER = `// Generated by scripts/capture-form-data.ts from Chrome ${CHROME_VERSION}; do not edit. Regenerate with the script.`;
@@ -640,6 +774,7 @@ const browser = await launchChrome();
 let captures: Captures;
 let uaShadow: Awaited<ReturnType<typeof captureUaShadow>>;
 let buttonContexts: Awaited<ReturnType<typeof captureButtonContexts>>;
+let textAreaScrollbar: TextAreaScrollbar;
 try {
   const chrome = browser.version();
   if (chrome !== CHROME_VERSION) throw new Error(`Chrome must be ${CHROME_VERSION}, got ${chrome}`);
@@ -650,8 +785,10 @@ try {
   const button = await captureButtons(browser, chrome);
   buttonContexts = await captureButtonContexts(browser, chrome);
   uaShadow = await captureUaShadow(browser);
+  textAreaScrollbar = await captureTextAreaScrollbar(browser);
   const devolve = await captureDevolve(chrome);
-  captures = { rangeValue, rangeGeometry, button, devolve };
+  const menuList = await captureMenuList(chrome);
+  captures = { rangeValue, rangeGeometry, button, devolve, menuList };
 } finally {
   await browser.close();
 }
@@ -664,6 +801,8 @@ const outputs: [string, string][] = [
   [`${OUT_DIR}/devolve.json`, `${JSON.stringify(captures.devolve, null, 1)}\n`],
   [APPEARANCE_PATH, appearanceModule(captures.devolve)],
   [UA_SHADOW_PATH, uaShadowModule(uaShadow)],
+  [`${OUT_DIR}/menulist.json`, jsonRows({ chrome: captures.menuList.chrome, cases: captures.menuList.cases }, 'pixels', captures.menuList.pixels)],
+  [FORMS_UA_PATH, formsUaModule(captures.menuList, textAreaScrollbar)],
 ];
 
 let failed = false;
@@ -704,7 +843,7 @@ for (const c of captures.devolve.cases) {
   }
 }
 
-const cmp = compareForms(captures, faults);
+const cmp = compareForms(captures, { insets: menuListInnerInsets, box: menuListArrowBox, arrow: menuListArrow }, faults);
 for (const [name, n] of Object.entries(cmp.counts)) {
   const bad = cmp.mismatches.filter((m) => m.check === name).length;
   console.log(`${name}: ${n - bad}/${n} equal Chrome`);

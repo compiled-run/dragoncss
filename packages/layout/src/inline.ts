@@ -22,7 +22,7 @@ import { breakItemLines, justifiedViewWidth, subView } from './shaping.ts';
 import type { FitFaults } from './linefit.ts';
 import { fitsAvailable, isHangingSpace } from './linefit.ts';
 import { unsupported } from './unsupported.ts';
-import type { AtomicLayout } from './inline-box.ts';
+import type { AtomicLayout, AtomicNode } from './inline-box.ts';
 import { atomicContribution, isAtomicInline, layoutAtomic } from './inline-box.ts';
 import type { TruncSource } from './truncate.ts';
 import { truncateLine } from './truncate.ts';
@@ -62,7 +62,7 @@ export type Ifc = {
   readonly boxParent: readonly number[];
   readonly brs: readonly LineBreak[];
   /** The atomic inlines (inline-block, inline-flex and inline-grid boxes, and inline-level replaced leaves), in tree order. */
-  readonly atomics: readonly (LayoutBox | ReplacedLeaf)[];
+  readonly atomics: readonly AtomicNode[];
   readonly items: readonly Item[];
   readonly boundaries: readonly Boundary[];
   readonly strut: BoxMetrics;
@@ -327,7 +327,7 @@ function inlineContent(box: LayoutBox): InlineChild[] {
 function inlineChildren(box: LayoutBox): (InlineChild | LayoutNode)[] {
   const out: (InlineChild | LayoutNode)[] = [];
   for (const c of box.children) {
-    if (((c.kind === 'box' || c.kind === 'replaced') && !isAtomicInline(c)) || c.kind === 'control') throw new Error(`${box.id} mixes boxes and inline content; validateLayoutInput rejects this input`);
+    if ((c.kind === 'box' || c.kind === 'replaced' || c.kind === 'control') && !isAtomicInline(c)) throw new Error(`${box.id} mixes boxes and inline content; validateLayoutInput rejects this input`);
     out.push(c);
   }
   return out;
@@ -403,7 +403,7 @@ function checkInlineBox(ctx: Ctx, b: InlineBox): void {
 }
 
 /** Collects the formatting context's leaves, boxes (with their parents), <br>s and items in tree order. */
-type Flat = { readonly leaves: TextLeaf[]; readonly boxes: InlineBox[]; readonly boxParent: number[]; readonly brs: LineBreak[]; readonly atomics: (LayoutBox | ReplacedLeaf)[]; readonly items: Item[] };
+type Flat = { readonly leaves: TextLeaf[]; readonly boxes: InlineBox[]; readonly boxParent: number[]; readonly brs: LineBreak[]; readonly atomics: AtomicNode[]; readonly items: Item[] };
 
 // INL2a scope: an atomic inline's line is laid out without its block container's height (the native runtime places lines the same
 // way), so a percentage block size, which would resolve against a definite one (CSS2 §10.5), is refused; and so is a relatively
@@ -421,8 +421,8 @@ function checkAtomic(a: LayoutNode): void {
 /** The block container's children: atomic inlines become U+FFFC items, and inline content is flattened (flatten). */
 function flattenTop(ctx: Ctx, kids: readonly (InlineChild | LayoutNode)[], out: Flat): void {
   for (const k of kids) {
-    if (k.kind === 'control') throw new Error(`${k.id}: a control among inline content; validateLayoutInput rejects it`);
-    if (k.kind === 'box' || k.kind === 'replaced') {
+    if (k.kind === 'control' && !isAtomicInline(k)) throw new Error(`${k.id}: a block-level control among inline content; validateLayoutInput rejects it`);
+    if (k.kind === 'box' || k.kind === 'replaced' || k.kind === 'control') {
       checkAtomic(k);
       const atom = out.atomics.length;
       out.atomics.push(k);
@@ -541,8 +541,11 @@ export function buildIfc(ctx: Ctx, box: LayoutBox): Ifc {
     if (first !== undefined && (t.overflowWrap !== first.overflowWrap || t.wordBreak !== first.wordBreak)) {
       unsupported('mixed-text-wrap-mode', t.id, 'css-text-3 §5.2, §5.5', `text runs with different overflow-wrap or word-break in one formatting context of ${box.id}`);
     }
-    // TXT2-a with TXT2-c: how Blink breaks preserved spaces at grapheme boundaries has no Chrome comparison yet.
-    if ((t.overflowWrap !== 'normal' || t.wordBreak !== 'normal') && t.whiteSpaceCollapse !== 'collapse') {
+    // TXT2-a with TXT2-c: how Blink breaks preserved spaces at grapheme boundaries has no Chrome comparison yet, but for
+    // overflow-wrap: break-word over white-space-collapse: preserve, a textarea's (FORM-b, the controls-textarea fixture: long
+    // words, runs of preserved spaces at and across a break, leading and trailing spaces).
+    const preservedBreakWord = t.overflowWrap === 'break-word' && t.wordBreak === 'normal' && t.whiteSpaceCollapse === 'preserve';
+    if ((t.overflowWrap !== 'normal' || t.wordBreak !== 'normal') && t.whiteSpaceCollapse !== 'collapse' && !preservedBreakWord) {
       unsupported('word-break', t.id, 'css-text-3 §5.5', `overflow-wrap: ${t.overflowWrap} and word-break: ${t.wordBreak} on ${t.id}, whose white-space-collapse is ${t.whiteSpaceCollapse}`);
     }
   }
@@ -706,13 +709,12 @@ function latinScopeRefusal(text: string): string {
     const cp = ch.codePointAt(0) as number;
     const sc = scriptCode(cp);
     if (sc === USCRIPT_LATIN) continue;
-    const at = `U+${cp.toString(16).toUpperCase()}`;
-    if (sc !== USCRIPT_COMMON && sc !== USCRIPT_INHERITED) return `${at} is outside Latin, Common and Inherited`;
+    if (sc !== USCRIPT_COMMON && sc !== USCRIPT_INHERITED) return `U+${cp.toString(16).toUpperCase()} is outside Latin, Common and Inherited`;
     const ext = scriptExtensions(cp);
     let latin = false;
     for (const e of ext) if (e === USCRIPT_LATIN) latin = true;
     const plain = ext.length === 1 && ((ext[0] as number) === USCRIPT_COMMON || (ext[0] as number) === USCRIPT_INHERITED);
-    if (!latin && !plain) return `${at} is Common or Inherited, but its Script_Extensions exclude Latin, so Blink shapes it in a run of its own`;
+    if (!latin && !plain) return `U+${cp.toString(16).toUpperCase()} is Common or Inherited, but its Script_Extensions exclude Latin, so Blink shapes it in a run of its own`;
   }
   return '';
 }
@@ -2065,6 +2067,25 @@ export function placeIfcLines(ctx: Ctx, box: LayoutBox, ifc: Ifc, available: LU)
   return placeAtomicLines(ctx, box, ifc, layoutAtomics(ctx, ifc, available), available).map((l) => l.line);
 }
 
+/** A line box with its atomic inlines (by index into the formatting context's atomics), their border boxes and inline margins. */
+export type HitLine = { readonly line: PlacedLine; readonly atomics: readonly number[]; readonly atomicRects: readonly Rect[]; readonly marginLefts: readonly LU[]; readonly marginRights: readonly LU[] };
+
+/** placeLines with each line's atomic inlines, as layoutInline places them (a multi-column container refuses atomic inlines). */
+export function placeHitLines(ctx: Ctx, box: LayoutBox, available: LU): HitLine[] {
+  const ifc = buildIfc(ctx, box);
+  const atoms = layoutAtomics(ctx, ifc, available);
+  const lines = box.style.multicol === null ? placeAtomicLines(ctx, box, ifc, atoms, available) : multicolLines(ctx, box, ifc, available).lines;
+  return lines.map((l): HitLine => {
+    const lefts: LU[] = [];
+    const rights: LU[] = [];
+    for (const a of l.atomics) {
+      lefts.push((atoms[a] as AtomicLayout).marginLeft);
+      rights.push((atoms[a] as AtomicLayout).marginRight);
+    }
+    return { line: l.line, atomics: l.atomics, atomicRects: l.atomicRects, marginLefts: lefts, marginRights: rights };
+  });
+}
+
 /** The lines of a multi-column container in their columns (multicol.ts), and the block size of its columns. */
 type ColumnLines = { readonly lines: readonly AtomicLine[]; readonly height: LU };
 
@@ -2513,8 +2534,8 @@ function boundingOf(rects: readonly Rect[]): Rect {
 
 /** A fragment for id holding its per-line rects as <id>:line<j> children, placed at its bounding rect. */
 function fragmentOf(id: string, rects: readonly Rect[], origin: Point, bounding: Rect): Placed {
-  const children: Placed[] = rects.map((p, j): Placed => ({ frag: { id: `${id}:line${j}`, width: p.width, height: p.height, baseline: null, children: [], outOfFlow: [], inflow: null }, x: sub(p.x, bounding.x), y: sub(p.y, bounding.y) }));
-  const frag: Frag = { id, width: bounding.width, height: bounding.height, baseline: null, children, outOfFlow: [], inflow: null };
+  const children: Placed[] = rects.map((p, j): Placed => ({ frag: { id: `${id}:line${j}`, width: p.width, height: p.height, baseline: null, children: [], outOfFlow: [], inflow: null, lines: null }, x: sub(p.x, bounding.x), y: sub(p.y, bounding.y) }));
+  const frag: Frag = { id, width: bounding.width, height: bounding.height, baseline: null, children, outOfFlow: [], inflow: null, lines: null };
   return { frag, x: add(origin.x, bounding.x), y: add(origin.y, bounding.y) };
 }
 
@@ -2599,7 +2620,7 @@ function collectFragments(ctx: Ctx, ifc: Ifc, atoms: readonly AtomicLayout[], at
       for (let j = 0; j < line.breaks.length; j++) {
         if ((line.breaks[j] as number) !== ri) continue;
         const r = line.breakRects[j] as Rect;
-        out.placed.set(br.id, { frag: { id: br.id, width: r.width, height: r.height, baseline: null, children: [], outOfFlow: [], inflow: null }, x: add(origin.x, r.x), y: add(origin.y, r.y) });
+        out.placed.set(br.id, { frag: { id: br.id, width: r.width, height: r.height, baseline: null, children: [], outOfFlow: [], inflow: null, lines: null }, x: add(origin.x, r.x), y: add(origin.y, r.y) });
       }
     }
     if (!out.placed.has(br.id)) throw new Error(`${br.id} is on no line`);
@@ -2628,8 +2649,8 @@ function placeFragments(kids: readonly InlineChild[], fragments: Fragments, out:
 /** placeFragments over a block container's children, atomic inlines included. */
 function placeTopFragments(kids: readonly (InlineChild | LayoutNode)[], fragments: Fragments, out: Placed[]): void {
   for (const k of kids) {
-    if (k.kind === 'control') throw new Error(`${k.id}: a control among inline content; validateLayoutInput rejects it`);
-    if (k.kind === 'box' || k.kind === 'replaced') {
+    if (k.kind === 'control' && !isAtomicInline(k)) throw new Error(`${k.id}: a block-level control among inline content; validateLayoutInput rejects it`);
+    if (k.kind === 'box' || k.kind === 'replaced' || k.kind === 'control') {
       const p = fragments.placed.get(k.id);
       if (p !== undefined) out.push(p);
     } else placeFragments([k], fragments, out);

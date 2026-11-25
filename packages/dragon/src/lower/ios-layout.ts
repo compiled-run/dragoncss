@@ -43,6 +43,7 @@ import type {
   TextAlign,
   TextIndentValue,
   TextBoxTrim,
+  TextFieldAvgChar,
   TextOverflow,
   TextWrapStyle,
   TextLeaf,
@@ -56,10 +57,11 @@ import type {
 import type { Longhand, TextLonghand } from '../css/properties.ts';
 import { INHERITED, LONGHANDS } from '../css/properties.ts';
 import type { CssValue } from '../css/stylesheet.ts';
-import { exactLayoutRatio, MATH_VALUE_FUNCTIONS } from '../css/values.ts';
+import { exactLayoutRatio, familyListText, MATH_VALUE_FUNCTIONS } from '../css/values.ts';
+import { parseFamilyList } from '../fonts/family-list.ts';
 import { FONT_METRIC_LAYOUT_UNITS } from '../css/units.ts';
 import type { ResolvedElement, ResolvedText, ResolvedValue } from '../analysis/resolve.ts';
-import { initialValue, isInitialByProvenance, valueToString } from '../analysis/resolve.ts';
+import { environmentOf, initialValue, isInitialByProvenance, valueToString } from '../analysis/resolve.ts';
 import { lineClampOf } from '../analysis/line-clamp.ts';
 import type { ListItemMarker } from '../analysis/markers.ts';
 import { listItemMarkers } from '../analysis/markers.ts';
@@ -68,10 +70,12 @@ import type { CompilerFaults } from '../faults.ts';
 import type { MathFonts } from '../css/math.ts';
 import { fontUnitsIn, lowerLengthCalc, lowerMathNode, mathContextFor, mathHasViewport, parseMath } from '../css/math.ts';
 import type { UaDataset } from '../ua/datasets.ts';
-import { isControlTag } from '../analysis/elements/controls.ts';
-import { rangePartOf, selectPartOf, textFieldPartOf } from '../analysis/resolve.ts';
+import { inputTypeState, isCheckboxType, isControlTag, selectAppearance } from '../analysis/elements/controls.ts';
+import { rangePartOf, selectOptionLabelsOf, selectPartOf, textFieldPartOf } from '../analysis/resolve.ts';
+import { SEARCH_CANCEL_BUTTON } from '../forms/text-field.ts';
 import { rangeRatio } from '../forms/range-value.ts';
 import { RANGE_NONE_THUMB } from '../forms/ua-shadow.generated.ts';
+import { CHECKBOX_PART_SIZE } from '../forms/checkbox.ts';
 import { DEFAULT_OBJECT_SIZE, isReplacedTag } from '../analysis/elements/replaced.ts';
 import { appliedContainment } from '../analysis/containment.ts';
 import { INTRINSIC_AUTO_TYPE } from '../css/properties/containment.ts';
@@ -620,6 +624,13 @@ const AHEM_EXPECTED = 'Ahem (the milestone-1 layout font)';
 /** The face id of the bundled Ahem, as the engine names it (layout text.ts AHEM_FACE_ID); other faces are sha256:<hex>. */
 export const AHEM_FACE = 'Ahem';
 
+/** Whether a text field's average character width is Ahem's: its first listed family, case preserved, is Ahem (input.ts TextFieldAvgChar). */
+export function textFieldAvgChar(family: CssValue): TextFieldAvgChar {
+  const text = familyListText(family);
+  const first = text === null ? undefined : parseFamilyList(text)?.[0];
+  return first?.kind === 'family' && first.name === 'Ahem' ? 'ahem' : 'unmeasured';
+}
+
 /** The lowering's font refusal for a text node, or null: the analysis reports it for every case before any lowering (T005 rec 3). */
 export function textFontProblem(t: ResolvedText): string | null {
   const family = (t.props.get('font-family') as ResolvedValue).value;
@@ -760,7 +771,7 @@ const isInlineLevel = (c: ResolvedElement | ResolvedText): boolean => c.kind ===
  * propagated is the element whose overflow the viewport took (viewportOverflow), which uses visible. zoom is the zoom chain of the
  * element whose content is being lowered: the one its text and anonymous boxes take, and the parent chain of its children.
  */
-type Lowerer = { readonly anchors: Map<string, AnchorFacts>; readonly faults: CompilerFaults; readonly ua: UaDataset; readonly rootFontSize: number | null; readonly images: ImageNaturals; readonly mode: LowerMode; readonly propagated: string | null; readonly markers: ReadonlyMap<string, ListItemMarker>; readonly zoom: readonly number[] };
+type Lowerer = { readonly anchors: Map<string, AnchorFacts>; readonly faults: CompilerFaults; readonly ua: UaDataset; readonly rootFontSize: number | null; readonly images: ImageNaturals; readonly mode: LowerMode; readonly propagated: string | null; readonly markers: ReadonlyMap<string, ListItemMarker>; readonly zoom: readonly number[]; readonly hostEdits: boolean };
 
 /**
  * One piece of inline content (CSS2 §9.2.2): a text leaf, a <br> as a LineBreak, or an inline box with its own font and
@@ -798,16 +809,16 @@ function lowerInline(c: ResolvedElement | ResolvedText, l: Lowerer): InlineChild
 }
 
 /**
- * A block container's inline-level child: an atomic inline is a box (INL2a) or a replaced leaf (RF-INL) among its inline content,
- * the rest lowerInline.
+ * A block container's inline-level child: an atomic inline is a box (INL2a), a replaced leaf (RF-INL) or an inline-block text
+ * field among its inline content, the rest lowerInline.
  */
-function lowerInlineLevel(c: ResolvedElement | ResolvedText, l: Lowerer): LayoutBox | ReplacedLeaf | InlineChild {
+function lowerInlineLevel(c: ResolvedElement | ResolvedText, l: Lowerer): LayoutBox | ControlBox | ReplacedLeaf | InlineChild {
   if (!isAtomic(c)) return lowerInline(c, l);
   const el = c as ResolvedElement;
   if (isReplacedTag(el.element.tag)) return lowerReplaced(el, l, null);
   const box = lowerBox(el, l, null);
-  // An inline-level control waits for RF-INL (analysis/computed-checks.ts checkButton refuses it).
-  if (box.kind !== 'box') throw new LoweringError(box.id, 'display', `the inline-level control ${box.id} is not laid out (RF-INL)`);
+  // Of the inline-level controls only an inline-block text field is laid out (analysis/computed-checks.ts refuses the rest).
+  if (box.kind === 'control' && (box.control.kind !== 'text-field' || box.style.display !== 'inline-block')) throw new LoweringError(box.id, 'display', `the inline-level control ${box.id} is not laid out`);
   return box;
 }
 
@@ -840,7 +851,7 @@ export function lowerTree(root: ResolvedElement, faults: CompilerFaults, ua: UaD
   // The engine input's rootFontSize (V2) needs the root's font size in px, so a root whose font-size did not compute to px is refused here.
   const markers = new Map(listItemMarkers(root, faults).map((m) => [m.address, m] as const));
   const anchors = new Map<string, AnchorFacts>();
-  const box = lowerBox(root, { anchors, faults, ua, rootFontSize: rootFontSizeOf(root), images, mode, propagated: viewportOverflow(root, faults).source, markers, zoom: [] }, null);
+  const box = lowerBox(root, { anchors, faults, ua, rootFontSize: rootFontSizeOf(root), images, mode, propagated: viewportOverflow(root, faults).source, markers, zoom: [], hostEdits: environmentOf(root).hostTextEditing === true }, null);
   if (box.kind !== 'box') throw new LoweringError(root.element.address, 'display', `the root element ${root.element.address} lowered to a control box`);
   try {
     return lowerAnchors(box, anchors);
@@ -916,6 +927,30 @@ function lowerReplaced(given: ResolvedElement, l: Lowerer, gridParent: GridConta
     objectPositionX: axis(position.x),
     objectPositionY: axis(position.y),
   };
+}
+
+/** FORM-b: a select's arrow width in DIP when it draws Chrome's arrow (menulist-button), else 0; computed-checks.ts refuses a platform without one. */
+/**
+ * FORM-b: the scrollbar thickness in DIP Chrome adds to a textarea's default inline size (overflow-y not hidden or clip) and to its
+ * default height (overflow-x scroll), even with overlay scrollbars, where it reserves no gutter: the platform's thickness at
+ * scrollbar-width auto or thin, and none at none (Chrome 145 probes, the engine's controls.ts textAreaScrollbar).
+ */
+function textAreaScrollbarOf(el: ResolvedElement, ua: UaDataset): { readonly scrollbarInline: number; readonly scrollbarBlock: number } {
+  const width = keywordOf((el.props.get('scrollbar-width') as ResolvedValue).value);
+  const ox = keywordOf((el.props.get('overflow-x') as ResolvedValue).value);
+  const oy = keywordOf((el.props.get('overflow-y') as ResolvedValue).value);
+  const inline = width !== 'none' && oy !== 'hidden' && oy !== 'clip';
+  const block = width !== 'none' && ox === 'scroll';
+  if (!inline && !block) return { scrollbarInline: 0, scrollbarBlock: 0 };
+  if (ua.textAreaScrollbar === null) throw new LoweringError(el.element.address, 'scrollbar-width', `no textarea scrollbar thickness was captured on ${ua.platform}`);
+  const t = width === 'thin' ? ua.textAreaScrollbar.thin : ua.textAreaScrollbar.auto;
+  return { scrollbarInline: inline ? t : 0, scrollbarBlock: block ? t : 0 };
+}
+
+function menuListArrowWidthOf(el: ResolvedElement, ua: UaDataset): number {
+  if (selectAppearance(el.props) !== 'menulist-button') return 0;
+  if (ua.menuListArrowWidth === null) throw new LoweringError(el.element.address, 'appearance', `no menulist arrow width was captured on ${ua.platform}`);
+  return ua.menuListArrowWidth;
 }
 
 // CSS2 §10.2, §10.5, §10.7, §8.3, css-sizing-4 §5.1 and css-overflow-3 §3: a non-replaced inline box takes no width, height, min
@@ -1003,32 +1038,52 @@ function lowerBox(given: ResolvedElement, l: Lowerer, gridParent: GridContainer 
   flush();
   // A line strut only when the box holds inline content: a block-level replaced leaf is a box of its own, not a line (REPL-a with
   // INL1a); an atomic inline is on a line (INL2a, RF-INL).
-  const inlineContent = children.some((c) => (c.kind !== 'box' && c.kind !== 'control' && c.kind !== 'replaced') || (c.kind === 'box' && (c.style.display === 'inline-block' || c.style.display === 'inline-flex' || c.style.display === 'inline-grid')) || (c.kind === 'replaced' && c.style.display !== 'block' && c.style.display !== 'flex'));
+  const inlineContent = children.some((c) => (c.kind !== 'box' && c.kind !== 'control' && c.kind !== 'replaced') || ((c.kind === 'box' || c.kind === 'control') && (c.style.display === 'inline-block' || c.style.display === 'inline-flex' || c.style.display === 'inline-grid')) || (c.kind === 'replaced' && c.style.display !== 'block' && c.style.display !== 'flex'));
   const strut = strutOf(el, inlineContent, l.mode, zoom);
   // HTML §15.3.13: a block fieldset lays out its rendered legend, its first in-flow legend child, in its block-start border.
   if (el.element.tag === 'fieldset' && style.display === 'block') return { kind: 'control', id, boxType: 'element', style, control: { kind: 'fieldset' }, strut, children: withRenderedLegend(kids, children) };
   // FORM-a: a block button centres its contents (Blink AlignBlockContent); a flex button is the plain flex container it is.
   if (el.element.tag === 'button' && style.display === 'block') return { kind: 'control', id, boxType: 'element', style, control: { kind: 'button-block' }, strut, children };
+  if (el.element.tag === 'input' && isCheckboxType(el.element.attributes.get('type'))) {
+    // FORM-checkbox: Chrome's theme gives an auto width or height the part size, 13px (LayoutTheme, native_theme_base.cc kCheckboxSize).
+    const part = (v: LayoutStyle['width']): LayoutStyle['width'] => (v.kind === 'auto' ? { kind: 'px', value: CHECKBOX_PART_SIZE } : v);
+    return { kind: 'box', id, boxType: 'element', style: { ...style, width: part(style.width), height: part(style.height) }, strut, marker: null, children };
+  }
   const field = textFieldPartOf(el);
   if (field !== undefined && field.part === null) {
     // FORM-b: a text field's size attribute (HTML §4.10.5.3.2: a valid non-negative integer above zero, else 20) and its own font
     // and line height, which decide its default width and its editor's line height (the engine's controls.ts).
     const own = lowerFont(id, zoomedGet(id, (p: TextLonghand) => (el.props.get(p) as ResolvedValue).value, zoom), l.mode);
-    return { kind: 'control', id, boxType: 'element', style, control: { kind: 'text-field', size: textFieldSize(el.element.attributes.get('size')), font: own.font, lineHeight: own.lineHeight }, strut, children };
+    if (el.element.tag === 'textarea') {
+      // A textarea scrolls (overflow auto, or hidden) from offset 0 with its scrollbars hidden: at rest it clips as overflow: clip
+      // does. rows and cols are HTML §4.10.11's: a valid non-negative integer above zero, else 2 and 20.
+      const clip: LayoutStyle = { ...style, overflowX: 'clip', overflowY: 'clip' };
+      return { kind: 'control', id, boxType: 'element', style: clip, control: { kind: 'text-area', cols: positiveIntegerAttribute(el.element.attributes.get('cols'), 20), rows: positiveIntegerAttribute(el.element.attributes.get('rows'), 2), font: own.font, lineHeight: own.lineHeight, avgChar: textFieldAvgChar((el.props.get('font-family') as ResolvedValue).value), ...textAreaScrollbarOf(el, l.ua) }, strut, children };
+    }
+    const search = inputTypeState(el.element.attributes.get('type')) === 'search';
+    // A search field's cancel button is a box of its own (<id>::cancel), which the engine sizes and places beside the editor.
+    const parts = search ? [...children, anonymousBox(el, `${id}::cancel`, [], l)] : children;
+    return { kind: 'control', id, boxType: 'element', style, control: { kind: 'text-field', size: textFieldSize(el.element.attributes.get('size')), font: own.font, lineHeight: own.lineHeight, avgChar: textFieldAvgChar((el.props.get('font-family') as ResolvedValue).value), cancelButton: search ? SEARCH_CANCEL_BUTTON : null }, strut, children: parts };
   }
   if (field !== undefined) {
-    // The inner editor scrolls in Chrome (overflow: scroll, scrollbar-width: none) from offset 0 until the user edits; at rest it
-    // clips its text as overflow: clip does. The placeholder clips (overflow: hidden) as it computes.
-    const clipped: LayoutStyle = field.part === 'editor' ? { ...style, overflowX: 'clip', overflowY: 'clip' } : style;
-    // An empty editor still lays out one line of its own font (the engine's block.ts), so it always carries its strut.
-    const own = field.part === 'editor' ? (strut ?? strutOf(el, true, l.mode, zoom)) : strut;
+    // An input's inner editor scrolls in Chrome (overflow: scroll, scrollbar-width: none) from offset 0 until the user edits; at
+    // rest it clips its text as overflow: clip does. A textarea's editor and every placeholder keep their computed overflow.
+    const clipped: LayoutStyle = field.part === 'editor' && field.host.tag === 'input' ? { ...style, overflowX: 'clip', overflowY: 'clip' } : style;
+    // An input's empty editor still lays out one line of its own font (the engine's block.ts), so it carries its strut; so does an
+    // edited textarea's (Chrome 145: an editable empty editor is one line tall), but a readonly textarea's has no line (0 tall).
+    const editable = l.hostEdits && !field.host.attributes.has('readonly');
+    const lineless = field.part === 'editor' && field.host.tag === 'textarea' && children.every((c) => c.kind === 'text' && c.text === '') && !editable;
+    const own = lineless ? null : field.part === 'editor' ? (strut ?? strutOf(el, true, l.mode, zoom)) : strut;
     return { kind: 'control', id, boxType: 'element', style: clipped, control: { kind: field.part === 'editor' ? 'text-editor' : 'text-placeholder' }, strut: own, children };
   }
   const select = selectPartOf(el);
   if (select !== undefined && select.part === null) {
     // FORM-b: a single select is a flex row container whatever its display; its font and line height decide its inner element's.
     const own = lowerFont(id, zoomedGet(id, (p: TextLonghand) => (el.props.get(p) as ResolvedValue).value, zoom), l.mode);
-    return { kind: 'control', id, boxType: 'element', style: { ...style, display: 'flex' }, control: { kind: 'select-menulist', font: own.font, lineHeight: own.lineHeight }, strut, children };
+    // FORM-b S4: every option's label as a text leaf in the select's own face, which the engine measures for the natural width.
+    const labelMode: LowerMode = { kind: l.mode.kind, faceOf: () => l.mode.faceOf(id) };
+    const options = selectOptionLabelsOf(el).flatMap((o) => o.children.filter((k): k is ResolvedText => k.kind === 'text').map((t) => lowerText(t, labelMode, zoom)));
+    return { kind: 'control', id, boxType: 'element', style: { ...style, display: 'flex' }, control: { kind: 'select-menulist', font: own.font, lineHeight: own.lineHeight, arrowWidth: menuListArrowWidthOf(el, l.ua), options }, strut, children };
   }
   // An empty inner element still lays out one line of its own font, so it always carries its strut.
   if (select !== undefined) return { kind: 'control', id, boxType: 'element', style, control: { kind: 'select-inner' }, strut: strut ?? strutOf(el, true, l.mode, zoom), children };
@@ -1048,9 +1103,14 @@ function lowerBox(given: ResolvedElement, l: Lowerer, gridParent: GridContainer 
 
 /** HTML §2.3.4.2 rules for parsing non-negative integers, for an input's size: a result above zero, or 20. */
 export function textFieldSize(attr: string | undefined): number {
+  return positiveIntegerAttribute(attr, 20);
+}
+
+/** HTML §2.3.4.2 rules for parsing non-negative integers: a result above zero (and in the int range Chrome keeps), or fallback. */
+export function positiveIntegerAttribute(attr: string | undefined, fallback: number): number {
   const m = attr === undefined ? null : /^[\t\n\f\r ]*\+?([0-9]+)/.exec(attr);
   const n = m === null ? 0 : Number(m[1]);
-  return n > 0 && Number.isSafeInteger(n) ? n : 20;
+  return n > 0 && n <= 0x7fffffff ? n : fallback;
 }
 
 const SYMBOLS: readonly string[] = ['disc', 'circle', 'square'];

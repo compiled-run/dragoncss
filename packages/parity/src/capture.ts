@@ -4,7 +4,7 @@
 import type { Browser, CDPSession, Page } from 'playwright';
 import type { Environment } from 'dragon';
 import { LONGHANDS } from 'dragon';
-import { isWhitespaceText, lineId, pseudoId, textAddresser } from './node-ids.ts';
+import { generatedTextId, isWhitespaceText, lineId, pseudoId, textAddresser } from './node-ids.ts';
 import { CHROME_VERSION, injectHarness, launchArgsOf, openPage, videosReady } from './chrome.ts';
 import { assertOverlayScrollbars, isScrollCase } from './scroll-metrics.ts';
 import { type MemoStats, memoizedJson } from './chrome-memo.ts';
@@ -82,7 +82,8 @@ export const collectNodes = (props: string[]): CollectedElement[] => {
     }
     const texts: CollectedElement['texts'][number][] = [];
     for (const child of Array.from(el.childNodes)) {
-      if (child.nodeType !== Node.TEXT_NODE) continue;
+      // FORM-b: a textarea's text is its value, which its UA shadow editor lays out (captureTextFieldParts); it has no box.
+      if (child.nodeType !== Node.TEXT_NODE || el.tagName === 'TEXTAREA') continue;
       const range = document.createRange();
       range.selectNodeContents(child);
       texts.push({ data: (child as Text).data, box: rect(range.getBoundingClientRect()), rects: Array.from(range.getClientRects()).map(rect) });
@@ -240,8 +241,11 @@ async function captureRangeParts(page: Page, props: readonly string[]): Promise<
   return out;
 }
 
-/** The input types whose UA shadow tree is a placeholder and an inner editor alone (dragon's isTextFieldType, HTML §4.10.5). */
-const TEXT_FIELD_TYPES = ['text', 'tel', 'url', 'email', 'password'];
+/**
+ * The input types whose UA shadow tree is a placeholder and an inner editor (dragon's isTextFieldType, HTML §4.10.5); a search
+ * field's editor sits in its decoration container's editing view port, beside the cancel button.
+ */
+const TEXT_FIELD_TYPES = ['text', 'search', 'tel', 'url', 'email', 'password'];
 const INPUT_TYPES = ['hidden', 'text', 'search', 'tel', 'url', 'email', 'password', 'date', 'month', 'week', 'time', 'datetime-local', 'number', 'range', 'color', 'checkbox', 'radio', 'file', 'submit', 'image', 'reset', 'button'];
 const isTextFieldInput = (type: string | undefined): boolean => {
   const t = type === undefined || !INPUT_TYPES.includes(type.toLowerCase()) ? 'text' : type.toLowerCase();
@@ -249,7 +253,7 @@ const isTextFieldInput = (type: string | undefined): boolean => {
 };
 
 /**
- * FORM-b: the UA shadow parts of every single-line text field with a data-dragon-id, as element nodes "<id>::placeholder" (while
+ * FORM-b: the UA shadow parts of every single-line text field and textarea with a data-dragon-id, as element nodes "<id>::placeholder" (while
  * Chrome shows one) and "<id>::editor" after the input, each followed by its text node "<id>::<part>:text0" and the text's
  * fragments "<id>::<part>:text0:line<j>" when it holds text: boxes from DOM.getBoxModel and DOM.getContentQuads (a text node's
  * quads are its fragments, the rects Range.getClientRects gives light-DOM text), computed values from CSS.getComputedStyleForNode.
@@ -260,16 +264,16 @@ async function captureTextFieldParts(page: Page, props: readonly string[]): Prom
   await withTextFieldParts(page, async (cdp, fields) => {
     for (const { id, parts } of fields) {
       const nodes: CapturedNode[] = [];
-      for (const [part, n] of parts) nodes.push(...(await shadowPartNodes(cdp, `${id}::${part}`, n, props)));
+      for (const [part, n] of parts) nodes.push(...(await shadowPartNodes(cdp, pseudoId(id, part), n, props)));
       out.set(id, nodes);
     }
   });
   return out;
 }
 
-/** Runs f over each data-dragon-id text field's shadow parts (placeholder while shown, then editor); a page without one opens no session. */
+/** Runs f over each data-dragon-id text field's and textarea's shadow parts (placeholder while shown, then editor); a page without one opens no session. */
 async function withTextFieldParts(page: Page, f: (cdp: CDPSession, fields: readonly { id: string; parts: readonly (readonly [string, DomNode])[] }[]) => Promise<void>): Promise<void> {
-  const count = await page.evaluate((types: readonly string[]) => Array.from(document.querySelectorAll('input[data-dragon-id]')).filter((e) => (e as HTMLInputElement).type !== undefined && types.includes((e as HTMLInputElement).type)).length, TEXT_FIELD_TYPES);
+  const count = await page.evaluate((types: readonly string[]) => Array.from(document.querySelectorAll('input[data-dragon-id]')).filter((e) => (e as HTMLInputElement).type !== undefined && types.includes((e as HTMLInputElement).type)).length + document.querySelectorAll('textarea[data-dragon-id]').length, TEXT_FIELD_TYPES);
   if (count === 0) return;
   const cdp = await page.context().newCDPSession(page);
   try {
@@ -284,22 +288,38 @@ async function withTextFieldParts(page: Page, f: (cdp: CDPSession, fields: reado
         return undefined;
       };
       const id = at('data-dragon-id');
-      if (n.nodeName === 'INPUT' && id !== undefined && isTextFieldInput(at('type'))) inputs.push({ id, node: n });
+      if (((n.nodeName === 'INPUT' && isTextFieldInput(at('type'))) || n.nodeName === 'TEXTAREA') && id !== undefined) inputs.push({ id, node: n });
       for (const c of n.children ?? []) walk(c);
     };
     walk(doc.root);
     if (inputs.length !== count) throw new Error(`the pierced document holds ${inputs.length} text fields with a data-dragon-id, the page ${count}`);
-    const fields = inputs.map(({ id, node }) => {
+    const fields: { id: string; parts: readonly (readonly [string, DomNode])[] }[] = [];
+    for (const { id, node } of inputs) {
       const kids = (node.shadowRoots?.[0]?.children ?? []).filter((k) => k.nodeName === 'DIV');
       const placeholder = kids.find((k) => (k.attributes ?? []).includes('placeholder'));
-      const editor = kids.find((k) => k !== placeholder);
+      const container = kids.find((k) => (k.attributes ?? []).includes('text-field-container'));
+      const viewPort = container?.children?.find((k) => (k.attributes ?? []).includes('editing-view-port'));
+      if (container !== undefined && viewPort === undefined) throw new Error(`${id}: CDP exposed a decoration container without an editing view port`);
+      const editor = viewPort !== undefined ? viewPort.children?.find((k) => k.nodeName === 'DIV') : kids.find((k) => k !== placeholder);
       if (editor === undefined) throw new Error(`${id}: CDP exposed no user-agent shadow inner editor`);
-      return { id, parts: [...(placeholder === undefined ? [] : [['placeholder', placeholder] as const]), ['editor', editor] as const] };
-    });
+      const cancel = container?.children?.find((k) => (k.attributes ?? []).includes('-webkit-search-cancel-button'));
+      if (container !== undefined && cancel === undefined) throw new Error(`${id}: CDP exposed a decoration container without a cancel button`);
+      // Chrome keeps a hidden placeholder (display: none) while the value is not empty; Dragon leaves it out of the tree.
+      const shown = placeholder !== undefined && (await computedDisplay(cdp, `${id}::placeholder`, placeholder)) !== 'none';
+      fields.push({ id, parts: [...(shown ? [['placeholder', placeholder] as const] : []), ['editor', editor] as const, ...(cancel === undefined ? [] : [['cancel', cancel] as const])] });
+    }
     await f(cdp, fields);
   } finally {
     await cdp.detach();
   }
+}
+
+/** A UA shadow part's computed display. */
+async function computedDisplay(cdp: CDPSession, partId: string, n: DomNode): Promise<string> {
+  const style = (await cdp.send('CSS.getComputedStyleForNode', { nodeId: n.nodeId })) as { computedStyle: { name: string; value: string }[] };
+  const display = style.computedStyle.find((e) => e.name === 'display')?.value;
+  if (display === undefined) throw new Error(`${partId}: CDP gave no computed display`);
+  return display;
 }
 
 /** A UA shadow part as the element "<partId>", then its text "<partId>:text0" and the text's fragments "<partId>:text0:line<j>". */
@@ -321,13 +341,16 @@ async function shadowPartNodes(cdp: CDPSession, partId: string, n: DomNode, prop
   }
   const [x1, y1, , , x3, y3] = box ?? [0, 0, 0, 0, 0, 0];
   nodes.push({ id: partId, kind: 'element', hasBox: box !== null, x: x1 as number, y: y1 as number, width: (x3 as number) - (x1 as number), height: (y3 as number) - (y1 as number), computed });
-  const text = (n.children ?? []).find((c) => c.nodeName === '#text' && !(skipEmptyText && c.nodeValue === ''));
-  if (text === undefined) return nodes;
-  let quads: number[][] = [];
-  try {
-    quads = ((await cdp.send('DOM.getContentQuads', { nodeId: text.nodeId })) as { quads: number[][] }).quads;
-  } catch (e) {
-    if (!String(e).includes('Could not compute content quads')) throw e;
+  // A textarea's editor holds its value as one text node per line, with a <br> between: they are one text leaf's fragments.
+  const texts = (n.children ?? []).filter((c) => c.nodeName === '#text' && !(skipEmptyText && c.nodeValue === ''));
+  if (texts.length === 0) return nodes;
+  const quads: number[][] = [];
+  for (const text of texts) {
+    try {
+      quads.push(...((await cdp.send('DOM.getContentQuads', { nodeId: text.nodeId })) as { quads: number[][] }).quads);
+    } catch (e) {
+      if (!String(e).includes('Could not compute content quads')) throw e;
+    }
   }
   const rects = quads.map((q) => {
     const xs = [q[0], q[2], q[4], q[6]] as number[];
@@ -339,8 +362,9 @@ async function shadowPartNodes(cdp: CDPSession, partId: string, n: DomNode, prop
   const ux = Math.min(...rects.map((r) => r.x));
   const uy = Math.min(...rects.map((r) => r.y));
   const union = rects.length === 0 ? { x: 0, y: 0, width: 0, height: 0 } : { x: ux, y: uy, width: Math.max(...rects.map((r) => r.x + r.width)) - ux, height: Math.max(...rects.map((r) => r.y + r.height)) - uy };
-  nodes.push({ id: `${partId}:text0`, kind: 'text', hasBox: rects.length > 0, ...union, computed: null });
-  rects.forEach((r, j) => nodes.push({ id: `${partId}:text0:line${j}`, kind: 'line', hasBox: true, ...r, computed: null }));
+  const textId = generatedTextId(partId);
+  nodes.push({ id: textId, kind: 'text', hasBox: rects.length > 0, ...union, computed: null });
+  rects.forEach((r, j) => nodes.push({ id: lineId(textId, j), kind: 'line', hasBox: true, ...r, computed: null }));
   return nodes;
 }
 
@@ -349,32 +373,69 @@ async function captureSelectParts(page: Page, props: readonly string[]): Promise
   const out = new Map<string, CapturedNode[]>();
   await withSelectInners(page, async (cdp, inners) => {
     // A select showing no option holds an empty text node, which Dragon's inner element leaves out.
-    for (const { id, inner } of inners) out.set(id, await shadowPartNodes(cdp, `${id}::inner`, inner, props, true));
+    for (const { id, inner } of inners) out.set(id, await shadowPartNodes(cdp, pseudoId(id, 'inner'), inner, props, true));
   });
   return out;
 }
 
+/** Runs on one text node through CDP (it closes over nothing): its lines and each code unit's line by its rect's centre, as captureBreakTexts reads light-DOM text. */
+function shadowTextLines(this: Text): { data: string; lines: number; units: number[]; blank: number[]; transform: string } {
+  const whole = document.createRange();
+  whole.selectNodeContents(this);
+  const lines: DOMRect[] = [];
+  for (const r of Array.from(whole.getClientRects())) {
+    const last = lines[lines.length - 1];
+    if (last !== undefined && Math.abs(last.y - r.y) < 0.001 && Math.abs(last.height - r.height) < 0.001) continue;
+    lines.push(r);
+  }
+  const units: number[] = [];
+  const blank: number[] = [];
+  for (let i = 0; i < this.data.length; i++) {
+    const r = document.createRange();
+    r.setStart(this, i);
+    r.setEnd(this, i + 1);
+    const pick = r.getClientRects()[0];
+    if (pick === undefined || lines.length === 0) {
+      units.push(-1);
+      continue;
+    }
+    const cy = pick.y + pick.height / 2;
+    let best = 0;
+    lines.forEach((l, j) => {
+      const b = lines[best] as DOMRect;
+      if (Math.abs(l.y + l.height / 2 - cy) < Math.abs(b.y + b.height / 2 - cy)) best = j;
+    });
+    units.push(best);
+    if (pick.width === 0) blank.push(i);
+  }
+  return { data: this.data, lines: lines.length, units, blank, transform: getComputedStyle(this.parentElement as Element).textTransform };
+}
+
 /**
- * FORM-b: the text of each UA shadow part (a text field's placeholder and editor, a select's inner element) as a break text
- * "<partId>:text0", which no script Range reaches. None of them wraps (text-wrap-mode: nowrap), so every unit is on the text's one
- * fragment; a text of more fragments, or one holding a character whose break or width the fragment count cannot show, is an error.
+ * FORM-b: the text of each UA shadow part (a text field's placeholder and editor, a textarea's, a select's inner element) as a break
+ * text "<partId>:text0", which page script cannot reach: its lines are read on the node itself through CDP, so a textarea editor's
+ * wrapped lines are captured as light-DOM lines are. A text holding a control, soft hyphen or zero-width space is an error.
  */
-export async function captureShadowBreakTexts(page: Page): Promise<{ id: string; data: string; lines: number; units: number[]; blank: number[] }[]> {
-  const out: { id: string; data: string; lines: number; units: number[]; blank: number[] }[] = [];
+export async function captureShadowBreakTexts(page: Page): Promise<{ id: string; data: string; lines: number; units: number[]; blank: number[]; transform?: string }[]> {
+  const out: { id: string; data: string; lines: number; units: number[]; blank: number[]; transform?: string }[] = [];
   const read = async (cdp: CDPSession, partId: string, n: DomNode): Promise<void> => {
     const text = (n.children ?? []).find((c) => c.nodeName === '#text' && c.nodeValue !== '');
     if (text === undefined) return;
     const data = text.nodeValue as string;
     if (/[\u0000-\u001f\u00ad\u200b]/.test(data)) throw new Error(`${partId}: the shadow text ${JSON.stringify(data)} holds a control, soft hyphen or zero-width space, whose breaks are not captured`);
-    const quads = ((await cdp.send('DOM.getContentQuads', { nodeId: text.nodeId })) as { quads: number[][] }).quads;
-    if (quads.length !== 1) throw new Error(`${partId}: the shadow text has ${quads.length} fragments, not one`);
-    out.push({ id: `${partId}:text0`, data, lines: 1, units: new Array<number>(data.length).fill(0), blank: [] });
+    const { object } = (await cdp.send('DOM.resolveNode', { nodeId: text.nodeId })) as { object: { objectId?: string } };
+    if (object.objectId === undefined) throw new Error(`${partId}: CDP resolved its shadow text to no object`);
+    const got = (await cdp.send('Runtime.callFunctionOn', { objectId: object.objectId, functionDeclaration: shadowTextLines.toString(), returnByValue: true })) as { result: { value?: ReturnType<typeof shadowTextLines> }; exceptionDetails?: unknown };
+    const v = got.result.value;
+    if (got.exceptionDetails !== undefined || v === undefined || v.data !== data) throw new Error(`${partId}: reading its shadow text's lines failed: ${JSON.stringify(got.exceptionDetails ?? null)}`);
+    const { transform, ...t } = v;
+    out.push(transform === 'none' ? { id: generatedTextId(partId), ...t } : { id: generatedTextId(partId), ...t, transform });
   };
   await withTextFieldParts(page, async (cdp, fields) => {
-    for (const { id, parts } of fields) for (const [part, n] of parts) await read(cdp, `${id}::${part}`, n);
+    for (const { id, parts } of fields) for (const [part, n] of parts) await read(cdp, pseudoId(id, part), n);
   });
   await withSelectInners(page, async (cdp, inners) => {
-    for (const { id, inner } of inners) await read(cdp, `${id}::inner`, inner);
+    for (const { id, inner } of inners) await read(cdp, pseudoId(id, 'inner'), inner);
   });
   return out;
 }

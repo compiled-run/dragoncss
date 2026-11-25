@@ -3,6 +3,7 @@
 import { REFERENCE_PLATFORM } from './reference-platform.ts';
 import * as darwinArm64Dark from './chrome-145.darwin-arm64.dark.generated.ts';
 import * as darwinArm64 from './chrome-145.darwin-arm64.generated.ts';
+import * as darwinArm64Forms from '../forms/chrome-145.darwin-arm64.forms.generated.ts';
 import * as darwinArm64TopLayer from './chrome-145.darwin-arm64.top-layer.generated.ts';
 import type { TopLayerKey, TopLayerRows } from './chrome-145.darwin-arm64.top-layer.generated.ts';
 import type { CapturedTag, ElementKey, ReplacedKey } from './chrome-145.darwin-arm64.generated.ts';
@@ -56,6 +57,13 @@ export type UaDataset = {
   readonly elementKeyTextFonts: { readonly [K in ElementKey]: { readonly [property: string]: string } };
   /** ELB-2 userAgentForced for every captured key, by key name. */
   readonly userAgentForced: { readonly [key: string]: DirRows };
+  /** FORM-b: the platform's menulist arrow width in DIP (scripts/capture-form-data.ts), or null where none was captured. */
+  readonly menuListArrowWidth: number | null;
+  /**
+   * FORM-b: the scrollbar thickness in DIP Chrome adds to a textarea's default size at scrollbar-width auto and thin
+   * (scripts/capture-form-data.ts), or null where none was captured.
+   */
+  readonly textAreaScrollbar: { readonly auto: number; readonly thin: number } | null;
   /** The top-layer keys (scripts/capture-top-layer-ua.ts): a <dialog> shown with showModal() and its ::backdrop, in this colour scheme. */
   readonly topLayer: { readonly [K in TopLayerKey]: TopLayerRows };
 };
@@ -63,7 +71,7 @@ export type UaDataset = {
 type TextFontRow = { readonly [property: string]: string };
 
 /** The element keys of the form controls Dragon lays out (FORM-a). */
-export type ControlKey = Extract<ElementKey, 'button' | 'button[disabled]' | 'input' | 'input[type=range]' | 'select' | 'select[disabled]'>;
+export type ControlKey = Extract<ElementKey, 'button' | 'button[disabled]' | 'input' | 'input[type=range]' | 'input[type=checkbox]' | 'select' | 'select[disabled]' | 'textarea' | 'input[type=search]'>;
 
 /** A row key of the UA dataset: a captured tag, a replaced key (REPL-0), a control key (FORM-a) or a top-layer key. */
 export type UaKey = CapturedTag | ReplacedKey | ControlKey | TopLayerKey;
@@ -86,7 +94,7 @@ function isReplacedKey(key: UaKey): key is ReplacedKey {
 }
 
 function isControlKey(key: UaKey): key is ControlKey {
-  return key === 'button' || key === 'button[disabled]' || key === 'input' || key === 'input[type=range]' || key === 'select' || key === 'select[disabled]';
+  return key === 'button' || key === 'button[disabled]' || key === 'input' || key === 'input[type=range]' || key === 'input[type=checkbox]' || key === 'select' || key === 'select[disabled]' || key === 'textarea' || key === 'input[type=search]';
 }
 
 /**
@@ -104,11 +112,25 @@ function controlRows(ua: UaDataset, key: ControlKey): UaRows {
     if (forced[dir]['display'] !== 'inline-block') throw new Error(`the ${key} key's forced rows are ${JSON.stringify(forced)}, without Chrome's display: inline-block`);
     delete rest[dir]['display'];
   }
+  // FORM-b: a textarea's forced overflow: auto is Chrome's adjustment of overflow: visible (StyleAdjuster), which an author
+  // hidden, clip or scroll wins over (probed in Chrome 145), so it is a declared UA value too; computed-checks.ts refuses an author
+  // visible, whose adjustment Dragon does not model.
+  const overflow: Record<string, string> = {};
+  if (key === 'textarea') {
+    for (const dir of ['ltr', 'rtl'] as const) {
+      for (const p of ['overflow-x', 'overflow-y']) {
+        const v = rest[dir][p];
+        if (v === undefined) throw new Error(`the textarea key's forced rows have no ${p}`);
+        overflow[p] = v;
+        delete rest[dir][p];
+      }
+    }
+  }
   const declared = ua.elementKeyDeclared[key];
   return {
     computed: { ...ua.elementKeyComputed[key], display: 'inline-block' },
-    longhands: [...ua.elementKeyLonghands[key], 'display'],
-    declared: { ltr: { ...declared.ltr, display: 'inline-block' }, rtl: { ...declared.rtl, display: 'inline-block' } },
+    longhands: [...ua.elementKeyLonghands[key], 'display', ...Object.keys(overflow)],
+    declared: { ltr: { ...declared.ltr, ...overflow, display: 'inline-block' }, rtl: { ...declared.rtl, ...overflow, display: 'inline-block' } },
     contexts: ua.elementKeyContexts[key],
     textFonts: ua.elementKeyTextFonts[key],
     forced: rest,
@@ -160,8 +182,13 @@ function withSpecifiedTextFonts(ds: typeof darwinArm64 | typeof darwinArm64Dark,
   const declared = ds.elementKeyDeclared['a[href]'];
   const line = ds.userAgentUnmodelled['a[href]']?.ltr['text-decoration-line'];
   if (declared.ltr['color'] === undefined || declared.rtl['color'] === undefined || line === undefined) throw new Error(`${ds.platform}: the a[href] capture has no color or text-decoration-line`);
-  return { ...ds, topLayer, userAgentTextFonts: Object.fromEntries(rows) as UaDataset['userAgentTextFonts'], anyLink: { color: { ltr: declared.ltr['color'], rtl: declared.rtl['color'] }, line } };
+  return { ...ds, topLayer, userAgentTextFonts: Object.fromEntries(rows) as UaDataset['userAgentTextFonts'], anyLink: { color: { ltr: declared.ltr['color'], rtl: declared.rtl['color'] }, line }, menuListArrowWidth: FORM_DATA.get(ds.platform)?.menuListArrowWidth ?? null, textAreaScrollbar: FORM_DATA.get(ds.platform)?.textAreaScrollbar ?? null };
 }
+
+/** FORM-b: the captured form control data per platform. */
+const FORM_DATA: ReadonlyMap<string, { readonly menuListArrowWidth: number; readonly textAreaScrollbar: { readonly auto: number; readonly thin: number } }> = new Map([
+  [darwinArm64Forms.platform, { menuListArrowWidth: darwinArm64Forms.menuListArrowWidth, textAreaScrollbar: darwinArm64Forms.textAreaScrollbar }],
+]);
 
 const DATASETS: ReadonlyMap<string, UaDataset> = new Map([[darwinArm64.platform, withSpecifiedTextFonts(darwinArm64, darwinArm64TopLayer.light)]]);
 

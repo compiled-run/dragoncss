@@ -88,13 +88,14 @@ import type {
   TrackSize,
 } from '../../layout/src/input.ts';
 import type { LayoutRect } from '../../layout/src/layout.ts';
-import { absoluteRects, layout, layoutWithFaults, resolvedInput, zoomInput } from '../../layout/src/layout.ts';
+import type { StickyConstraint, TextAreaRow } from '../../layout/src/layout.ts';
+import { absoluteRects, layout, layoutWithFaults, layoutWithInflow, resolvedInput, stickyShift } from '../../layout/src/layout.ts';
 import type { Ctx } from '../../layout/src/block.ts';
 import { NO_ENGINE_FAULTS } from '../../layout/src/block.ts';
 import { NO_GRID_FAULTS } from '../../layout/src/grid.ts';
 import type { Edges } from '../../layout/src/box.ts';
 import { resolveBorder, resolvePadding } from '../../layout/src/box.ts';
-import { controlAsBox } from '../../layout/src/controls.ts';
+import { checkboxMarks, controlAsBox } from '../../layout/src/controls.ts';
 import { markerTextId } from '../../layout/src/marker.ts';
 import type { LinePiece } from '../../layout/src/inline.ts';
 import { inlineLeaves, leafFontOf, placeLines } from '../../layout/src/inline.ts';
@@ -111,6 +112,9 @@ import type { ScrollMetrics } from '../../layout/src/overflow.ts';
 import { scrollMetricsWithFaults } from '../../layout/src/overflow.ts';
 import type { SnappedRect } from '../../layout/src/snap.ts';
 import { snapEdges, snapRect } from '../../layout/src/snap.ts';
+import type { MenuListArrowPaint } from '../../layout/src/paint-menulist.ts';
+import { menuListArrows } from '../../layout/src/paint-menulist.ts';
+import type { SvgSegment } from '../../layout/src/svg-geometry.ts';
 import type { BorderOp, DashFaults } from '../../layout/src/paint-dash.ts';
 import { borderNeedsSidePainter, borderPaintOps, outlineNeedsSidePainter, outlinePaintOps, selectBestDashGap } from '../../layout/src/paint-dash.ts';
 import { groupComposite, groupFill, groupFilterComposite, groupFilterMatrices, groupFilterMatrix, groupFoldAlpha, groupPack, groupTileFoldIndex, groupTileFolds, groupTileIndex, groupTileSize, groupTileSpan } from '../../layout/src/paint-group.ts';
@@ -157,7 +161,7 @@ import {
   zoomViewportPx,
   ZERO,
 } from '../../layout/src/units.ts';
-import type { AnimationEntry, AnimationState, KeyframesRule } from '../../layout/src/rt-animations.ts';
+import type { AnimationEntry, AnimationState, KeyframesRule, RunningAnimation } from '../../layout/src/rt-animations.ts';
 import { runAnimationScript } from '../../layout/src/rt-animations.ts';
 import type { EasingSpec, RtFaults, StepPosition } from '../../layout/src/rt-easing.ts';
 import { cubicBezier, easingFromSpec, froundOf, LINEAR, solveBezier } from '../../layout/src/rt-easing.ts';
@@ -169,14 +173,14 @@ import type { RuleKeyframe } from '../../layout/src/rt-keyframes.ts';
 import { groupFromRule, sampleKeyframeEffect } from '../../layout/src/rt-keyframes.ts';
 import type { EffectTimingSpec, FillMode, PlaybackDirection, SecondsTiming } from '../../layout/src/rt-timing.ts';
 import { advanceHeld, computeSecondsTiming, computeTiming, currentTimeAt, HELD_ZERO, seekPaused } from '../../layout/src/rt-timing.ts';
-import type { ScriptStep, TransitionListing, TransitionState } from '../../layout/src/rt-transition.ts';
+import type { RunningTransition, ScriptStep, TransitionListing, TransitionState } from '../../layout/src/rt-transition.ts';
 import { runTransitionScript } from '../../layout/src/rt-transition.ts';
 import type { HitFact, HitFaults, HitTableFaults } from '../../layout/src/rt-hit.ts';
 import { hitGrid, hitRuns, hitTableOf } from '../../layout/src/rt-hit.ts';
 import type { SelectFacts } from '../../layout/src/rt-select.ts';
 import { selectAnswers, selectionTableOf } from '../../layout/src/rt-select.ts';
 import type { AnimationTable, AnimatorFaults, AnimatorState, AnimTables, BaseTable, ClosureTable, EasingCode, EasingKind, EntryCode, KeyframeBlock, KeyframesTable, KeyframeValue, ListingCode, ListingMode, OriginTable, RenderedTable, SlotTable, TrackKind, TrackRef, ValueCode, ValueKind } from '../../layout/src/rt-animator.ts';
-import { animatorAdvance, animatorEvent, animatorFrame, animatorStart, frameColors, frameTransforms } from '../../layout/src/rt-animator.ts';
+import { animationEvents, animatorAdvance, animatorBusy, animatorEvent, animatorFrame, animatorStart, frameColors, frameTransforms } from '../../layout/src/rt-animator.ts';
 import type { ForcedKind, InteractionFaults, InteractionPointer, InteractionTables } from '../../layout/src/rt-interaction.ts';
 import { activeMatches, checkInteractionTables, focusMatch, focusVisibleMatch, forcePseudo, hoverExitStarted, hoverMatches, interactionCombo, interactionFrame, interactionStart, interactionState, keyboardFocused, keyPressed, layoutChanged, mousePressed, mouseReleased, pointerExited, pointerMoved, remapPointer, touchCancelled, touchPressed, touchReleased } from '../../layout/src/rt-interaction.ts';
 import type { BackgroundLayer, BackgroundPaint, BoxKeyword, CssStop, GradientImage, LayerGeometry, LengthPct, RepeatKeyword, SizeComponent, StopColor } from '../../layout/src/paint-gradient.ts';
@@ -187,8 +191,8 @@ import { bitsHex, fromCodePoints, hexBits, parseNumber } from './host.ts';
 import { symbolCoverage } from '../../layout/src/paint-marker.ts';
 import type { RadiusFaults, RadiusLength } from '../../layout/src/paint-radius.ts';
 import { borderDoubleRings, constrainCornerRadii, doubleStripeWidth, hasRoundedCorner, innerCornerRadii, outlineOffsetPx, outlineRings, outlineWidthPx, radiiRenderable, radiusComponent, resolveCornerRadii, roundedShape } from '../../layout/src/paint-radius.ts';
-import type { BackdropFill, ShadowFaults, ShadowInput, ShadowLayer, ShadowShape } from '../../layout/src/paint-shadow.ts';
-import { backdropAt, blurredCoverage, encodeOver, insetShadowLayer, insetShadowLayerOver, outerShadowLayer, outerShadowLayerOver, platformOver, shapeCoverage, shapeType, spreadShape, textShadowLayerOver } from '../../layout/src/paint-shadow.ts';
+import type { BackdropFill, ShadowFaults, ShadowInput, ShadowLayer, ShadowShape, ShadowTransform } from '../../layout/src/paint-shadow.ts';
+import { backdropAt, blurredCoverage, encodeOver, insetShadowLayer, insetShadowLayerOver, outerShadowLayer, outerShadowLayerMapped, outerShadowLayerOver, outerShadowLayerOverMapped, platformOver, shadowTransform, shapeCoverage, shapeType, spreadShape, textShadowLayerOver } from '../../layout/src/paint-shadow.ts';
 
 /** A malformed case line; the native decoders reject exactly what this decoder rejects. */
 export class HarnessError extends Error {
@@ -1044,8 +1048,8 @@ function decodeStyle(v: JsonValue, path: string): LayoutStyle {
   };
 }
 
-function decodeText(o: JsonObj, path: string): TextLeaf {
-  obj(o, ['kind', 'id', 'text', 'font', 'lineHeight', 'whiteSpaceCollapse', 'textWrapMode', 'letterSpacing', 'wordSpacing', 'overflowWrap', 'wordBreak', 'smallCaps'], path);
+function decodeText(v: JsonValue, path: string): TextLeaf {
+  const o = obj(v, ['kind', 'id', 'text', 'font', 'lineHeight', 'whiteSpaceCollapse', 'textWrapMode', 'letterSpacing', 'wordSpacing', 'overflowWrap', 'wordBreak', 'smallCaps'], path);
   return {
     kind: 'text',
     id: str(field(o, 'id', path), `${path}.id`),
@@ -1119,8 +1123,16 @@ function controlKind(v: JsonValue, path: string): ControlKind {
     return { kind: 'button-block' };
   }
   if (k === 'text-field') {
-    const o = obj(v, ['kind', 'size', 'font', 'lineHeight'], path);
-    return { kind: 'text-field', size: numField(o, 'size', path), font: fontSpec(field(o, 'font', path), `${path}.font`), lineHeight: lineHeightValue(field(o, 'lineHeight', path), `${path}.lineHeight`) };
+    const o = obj(v, ['kind', 'size', 'font', 'lineHeight', 'avgChar', 'cancelButton'], path);
+    const avgChar = lit(field(o, 'avgChar', path), ['ahem', 'unmeasured'], `${path}.avgChar`) === 'ahem' ? 'ahem' : 'unmeasured';
+    const cancel = field(o, 'cancelButton', path);
+    const c = cancel.kind === 'null' ? null : obj(cancel, ['marginStart', 'marginEnd'], `${path}.cancelButton`);
+    return { kind: 'text-field', size: numField(o, 'size', path), font: fontSpec(field(o, 'font', path), `${path}.font`), lineHeight: lineHeightValue(field(o, 'lineHeight', path), `${path}.lineHeight`), avgChar, cancelButton: c === null ? null : { marginStart: numField(c, 'marginStart', `${path}.cancelButton`), marginEnd: numField(c, 'marginEnd', `${path}.cancelButton`) } };
+  }
+  if (k === 'text-area') {
+    const o = obj(v, ['kind', 'cols', 'rows', 'font', 'lineHeight', 'avgChar', 'scrollbarInline', 'scrollbarBlock'], path);
+    const avgChar = lit(field(o, 'avgChar', path), ['ahem', 'unmeasured'], `${path}.avgChar`) === 'ahem' ? 'ahem' : 'unmeasured';
+    return { kind: 'text-area', cols: numField(o, 'cols', path), rows: numField(o, 'rows', path), font: fontSpec(field(o, 'font', path), `${path}.font`), lineHeight: lineHeightValue(field(o, 'lineHeight', path), `${path}.lineHeight`), avgChar, scrollbarInline: numField(o, 'scrollbarInline', path), scrollbarBlock: numField(o, 'scrollbarBlock', path) };
   }
   if (k === 'text-editor') {
     obj(v, ['kind'], path);
@@ -1139,8 +1151,9 @@ function controlKind(v: JsonValue, path: string): ControlKind {
     return { kind: 'legend' };
   }
   if (k === 'select-menulist') {
-    const o = obj(v, ['kind', 'font', 'lineHeight'], path);
-    return { kind: 'select-menulist', font: fontSpec(field(o, 'font', path), `${path}.font`), lineHeight: lineHeightValue(field(o, 'lineHeight', path), `${path}.lineHeight`) };
+    const o = obj(v, ['kind', 'font', 'lineHeight', 'arrowWidth', 'options'], path);
+    const options = arr(field(o, 'options', path), `${path}.options`).map((x, i) => decodeText(x, `${path}.options[${i}]`));
+    return { kind: 'select-menulist', font: fontSpec(field(o, 'font', path), `${path}.font`), lineHeight: lineHeightValue(field(o, 'lineHeight', path), `${path}.lineHeight`), arrowWidth: numField(o, 'arrowWidth', path), options };
   }
   if (k === 'select-inner') {
     obj(v, ['kind'], path);
@@ -1275,7 +1288,7 @@ const FAULT_KEYS: readonly string[] = [
   'orderHalfEven', 'orderUnclamped', 'gutterReserved', 'overflowIgnoresPadding', 'ellipsisInTextFont', 'noDotsFallback', 'truncateChangesBlockSize',
   'preservedSpaceCollapsed', 'trailingPreWrapNotHanging', 'breakSpacesHanging', 'indentEveryLine', 'indentAfterBr', 'indentPercentInIntrinsic', 'indentRtlFromLeft',
   'anywhereMinContentIgnored', 'breakWordShrinksMinContent', 'breakAnywhereAlways', 'emergencyBreakBeforeOpportunity', 'wordBreakBreakWordIgnored', 'breakAllIgnored',
-  'clampHeightIncludesHiddenLines', 'clampEllipsisMissingWhenLineFits', 'clampEllipsisOnExactLastLine', 'containedContentSized', 'containerJoinsFlow', 'wrapStyleGreedy', 'textBoxTrimIgnored',
+  'clampHeightIncludesHiddenLines', 'clampEllipsisMissingWhenLineFits', 'clampEllipsisOnExactLastLine', 'containedContentSized', 'menuListShownLabelOnly', 'containerJoinsFlow', 'wrapStyleGreedy', 'textBoxTrimIgnored', 'searchCancelIgnored',
   'inlineBlockFirstBaseline', 'overflowBaselineIgnored', 'inlineFlexLastBaseline', 'atomicMarginExcluded', 'noBreakAroundAtomic', 'atomicShrinkToFitIgnored',
   'inlineGridLastItemBaseline',
 ];
@@ -1367,9 +1380,11 @@ function decodeFaults(v: JsonValue): EngineFaults {
     clampEllipsisMissingWhenLineFits: b('clampEllipsisMissingWhenLineFits'),
     clampEllipsisOnExactLastLine: b('clampEllipsisOnExactLastLine'),
     containedContentSized: b('containedContentSized'),
+    menuListShownLabelOnly: b('menuListShownLabelOnly'),
     containerJoinsFlow: b('containerJoinsFlow'),
     wrapStyleGreedy: b('wrapStyleGreedy'),
     textBoxTrimIgnored: b('textBoxTrimIgnored'),
+    searchCancelIgnored: b('searchCancelIgnored'),
   };
 }
 
@@ -1589,6 +1604,78 @@ function scrollSuffix(input: LayoutInput, measurer: TextMeasurer, direction: str
   return `${out}]]`;
 }
 
+/** FORM-b: the drop-down arrow of every menulist-button select (paint-menulist.ts menuListArrows), only in a result that has one. */
+function arrowSuffix(input: LayoutInput, boxes: readonly LayoutRect[], measurer: TextMeasurer): string {
+  return arrowsJson(menuListArrows(input, boxes, measurer), null);
+}
+
+/**
+ * FORM-checkbox: ["checkbox-marks", [[id, x, y, side, plain, radius, backgroundInset, borderInset, borderWidth, [check x, y pairs],
+ * checkWidth]]], each checkbox's theme marks (controls.ts checkboxMarks) in device px from its snapped border box, at the ratio.
+ */
+function checkboxesJson(ids: readonly string[], abs: Map<string, LayoutRect>, dpr: number): string {
+  if (ids.length === 0) return '';
+  let out = ',["checkbox-marks",[';
+  ids.forEach((id, i) => {
+    const r = abs.get(id);
+    if (r === undefined) fail(`the checkbox ${id} has no laid-out box; a checkbox in a list row is not supported`);
+    else {
+      const b = snapRect(r);
+      const m = checkboxMarks(b.width, b.height, dpr);
+      if (i > 0) out += ',';
+      out += `[${q(id)},${h(m.x)},${h(m.y)},${h(m.side)},${m.plain ? 'true' : 'false'},${h(m.radius)},${h(m.backgroundInset)},${h(m.borderInset)},${h(m.borderWidth)},[`;
+      m.check.forEach((v, k) => {
+        if (k > 0) out += ',';
+        out += h(v);
+      });
+      out += `],${h(m.checkWidth)}]`;
+    }
+  });
+  return `${out}]]`;
+}
+
+/** The arrows in absolute device px, or with abs (absolute LU rects) relative to each select's snapped border box, as DragonTree stores them. */
+function arrowsJson(arrows: readonly MenuListArrowPaint[], abs: Map<string, LayoutRect> | null): string {
+  if (arrows.length === 0) return '';
+  let out = ',["menulist-arrows",[';
+  arrows.forEach((a, i) => {
+    if (i > 0) out += ',';
+    let dx = 0;
+    let dy = 0;
+    if (abs !== null) {
+      const r = abs.get(a.id);
+      if (r === undefined) fail(`the engine gives an arrow for ${a.id}, which it did not lay out`);
+      else {
+        const b = snapRect(r);
+        dx = b.left;
+        dy = b.top;
+      }
+    }
+    out += `[${q(a.id)},${h(a.arrow.strokeWidth)},[`;
+    a.arrow.shape.segments.forEach((g, k) => {
+      if (k > 0) out += ',';
+      out += segmentJson(g, dx, dy);
+    });
+    out += ']]';
+  });
+  return `${out}]]`;
+}
+
+function segmentJson(g: SvgSegment, dx: number, dy: number): string {
+  switch (g.kind) {
+    case 'move':
+      return `["move",${h(g.x - dx)},${h(g.y - dy)}]`;
+    case 'line':
+      return `["line",${h(g.x - dx)},${h(g.y - dy)}]`;
+    case 'quad':
+      return `["quad",${h(g.x1 - dx)},${h(g.y1 - dy)},${h(g.x - dx)},${h(g.y - dy)}]`;
+    case 'cubic':
+      return `["cubic",${h(g.x1 - dx)},${h(g.y1 - dy)},${h(g.x2 - dx)},${h(g.y2 - dy)},${h(g.x - dx)},${h(g.y - dy)}]`;
+    case 'close':
+      return '["close"]';
+  }
+}
+
 /**
  * The first shaping plant set in faults, or ''. The shaping plants act only through a shaped measurer (platform.ts
  * shapedMeasurerFor, or replayMeasurer here), so a case without a shape transcript, which measurerFor's Ahem measurer lays out,
@@ -1650,7 +1737,7 @@ export function runEngineCase(line: string): string {
       first = false;
       out += `[${q(id)},${h(rect.x)},${h(rect.y)},${h(rect.width)},${h(rect.height)}]`;
     }
-    return `${out}]${scroll ? scrollSuffix(input, m.measurer, direction, faults) : ''}]`;
+    return `${out}]${scroll ? scrollSuffix(input, m.measurer, direction, faults) : ''}${arrowSuffix(input, r.boxes, m.measurer)}]`;
   } catch (e) {
     if (e instanceof HarnessError) return `["harness-error",${q(e.detail)}]`;
     return '["threw"]';
@@ -1766,6 +1853,15 @@ function radiusLength(a: readonly JsonValue[], i: number): RadiusLength {
   return { percent: flag === 1, value: arg(a, i + 1) };
 }
 
+/** One [percent, value] border-radius component of a hit fact. */
+function factRadius(v: JsonValue, path: string): RadiusLength {
+  const pair = arr(v, path);
+  if (pair.length !== 2) return fail(`${path}: expected [percent, value]`);
+  const value = num(item(pair, 1, path), path);
+  if (value < 0) return fail(`${path}: radius ${value} is negative`);
+  return { percent: bool(item(pair, 0, path), path), value };
+}
+
 /** Eight radius lengths from argument i on. */
 function radiusLengths(a: readonly JsonValue[], i: number): RadiusLength[] {
   const out: RadiusLength[] = [];
@@ -1823,6 +1919,11 @@ function bytesStore(n: number, i: number, v: number): string {
 function readByte(b: Uint8Array, i: number): number {
   const v = b[i];
   return v === undefined ? -1 : v;
+}
+
+/** A shadow transform from arguments i (sx, sy, tx, ty, then layered as 0 or 1). */
+function shadowTransformArg(a: readonly JsonValue[], i: number): ShadowTransform {
+  return { sx: arg(a, i), sy: arg(a, i + 1), tx: arg(a, i + 2), ty: arg(a, i + 3), layered: arg(a, i + 4) !== 0 };
 }
 
 /** A shape result: its edges then its eight radii. */
@@ -1916,6 +2017,16 @@ function paintResult(name: string, a: readonly JsonValue[]): string | null {
   if (name === 'paint:shadow:outerShadowLayer') return layerResult(outerShadowLayer(arg(a, 1), arg(a, 2), arg(a, 3), arg(a, 4), argList(a, 5, 8), arg(a, 13) !== 0, shadowInputs(a, 14), arg(a, 15 + 9 * arg(a, 14)), shadowFaults(a, 16 + 9 * arg(a, 14))));
   if (name === 'paint:shadow:insetShadowLayer') return layerResult(insetShadowLayer(arg(a, 1), arg(a, 2), arg(a, 3), arg(a, 4), argList(a, 5, 4), argList(a, 9, 8), shadowInputs(a, 17), arg(a, 18 + 9 * arg(a, 17)), shadowFaults(a, 19 + 9 * arg(a, 17))));
   if (name === 'paint:shadow:outerShadowLayerOver') return layerResult(outerShadowLayerOver(arg(a, 1), arg(a, 2), arg(a, 3), arg(a, 4), argList(a, 5, 8), arg(a, 13) !== 0, shadowInputs(a, 14), arg(a, 15 + 9 * arg(a, 14)), shadowFaults(a, 16 + 9 * arg(a, 14)), backdropFills(a, 19 + 9 * arg(a, 14))));
+  if (name === 'paint:shadow:outerShadowLayerMapped') return layerResult(outerShadowLayerMapped(arg(a, 1), arg(a, 2), arg(a, 3), arg(a, 4), argList(a, 5, 8), arg(a, 13) !== 0, shadowInputs(a, 14), arg(a, 15 + 9 * arg(a, 14)), shadowFaults(a, 16 + 9 * arg(a, 14)), shadowTransformArg(a, 19 + 9 * arg(a, 14))));
+  if (name === 'paint:shadow:outerShadowLayerOverMapped') {
+    const n = arg(a, 14);
+    const fills = 19 + 9 * n;
+    return layerResult(outerShadowLayerOverMapped(arg(a, 1), arg(a, 2), arg(a, 3), arg(a, 4), argList(a, 5, 8), arg(a, 13) !== 0, shadowInputs(a, 14), arg(a, 15 + 9 * n), shadowFaults(a, 16 + 9 * n), backdropFills(a, fills), shadowTransformArg(a, fills + 1 + 16 * arg(a, fills))));
+  }
+  if (name === 'paint:shadow:shadowTransform') {
+    const m = shadowTransform(decodeOps(item(a, 1, '$'), '$[1]'), decodeOrigin(item(a, 2, '$'), '$[2]'), arg(a, 3), arg(a, 4), arg(a, 5), arg(a, 6), arg(a, 7), tableTrig(item(a, 8, '$'), '$[8]'));
+    return numList([m.sx, m.sy, m.tx, m.ty, m.layered ? 1 : 0]);
+  }
   if (name === 'paint:shadow:insetShadowLayerOver') return layerResult(insetShadowLayerOver(arg(a, 1), arg(a, 2), arg(a, 3), arg(a, 4), argList(a, 5, 4), argList(a, 9, 8), shadowInputs(a, 17), arg(a, 18 + 9 * arg(a, 17)), shadowFaults(a, 19 + 9 * arg(a, 17)), backdropFills(a, 22 + 9 * arg(a, 17))));
   if (name === 'paint:shadow:textShadowLayerOver') {
     // A glyph count n, n code points, n pen xs, size, baseline, the shadows, dpr, the faults and the backdrop.
@@ -2732,8 +2843,9 @@ function rtAnimationsResult(a: readonly JsonValue[]): string {
 
 // ---------------------------------------------------------------- hit suite (SELD-R1b, T047 RT-9)
 
-const HIT_TABLE_CLEAN: HitTableFaults = { pointerEventsNotInherited: false };
+const HIT_TABLE_CLEAN: HitTableFaults = { pointerEventsNotInherited: false, transformIgnored: false, contextNotLayered: false };
 const HIT_CLEAN: HitFaults = { ignorePointerEventsNone: false, reversedOrder: false };
+const HIT_NO_ORIGIN: TransformOrigin = { x: { kind: 'px', px: 0, percent: 0 }, y: { kind: 'px', px: 0, percent: 0 } };
 
 /** A hit read: [op, platform, input, facts] -> the run-length encoded answers at every point of the input's derived grid. */
 function rtHitResult(a: readonly JsonValue[]): string {
@@ -2744,10 +2856,19 @@ function rtHitResult(a: readonly JsonValue[]): string {
   arr(item(a, 3, '$'), '$[3]').forEach((f, i) => {
     const path = `$[3][${i.toString(16)}]`;
     const g = arr(f, path);
-    if (g.length !== 4) return fail(`${path}: expected [id, pointerEvents, inherited, activation]`);
+    if (g.length !== 5 && g.length !== 8 && g.length !== 9) return fail(`${path}: expected [id, pointerEvents, inherited, activation, radii], or those and [context, transform, origin], or those and otherContext`);
     const pe = str(item(g, 1, path), path);
     if (pe !== 'auto' && pe !== 'none') return fail(`${path}: pointer-events ${pe} is not auto or none`);
-    facts.set(str(item(g, 0, path), path), { pointerEvents: pe, inherited: bool(item(g, 2, path), path), activation: bool(item(g, 3, path), path) });
+    const rs = arr(item(g, 4, path), `${path}[4]`);
+    if (rs.length !== 0 && rs.length !== 8) return fail(`${path}[4]: ${rs.length} radius components, not 0 or 8`);
+    const radii: RadiusLength[] = [];
+    for (let k = 0; k < rs.length; k++) radii.push(factRadius(item(rs, k, `${path}[4]`), `${path}[4][${k}]`));
+    const painted = g.length >= 8;
+    const otherContext = g.length === 9 ? str(item(g, 8, path), `${path}[8]`) : '';
+    const context = painted ? bool(item(g, 5, path), `${path}[5]`) : false;
+    const transform = painted ? decodeOps(item(g, 6, path), `${path}[6]`) : [];
+    const origin = painted ? decodeOrigin(item(g, 7, path), `${path}[7]`) : HIT_NO_ORIGIN;
+    facts.set(str(item(g, 0, path), path), { pointerEvents: pe, inherited: bool(item(g, 2, path), path), activation: bool(item(g, 3, path), path), radii, context, otherContext, transform, origin });
   });
   const m = measurerFor(platform);
   if (m.kind !== 'ok') return fail(`rt-hit: no measurer for ${platform}`);
@@ -3544,7 +3665,7 @@ function planDashed(d: PlanDashed, rect: LayoutRect, widths: readonly number[]):
 }
 
 type PlanVariant = { readonly rootFontSize: number; readonly root: LayoutBox };
-type PlanAssignmentParts = { readonly variant: number; readonly dashed: Map<string, PlanDashed>; readonly scrollers: Map<string, boolean>; readonly fields: readonly SlotField[]; readonly writes: readonly SlotWrite[]; readonly refusals: readonly SlotRefusal[] };
+type PlanAssignmentParts = { readonly variant: number; readonly dashed: Map<string, PlanDashed>; readonly scrollers: Map<string, boolean>; readonly checkboxes: readonly string[]; readonly fields: readonly SlotField[]; readonly writes: readonly SlotWrite[]; readonly refusals: readonly SlotRefusal[] };
 
 // ---------------------------------------------------------------- typed slots: style values that follow state (markless-slots.ts)
 
@@ -3830,7 +3951,15 @@ function planAssignment(plan: JsonObj, k: number): PlanAssignmentParts {
   const count = planSlots(plan).length;
   const slotted = (assignments[k] as JsonValue).kind === 'obj' && (assignments[k] as JsonObj).values.has('slotFields');
   if (slotted !== count > 0) fail(`${path}: ${count > 0 ? 'the plan has slots and the assignment binds none' : 'the assignment binds slots the plan does not have'}`);
-  const ao = obj(assignments[k] as JsonValue, slotted ? ['variant', 'dashed', 'scroll', 'slotFields', 'slotWrites', 'slotRefusals'] : ['variant', 'dashed', 'scroll'], path);
+  const boxed = (assignments[k] as JsonValue).kind === 'obj' && (assignments[k] as JsonObj).values.has('checkboxes');
+  const keys: string[] = ['variant', 'dashed', 'scroll'];
+  if (boxed) keys.push('checkboxes');
+  if (slotted) {
+    keys.push('slotFields');
+    keys.push('slotWrites');
+    keys.push('slotRefusals');
+  }
+  const ao = obj(assignments[k] as JsonValue, keys, path);
   const variant = numField(ao, 'variant', path);
   const variants = arr(field(plan, 'variants', '$.plan'), '$.plan.variants');
   if (!Number.isInteger(variant) || variant < 0 || variant >= variants.length) fail(`${path}.variant: ${variant} is not a variant`);
@@ -3845,10 +3974,14 @@ function planAssignment(plan: JsonObj, k: number): PlanAssignmentParts {
   });
   const scrollers = new Map<string, boolean>();
   for (const s of arr(field(ao, 'scroll', path), `${path}.scroll`)) scrollers.set(str(s, `${path}.scroll`), true);
+  const checkboxes: string[] = [];
+  if (boxed) {
+    for (const c of arr(field(ao, 'checkboxes', path), `${path}.checkboxes`)) checkboxes.push(str(c, `${path}.checkboxes`));
+  }
   const fields = slotted ? slotFields(field(ao, 'slotFields', path), count, `${path}.slotFields`) : [];
   const writes = slotted ? slotWrites(field(ao, 'slotWrites', path), count, `${path}.slotWrites`) : [];
   const refusals = slotted ? slotRefusals(field(ao, 'slotRefusals', path), count, `${path}.slotRefusals`) : [];
-  return { variant, dashed, scrollers, fields, writes, refusals };
+  return { variant, dashed, scrollers, checkboxes, fields, writes, refusals };
 }
 
 /**
@@ -3877,13 +4010,50 @@ export function checkMarklessPlan(line: string): string {
  * One Markless layout: {"assignment", "dpr", "viewport": {width, height}, "safeArea": {top, right, bottom, left}, "plan"}. The
  * result is ["ok", pageScroll, nodes] with every number as its bit pattern: pageScroll [minX, maxX, minY, maxY] or ["undecided",
  * nodeId, detail]; per box and text node [id, [x, y, width, height] relative to its parent, borderWidths [top, right, bottom,
- * left] or null, lines or null, borderOps or null, scrollRange or null].
+ * left] or null, lines or null, borderOps or null, scrollRange or null]; on a slotted page ("slots" given), then the slot
+ * writes; with a menulist-button select, ["menulist-arrows", [[id, strokeWidth, segments]]], each arrow in device px from
+ * its select's snapped border box; with a checkbox, last, ["checkbox-marks", marks] (checkboxesJson); when asked ("sticky": true), ["sticky", rows] (stickyJson); when asked ("textAreas": true), ["text-areas", [[id, pitch, above, [top, right, bottom, left] padding], ...]] (textAreasJson).
  */
 export function runMarklessLayout(line: string): string {
   try {
     const parsed = parseJson(line);
-    const withSlots = parsed.kind === 'obj' && parsed.values.has('slots');
-    return marklessLayout(obj(parsed, withSlots ? ['assignment', 'dpr', 'viewport', 'safeArea', 'plan', 'slots'] : ['assignment', 'dpr', 'viewport', 'safeArea', 'plan'], '$'), null);
+    const keys: string[] = ['assignment', 'dpr', 'viewport', 'safeArea', 'plan'];
+    if (parsed.kind === 'obj' && parsed.values.has('slots')) keys.push('slots');
+    if (parsed.kind === 'obj' && parsed.values.has('sticky')) keys.push('sticky');
+    if (parsed.kind === 'obj' && parsed.values.has('textAreas')) keys.push('textAreas');
+    return marklessLayout(obj(parsed, keys, '$'), null);
+  } catch (e) {
+    if (e instanceof HarnessError) return `["harness-error",${q(e.detail)}]`;
+    return '["threw"]';
+  }
+}
+
+/**
+ * POSX-s scroll on the device: {"sticky": the layout answer's sticky constraints as it wrote them (device px as float bits, null for
+ * an auto inset), "scroll": [x, y], the root scroller's offset in device px, floored to the LU grid as Blink floors it}. The answer is ["ok", [[id, dx, dy], ...]], each sticky box's
+ * shift from its in-flow place in device px (stickyShift), the host moving the box's view by its shift less its at-rest one.
+ */
+export function runMarklessSticky(line: string): string {
+  try {
+    const o = obj(parseJson(line), ['sticky', 'scroll'], '$');
+    const scroll = arr(field(o, 'scroll', '$'), '$.scroll');
+    if (scroll.length !== 2) fail('$.scroll: expected [x, y]');
+    const lu = (v: number): LU => fromRaw(Math.round(v * LU_PER_PX));
+    const floorLu = (v: number): LU => fromRaw(Math.floor(v * LU_PER_PX));
+    const sx = floorLu(num(scroll[0] as JsonValue, '$.scroll[0]'));
+    const sy = floorLu(num(scroll[1] as JsonValue, '$.scroll[1]'));
+    let out = '["ok",[';
+    arr(field(o, 'sticky', '$'), '$.sticky').forEach((v, i) => {
+      const at = `$.sticky[${i}]`;
+      const t = arr(v, at);
+      if (t.length !== 15) fail(`${at}: expected an id and 14 numbers`);
+      const n = (k: number): LU => lu(hexBits(str(t[k] as JsonValue, `${at}[${k}]`)));
+      const inset = (k: number): LU | null => ((t[k] as JsonValue).kind === 'null' ? null : n(k));
+      const c: StickyConstraint = { id: str(t[0] as JsonValue, `${at}[0]`), x: n(1), y: n(2), width: n(3), height: n(4), cbLeft: n(5), cbTop: n(6), cbRight: n(7), cbBottom: n(8), viewportWidth: n(9), viewportHeight: n(10), top: inset(11), right: inset(12), bottom: inset(13), left: inset(14) };
+      const d = stickyShift(c, sx, sy);
+      out += `${i === 0 ? '' : ','}[${q(c.id)},${h(d.dx / LU_PER_PX)},${h(d.dy / LU_PER_PX)}]`;
+    });
+    return `${out}]]`;
   } catch (e) {
     if (e instanceof HarnessError) return `["harness-error",${q(e.detail)}]`;
     return '["threw"]';
@@ -3896,12 +4066,91 @@ export function runMarklessLayout(line: string): string {
  * text]], "slots": one value per plan slot, required when the plan has slots}]}. Each row is a copy of the template named "<id>@<key>";
  * `shaper` shapes the text the build did not record.
  */
+/**
+ * A Markless page's transitions and animations on the device: the export's animator tables run over the plan's assignments from
+ * `initial` through `steps` (["event", assignment] for a style change, ["advance", ms] for time), as rtAnimatorResult runs them.
+ * The answer is ["ok", events, colours, transforms, lengths, busy]: each CSS animation event as [step, type, node, name,
+ * elapsedTime] (step -1 for the first style), then the frame now: the colour writes the device draws, the transform writes its
+ * views take, each animated length as [node, property, kind, px, percent], and whether the animator still runs.
+ */
+export function runMarklessAnimation(line: string): string {
+  try {
+    return marklessAnimation(obj(parseJson(line), ['dpr', 'viewport', 'plan', 'anim', 'initial', 'steps'], '$'));
+  } catch (e) {
+    if (e instanceof HarnessError) return `["harness-error",${q(e.detail)}]`;
+    return '["threw"]';
+  }
+}
+
+/** `out` with the animation events between two animator states appended, each as `[step, type, node, name, elapsedTime]`. */
+function eventsJson(out: string, step: number, before: AnimatorState, after: AnimatorState, t: AnimTables): string {
+  let all = out;
+  for (const e of animationEvents(before, after, t, RT_NO_FAULTS)) all += `${all === '' ? '' : ','}[${h(step)},${q(e.type)},${q(e.node)},${q(e.name)},${h(e.elapsedTime)}]`;
+  return all;
+}
+
+function marklessAnimation(o: JsonObj): string {
+  const plan = planObj(field(o, 'plan', '$'));
+  const dpr = numField(o, 'dpr', '$');
+  const faces = planFaces(plan);
+  let density: PlanDensity | null = null;
+  const densities = arr(field(plan, 'densities', '$.plan'), '$.plan.densities');
+  for (let i = 0; i < densities.length; i++) {
+    const at = `$.plan.densities[${i}]`;
+    const d = densities[i] as JsonValue;
+    if (density === null && numField(obj(d, ['dpr', 'calls', 'metrics', 'lengths'], at), 'dpr', at) === dpr) density = planDensity(d, at);
+  }
+  if (density === null) return fail(`the plan holds no text measured at ratio ${dpr}`);
+  const measurer = planMeasurer(faces, density, null);
+  const viewport = decodeViewport(field(o, 'viewport', '$'), '$.viewport');
+  const t = anTables(field(o, 'anim', '$'), '$.anim');
+  const count = arr(field(plan, 'assignments', '$.plan'), '$.plan.assignments').length;
+  if (t.assignments !== count) fail(`$.anim: the tables hold ${t.assignments} assignments, the plan ${count}`);
+  // Every assignment's engine input at DPR 1, where length endpoints come from (anim-cases.ts resolvedInputs).
+  const inputs: LayoutInput[] = [];
+  for (let k = 0; k < count; k++) {
+    const v = planVariant(plan, planAssignment(plan, k).variant);
+    inputs.push(resolvedInput({ viewport: viewport, devicePixelRatio: 1, viewportUnits: { small: viewport, large: viewport, dynamic: viewport }, safeArea: { top: 0, right: 0, bottom: 0, left: 0 }, rootFontSize: v.rootFontSize, root: v.root }, measurer, NO_ENGINE_FAULTS));
+  }
+  const initial = numField(o, 'initial', '$');
+  if (!Number.isInteger(initial) || initial < 0 || initial >= count) fail(`$.initial: ${initial} is not an assignment`);
+  let s: AnimatorState = animatorStart(t, inputs, initial, RT_NO_FAULTS, AN_NO_FAULTS);
+  const none: AnimatorState = { current: initial, transitions: s.transitions.map((): RunningTransition | null => null), lists: s.lists.map((): RunningAnimation[] => []), composed: s.composed };
+  let events = '';
+  events = eventsJson(events, -1, none, s, t);
+  const steps = arr(field(o, 'steps', '$'), '$.steps');
+  for (let i = 0; i < steps.length; i++) {
+    const path = `$.steps[${i}]`;
+    const g = arr(steps[i] as JsonValue, path);
+    const op = str(item(g, 0, path), path);
+    const before = s;
+    if (op === 'event') s = animatorEvent(s, t, inputs, initial, num(item(g, 1, path), path), RT_NO_FAULTS, AN_NO_FAULTS);
+    else if (op === 'advance') s = animatorAdvance(s, t, inputs, initial, num(item(g, 1, path), path), RT_NO_FAULTS, AN_NO_FAULTS);
+    else fail(`${path}: unknown step ${op}`);
+    events = eventsJson(events, i, before, s, t);
+  }
+  const frame = animatorFrame(s, t, RT_NO_FAULTS);
+  let colors = '';
+  for (const c of frameColors(frame, t, AN_NO_FAULTS)) colors += `${colors === '' ? '' : ','}[${q(c.node)},${q(c.property)},${h(c.rgba.r)},${h(c.rgba.g)},${h(c.rgba.b)},${h(c.rgba.alpha)}]`;
+  let transforms = '';
+  for (const w of frameTransforms(s, t, frame)) {
+    let ops = '';
+    for (const p of w.ops) ops += `${ops === '' ? '' : ','}[${q(p.fn)},[${q(p.x.kind)},${h(p.x.px)},${h(p.x.percent)}],[${q(p.y.kind)},${h(p.y.px)},${h(p.y.percent)}],${h(p.angle)},${h(p.sx)},${h(p.sy)}]`;
+    transforms += `${transforms === '' ? '' : ','}[${q(w.node)},[${ops}],[${q(w.origin.x.kind)},${h(w.origin.x.px)},${h(w.origin.x.percent)}],[${q(w.origin.y.kind)},${h(w.origin.y.px)},${h(w.origin.y.percent)}]]`;
+  }
+  let lengths = '';
+  for (const e of frame) if (e.value.kind === 'length') lengths += `${lengths === '' ? '' : ','}[${q(e.node)},${q(e.property)},${q(e.value.length.kind)},${h(e.value.length.px)},${h(e.value.length.percent)}]`;
+  return `["ok",[${events}],[${colors}],[${transforms}],[${lengths}],${animatorBusy(s) ? 'true' : 'false'}]`;
+}
+
 export function runMarklessRowsLayout(line: string, shaper: GlyphShaper): string {
   try {
     const parsed = parseJson(line);
     const keys: string[] = ['assignment', 'dpr', 'viewport', 'safeArea', 'plan', 'rows'];
     if (parsed.kind === 'obj' && parsed.values.has('slots')) keys.push('slots');
     if (parsed.kind === 'obj' && parsed.values.has('texts')) keys.push('texts');
+    if (parsed.kind === 'obj' && parsed.values.has('sticky')) keys.push('sticky');
+    if (parsed.kind === 'obj' && parsed.values.has('textAreas')) keys.push('textAreas');
     return marklessLayout(obj(parsed, keys, '$'), shaper);
   } catch (e) {
     if (e instanceof HarnessError) return `["harness-error",${q(e.detail)}]`;
@@ -4106,7 +4355,8 @@ function marklessLayout(o: JsonObj, live: GlyphShaper | null): string {
     const dashed = spliced === null ? parts.dashed : spliced.dashed;
     const scrollers = spliced === null ? parts.scrollers : spliced.scrollers;
 
-    const r = layout(input, measurer);
+    const placed = layoutWithInflow(input, measurer, NO_ENGINE_FAULTS, NO_GRID_FAULTS);
+    const r = placed.result;
     if (r.kind !== 'ok') return fail(`the engine refused the plan at ${r.unsupported.nodeId}: ${r.unsupported.code} ${r.unsupported.detail}`);
     const boxes = r.boxes;
     const abs = absoluteRects(boxes);
@@ -4115,7 +4365,7 @@ function marklessLayout(o: JsonObj, live: GlyphShaper | null): string {
     const texts = new Map<string, string>();
     planTexts(input.root, texts);
     const deviceBorders = new Map<string, readonly number[]>();
-    const zoomed = zoomInput(input, NO_ENGINE_FAULTS);
+    const zoomed = resolvedInput(input, measurer, NO_ENGINE_FAULTS);
     planDeviceBorders(zoomed.root, zoomed.devicePixelRatio, deviceBorders);
     const lines = new Map<string, string>();
     for (const t of planTextLines(input, measurer, boxes)) {
@@ -4154,15 +4404,42 @@ function marklessLayout(o: JsonObj, live: GlyphShaper | null): string {
       const range = rangeOf.get(b.id);
       out += `[${q(b.id)},[${h(b.x / LU_PER_PX)},${h(b.y / LU_PER_PX)},${h(b.width / LU_PER_PX)},${h(b.height / LU_PER_PX)}],${s === undefined ? 'null' : edgeHex(resolveBorder(s, dpr), dpr)},${ownLines === undefined ? 'null' : ownLines},${ops === '' ? 'null' : ops},${range !== undefined && scrollers.has(b.id) ? `[${h(range.minX)},${h(range.maxX)},${h(range.minY)},${h(range.maxY)}]` : 'null'}]`;
     }
-    if (!o.values.has('slots')) return `${out}]]`;
+    // POSX-s scroll: a host that moves sticky views asks for their constraints ("sticky": true); an older host is answered as before.
+    const wantsSticky = o.values.has('sticky') && bool(field(o, 'sticky', '$'), '$.sticky');
+    const wantsTextAreas = o.values.has('textAreas') && bool(field(o, 'textAreas', '$'), '$.textAreas');
+    const arrows = `${arrowsJson(menuListArrows(input, boxes, measurer), abs)}${checkboxesJson(parts.checkboxes, abs, dpr)}${wantsSticky ? stickyJson(placed.sticky) : ''}${wantsTextAreas ? textAreasJson(placed.textAreas) : ''}`;
+    if (!o.values.has('slots')) return `${out}]${arrows}]`;
     out += `],${writeNumbers(parts, values, '$.slots')}`;
-    if (spliced === null) return `${out}]`;
+    if (spliced === null) return `${out}${arrows}]`;
     // Each row's write numbers at its own values, for every node of its assignment; the host applies those of its copy.
     out += ',[';
     spliced.rows.forEach((row, i) => {
       out += `${i === 0 ? '' : ','}[${q(row.key)},${writeNumbers(row.parts, row.values, `${row.at}.slots`)}]`;
     });
-    return `${out}]]`;
+    return `${out}]${arrows}]`;
+}
+
+/**
+ * POSX-s scroll: each sticky box's constraint in device px, as ["sticky", [[id, x, y, width, height, cbLeft, cbTop, cbRight, cbBottom,
+ * viewportWidth, viewportHeight, top, right, bottom, left], ...]] with null for an auto inset; none when the page has no sticky box.
+ */
+function stickyJson(cs: readonly StickyConstraint[]): string {
+  if (cs.length === 0) return '';
+  const px = (v: number | null): string => (v === null ? 'null' : h(v / LU_PER_PX));
+  let out = ',["sticky",[';
+  cs.forEach((c, i) => {
+    out += `${i === 0 ? '' : ','}[${q(c.id)},${px(c.x)},${px(c.y)},${px(c.width)},${px(c.height)},${px(c.cbLeft)},${px(c.cbTop)},${px(c.cbRight)},${px(c.cbBottom)},${px(c.viewportWidth)},${px(c.viewportHeight)},${px(c.top)},${px(c.right)},${px(c.bottom)},${px(c.left)}]`;
+  });
+  return `${out}]]`;
+}
+
+function textAreasJson(rows: readonly TextAreaRow[]): string {
+  if (rows.length === 0) return '';
+  let out = ',["text-areas",[';
+  rows.forEach((r, i) => {
+    out += `${i === 0 ? '' : ','}[${q(r.id)},${h(r.pitch / LU_PER_PX)},${h(r.above / LU_PER_PX)},[${h(r.insets.top / LU_PER_PX)},${h(r.insets.right / LU_PER_PX)},${h(r.insets.bottom / LU_PER_PX)},${h(r.insets.left / LU_PER_PX)}]]`;
+  });
+  return `${out}]]`;
 }
 
 /** Every bound write number of an assignment at these slot values: [[node, write kind, path, value], ...]. */

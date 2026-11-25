@@ -7,7 +7,7 @@ import type { FontSpec, InlineChild, LayoutBox, LayoutNode, ListMarker, TextLeaf
 import { rootFontSizeOf } from './ios-layout.ts';
 import type { AnimationAnalysis } from '../analysis/animations.ts';
 import type { ResolvedElement, ResolvedText } from '../analysis/resolve.ts';
-import { markerStyleOf } from '../analysis/resolve.ts';
+import { environmentOf, markerStyleOf } from '../analysis/resolve.ts';
 import { analyzeDecorations } from '../analysis/text-decoration.ts';
 import { synthesizesBold, SYNTHETIC_OBLIQUE_SHEAR, synthesizesOblique } from '../analysis/computed.ts';
 import { nativeTextShadows, nativeTextUnders } from '../analysis/text-shadow.ts';
@@ -81,6 +81,46 @@ export type ProgramWrite = WriteKind & {
   /** The CSS longhands the write realises (T002 1.2 per-backend map). */
   readonly css: readonly Longhand[];
 };
+
+/**
+ * The write with every field that names a program node by its id passed through rename, every other field as it was: what an export
+ * that renames the nodes renames in their writes too. The switch names every write kind, so a new kind must say which fields are ids.
+ */
+export function renameWriteNodes<W extends WriteKind>(w: W, rename: (id: string) => string): W {
+  const v: WriteKind = w;
+  switch (v.kind) {
+    case 'paint-order':
+      return { ...w, host: rename(v.host) };
+    case 'outline':
+      return { ...w, layer: rename(v.layer) };
+    case 'background-color':
+      return v.rivals === undefined ? w : { ...w, rivals: v.rivals.map(rename) };
+    case 'opacity-group':
+    case 'filter-group':
+      return {
+        ...w,
+        backdrop: v.backdrop === null ? null : rename(v.backdrop),
+        painters: v.painters.map(rename),
+        ...(v.after === undefined ? {} : { after: rename(v.after) }),
+        ...(v.unstable === undefined ? {} : { unstable: v.unstable.map(rename) }),
+      };
+    case 'text-decoration':
+      return { ...w, entries: v.entries.map((e) => ({ ...e, text: rename(e.text), box: e.box === null ? null : rename(e.box) })) };
+    case 'text-shadow':
+      return { ...w, entries: v.entries.map((e) => ({ ...e, text: rename(e.text), under: e.under.map((u) => ({ ...u, text: rename(u.text) })) })) };
+    case 'background-image': case 'background-layers': case 'border-colors': case 'border-radius': case 'border-styles': case 'border-widths':
+    case 'box-shadow': case 'checkbox': case 'clip-path-inset': case 'clip-path-shape': case 'clip-rect-empty': case 'clip-rect-label': case 'clip-text':
+    case 'font': case 'foreign-view': case 'list-marker': case 'mask-layer': case 'opacity': case 'opacity-nested': case 'padding-box-clip':
+    case 'replaced-image': case 'scroll-bounce': case 'scroll-container': case 'scroll-indicators-hidden': case 'select-arrow': case 'svg-shapes':
+    case 'synthetic-bold': case 'synthetic-oblique': case 'text-color': case 'text-stroke': case 'transform': case 'video-view':
+    case 'visibility':
+      return w;
+    default: {
+      const never: never = v;
+      throw new ProgramError(`renameWriteNodes: the write kind ${JSON.stringify((never as { kind: unknown }).kind)} names no id fields`);
+    }
+  }
+}
 
 export type ProgramNode = {
   readonly id: string;
@@ -169,6 +209,14 @@ function sharedPaint(root: LayoutBox, resolved: ResolvedElement, images: Readonl
     }
   };
   walk(resolved);
+  const hostEdits = environmentOf(resolved).hostTextEditing === true;
+  const textAreaFonts = new Map<string, FontSpec>();
+  const findTextAreas = (b: LayoutNode): void => {
+    if (b.kind !== 'box' && b.kind !== 'control') return;
+    if (b.kind === 'control' && b.control.kind === 'text-area') for (const k of b.children) if (k.kind === 'control' && k.control.kind === 'text-editor') textAreaFonts.set(k.id, b.control.font);
+    for (const k of b.children) if (k.kind === 'box' || k.kind === 'control') findTextAreas(k);
+  };
+  if (hostEdits) findTextAreas(root);
   // TDEC-b: the decorations each text leaf draws, which the text-decoration module writes on the leaf's container box.
   const decorations = analyzeDecorations(resolved).applied;
   // TXT-FX: the shadows each text leaf draws, which the text-shadow module writes on the leaf's container box.
@@ -183,7 +231,14 @@ function sharedPaint(root: LayoutBox, resolved: ResolvedElement, images: Readonl
     const own = el === null ? enclosingColor : usedColors(el).color;
     const facts: Record<string, unknown> = {};
     const transformMoves = ancestorMoves || (el !== null && movingTransforms.has(el.element.address));
-    const writes = lowerBoxPaint({ box: b, el, parentColor: enclosingColor, facts, images, transformMoves, foldBackdrops, decorations, textShadows, textUnders });
+    const writes: WriteKind[] = lowerBoxPaint({ box: b, el, parentColor: enclosingColor, facts, images, transformMoves, foldBackdrops, decorations, textShadows, textUnders });
+    // The host draws the text a user types into an editor it edits, so the editor box carries that text's font and colour.
+    if (hostEdits && el !== null && b.kind === 'control' && b.control.kind === 'text-editor') {
+      // An empty textarea's editor has no line, so no strut: its text is in the textarea's own font.
+      const font = b.strut !== null ? b.strut.font : (textAreaFonts.get(b.id) ?? null);
+      if (font === null) throw new ProgramError(`${b.id}: a text field's editor has no line strut`);
+      writes.push(...textWrites(font, glyphFill(el), el, plants));
+    }
     out.push({ id: b.id, parent, kind: anonymous ? 'anonymous' : 'element', clips: hostsClipView(b, el), text: null, writes, facts });
     // A replaced leaf has no children; Phase A paints only its box (background and border), Phase B its content.
     if (b.kind === 'replaced') return;

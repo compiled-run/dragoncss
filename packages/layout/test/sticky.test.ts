@@ -37,6 +37,13 @@ describe('POSX-s: position: sticky', () => {
     expect(at(box('p', { height: px(35), paddingTop: px(5), paddingBottom: px(7), borderBottomWidth: px(3) }, [sticky({ top: px(30) })]), tall())).toEqual({ x: 8, y: 18 });
   });
 
+  it('drops bottom, and right in ltr, when both insets and the box overflow the viewport, as Blink does', () => {
+    // top 0, bottom 0 and an 800px box after a 200px sibling: bottom is dropped, so it stays in flow at 208, not 8.
+    expect(at(box('lead', { height: px(200) }), sticky({ top: px(0), bottom: px(0), height: px(800) }), tall())).toEqual({ x: 8, y: 208 });
+    // left 0, right 0 and a 500px flex item after a 300px one: right is dropped, so it stays at 308, not 8.
+    expect(at(box('row', { display: 'flex', height: px(60) }, [box('cell', { width: px(300), flexShrink: 0 }), sticky({ left: px(0), right: px(0), width: px(500), flexShrink: 0 })]), tall())).toEqual({ x: 308, y: 8 });
+  });
+
   it('moves up to the bottom inset, no higher than its parent\'s content box', () => {
     expect(at(box('p', { height: px(430) }, [box('k', { height: px(400) }), sticky({ bottom: px(20) })]))).toEqual({ x: 8, y: 250 });
     expect(at(box('p', { height: px(430) }, [box('k', { height: px(400) }), sticky({ bottom: pct(10) })]))).toEqual({ x: 8, y: 240 });
@@ -78,9 +85,9 @@ describe('POSX-s: position: sticky', () => {
     expect(refusal(box('html', {}, [box('c', { overflowX: 'clip', overflowY: 'clip' }, [sticky({ top: px(0) })])]))).toBe('ok');
   });
 
-  it('validates, and the hit table refuses it', () => {
+  it('validates, and the hit table hits it where the layout places it at scroll offset 0', () => {
     const v = validateLayoutInput(JSON.parse(JSON.stringify(env(box('html', {}, [sticky({ top: px(0) })])))));
     expect(v.ok).toBe(true);
-    expect(hitRefusal(env(box('html', {}, [sticky({ top: px(0) })])))).toMatch(/^s is position: sticky/);
+    expect(hitRefusal(env(box('html', {}, [sticky({ top: px(0) })])))).toBeNull();
   });
 });

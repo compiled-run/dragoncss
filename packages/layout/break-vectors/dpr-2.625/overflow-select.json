@@ -1,0 +1,9 @@
+{
+  "case": "overflow-select",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"n1::inner:text0","lines":[[0,20]]},
+    {"id":"n2::inner:text0","lines":[[0,2]]},
+    {"id":"n3::inner:text0","lines":[[0,54]]}
+  ]
+}

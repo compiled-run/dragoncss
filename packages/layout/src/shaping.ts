@@ -1716,13 +1716,24 @@ export type ShapedText = {
   line(shaped: ShapedItem, start: number, breakOffset: number, available: LU, isBreakable: (offset: number) => boolean): LineResult;
 };
 
+type CachedItem = { readonly size: number; readonly letterSpacing: number; readonly wordSpacing: number; readonly smallCapsSize: number; readonly out: ShapedItem };
+
 /** The shaping core over the host's faces and HarfBuzz, for text in one language. */
 export function shapedText(faces: ReadonlyMap<string, ShapedFace>, shaper: GlyphShaper, faults: ShapingFaults, language: string): ShapedText {
-  const cache = new Map<string, ShapedItem>();
+  // By text, then face, then the numbers: a joined string key is built and hashed again on every call of every layout.
+  const cache = new Map<string, Map<string, CachedItem[]>>();
   const item = (text: string, face: string, size: number, letterSpacing: number, wordSpacing: number, smallCapsSize: number): ShapedItem => {
-    const key = `${face}\n${size}\n${letterSpacing}\n${wordSpacing}\n${smallCapsSize}\n${text}`;
-    const hit = cache.get(key);
-    if (hit !== undefined) return hit;
+    let byFace = cache.get(text);
+    if (byFace === undefined) {
+      byFace = new Map<string, CachedItem[]>();
+      cache.set(text, byFace);
+    }
+    let cached = byFace.get(face);
+    if (cached === undefined) {
+      cached = [];
+      byFace.set(face, cached);
+    }
+    for (const c of cached) if (c.size === size && c.letterSpacing === letterSpacing && c.wordSpacing === wordSpacing && c.smallCapsSize === smallCapsSize) return c.out;
     const f = faces.get(face);
     let out: ShapedItem;
     if (f === undefined) out = { ok: false, code: 'text-glyph', reason: `no bundled face ${face}` };
@@ -1737,7 +1748,7 @@ export function shapedText(faces: ReadonlyMap<string, ShapedFace>, shaper: Glyph
         out = result.missing >= 0 ? { ok: false, code: 'text-glyph', reason: `U+${result.missing.toString(16).toUpperCase()} has no glyph; font fallback is outside the shaping core` } : { ok: true, item: made.item, result };
       }
     }
-    cache.set(key, out);
+    cached.push({ size, letterSpacing, wordSpacing, smallCapsSize, out });
     return out;
   };
   const line = (shaped: ShapedItem, start: number, breakOffset: number, available: LU, isBreakable: (offset: number) => boolean): LineResult => {
@@ -1867,6 +1878,16 @@ export function shapedMeasurer(faces: ReadonlyMap<string, ShapedFace>, shaper: G
  */
 export function latinScopedMeasurer(measurer: TextMeasurer, latinCheckSkipped: boolean): TextMeasurer {
   if (latinCheckSkipped) return measurer;
+  // Once per text: every layout over this measurer asks again.
+  const outsideOf = new Map<string, number>();
+  const firstOutsideLatin = (text: string): number => {
+    let cp = outsideOf.get(text);
+    if (cp === undefined) {
+      cp = firstOutsideLatinOf(text);
+      outsideOf.set(text, cp);
+    }
+    return cp;
+  };
   return {
     metrics(font: TextFont): FontMetrics {
       return measurer.metrics(font);
@@ -1896,7 +1917,7 @@ export function latinScopedMeasurer(measurer: TextMeasurer, latinCheckSkipped: b
 }
 
 /** The first code point of text outside Latin, Common and Inherited, or -1. */
-function firstOutsideLatin(text: string): number {
+function firstOutsideLatinOf(text: string): number {
   for (const ch of text) if (!isLatinText(ch)) return ch.codePointAt(0) as number;
   return -1;
 }

@@ -46,28 +46,50 @@ export function systemMeasurer(system: SystemFonts, program: unknown, bundled: r
     },
   };
   const m = deviceShapedMeasurer(faces, shaper);
+  // A face's metrics and lengths at a size depend on nothing else, and the recorder keeps one entry per face and size.
+  const metricsOf = new Map<string, Map<number, FontMetrics>>();
+  const lengthsOf = new Map<string, Map<number, FontLengths>>();
   return {
     ...m,
     metrics: (font) => {
+      const hit = metricsOf.get(font.family)?.get(font.size);
+      if (hit !== undefined) return hit;
+      let out: FontMetrics;
       if (!platform.has(font.family)) {
         recorder?.metrics(font.family, font.size, null);
-        return m.metrics(font);
+        out = m.metrics(font);
+      } else {
+        const own = system.metrics(font.family, platformFontSize(font.size), dpr);
+        recorder?.metrics(font.family, font.size, own);
+        out = own ?? m.metrics(font);
       }
-      const own = system.metrics(font.family, platformFontSize(font.size), dpr);
-      recorder?.metrics(font.family, font.size, own);
-      return own ?? m.metrics(font);
+      atSize(metricsOf, font.family).set(font.size, out);
+      return out;
     },
     lengths: (font) => {
+      const hit = lengthsOf.get(font.family)?.get(font.size);
+      if (hit !== undefined) return hit;
+      let out: FontLengths;
       if (!platform.has(font.family)) {
-        const engine = m.lengths(font);
-        recorder?.lengths(font.family, font.size, engine);
-        return engine;
+        out = m.lengths(font);
+        recorder?.lengths(font.family, font.size, out);
+      } else {
+        out = system.lengths(font.family, platformFontSize(font.size));
+        recorder?.lengths(font.family, font.size, out);
       }
-      const own = system.lengths(font.family, platformFontSize(font.size));
-      recorder?.lengths(font.family, font.size, own);
-      return own;
+      atSize(lengthsOf, font.family).set(font.size, out);
+      return out;
     },
   };
+}
+
+function atSize<T>(byFamily: Map<string, Map<number, T>>, family: string): Map<number, T> {
+  let bySize = byFamily.get(family);
+  if (bySize === undefined) {
+    bySize = new Map();
+    byFamily.set(family, bySize);
+  }
+  return bySize;
 }
 
 /** The FontData of every face a measurer built by systemMeasurer reads, by id: what a device's replay of it needs. */

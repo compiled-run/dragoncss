@@ -26,8 +26,8 @@ import { generatedElement, generatedText, generatedTextNode, hostRefusal } from 
 import { isReplacedTag, presentationalHints } from './elements/replaced.ts';
 import { isSvgShapeTag, SVG_TAG, svgHintDeclaration } from './elements/svg.ts';
 import { applyAnyLink } from './text-decoration.ts';
-import { inputTypeState, isRangeType, isTextFieldType } from './elements/controls.ts';
-import { sanitizedTextValue, shownPlaceholder, TEXT_FIELD_UA_SHADOW } from '../forms/text-field.ts';
+import { inputTypeState, isRangeType, isTextFieldType, selectAppearance } from './elements/controls.ts';
+import { sanitizedTextValue, shownPlaceholder, shownTextAreaPlaceholder, TEXT_AREA_UA_SHADOW, TEXT_FIELD_UA_SHADOW, textAreaValue } from '../forms/text-field.ts';
 import type { SelectOption } from '../forms/select.ts';
 import { labelKeepsWhiteSpace, SELECT_UA_SHADOW, shownLabel, shownOptionIndex } from '../forms/select.ts';
 import { RANGE_UA_SHADOW } from '../forms/ua-shadow.generated.ts';
@@ -363,8 +363,12 @@ function resolveTreeWith(root: LinkedElement, rules: readonly Rule[], faults: Co
     const hints = part === null ? presentationalHints(el.tag, el.attributes) : new Map();
     // The UA values applied after the cascade to longhands no author declaration set: computeFontStyleLonghands, applyAnyLink and
     // applyShadowUserAgent below.
-    const shadowRules = part === null ? [] : part === 'inner' ? SELECT_UA_SHADOW.inner : isTextFieldPart(part) ? TEXT_FIELD_UA_SHADOW[part] : RANGE_UA_SHADOW[part];
+    const shadowRules: readonly { readonly declarations: readonly (readonly [string, ...unknown[]])[] }[] = part === null ? [] : part === 'inner' ? SELECT_UA_SHADOW.inner : isTextFieldPart(part) ? (textAreaParts.has(el) ? TEXT_AREA_UA_SHADOW : TEXT_FIELD_UA_SHADOW)[part] : RANGE_UA_SHADOW[part];
     const shadowSet = new Set<string>(shadowRules.flatMap((r) => r.declarations.map(([name]) => (name === 'min-inline-size' ? 'min-width' : name))));
+    // FORM-b: applySelectShadow, the select[disabled] > option colour and the menulist line-height reset below.
+    if (part === 'inner') for (const p of ['white-space-collapse', 'direction', 'unicode-bidi', 'text-align']) shadowSet.add(p);
+    if (pseudo === null && part === null && el.tag === 'select') shadowSet.add('line-height');
+    if (pseudo === null && part === null && el.tag === 'option' && parent !== null && parent.element.tag === 'select' && parent.element.attributes.has('disabled')) shadowSet.add('color');
     const laterUserAgent = (p: Longhand): boolean =>
       ((p === 'font-weight' || p === 'font-style') && textFontsOf(environment.ua, el.tag)[p] !== undefined) || ((p === 'color' || p === 'text-decoration-line') && isAnyLink(el)) || shadowSet.has(p);
     for (const p of LONGHANDS) {
@@ -438,9 +442,12 @@ function resolveTreeWith(root: LinkedElement, rules: readonly Rule[], faults: Co
       props.set('color', { value: parseValueText('color', color), origin: 'user-agent', span: null, declaration: null, declared: null, losing: [] });
     }
     if (part === 'inner') applySelectShadow(props, fromParent, shownOptions.get(chain[chain.length - 1] as LinkedElement) ?? null, el.children.map((c) => (c.kind === 'text' ? c.text : '')).join(''));
-    else if (part !== null) (isTextFieldPart(part) ? applyTextFieldShadow : applyShadowUserAgent)(part as never, props, defaulted, fromParent);
+    else if (part !== null && isTextFieldPart(part)) applyTextFieldShadow(textAreaParts.has(el) ? TEXT_AREA_UA_SHADOW : TEXT_FIELD_UA_SHADOW, part, props, defaulted, fromParent);
+    else if (part !== null) applyShadowUserAgent(part, props, defaulted, fromParent);
     computeFontStyleLonghands(el.tag, props, defaulted, parent === null ? null : parent.props, environment.ua, revertedProps);
     applyAnyLink(el, props, defaulted, environment.ua);
+    // FORM-b: LayoutThemeDefault::AdjustMenuListStyle resets a themed or devolved select's line height (layout_theme_default.cc:222-227).
+    if (pseudo === null && part === null && el.tag === 'select' && selectAppearance(props) === 'menulist-button') props.set('line-height', { value: parseValueText('line-height', 'normal'), origin: 'user-agent', span: null, declaration: null, declared: null, losing: [] });
     applyHidden(el, props, defaulted);
     for (const p of LONGHANDS) {
       const set = props.get(p) as ResolvedValue;
@@ -484,9 +491,11 @@ function resolveTreeWith(root: LinkedElement, rules: readonly Rule[], faults: Co
     };
     if (resolvedRoot === null) resolvedRoot = self;
     customsOf.set(self, scope.customs);
+    // FORM-b: a textarea's children are its value's text, which its inner editor holds; they are not boxes of their own.
+    const textarea = pseudo === null && part === null && el.tag === 'textarea';
     const menulist = pseudo === null && part === null && el.tag === 'select';
     // FORM-b: a select renders none of its children; its options are resolved beside the tree for the shown option's style.
-    const kids: (ResolvedElement | LinkedText)[] = menulist ? [] : own.children.map((child) => (child.kind === 'element' ? visit(child, here, self) : child));
+    const kids: (ResolvedElement | LinkedText)[] = textarea || menulist ? [] : own.children.map((child) => (child.kind === 'element' ? visit(child, here, self) : child));
     // css-lists-3 §3.1: a list item's ::marker rules cascade onto its marker, which inherits from the item; it is kept beside the
     // tree (markerOf), as only its color is drawn (generated.ts markerRuleRefusals refuses every other property).
     if (pseudo === null && part === null && markerRules.length > 0 && isListItem(props.get('display') as ResolvedValue)) {
@@ -529,6 +538,18 @@ function resolveTreeWith(root: LinkedElement, rules: readonly Rule[], faults: Co
       }
       kids.push(visit(textPartElement(el, 'editor', value), here, self, null, 'editor'));
     }
+    if (textarea) {
+      // FORM-b: a textarea holds the same UA shadow tree, its value the child text (computed-checks.ts refuses an element child).
+      textFieldParts.set(self, { part: null, host: el });
+      const value = textAreaValue(el.children.map((c) => (c.kind === 'text' ? c.text : '')));
+      if (el.attributes.has('placeholder')) {
+        const placeholder = visit(textAreaPart(el, 'placeholder', shownTextAreaPlaceholder('', el.attributes.get('placeholder')) ?? ''), here, self, null, 'placeholder');
+        if (value === '') kids.push(placeholder);
+        else hiddenPlaceholders.set(self, placeholder);
+      }
+      // A text child the producer gives, even empty, stays the editor's leaf, so a text known only at run time can fill it.
+      kids.push(visit(textAreaPart(el, 'editor', value, el.children.some((c) => c.kind === 'text')), here, self, null, 'editor'));
+    }
     if (part === 'inner') selectParts.set(self, { part, host: chain[chain.length - 1] as LinkedElement });
     if (menulist) {
       // FORM-b: a single select holds Chrome's UA shadow inner element, whose text is the shown option's label.
@@ -539,6 +560,8 @@ function resolveTreeWith(root: LinkedElement, rules: readonly Rule[], faults: Co
       const shown = shownOptionIndex(options.map(selectOptionOf));
       if (shown !== null) shownOptions.set(el, resolved[shown] as ResolvedElement);
       kids.push(visit(textPartElement(el, 'inner', shown === null ? '' : shownLabel(selectOptionOf(options[shown] as LinkedElement))), here, self, null, 'inner'));
+      // FORM-b S4: every option's label in the inner element's text style, beside the tree, for the select's natural width.
+      selectOptionLabels.set(self, options.map((o, k) => visit(optionLabelElement(el, k, shownLabel(selectOptionOf(o))), here, self, null, 'inner')));
     }
     // css-position-4 §3.2: a <dialog> shown modal (the host presents the top layer: project.ts refuses <dialog> otherwise) has a
     // ::backdrop box, which inherits from it; it is the dialog's last child here and lowerTree moves both into the top layer.
@@ -631,7 +654,7 @@ function resolveTreeWith(root: LinkedElement, rules: readonly Rule[], faults: Co
         }
         const text = collapsed.get(kid);
         if (text === undefined) throw new Error(`${kid.address}: text outside any inline formatting context`);
-        if (text.length === 0) continue;
+        if (text.length === 0 && !keptEmptyTexts.has(kid)) continue;
         const refusal = refusals.get(kid);
         const resolvedText: ResolvedText = { kind: 'text', node: kid, text, props: textProps(ownerProps, faults, environment.ua), smallCaps: !faults.smallCapsUnsynthesized && synthesizesSmallCaps(ownerProps) };
         owner.children.push(refusal === undefined ? resolvedText : { ...resolvedText, transformRefusal: refusal });
@@ -747,6 +770,20 @@ const PART_PSEUDO: Readonly<Record<ShadowPart, ControlPart | null>> = { containe
 const shownOptions = new WeakMap<LinkedElement, ResolvedElement>();
 const selectOptions = new WeakMap<ResolvedElement, readonly ResolvedElement[]>();
 
+const selectOptionLabels = new WeakMap<ResolvedElement, readonly ResolvedElement[]>();
+
+/** FORM-b S4: each option's label as an inner element "<select address>::option<k>", resolved beside the tree; empty for any other element. */
+export function selectOptionLabelsOf(el: ResolvedElement): readonly ResolvedElement[] {
+  return selectOptionLabels.get(el) ?? [];
+}
+
+/** An option's label as an inner element of its select, at "<select address>::option<k>" with one text child (none for an empty label). */
+function optionLabelElement(host: LinkedElement, k: number, text: string): LinkedElement {
+  const address = `${host.address}::option${k}`;
+  const children: LinkedText[] = text === '' ? [] : [{ kind: 'text', address: `${address}:text0`, node: { kind: 'text', id: `${host.node.id}::option${k}:text0`, text, origin: host.node.origin }, instance: host.instance, owner: host.owner, text }];
+  return { kind: 'element', address, node: host.node, instance: host.instance, owner: host.owner, tag: 'div', classes: [], attributes: new Map(), children };
+}
+
 /** A select's resolved options in tree order, beside the tree; empty for every other element. */
 export function selectOptionsOf(el: ResolvedElement): readonly ResolvedElement[] {
   return selectOptions.get(el) ?? [];
@@ -794,10 +831,23 @@ export function textFieldPartOf(el: ResolvedElement): TextFieldPartInfo | undefi
  * A text field part as an element: a div at "<input address>::<part>" with one text child "<input address>::<part>:text0" (none
  * for an empty value or placeholder), located at the input.
  */
-function textPartElement(host: LinkedElement, part: TextFieldPart | SelectPart, text: string): LinkedElement {
+/** The empty editor texts of textareas whose producer gives a text child: resolve keeps them, so a run-time text can fill them. */
+const keptEmptyTexts = new WeakSet<LinkedText>();
+
+function textPartElement(host: LinkedElement, part: TextFieldPart | SelectPart, text: string, keepEmpty = false): LinkedElement {
   const address = `${host.address}::${part}`;
-  const children: LinkedText[] = text === '' ? [] : [{ kind: 'text', address: `${address}:text0`, node: { kind: 'text', id: `${host.node.id}::${part}:text0`, text, origin: host.node.origin }, instance: host.instance, owner: host.owner, text }];
+  const children: LinkedText[] = text === '' && !keepEmpty ? [] : [{ kind: 'text', address: `${address}:text0`, node: { kind: 'text', id: `${host.node.id}::${part}:text0`, text, origin: host.node.origin }, instance: host.instance, owner: host.owner, text }];
+  if (text === '' && keepEmpty) for (const c of children) keptEmptyTexts.add(c);
   return { kind: 'element', address, node: host.node, instance: host.instance, owner: host.owner, tag: 'div', classes: [], attributes: new Map(), children };
+}
+
+/** The parts of a textarea, whose UA shadow rules are TEXT_AREA_UA_SHADOW's. */
+const textAreaParts = new WeakSet<LinkedElement>();
+
+function textAreaPart(host: LinkedElement, part: TextFieldPart, text: string, keepEmpty = false): LinkedElement {
+  const e = textPartElement(host, part, text, keepEmpty);
+  textAreaParts.add(e);
+  return e;
 }
 
 /** The text field shadow rules' properties that no longhand models, and why each changes nothing Dragon lays out or paints. */
@@ -806,11 +856,11 @@ function textPartElement(host: LinkedElement, part: TextFieldPart | SelectPart, 
 const UNMODELLED_TEXT_FIELD = new Set(['-webkit-text-security', 'writing-mode', 'text-orientation']);
 
 /**
- * A text field part's UA declarations (TEXT_FIELD_UA_SHADOW, user-agent origin, in cascade order): a normal one applies to a
+ * A text field or textarea part's UA declarations (TEXT_FIELD_UA_SHADOW or TEXT_AREA_UA_SHADOW, user-agent origin, in cascade order): a normal one applies to a
  * longhand no author declaration set, an important one wins over the author's; inherit takes the input's value.
  */
-function applyTextFieldShadow(part: TextFieldPart, props: Map<Longhand, ResolvedValue>, defaulted: ReadonlySet<Longhand>, fromParent: (p: Longhand) => ResolvedValue): void {
-  for (const rule of TEXT_FIELD_UA_SHADOW[part]) {
+function applyTextFieldShadow(shadow: typeof TEXT_FIELD_UA_SHADOW, part: TextFieldPart, props: Map<Longhand, ResolvedValue>, defaulted: ReadonlySet<Longhand>, fromParent: (p: Longhand) => ResolvedValue): void {
+  for (const rule of shadow[part]) {
     for (const [name, text, important] of rule.declarations) {
       if (UNMODELLED_TEXT_FIELD.has(name)) continue;
       const p = name as Longhand;

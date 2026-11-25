@@ -1,12 +1,12 @@
 // Intrinsic inline sizes (css-sizing-3 §5) and flex container intrinsic inline sizes (css-flexbox-1 §9.9.1, §9.9.2).
 import type { Auto, ControlBox, LayoutBox, LayoutNode, NoneValue } from './input.ts';
 import type { LU } from './units.ts';
-import { add, fromCssPx, max, min, sum, ZERO, mulInt } from './units.ts';
+import { add, ceilFloatToWholePx, fromCssPx, max, min, sum, toPx, ZERO, mulInt } from './units.ts';
 import { borderBoxFromSpecified, hasPercent, lengthMaxWidth, lengthMinWidth, lengthWidth, resolveBorder, resolveLength, resolveMinLength, sumEdges } from './box.ts';
 import type { Ctx } from './block.ts';
-import { plainBox, textFieldInlineSize } from './controls.ts';
+import { compressesPercentWidth, plainBox, textAreaInlineSize, textFieldInlineSize } from './controls.ts';
 import { gridIntrinsicContentInlineSize } from './grid.ts';
-import { inlineIntrinsicSize } from './inline.ts';
+import { inlineIntrinsicSize, leafFontOf } from './inline.ts';
 import { isOutOfFlow } from './position.ts';
 import { hasAspectRatio, ratioInlineContribution } from './ratio.ts';
 import { replacedContribution } from './replaced.ts';
@@ -24,7 +24,16 @@ const NONE: NoneValue = { kind: 'none' };
 export function intrinsicContentInlineSize(ctx: Ctx, node: LayoutBox | ControlBox, kind: IntrinsicKind): LU {
   if (node.kind === 'control' && node.control.kind === 'range') return fromCssPx(node.control.defaultInlineSize);
   // FORM-b: a text field's is size x its average character width, whatever its value (controls.ts textFieldInlineSize).
-  if (node.kind === 'control' && node.control.kind === 'text-field') return textFieldInlineSize(ctx.measurer, node.control);
+  if (node.kind === 'control' && node.control.kind === 'text-field') {
+    if (node.control.avgChar === 'unmeasured') unsupported('text-field-avg-char', node.id, 'css-sizing-3 §5.1', `the ${kind}-content size of the text field ${node.id} reads its average character width, which is proven only for Ahem`);
+    return textFieldInlineSize(ctx.measurer, node.control);
+  }
+  if (node.kind === 'control' && node.control.kind === 'select-menulist') return menuListNaturalInlineSize(ctx, node);
+  // FORM-b: a textarea's is cols x the advance of 0, whatever its text (controls.ts textAreaInlineSize).
+  if (node.kind === 'control' && node.control.kind === 'text-area') {
+    if (node.control.avgChar === 'unmeasured') unsupported('text-field-avg-char', node.id, 'css-sizing-3 §5.1', `the ${kind}-content size of the textarea ${node.id} reads its average character width, which is proven only for Ahem`);
+    return textAreaInlineSize(ctx.measurer, node.control);
+  }
   const box = plainBox(node);
   // css-contain-2 §3.2 and css-sizing-4 §5.2: a size-contained box sizes as if it had no content, or content of its
   // contain-intrinsic-width. An empty grid keeps its explicit tracks and gaps (Chrome 145: an inline-grid of 30px 40px columns with a
@@ -54,6 +63,41 @@ export function intrinsicContentInlineSize(ctx: Ctx, node: LayoutBox | ControlBo
   return widest;
 }
 
+/**
+ * FORM-b S4: a menulist's min- and max-content inline size, whatever the shown option: its widest option label measured in the
+ * inner element's text style, rounded up to a whole px, plus the inner element's inline margins (Chrome 145, controls-select-
+ * natural-width). The planted menuListShownLabelOnly measures only the shown label.
+ */
+function menuListNaturalInlineSize(ctx: Ctx, node: ControlBox): LU {
+  const c = node.control;
+  if (c.kind !== 'select-menulist') throw new Error(`${node.id} is not a select`);
+  let insets = ZERO;
+  let shown = '';
+  let inners = 0;
+  for (const k of node.children) {
+    if (k.kind !== 'control' || k.control.kind !== 'select-inner') continue;
+    inners = inners + 1;
+    if (k.style.marginLeft.kind === 'px') insets = add(insets, fromCssPx(k.style.marginLeft.value));
+    if (k.style.marginRight.kind === 'px') insets = add(insets, fromCssPx(k.style.marginRight.value));
+    for (const t of k.children) {
+      if (t.kind === 'text') shown = shown + t.text;
+    }
+  }
+  if (inners !== 1) throw new Error(`${node.id}: a select-menulist control without exactly one select-inner control (validateLayoutInput rejects it)`);
+  let widest = 0;
+  for (const o of c.options) {
+    if (ctx.faults.menuListShownLabelOnly && o.text !== shown) continue;
+    const m = ctx.measurer.measure(o.text, leafFontOf(o));
+    if (!m.ok) {
+      if (m.code === 'text-script') unsupported('text-script', o.id, 'notes/T056-txt1a-spec.md R4', m.reason);
+      unsupported('text-glyph', o.id, 'css-fonts-4 §5', m.reason);
+    }
+    const w = toPx(m.measure.width);
+    if (w > widest) widest = w;
+  }
+  return add(ceilFloatToWholePx(widest), insets);
+}
+
 // css-sizing-3 §5.2: a box's outer inline-size contribution. §5.2.1 cyclic percentages: percentage width behaves as auto, percentage
 // min-width as auto and max-width as none, percentage padding and margins and auto margins contribute zero (fixture intrinsic-percent).
 export function inlineContribution(ctx: Ctx, node: LayoutNode, kind: IntrinsicKind): LU {
@@ -72,7 +116,7 @@ export function inlineContribution(ctx: Ctx, node: LayoutNode, kind: IntrinsicKi
   const keyword = (k: string): LU | null => {
     if (k !== 'min-content' && k !== 'max-content' && k !== 'fit-content') return null;
     if (hasAspectRatio(s)) return unsupported('intrinsic-size-keyword', box.id, 'css-sizing-4 §5.1', `${k} with an aspect-ratio`);
-    return add(intrinsicContentInlineSize(ctx, box, k === 'min-content' ? 'min' : k === 'max-content' ? 'max' : kind), bp);
+    return add(intrinsicContentInlineSize(ctx, node.kind === 'control' ? node : box, k === 'min-content' ? 'min' : k === 'max-content' ? 'max' : kind), bp);
   };
   const width = keyword(s.width.kind);
   const maxWidth = keyword(s.maxWidth.kind);
@@ -85,6 +129,7 @@ export function inlineContribution(ctx: Ctx, node: LayoutNode, kind: IntrinsicKi
   } else {
     const w = s.width.kind === 'stretch' ? AUTO : lengthWidth(box.id, s.width);
     if (w.kind !== 'auto' && !hasPercent(w)) size = borderBoxFromSpecified(resolveLength(w, ZERO, ctx.faults), bp, s.boxSizing);
+    else if (w.kind !== 'auto' && kind === 'min' && node.kind === 'control' && compressesPercentWidth(node)) size = borderBoxFromSpecified(resolveLength(w, ZERO, ctx.faults), bp, s.boxSizing);
     else if (hasAspectRatio(s)) size = ratioInlineContribution(ctx, box, kind);
     else size = add(intrinsicContentInlineSize(ctx, node, kind), bp);
   }

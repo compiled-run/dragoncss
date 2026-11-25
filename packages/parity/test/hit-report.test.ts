@@ -4,34 +4,34 @@
 // nearest ancestor of Chrome's element that has an activation handler.
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { NO_HIT_FAULTS, NO_HIT_TABLE_FAULTS } from '../../layout/src/rt-hit.ts';
-import { capturedIds, caseHitTable, committedHits, committedHitsAt, compareHits, compareHitsAt, gridSha256, HIT_DPR_CAPTURES, HIT_FACTS_PATH, hitCases, hitFactsJson, hitGrid, hitGridAt, hitRefusal, hitRefusedCases, tapTarget } from '../src/hit-capture.ts';
+import { hitTransformRefusal, NO_HIT_FAULTS, NO_HIT_TABLE_FAULTS } from '../../layout/src/rt-hit.ts';
+import { capturedIds, caseHitTable, chromeHitPoint, committedHits, committedHitsAt, compareHits, compareHitsAt, gridSha256, HIT_DPR_CAPTURES, HIT_FACTS_PATH, hitCases, hitFactsJson, hitGrid, hitGridAt, hitRefusal, hitRefusedCases, tapTarget } from '../src/hit-capture.ts';
 import type { NativeCase } from '../src/native-host.ts';
 import { deviceCheckCases, nativeCases } from '../src/native-host.ts';
 import { repoPath } from '../src/paths.ts';
 import { hitCaseIds, nativeTargets } from '../src/targets.ts';
-import { CLAMP_OUT, CLAMP_REASON, INLINE_OUT, INLINE_REASON, MARKER_OUT, MARKER_REASON, SHAPED_REASON, STACKING_OUT, STACKING_REASON, SVG_OUT, SVG_REASON, TRANSFORM_REASON } from './hit-refusals.ts';
+import { CLAMP_OUT, CLAMP_REASON, FLOAT_OUT, FLOAT_REASON, INLINE_OUT, INLINE_REASON, MARKER_OUT, MARKER_REASON, SHAPED_REASON, STACKING_OUT, STACKING_REASON, SVG_OUT, SVG_REASON, TRANSFORM_REASON } from './hit-refusals.ts';
 import { shapedCaseIds } from '../src/text-latin-run.ts';
 import { GRID_OUT, GRID_REASON } from './hit-refusals-grid.ts';
 import { CONTROLS_OUT, CONTROLS_REASON } from './hit-refusals-controls.ts';
-import { RADIUS_OUT, RADIUS_REASON } from './hit-refusals-radius.ts';
 import { VISIBILITY_OUT, VISIBILITY_REASON } from './hit-refusals-visibility.ts';
 import { CLIP_PATH_OUT, CLIP_PATH_REASON, CLIP_RECT_OUT, CLIP_RECT_REASON } from './hit-refusals-clip-rect.ts';
 
 const cases = hitCases();
 
 describe('the host hit lane', () => {
-  // The hit lane leaves out the union of eight refusals (hit-refusals.ts, hit-refusals-radius.ts, hit-refusals-grid.ts, hit-refusals-controls.ts); taking any alone would bring the others' cases back.
-  const transformed = (): string[] => nativeCases().filter((n) => n.programs.uikit.nodes.some((x) => x.writes.some((w) => w.kind === 'transform'))).map((n) => n.case.id);
-  it('leaves out exactly the union of the transform cases, the PNT1 stacking cases, the PNT1 radius fixtures, the INL1a inline-box and <br> fixtures, the GRID fixtures, the T150a visibility fixtures, the MASK-CLIP clip and clip-path fixtures, the svg fixtures, the TXT2-g line-clamp fixtures, the FORM-a controls fixtures and the TXT1a-2 shaped cases, each with a named reason', () => {
+  // The hit lane leaves out the union of the refusals in hit-refusals*.ts; taking any alone would bring the others' cases back.
+  const transformed = (): string[] => nativeCases().filter((n) => n.programs.uikit.nodes.some((x) => x.writes.some((w) => w.kind === 'transform' && hitTransformRefusal(x.id, w.ops) !== null))).map((n) => n.case.id);
+  it('leaves out exactly the union of the rotated transform cases, the PNT1 stacking cases, the INL1a inline-box and <br> fixtures, the GRID fixtures, the T150a visibility fixtures, the MASK-CLIP clip and clip-path fixtures, the svg fixtures, the TXT2-g line-clamp fixtures, the FORM-a controls fixtures, the FLT float fixtures and the TXT1a-2 shaped cases, each with a named reason', () => {
     const hit = new Set(cases.map((n) => n.case.id));
     const out = nativeCases().filter((n) => !hit.has(n.case.id));
-    const union = new Set([...shapedCaseIds(), ...transformed(), ...STACKING_OUT, ...RADIUS_OUT, ...INLINE_OUT, ...GRID_OUT, ...VISIBILITY_OUT, ...CLIP_RECT_OUT, ...CLIP_PATH_OUT, ...SVG_OUT, ...CLAMP_OUT, ...MARKER_OUT, ...CONTROLS_OUT]);
+    const union = new Set([...shapedCaseIds(), ...transformed(), ...STACKING_OUT, ...INLINE_OUT, ...GRID_OUT, ...VISIBILITY_OUT, ...CLIP_RECT_OUT, ...CLIP_PATH_OUT, ...SVG_OUT, ...CLAMP_OUT, ...MARKER_OUT, ...CONTROLS_OUT, ...FLOAT_OUT]);
     expect(out.map((n) => n.case.id)).toEqual(nativeCases().map((n) => n.case.id).filter((id) => union.has(id)));
     for (const n of out.filter((x) => INLINE_OUT.includes(x.case.id))) expect(() => caseHitTable(n), n.case.id).toThrow(INLINE_REASON);
     for (const n of out.filter((x) => CLAMP_OUT.includes(x.case.id))) expect(() => caseHitTable(n), n.case.id).toThrow(CLAMP_REASON);
     for (const n of out.filter((x) => GRID_OUT.includes(x.case.id))) expect(() => caseHitTable(n), n.case.id).toThrow(GRID_REASON);
     for (const n of out.filter((x) => CONTROLS_OUT.includes(x.case.id))) expect(() => caseHitTable(n), n.case.id).toThrow(CONTROLS_REASON);
+    for (const n of out.filter((x) => FLOAT_OUT.includes(x.case.id))) expect(() => caseHitTable(n), n.case.id).toThrow(FLOAT_REASON);
     // The device-hit lane declares exactly the hit cases at every device DPR (targets.ts hitCaseIds), so P5 counts them, not all.
     expect(hitCaseIds()).toEqual(cases.map((n) => n.case.id));
     for (const t of nativeTargets()) for (const s of t.lanes.find((l) => l.lane === 'device-hit')?.sets ?? []) expect(s.ids, `${t.target} ${s.dpr}`).toEqual(hitCaseIds());
@@ -40,8 +40,8 @@ describe('the host hit lane', () => {
   });
 
   it('has a capture of every layout case, on the grid its hit table derives', () => {
-    // Derived-count pin: every layout case, including the 8 hit-* cases.
-    expect(cases.filter((n) => n.case.id.startsWith('hit-')).map((n) => n.case.id)).toEqual(['hit-line-strip-a', 'hit-line-strip-a-rtl', 'hit-line-strip-b', 'hit-line-strip-b-rtl', 'hit-order', 'hit-order-rtl', 'hit-pointer-events', 'hit-pointer-events-rtl']);
+    // Derived-count pin: every layout case, including the 10 hit-* cases.
+    expect(cases.filter((n) => n.case.id.startsWith('hit-')).map((n) => n.case.id)).toEqual(['hit-line-strip-a', 'hit-line-strip-a-rtl', 'hit-line-strip-b', 'hit-line-strip-b-rtl', 'hit-order', 'hit-order-rtl', 'hit-pointer-events', 'hit-pointer-events-rtl', 'hit-atomic-inline', 'hit-atomic-inline-rtl', 'hit-atomic-inline-context', 'hit-atomic-inline-context-rtl', 'hit-atomic-inline-context-nest', 'hit-atomic-inline-context-nest-rtl', 'hit-atomic-inline-notes', 'hit-atomic-inline-notes-rtl']);
     for (const n of cases) {
       const c = committedHits(n.case.id);
       const grid = hitGrid(caseHitTable(n), n.case.environment.viewport);
@@ -49,11 +49,10 @@ describe('the host hit lane', () => {
     }
   });
 
-  it('refuses by name every case whose program writes a transform (T064 R13; SELD-R2b T146 lifts it), and the PNT1 stacking, PNT1 radius, INL1a inline, GRID, T150a visibility, MASK-CLIP clip and clip-path, svg (SVG-a2 lifts it), FORM-a controls and shaped cases (TXT1a-2 phase R) with their own reasons', () => {
+  it('refuses by name every case whose program writes a rotated transform (T064 R13; SELD-R2b T146 lifts it), and the PNT1 stacking, INL1a inline, GRID, T150a visibility, MASK-CLIP clip and clip-path, svg (SVG-a2 lifts it), FORM-a controls, FLT float and shaped cases (TXT1a-2 phase R) with their own reasons', () => {
     const refused = hitRefusedCases();
     const moved = new Set(transformed());
     expect(refused.filter((r) => moved.has(r.id)).map((r) => r.id)).toEqual(transformed());
-    expect(refused.filter((r) => RADIUS_OUT.includes(r.id)).map((r) => r.id).sort()).toEqual([...RADIUS_OUT].sort());
     expect(refused.filter((r) => GRID_OUT.includes(r.id)).map((r) => r.id).sort()).toEqual([...GRID_OUT].sort());
     expect(refused.filter((r) => VISIBILITY_OUT.includes(r.id)).map((r) => r.id).sort()).toEqual([...VISIBILITY_OUT].sort());
     expect(refused.filter((r) => CLIP_RECT_OUT.includes(r.id)).map((r) => r.id).sort()).toEqual([...CLIP_RECT_OUT].sort());
@@ -61,6 +60,7 @@ describe('the host hit lane', () => {
     expect(refused.filter((r) => CLAMP_OUT.includes(r.id)).map((r) => r.id).sort()).toEqual([...CLAMP_OUT].sort());
     expect(refused.filter((r) => MARKER_OUT.includes(r.id)).map((r) => r.id).sort()).toEqual([...MARKER_OUT].sort());
     expect(refused.filter((r) => CONTROLS_OUT.includes(r.id)).map((r) => r.id).sort()).toEqual([...CONTROLS_OUT].sort());
+    expect(refused.filter((r) => FLOAT_OUT.includes(r.id)).map((r) => r.id).sort()).toEqual([...FLOAT_OUT].sort());
     expect(moved.size).toBeGreaterThan(0);
     // TXT1a-2: every shaped case is refused first, with its own reason.
     expect(refused.filter((r) => shapedCaseIds().has(r.id)).map((r) => r.id).sort()).toEqual([...shapedCaseIds()].sort());
@@ -70,13 +70,13 @@ describe('the host hit lane', () => {
       else if (STACKING_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(STACKING_REASON);
       else if (SVG_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(SVG_REASON);
       else if (CLAMP_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(CLAMP_REASON);
-      else if (RADIUS_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(RADIUS_REASON);
       else if (GRID_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(GRID_REASON);
       else if (VISIBILITY_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(VISIBILITY_REASON);
       else if (CLIP_RECT_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(CLIP_RECT_REASON);
       else if (CLIP_PATH_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(CLIP_PATH_REASON);
       else if (MARKER_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(MARKER_REASON);
       else if (CONTROLS_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(CONTROLS_REASON);
+      else if (FLOAT_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(FLOAT_REASON);
       else expect([INLINE_OUT.includes(r.id), r.reason], r.id).toEqual([true, expect.stringMatching(INLINE_REASON)]);
     }
     const covered = new Set(cases.map((n) => n.case.id));
@@ -108,9 +108,10 @@ describe('the host hit lane at a fractional device DPR', () => {
   // device-hit lane's expectedHitRuns and the device-traces reference hit test with that model, so it must name Chrome's element too.
   it('names Chrome\'s element at every point of every DPR capture, on the grid its table derives at that DPR', () => {
     const byId = new Map(cases.map((n) => [n.case.id, n]));
-    expect(HIT_DPR_CAPTURES.map((d) => d.dpr)).toEqual([2.625]);
+    const fieldIds = ['controls-textarea', 'grid-controls-fields'];
+    const contextIds = ['hit-atomic-inline-context', 'hit-atomic-inline-context-rtl', 'hit-atomic-inline-context-nest', 'hit-atomic-inline-context-nest-rtl', 'hit-atomic-inline-notes', 'hit-atomic-inline-notes-rtl'];
+    expect(HIT_DPR_CAPTURES.map((d) => [d.dpr, d.ids])).toEqual([[2, [...contextIds, ...fieldIds]], [2.625, ['interaction-combo', 'interaction-combo-rtl', 'radius-basic', 'radius-clip', 'transform-hit-scale', 'transform-hit-subpixel', 'transform-hit-snap', 'opacity-group-transform', ...contextIds, ...fieldIds]], [3, [...contextIds, ...fieldIds]]]);
     for (const { dpr, ids } of HIT_DPR_CAPTURES) {
-      expect(ids).toEqual(['interaction-combo', 'interaction-combo-rtl']);
       const mismatches: string[] = [];
       for (const id of ids) {
         const n = byId.get(id);
@@ -121,6 +122,7 @@ describe('the host hit lane at a fractional device DPR', () => {
         const r = compareHitsAt(n, c, dpr);
         expect(r.stale, id).toBe(false);
         for (const m of r.mismatches.slice(0, 3)) mismatches.push(`${m.case} (${m.x / (dpr * 64)}, ${m.y / (dpr * 64)}): Chrome ${m.chrome}, Dragon ${m.dragon}`);
+        if (!id.startsWith('interaction-combo')) continue;
         // The device-traces step (2, 30) is on c's bottom edge, y 30, over d: c's text rect snapped to device px (53
         // to 79) holds the band from 78.75 to 79 device px at 2.625, so Chrome names c there, where DPR 1 names d.
         const w = n.case.environment.viewport.width;
@@ -134,6 +136,36 @@ describe('the host hit lane at a fractional device DPR', () => {
       }
       expect(mismatches).toEqual([]);
     }
+  });
+
+  it('captures every row of the HIT-INL2c fixtures at DPR 1, 2, 2.625 and 3, ltr and rtl: Chrome names each element but the pointer-events: none one', () => {
+    const rows: Record<string, string[]> = {
+      'hit-atomic-inline-context': ['a', 'a1', 'b', 'b0', 'b01', 'b1', 'blk', 'body', 'c', 'c1', 'c2', 'd', 'd1', 'd2', 'e', 'e1', 'f', 'f1', 'g', 'g1', 'h', 'html', 'i', 'i1', 'i2', 'ib', 'w'],
+      'hit-atomic-inline-context-nest': ['body', 'html', 'l', 'l1', 'm', 'm1', 'n', 'n1', 'n2', 'o', 'o1', 'o2'],
+      'hit-atomic-inline-notes': ['html', 'p', 'p1', 'p2', 'q', 'q1', 'q2'],
+    };
+    for (const [fixture, ids] of Object.entries(rows)) {
+      for (const id of [fixture, `${fixture}-rtl`]) {
+        const n = cases.find((x) => x.case.id === id);
+        if (n === undefined) throw new Error(`${id} is not a hit case`);
+        for (const dpr of [1, 2, 2.625, 3]) {
+          const c = dpr === 1 ? committedHits(id) : committedHitsAt(id, dpr);
+          expect([id, dpr, [...new Set(capturedIds(c))].sort()]).toEqual([id, dpr, ids]);
+          if (dpr === 1) expect(compareHits(n, c).mismatches, id).toEqual([]);
+        }
+      }
+    }
+  });
+
+  it('compares at the point Chrome hit tests: the identity at DPR 1 and 2, up to 1 LU lower at 2.625', () => {
+    for (const n of cases.filter((x) => HIT_DPR_CAPTURES.some((d) => d.ids.includes(x.case.id)))) {
+      for (const dpr of [1, 2]) for (const [x, y] of hitGridAt(caseHitTable(n, undefined, dpr), n.case.environment.viewport, dpr)) expect([chromeHitPoint(x, dpr), chromeHitPoint(y, dpr)]).toEqual([x, y]);
+      const moved = hitGridAt(caseHitTable(n, undefined, 2.625), n.case.environment.viewport, 2.625).flatMap((p) => p).filter((v) => chromeHitPoint(v, 2.625) !== v);
+      for (const v of moved) expect(v - chromeHitPoint(v, 2.625), n.case.id).toBe(1);
+    }
+    // radius-basic's (720, 10.984375) device px, where the ellipse's arc crosses the top-left corner pixel: Chrome tests y 702 LU.
+    expect(chromeHitPoint(703, 2.625)).toBe(702);
+    expect(chromeHitPoint(46080, 2.625)).toBe(46080);
   });
 
   it('refuses a DPR capture compared at another DPR, and a DPR-1 capture read as a DPR one', () => {
@@ -158,11 +190,21 @@ describe('planted hit faults (T047 §3.3 item 12, host half)', () => {
     const f = failing((n) => compareHits(n, committedHits(n.case.id), NO_HIT_FAULTS, { ...NO_HIT_TABLE_FAULTS, pointerEventsNotInherited: true }).mismatches.length);
     expect(f).toEqual(['hit-pointer-events', 'hit-pointer-events-rtl']);
   });
+  // Each table plant is judged by the cases it fails beyond those the clean table fails.
+  const beyondClean = (tableFaults: Partial<typeof NO_HIT_TABLE_FAULTS>): string[] => {
+    const count = (n: (typeof cases)[number], t: typeof NO_HIT_TABLE_FAULTS): number => compareHits(n, committedHits(n.case.id), NO_HIT_FAULTS, t).mismatches.length;
+    return cases.filter((n) => count(n, { ...NO_HIT_TABLE_FAULTS, ...tableFaults }) > count(n, NO_HIT_TABLE_FAULTS)).map((n) => n.case.id);
+  };
+  it('transformIgnored fails exactly the scale and translate transform cases', () => {
+    expect(beyondClean({ transformIgnored: true })).toEqual(['hit-atomic-inline-context', 'hit-atomic-inline-context-rtl', 'hit-atomic-inline-notes', 'hit-atomic-inline-notes-rtl', 'opacity-group-transform', 'opacity-group-transform-rtl', 'opacity-group-sticky', 'opacity-group-sticky-rtl', 'opacity-group-sticky-short', 'opacity-group-sticky-short-rtl', 'opacity-group-after-sticky', 'opacity-group-after-sticky-rtl', 'opacity-group-after-sticky-short', 'opacity-group-after-sticky-short-rtl', 'opacity-group-button', 'opacity-group-button-rtl', 'opacity-group-modal', 'opacity-group-modal-rtl', 'opacity-group-modal-sticky', 'opacity-group-modal-sticky-rtl', 'shadow-transform', 'shadow-transform-rtl', 'shadow-transform-order', 'shadow-transform-order-rtl', 'transform-translate', 'transform-hit-scale', 'transform-hit-subpixel', 'transform-hit-snap']);
+  });
+  it('contextNotLayered fails exactly the cases where a stacking context overlaps later flow content', () => {
+    expect(beyondClean({ contextNotLayered: true })).toEqual(['hit-atomic-inline-context', 'hit-atomic-inline-context-rtl', 'hit-atomic-inline-context-nest', 'hit-atomic-inline-context-nest-rtl', 'opacity-basic', 'opacity-basic-rtl', 'opacity-cascade', 'opacity-cascade-rtl', 'opacity-web', 'opacity-web-rtl', 'opacity-fold', 'opacity-fold-rtl', 'opacity-group-text', 'opacity-group-text-rtl', 'opacity-group-border', 'opacity-group-border-rtl', 'opacity-group-border-only', 'opacity-group-border-only-rtl', 'opacity-group-over-rects', 'opacity-group-over-rects-rtl', 'opacity-group-over-group', 'opacity-group-over-group-rtl', 'opacity-group-nested', 'opacity-group-nested-rtl', 'opacity-group-translucent', 'opacity-group-translucent-rtl', 'opacity-group-rounded', 'opacity-group-rounded-rtl', 'filter-matrix-text', 'filter-matrix-text-rtl', 'filter-matrix-over-rects', 'filter-matrix-over-rects-rtl', 'transform-hit-scale', 'transform-hit-subpixel']);
+  });
 });
 
 describe('tap dispatch', () => {
-  // No layout fixture holds an activation element yet (a href is DRAGON_UNSUPPORTED_ATTRIBUTE and button belongs to FORM-a), so
-  // every tap here activates nothing; packages/layout/test/rt-hit.test.ts proves the ancestor walk on a table with handlers.
+  // The controls fixtures' buttons are the layout fixtures' activation elements, so these taps walk to them on Chrome's elements.
   it('activates the nearest activation ancestor of Chrome\'s element at every captured point', () => {
     let taps = 0;
     for (const n of cases) {
@@ -177,7 +219,7 @@ describe('tap dispatch', () => {
         if (want !== null) taps++;
       });
     }
-    expect(taps).toBe(0);
+    expect(taps).toBeGreaterThan(0);
   });
 });
 
@@ -190,18 +232,18 @@ describe('the PNT1 stacking and radius hit refusals fire independently (merge of
     return n;
   };
   const flat = (x: Node): Node => ({ ...x, facts: { ...x.facts, stacking: { ...(x.facts['stacking'] as object), createsContext: false } } });
-  it('a stacking case refuses with the stacking reason, with or without a rounded corner, and with the radius reason once its contexts go', () => {
+  it('a stacking case refuses with the stacking reason, with or without a rounded corner, and is in the lane once its contexts go', () => {
     const stacking = caseOf('stacking-basic');
     const radius = stacking.programs.uikit.nodes.find((x) => x.parent !== null && x.kind !== 'text');
     if (radius === undefined) throw new Error('no box');
     const rounded = (x: Node): Node => (x.id === radius.id ? { ...x, writes: [...x.writes, { kind: 'border-radius' } as unknown as Node['writes'][number]] } : x);
     expect(hitRefusal(stacking)).toMatch(STACKING_REASON);
     expect(hitRefusal(edit(stacking, rounded))).toMatch(STACKING_REASON);
-    expect(hitRefusal(edit(stacking, (x) => rounded(flat(x))))).toMatch(RADIUS_REASON);
+    expect(hitRefusal(edit(stacking, (x) => rounded(flat(x))))).toBeNull();
   });
-  it('a radius case refuses with the radius reason, and with the stacking reason once one of its boxes makes a context', () => {
+  it('a radius case is in the hit lane (SELD-R2b), and refuses with the stacking reason once one of its boxes makes a context', () => {
     const radius = caseOf('radius-basic');
-    expect(hitRefusal(radius)).toMatch(RADIUS_REASON);
+    expect(hitRefusal(radius)).toBeNull();
     const box = radius.programs.uikit.nodes.find((x) => x.parent !== null && x.kind !== 'text');
     if (box === undefined) throw new Error('no box');
     expect(hitRefusal(edit(radius, (x) => (x.id === box.id ? { ...x, facts: { ...x.facts, stacking: { ...(x.facts['stacking'] as object), createsContext: true } } } : x)))).toMatch(STACKING_REASON);

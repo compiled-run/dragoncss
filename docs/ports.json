@@ -11,6 +11,21 @@
   },
   "entries": [
     {
+      "upstream": "third_party/blink/renderer/core/html/forms/internal_popup_menu.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2014 The Chromium Authors",
+      "fileSha256": "86216c38427c47de4f2a56e9f78ed4b340b20fdace3cc8667233cf64e8b1e438",
+      "headerSha256": "4c3117587e3ca0fd9ed20e33c26da0be4135eba8aa7e4d06b28c21e999cd5cb1",
+      "ranges": [
+        { "lines": "415-503", "symbol": "InternalPopupMenu::AddElementStyle", "source": "cited" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/analysis/computed-checks.ts", "symbol": "OPTION_UNDRAWN", "use": "reference" }
+      ]
+    },
+    {
       "upstream": "cc/layers/tile_size_calculator.cc",
       "licence": "bsd-chromium",
       "noticeText": "chromium-bsd",
@@ -964,11 +979,13 @@
       "fileSha256": "278f479631fc328077aff311634d7a2c6a749f798f0a6482f14c6d7ea1f10f3e",
       "headerSha256": "fc58abb313b0dbb837baebcadf633a83df109528c3a0516c4bb18b3c05ed3c69",
       "ranges": [
-        { "lines": "20-102", "symbol": "MenuListInnerElement::CustomStyleForLayoutObject", "source": "cited" }
+        { "lines": "20-102", "symbol": "MenuListInnerElement::CustomStyleForLayoutObject", "source": "cited" },
+        { "lines": "57-85", "symbol": "MenuListInnerElement::CustomStyleForLayoutObject", "source": "cited" }
       ],
       "dragon": [
         { "file": "packages/dragon/src/forms/select.ts", "symbol": null, "use": "port" },
-        { "file": "packages/layout/src/environment.ts", "symbol": "menuListLineHeight", "use": "port" }
+        { "file": "packages/layout/src/environment.ts", "symbol": "menuListLineHeight", "use": "port" },
+        { "file": "packages/layout/src/environment.ts", "symbol": "withInternalPadding", "use": "port" }
       ]
     },
     {
@@ -1008,7 +1025,8 @@
       ],
       "dragon": [
         { "file": "packages/dragon/src/forms/text-field.ts", "symbol": null, "use": "port" },
-        { "file": "packages/layout/src/environment.ts", "symbol": "editorLineHeightIsNormal", "use": "port" }
+        { "file": "packages/layout/src/environment.ts", "symbol": "editorLineHeightIsNormal", "use": "port" },
+        { "file": "packages/dragon/src/project.ts", "symbol": "checkTextFieldLineGap", "use": "reference" }
       ]
     },
     {
@@ -1024,6 +1042,29 @@
       ],
       "dragon": [
         { "file": "packages/dragon/src/forms/text-field.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/html/forms/html_text_area_element.cc",
+      "licence": "lgpl",
+      "ruling": {
+        "class": "A",
+        "basis": "Chrome 145 captures of the textarea's UA shadow tree (placeholder and inner editor) read through CDP; text-field.ts cites this file only to name where Chrome builds that tree",
+        "proof": [
+          "packages/parity/test/form-b-textarea.test.ts",
+          "packages/parity/fixtures/controls-textarea.html"
+        ]
+      },
+      "licencePhrase": "GNU Library General Public License",
+      "copyright": "Copyright (C) 1999 Lars Knoll (knoll@kde.org); Copyright (C) 2004, 2005, 2006, 2007, 2008, 2010 Apple Inc. All rights; Copyright (C) 2007 Samuel Weinig (sam@webkit.org)",
+      "fileSha256": "10452e28e6abaced30e7149371bf654dc6f86ec15dc6cfad8a8c38b6a5d27a54",
+      "headerSha256": "d050762cda6224d3cdb46315c2205c66c082d658cd27a8ec1d4646dcc05857d5",
+      "ranges": [
+        { "lines": "115-117", "symbol": "HTMLTextAreaElement::DidAddUserAgentShadowRoot", "source": "located" },
+        { "lines": "767-799", "symbol": "HTMLTextAreaElement::UpdatePlaceholderText", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/dragon/src/forms/text-field.ts", "symbol": null, "use": "reference" }
       ]
     },
     {
@@ -1827,6 +1868,7 @@
       "dragon": [
         { "file": "packages/dragon/src/analysis/computed.ts", "symbol": "APPEARANCE_DISPLAY", "use": "reference" },
         { "file": "packages/dragon/src/analysis/elements/controls.ts", "symbol": null, "use": "reference" },
+        { "file": "packages/dragon/src/analysis/elements/controls.ts", "symbol": "selectAppearance", "use": "reference" },
         { "file": "packages/dragon/src/forms/appearance.generated.ts", "symbol": "APPEARANCE_PROBE", "use": "reference" },
         { "file": "packages/dragon/src/forms/appearance.ts", "symbol": null, "use": "reference" },
         { "file": "scripts/capture-form-data.ts", "symbol": "appearanceModule", "use": "reference" }
@@ -1837,8 +1879,9 @@
       "licence": "lgpl",
       "ruling": {
         "class": "A",
-        "basis": "Chrome observation: the select inner element's margins and paddings, captured through CDP, are 0 under appearance: none",
+        "basis": "Chrome observation: the select inner element's margins and paddings, captured through CDP at DPR 1, 2, 2.625 and 3 and zoom 1 and 2, are 0 under appearance: none and the internal paddings under menulist-button, whose line height is normal",
         "proof": [
+          "packages/dragon/test/forms/forms.test.ts",
           "packages/parity/test/form-b-select.test.ts"
         ]
       },
@@ -1847,10 +1890,36 @@
       "fileSha256": "76a4363b67f4dbd3a0c3eb224fd4e4e2815e5627d83a2d33f60d0bda73972e51",
       "headerSha256": "422eab9d8a2ab79c588f134bec98dfe6c7991b14b3cf6bbe20e7ed742cf07739",
       "ranges": [
-        { "lines": "237-260", "symbol": "LayoutThemeDefault::PopupInternalPaddingStart", "source": "located" }
+        { "lines": "222-227", "symbol": "LayoutThemeDefault::AdjustMenuListStyle", "source": "cited" },
+        { "lines": "237-260", "symbol": "LayoutThemeDefault::PopupInternalPaddingStart", "source": "located" },
+        { "lines": "268-291", "symbol": "LayoutThemeDefault::ClampedMenuListArrowPaddingSize", "source": "located" }
       ],
       "dragon": [
-        { "file": "packages/dragon/src/forms/select.ts", "symbol": null, "use": "reference" }
+        { "file": "packages/dragon/src/analysis/resolve.ts", "symbol": "resolveTree", "use": "reference" },
+        { "file": "packages/dragon/src/forms/select.ts", "symbol": null, "use": "reference" },
+        { "file": "packages/layout/src/controls.ts", "symbol": "menuListArrowBox", "use": "reference" }
+      ]
+    },
+    {
+      "upstream": "third_party/blink/renderer/core/paint/theme_painter_default.cc",
+      "licence": "lgpl",
+      "ruling": {
+        "class": "A",
+        "basis": "Chrome observation: a menulist-button select's arrow pixels, captured at DPR 2 in both directions and committed for the fixtures at DPR 2, 3 and 2.625",
+        "proof": [
+          "packages/dragon/test/forms/forms.test.ts",
+          "packages/parity/test/form-b-select.test.ts"
+        ]
+      },
+      "licencePhrase": "GNU Library General Public License",
+      "copyright": "Copyright (C) 2007 Apple Inc.; Copyright (C) 2007 Alp Toker <alp@atoker.com>; Copyright (C) 2008 Collabora Ltd.; Copyright (C) 2008, 2009 Google Inc.; Copyright (C) 2009 Kenneth Rohde Christiansen",
+      "fileSha256": "cd0f6d63ed5fd4959265423dd14eac769e457e05ff6b60f32b0bf239767e2bff",
+      "headerSha256": "422eab9d8a2ab79c588f134bec98dfe6c7991b14b3cf6bbe20e7ed742cf07739",
+      "ranges": [
+        { "lines": "540-600", "symbol": "ThemePainterDefault::SetupMenuListArrow", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/controls.ts", "symbol": "menuListArrow", "use": "reference" }
       ]
     },
     {
@@ -2259,6 +2328,24 @@
       ]
     },
     {
+      "upstream": "third_party/blink/renderer/core/paint/hit_testing_transform_state.cc",
+      "licence": "bsd-apple",
+      "noticeText": "header-bsd-2",
+      "licencePhrase": "Redistributions of source code must retain the above copyright",
+      "copyright": "Copyright (C) 2011 Apple Inc.  All rights reserved.",
+      "fileSha256": "cb8bf9fed53a94196cb170b5d651b36b8e76081be84635de24c6826c3c45b47a",
+      "headerSha256": "24ce322c3ba30d2df2a1e7a98744abb04f2cbb20701d681dfcb2f0c09c343531",
+      "ranges": [
+        { "lines": "45-56", "symbol": "Flatten", "source": "located" },
+        { "lines": "58-61", "symbol": "MappedPoint", "source": "cited" },
+        { "lines": "68-70", "symbol": "BoundsOfMappedQuad", "source": "cited" },
+        { "lines": "77-81", "symbol": "BoundsOfMappedQuadInternal", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/rt-hit.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
       "upstream": "third_party/blink/renderer/core/paint/outline_painter.cc",
       "licence": "bsd-chromium",
       "noticeText": "chromium-bsd",
@@ -2384,6 +2471,7 @@
         { "file": "packages/dragon/src/analysis/paint-values/clip.ts", "symbol": null, "use": "reference" },
         { "file": "packages/dragon/src/analysis/paint-values/radius.ts", "symbol": null, "use": "reference" },
         { "file": "packages/dragon/src/lower/paint/clip.ts", "symbol": null, "use": "reference" },
+        { "file": "packages/layout/src/rt-hit.ts", "symbol": null, "use": "reference" },
         { "file": "packages/parity/src/paint-samples/replaced-geometry.ts", "symbol": null, "use": "reference" }
         ]
       },
@@ -4239,6 +4327,21 @@
       ]
     },
     {
+      "upstream": "ui/gfx/geometry/triangle_f.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2021 The Chromium Authors",
+      "fileSha256": "17a6e529896bbb3c4c823de50b622551f19a81d188b129f7562ef40bc0588c90",
+      "headerSha256": "40ecbf467cce38f1e17971fdcdfe424a7eaa7178173604fc79e6715eb35f11a8",
+      "ranges": [
+        { "lines": "11-40", "symbol": "PointIsInTriangle", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/rt-hit.ts", "symbol": "inTriangle", "use": "port" }
+      ]
+    },
+    {
       "upstream": "v8/src/base/ieee754.cc",
       "licence": "fdlibm-sun",
       "attribution": "fdlibm (k_sin.c, k_cos.c), Copyright (C) 1993 by Sun Microsystems, Inc. The notice is kept in packages/translate/harness/harness.ts and THIRD_PARTY_NOTICES.md. V8's own changes to the file are under V8's BSD LICENSE; the harness takes only fdlibm's polynomials and constants.",
@@ -4272,6 +4375,23 @@
       ]
     },
     {
+      "upstream": "ui/gfx/geometry/axis_transform2d.h",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2017 The Chromium Authors",
+      "fileSha256": "8189b744359347fe982e446695cb63e5f9c06a2269eeb5d31d324b3a4d795945",
+      "headerSha256": "80207e7762970891dde01ee5ccea3052c5fb9e9fe3facf9a5d7e9b8b7dd2cc82",
+      "ranges": [
+        { "lines": "74-85", "symbol": "Invert", "source": "cited" },
+        { "lines": "92-94", "symbol": "MapPoint", "source": "cited" },
+        { "lines": "133-138", "symbol": "MapX", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/rt-hit.ts", "symbol": null, "use": "port" }
+      ]
+    },
+    {
       "upstream": "ui/gfx/geometry/transform.cc",
       "licence": "bsd-chromium",
       "noticeText": "chromium-bsd",
@@ -4285,6 +4405,28 @@
       "dragon": [
         { "file": "packages/layout/src/rt-interpolate.ts", "symbol": "translateMatrix", "use": "port" },
         { "file": "packages/layout/src/paint-transform.ts", "symbol": null, "use": "reference" }
+      ]
+    },
+    {
+      "upstream": "ui/native_theme/native_theme_base.cc",
+      "licence": "bsd-chromium",
+      "noticeText": "chromium-bsd",
+      "licencePhrase": "Use of this source code is governed by a BSD-style license",
+      "copyright": "Copyright 2012 The Chromium Authors",
+      "fileSha256": "bc7f19f1b86b74ff20f138e68f5807e288e9443ab48b9ac7be2b85e56fbcd738",
+      "headerSha256": "aa3de0c1b5dcf8968d0e8f5cb7ecd5caac9122dca0dfd573d3bb46bbb61ab155",
+      "ranges": [
+        { "lines": "691-800", "symbol": "NativeThemeBase::PaintMenuList", "source": "cited" },
+        { "lines": "46-46", "symbol": "kCheckboxSize", "source": "located" },
+        { "lines": "600-651", "symbol": "NativeThemeBase::PaintCheckbox", "source": "located" },
+        { "lines": "1083-1139", "symbol": "NativeThemeBase::PaintCheckboxRadioCommon", "source": "located" }
+      ],
+      "dragon": [
+        { "file": "packages/layout/src/controls.ts", "symbol": "menuListArrow", "use": "port" },
+        { "file": "packages/layout/src/controls.ts", "symbol": "checkboxMarks", "use": "port" },
+        { "file": "packages/dragon/src/forms/checkbox.ts", "symbol": null, "use": "reference" },
+        { "file": "packages/dragon/src/forms/checkbox.ts", "symbol": "CHECKBOX_PART_SIZE", "use": "reference" },
+        { "file": "packages/dragon/src/lower/ios-layout.ts", "symbol": "lowerBox", "use": "reference" }
       ]
     },
     {

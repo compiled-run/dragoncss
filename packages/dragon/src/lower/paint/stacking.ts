@@ -22,14 +22,14 @@ import { markerTextId } from './list-marker.ts';
 import type { ResolvedElement, ResolvedValue } from '../../analysis/resolve.ts';
 import { isTopLayer } from '../../analysis/top-layer.ts';
 import { opacityOf, zIndexOf } from '../../css/properties/effects.ts';
-import { elementWillChange, transformsDescendants } from '../../analysis/paint-values/transform.ts';
+import { elementTransform, elementWillChange, hasPerspective } from '../../analysis/paint-values/transform.ts';
 import { elementMaskGradient } from '../../analysis/mask.ts';
 import { hasClipPath } from '../../css/properties/clip-path.ts';
 import { filterApplies } from '../../css/properties/filter.ts';
 import { containsDescendants } from '../../analysis/containment.ts';
 import { isolates } from '../../css/properties/isolation.ts';
 import { backfaceHidden } from '../../css/properties/transform-extra.ts';
-import { blendModeOf } from '../../css/properties/fx.ts';
+import { blendModeOf, hasBackdropFilter } from '../../css/properties/fx.ts';
 import { clipsChildren } from './clip.ts';
 import type { PaintLowering } from './types.ts';
 import { ProgramError } from './types.ts';
@@ -378,20 +378,59 @@ export function unorderedItems(root: StackNode, wrapped: (n: StackNode, parent: 
 /** The displays whose children are flex or grid items, whose z-index applies when static (Blink StyleAdjuster). */
 export const FLEX_OR_GRID: readonly string[] = ['flex', 'inline-flex', 'grid', 'inline-grid'];
 
-/**
- * Whether an element's transform, will-change, clip-path, mask image, filter, isolation, backdrop-filter, mix-blend-mode or layout or
- * paint containment makes it a stacking context (css-transforms-1 §3, css-will-change-1 §3, css-masking-1 §6.1 and §7.1,
- * filter-effects-1 §5, compositing-1 §3.2, filter-effects-2 §3, css-contain-2 §3.2 and §3.4). A mask other than a gradient is
- * refused (analysis/mask.ts).
- */
-export const transformedForStacking = (el: ResolvedElement): boolean =>
-  transformsDescendants(el) || elementWillChange(el).includes('opacity') || hasClipPath(el) || elementMaskGradient(el) !== null || filterOf(el) || isolates(el) || blendModeOf(el.props.get('mix-blend-mode')?.value) !== 'normal' || containsDescendants(el);
-
 /** Whether an element has a filter other than none (a hand-built element may carry no filter value at all). */
 const filterOf = (el: ResolvedElement): boolean => {
   const f = el.props.get('filter') as ResolvedValue | undefined;
   return f !== undefined && filterApplies(f.value);
 };
+
+const opacityBelowOne = (el: ResolvedElement): boolean => {
+  const o = el.props.get('opacity');
+  const opacity = o === undefined ? 1 : opacityOf(o.value);
+  if (opacity === null) throw new ProgramError(`${el.element.address}: opacity did not compute to a number`);
+  return opacity < 1;
+};
+
+const positioned = (el: ResolvedElement, value: string): boolean => {
+  const pos = el.props.get('position');
+  return pos !== undefined && pos.value.kind === 'keyword' && pos.value.value === value;
+};
+
+/**
+ * Every source that makes an element a stacking context, as a message names it. effect marks the sources the paint lowering groups as
+ * transformedForStacking, and hit the ones the hit table orders on an atomic inline's line, which the Chrome captures prove
+ * (HIT-INL2c): a source without hit is refused there. Specs: css-transforms-1 §3, css-transforms-2 §5, css-will-change-1 §3,
+ * filter-effects-2 §3, css-masking-1 §6.1 and §7.1 (a mask other than a gradient is refused, analysis/mask.ts), filter-effects-1 §5,
+ * compositing-1 §3.2, css-contain-2 §3.2 and §3.4, css-color-4 opacity, css-position-3 §3.4.
+ */
+const STACKING_SOURCES: readonly { readonly name: string; readonly effect: boolean; readonly hit?: true; readonly makes: (el: ResolvedElement) => boolean }[] = [
+  { name: 'opacity', effect: false, hit: true, makes: opacityBelowOne },
+  { name: 'a transform', effect: true, hit: true, makes: (el) => elementTransform(el).length > 0 },
+  { name: 'will-change', effect: true, makes: (el) => elementWillChange(el).includes('transform') || elementWillChange(el).includes('opacity') },
+  { name: 'perspective', effect: true, makes: hasPerspective },
+  { name: 'backdrop-filter', effect: true, makes: (el) => hasBackdropFilter(el.props.get('backdrop-filter')?.value) },
+  { name: 'clip-path', effect: true, makes: hasClipPath },
+  { name: 'mask', effect: true, makes: (el) => elementMaskGradient(el) !== null },
+  { name: 'filter', effect: true, makes: filterOf },
+  { name: 'isolation', effect: true, makes: isolates },
+  { name: 'mix-blend-mode', effect: true, makes: (el) => blendModeOf(el.props.get('mix-blend-mode')?.value) !== 'normal' },
+  { name: 'containment', effect: true, makes: containsDescendants },
+  { name: 'position: sticky', effect: false, makes: (el) => positioned(el, 'sticky') },
+  { name: 'position: fixed', effect: false, makes: (el) => positioned(el, 'fixed') },
+];
+
+/** Whether a source other than opacity and sticky or fixed position makes an element a stacking context (STACKING_SOURCES effect). */
+export const transformedForStacking = (el: ResolvedElement): boolean => STACKING_SOURCES.some((s) => s.effect && s.makes(el));
+
+/** Whether an element's hit facts make it a stacking context (internal.ts hitFacts): any of STACKING_SOURCES. */
+export function hitFactContext(el: ResolvedElement): boolean {
+  return STACKING_SOURCES.some((s) => s.makes(el));
+}
+
+/** The first source the hit table does not order on a line that makes an element a stacking context, as a message names it, or ''. */
+export function hitFactOtherContext(el: ResolvedElement): string {
+  return STACKING_SOURCES.find((s) => s.hit !== true && s.makes(el))?.name ?? '';
+}
 
 /** The stacking tree of a layout tree, with each element's z-index, opacity and transform from its resolved style. */
 export function layoutStackTree(root: LayoutNode, elements: ReadonlyMap<string, ResolvedElement>): StackNode {
