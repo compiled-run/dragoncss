@@ -33,7 +33,11 @@ export type MeasurerRecorder = {
   lengths(family: string, size: number, lengths: FontLengths): void;
 };
 
-export function systemMeasurer(system: SystemFonts, program: unknown, bundled: readonly string[], dpr: number, authorFiles: ReadonlyMap<string, Uint8Array> = new Map(), recorder: MeasurerRecorder | null = null): TextMeasurer {
+/**
+ * `fallbacks` is the compile's (NativeStyleOutput.fontFallbacks): a bundled face's code point that no listed face draws goes on to
+ * that system face, or the platform's fallback from it.
+ */
+export function systemMeasurer(system: SystemFonts, program: unknown, bundled: readonly string[], dpr: number, authorFiles: ReadonlyMap<string, Uint8Array> = new Map(), recorder: MeasurerRecorder | null = null, fallbacks: Readonly<Record<string, string>> = {}): TextMeasurer {
   const used = [...fontFamiliesOf(program)].filter((f) => systemRequestOf(f) !== null);
   const faces = new Map<string, FontData>([...shimFaces().map((f) => f.id), ...bundled].map((id) => [id, fontDataOf(id)] as const));
   for (const id of used) faces.set(id, system.fontData(id));
@@ -41,7 +45,8 @@ export function systemMeasurer(system: SystemFonts, program: unknown, bundled: r
   for (const [id, bytes] of authorFiles) if (system.authorFace(id, bytes)) platform.add(id);
   const shaper: GlyphShaper = {
     fallback: (face, ...rest) => {
-      const got = platform.has(face) ? system.shaper.fallback(face, ...rest) : hostShaper.fallback(face, ...rest);
+      const next = Object.hasOwn(fallbacks, face) ? (fallbacks[face] as string) : null;
+      const got = next === '' ? '' : next !== null ? system.shaper.fallback(next, ...rest) : platform.has(face) ? system.shaper.fallback(face, ...rest) : hostShaper.fallback(face, ...rest);
       if (got !== '') platform.add(got);
       recorder?.fallback([face, ...rest], got);
       return got;

@@ -222,6 +222,8 @@ export type InternalRecord = {
   readonly linked: Linked | null;
   /** The font context font-family feature keys were resolved against. */
   readonly fonts: FamilyKeyContext;
+  /** With system fonts, each bundled face's system fallback by face id: the system face its family list goes on to ('' for two). */
+  readonly fontFallbacks: ReadonlyMap<string, string>;
   /** T065: the transitions and animations of the native band's cases, null when the analysis did not run. */
   readonly animation: AnimationAnalysis | null;
   /** MQ-R1: the @media bands of the native output, null for a sheet without @media or one whose analysis did not run. */
@@ -673,7 +675,12 @@ function engineFaceFor(fonts: ProjectFonts, family: ResolvedValue, text: string,
   if (face.source.font.variable) return { kind: 'refused', reason: 'it resolves to a variable face, which TXT1b proves' };
   const synthetic = syntheticStyle(face, request, font.synthesis);
   if (synthetic !== null) return { kind: 'refused', reason: `Chrome would draw it in ${synthetic} (DRAGON_SYNTHETIC_FONT_STYLE)` };
-  return { kind: 'face', id: `sha256:${sha256HexBytes(face.source.bytes)}` };
+  const id = `sha256:${sha256HexBytes(face.source.bytes)}`;
+  // A code point no listed bundled face draws goes on down the list (renderedFaces leaves it to the platform) to its first platform entry.
+  const chosen = support.resolutions.findIndex((r) => (r.kind === 'declared' || r.kind === 'pinned') && r.family === (rendered[0] as { family: string }).family);
+  const next = systemFonts ? support.resolutions.slice(chosen + 1).find((r) => r.kind === 'platform') : undefined;
+  const fallback = next?.kind === 'platform' && isSystemFaceRole(next.key) ? systemFaceFor(next.key, font) : null;
+  return fallback?.kind === 'face' ? { kind: 'face', id, fallback: fallback.id } : { kind: 'face', id };
 }
 
 /** The system face of a role at a text font (fonts/system-faces.ts); a weight or style no system face is requested at is refused. */
@@ -1853,6 +1860,8 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
   // One native lowering shared by every configured native target that is not already blocked; its refusals block each of them.
   // MQ-R1: every band's cases are lowered (the native output switches bands at run time), the per-case programs' band first.
   const loweredByBand: Map<string, LayoutBox>[] = bandCases.map(() => new Map<string, LayoutBox>());
+  // Each bundled face's system fallback (EngineFace.fallback); '' where two family lists go on to different ones.
+  const fontFallbacks = new Map<string, string>();
   const lowerFor = NATIVE_TARGETS.filter((t) => targets.includes(t) && !diagnostics.some((d) => blocksTarget(d, t)));
   if (lowerFor.length > 0 && cases.length > 0) {
     const reported = new Set<string>();
@@ -1869,6 +1878,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
           const userOutput = options.nativeLanes !== null;
           const real = options.nativeRealFaces && !userOutput ? realFacesOf(c.resolved, fonts, options.ua, options.systemFonts) : new Map<string, EngineFace>();
           const refused = options.nativeRealFaces && !userOutput ? 'resolves to no real bundled face' : 'is a real face, which native targets refuse until a ready output ships the bundled faces and the shim';
+          for (const f of real.values()) if (f.kind === 'face' && f.fallback !== undefined) fontFallbacks.set(f.id, fontFallbacks.has(f.id) && fontFallbacks.get(f.id) !== f.fallback ? '' : f.fallback);
           const tree = lowerTree(c.resolved, options.faults, environmentOf(c.resolved).ua, images === null ? new Map() : images.naturals, { kind: 'native', faceOf: (address) => real.get(address) ?? { kind: 'refused', reason: `${address} ${refused}` } });
           lowered.set(c.key, tree);
           // OVFL-B: a native scroll view clamps to the engine's scroll range on the device, so a container whose range the engine
@@ -1955,6 +1965,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       profiles: { web: profiles.web, ios: profiles.ios, android: profileFor(profiles, 'android') },
       linked,
       fonts: fonts === null ? NO_FONTS : fonts.keys,
+      fontFallbacks,
       animation,
       bands: bands === null || bandCases.length !== bands.partition.bands.length ? null : {
         partition: bands.partition,

@@ -556,6 +556,28 @@ describe('a Markless export with system fonts', () => {
     }
   });
 
+  it('goes on from a web font down its family list to system-ui, and from there to the platform\'s fallback', () => {
+    if (process.platform !== 'darwin' || androidSystemImagePathOrNull() === null) {
+      missingToolchain('system fonts', 'Core Text (macOS) and the Android SDK system image');
+      return;
+    }
+    const lato = new Uint8Array(readFileSync(new URL('../../dragon/test/fonts/woff/Lato-Regular.woff2', import.meta.url)));
+    const face = "@font-face { font-family: 'Harbour Lato'; src: url('./fonts/Lato-Regular.woff2') format('woff2'); font-weight: 400; } ";
+    const web = JSON.stringify({
+      ...JSON.parse(input.replace('Tide almanac', 'Tide ◎ ▾ almanac')),
+      css: `${face}.page { padding: 24px; } .ui { font-family: 'Harbour Lato', system-ui, sans-serif; font-size: 28px; font-weight: 400; line-height: 1; }`,
+      fonts: [{ url: './fonts/Lato-Regular.woff2', file: '../styles/fonts/Lato-Regular.woff2' }],
+    });
+    const { exported } = marklessStyleExport(web, 'almanac.json', () => lato, 'system', undefined, true);
+    const lines = (t: 'ios' | 'android'): string[] => exported.targets[t]!.assignments[0]!.nodes.find((n) => n.id === 'h1:text0')!.lines!.flatMap((l) => l.runs.map((r) => r.face));
+    const own = lines('ios')[0] as string;
+    expect(own).toMatch(/^sha256:/);
+    // San Francisco draws ▾, and Core Text's cascade from it ◎; Roboto draws neither, and fonts.xml's chain both.
+    expect(lines('ios')).toEqual([own, 'system:fallback:.CJKSymbolsFallbackSC-Regular', own, 'system:system-ui:400', own]);
+    expect(lines('android')).toEqual([own, 'system:fallback:NotoSansSymbols-Regular-Subsetted.ttf#0', own, 'system:fallback:NotoSansSymbols-Regular-Subsetted.ttf#0', own]);
+    expect(exported.systemFonts?.map((e) => e.id)).toEqual(['system:default:400', 'system:fallback:.CJKSymbolsFallbackSC-Regular', 'system:fallback:NotoSansSymbols-Regular-Subsetted.ttf#0', 'system:system-ui:400']);
+  });
+
   it('refuses the fallback under line-height: normal, whose line box takes in the fallback face', () => {
     if (process.platform !== 'darwin' || androidSystemImagePathOrNull() === null) {
       missingToolchain('system fonts', 'Core Text (macOS) and the Android SDK system image');

@@ -642,7 +642,10 @@ export function textFontProblem(t: ResolvedText): string | null {
  * TXT1a-1 engine mode: the bundled face an element's or text node's font resolves to (the face id the engine and its hosts key faces
  * by: sha256:<hex> of the bytes), or why the engine cannot lay it out (fallback, synthesis, a variable face).
  */
-export type EngineFace = { readonly kind: 'face'; readonly id: string } | { readonly kind: 'refused'; readonly reason: string };
+export type EngineFace =
+  /** fallback: with system fonts, the system face the family list goes on to for a code point no listed bundled face draws. */
+  | { readonly kind: 'face'; readonly id: string; readonly fallback?: string }
+  | { readonly kind: 'refused'; readonly reason: string };
 
 /**
  * The lowering mode: native targets lay out Ahem and the real bundled faces the compiler resolved (TXT1a-2, faceOf refuses every

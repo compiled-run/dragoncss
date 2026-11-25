@@ -66,7 +66,7 @@ export type SystemFonts = {
   metrics(id: string, sizePx: number, dpr: number): FontMetrics | null;
   /** Takes an author face to measure as the target's browser does; false leaves it to the engine's own (Blink's) rules. */
   authorFace(id: string, bytes: Uint8Array): boolean;
-  /** Its fallback gives the face id (FALLBACK_FACE_PREFIX) the platform draws text[start, end) in where the face lacks it; '' for none. */
+  /** Its fallback gives the face that draws text[start, end): the face itself, or the platform's fallback face (FALLBACK_FACE_PREFIX); '' for none. */
   readonly shaper: GlyphShaper;
 };
 
@@ -143,7 +143,7 @@ export function iosSystemFonts(dpr: number): SystemFonts {
     shaper: {
       fallback(face, text, start, end, _script, language) {
         const got = ct.fallback(entryOf(face).face, 17, text, start, end, language);
-        if (got === null) return '';
+        if (got === null) return face;
         const id = FALLBACK_FACE_PREFIX + got.postScriptName;
         if (!fallbacks.has(id)) {
           // The build Mac's cascade picks the face; iOS draws it only if its runtime holds the same file.
@@ -212,6 +212,7 @@ export function androidSystemFonts(files: AndroidSystemFiles = new AndroidSystem
     const r = systemRequestOf(face);
     const cp = text.codePointAt(start);
     if (r === null || cp === undefined) return '';
+    if (hb.nominalGlyph(fontAt(face, 1000), cp) !== 0) return face;
     const tags: string[] = [];
     for (let tag = language; tag !== ''; tag = tag.includes('-') ? tag.slice(0, tag.lastIndexOf('-')) : '') tags.push(tag);
     tags.push('');

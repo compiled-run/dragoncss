@@ -180,7 +180,7 @@ export function heightDependence(sp: StateProgram, bandFeatures: Iterable<string
 export const recordingProgress: { onLayout: () => void } = { onLayout: () => {} };
 
 /** One ratio's recording: every variant at every PLAN_WIDTHS root width, then checked at PLAN_HEIGHTS' heights. */
-export function recordDensity(t: NativeStyleTarget, sp: StateProgram, system: SystemFonts, bundled: readonly string[], authorFiles: ReadonlyMap<string, Uint8Array>, dpr: number, height: number, checkHeights = true): PlanDensity {
+export function recordDensity(t: NativeStyleTarget, sp: StateProgram, system: SystemFonts, bundled: readonly string[], authorFiles: ReadonlyMap<string, Uint8Array>, dpr: number, height: number, checkHeights = true, familyFallbacks: Readonly<Record<string, string>> = {}): PlanDensity {
   const calls = new Map<string, readonly unknown[]>();
   const fallbacks = new Map<string, readonly unknown[]>();
   const metrics = new Map<string, readonly unknown[]>();
@@ -207,7 +207,7 @@ export function recordDensity(t: NativeStyleTarget, sp: StateProgram, system: Sy
     recordingProgress.onLayout();
     if (r.kind !== 'ok') throw new Error(`${t}: the engine refused variant ${vi} at ${width} x ${h} css px and ${dpr}x: ${r.unsupported.code} at ${r.unsupported.nodeId}`);
   };
-  const m = systemMeasurer(system, sp, bundled, dpr, authorFiles, recorder);
+  const m = systemMeasurer(system, sp, bundled, dpr, authorFiles, recorder, familyFallbacks);
   const widths = planWidths(dpr);
   sp.variants.forEach((_, vi) => {
     for (const width of widths) lay(m, vi, width, height);
@@ -228,7 +228,7 @@ export function recordDensity(t: NativeStyleTarget, sp: StateProgram, system: Sy
       if (!lengths.has(`${family}@${size}`)) unrecorded.push(`reads the lengths of ${family} at ${size} css px`);
     },
   };
-  const strict = systemMeasurer(system, sp, bundled, dpr, authorFiles, check);
+  const strict = systemMeasurer(system, sp, bundled, dpr, authorFiles, check, familyFallbacks);
   sp.variants.forEach((_, vi) => {
     for (const h of [PLAN_HEIGHTS.min, PLAN_HEIGHTS.max]) for (const width of widths) {
       lay(strict, vi, width, h);
@@ -246,12 +246,12 @@ export function recordDensity(t: NativeStyleTarget, sp: StateProgram, system: Sy
 /** The program a target's plan records: its own, or with interaction states every variant one of them lays out too. */
 export const planStateProgram = (sp: StateProgram, interaction?: InteractionProgram): StateProgram => (interaction === undefined ? sp : { ...sp, variants: interaction.variants });
 
-export function marklessPlan(t: NativeStyleTarget, sp: StateProgram, system: (dpr: number) => SystemFonts, bundled: readonly string[], authorFiles: ReadonlyMap<string, Uint8Array>, height: number, interaction?: InteractionProgram, recorded?: readonly DensityResult[], checkHeights = true): MarklessPlan {
+export function marklessPlan(t: NativeStyleTarget, sp: StateProgram, system: (dpr: number) => SystemFonts, bundled: readonly string[], authorFiles: ReadonlyMap<string, Uint8Array>, height: number, interaction?: InteractionProgram, recorded?: readonly DensityResult[], checkHeights = true, fallbacks: Readonly<Record<string, string>> = {}): MarklessPlan {
   // With interaction states each state is one more plan assignment, after the program's, in level then state order.
   const all = planStateProgram(sp, interaction);
   const densities = PLAN_DENSITIES[t].map((dpr, i) => {
     const r = recorded?.[i];
-    if (r === undefined) return recordDensity(t, all, system(dpr), bundled, authorFiles, dpr, height, checkHeights);
+    if (r === undefined) return recordDensity(t, all, system(dpr), bundled, authorFiles, dpr, height, checkHeights, fallbacks);
     if ('error' in r) throw new Error(r.error);
     return r.density;
   });
