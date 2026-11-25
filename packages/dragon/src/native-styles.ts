@@ -1,5 +1,6 @@
 // The entry point a framework build calls for one component's native styles (docs/markless-native-styles.md): the component's CSS
 // and element tree in, per native backend the state program (plain data) and the Swift or Kotlin generated from that same program.
+import type { ImageAssetMap } from './images/manifest.ts';
 import { NO_FAULTS } from './faults.ts';
 import type { StateEmit } from './emit/runtime/state.ts';
 import { emitStatePrograms, StateEmitError } from './emit/runtime/state.ts';
@@ -9,6 +10,7 @@ import type { InteractionValue } from './analysis/interaction.ts';
 import { deriveInteractionProgram } from './lower/interaction-program.ts';
 import type { AnimProgram } from './lower/anim-program.ts';
 import type { rtBand } from '@dragon/layout';
+import type { RuntimeImageLayout } from './images/runtime.ts';
 import { BandProgramError, bandStateProgram } from './lower/band-program.ts';
 import type { NativeBackend } from './lower/native-program.ts';
 import type { StateProgram } from './lower/state-program.ts';
@@ -61,6 +63,17 @@ export type NativeStylesConfig = {
    */
   readonly textEditing?: 'host';
   /**
+   * The image map (docs/api.md): each `<img src>` the component shows that is not a data: URL, to the snapshot asset holding its
+   * bytes. Dragon sizes the element from the file's natural size and lists its bytes for the native image paint.
+   */
+  readonly images?: ImageAssetMap;
+  /**
+   * 'host': the host draws each <img>'s picture itself from the file's bytes (a Markless host). Dragon sizes the <img> from the file's
+   * natural size and writes no image content for it, so a JPEG or GIF is laid out rather than refused; an object-fit other than fill
+   * is refused, as the host draws the picture filling its box.
+   */
+  readonly imagePaint?: 'host';
+  /**
    * 'program-and-sources' (the default): the state program and the Swift or Kotlin generated from it. 'program': the state program
    * only, for a host that applies the program as data itself; files is empty, and a write only the generated runtime lacks does not
    * block the target.
@@ -72,6 +85,8 @@ export type NativeStylesConfig = {
    * caller's export; nothing is bundled. Only with support 'lanes'. Absent: native refuses them.
    */
   readonly systemFonts?: 'measured';
+  /** REPL-r1: the export devices an img whose src is set at run time is proven at, with their measurers; without it such an img is refused. */
+  readonly runtimeImageLayout?: RuntimeImageLayout;
 };
 
 /** One backend's output: the program is the data the generated code is written from, so the two cannot disagree. */
@@ -137,7 +152,7 @@ export function compileNativeStylesWith(config: NativeStylesConfig, input: Front
   const support = config.support ?? 'enforced';
   if (support !== 'enforced' && support !== 'lanes') throw new Error(`compileNativeStyles: support ${JSON.stringify(support)} is neither 'enforced' nor 'lanes'`);
   const project = createProjectWith(
-    { projectId: config.projectId, targets: { ...config.targets }, ...(config.fonts === undefined ? {} : { fonts: config.fonts }) },
+    { projectId: config.projectId, targets: { ...config.targets }, ...(config.fonts === undefined ? {} : { fonts: config.fonts }), ...(config.images === undefined ? {} : { images: config.images }) },
     {
       ...(support === 'enforced'
         ? { faults: NO_FAULTS, profiles: 'enforce' as const, direction: 'ltr' as const, nativeLanes: NATIVE_LANES }
@@ -147,8 +162,10 @@ export function compileNativeStylesWith(config: NativeStylesConfig, input: Front
       ...(config.forms === 'host' ? { hostForms: true } : {}),
       ...(config.textEditing === 'host' ? { hostTextEditing: true } : {}),
       hostUnforced: true,
+      ...(config.imagePaint === 'host' ? { hostImages: true } : {}),
       ...(config.brotliDecompress === undefined ? {} : { brotliDecompress: config.brotliDecompress }),
       ...(config.systemFonts === 'measured' ? { systemFonts: true } : {}),
+      ...(config.runtimeImageLayout === undefined ? {} : { runtimeImageLayout: config.runtimeImageLayout }),
     },
   );
   if (config.systemFonts !== undefined && (config.systemFonts !== 'measured' || support !== 'lanes')) throw new Error(`compileNativeStyles: systemFonts ${JSON.stringify(config.systemFonts)} is 'measured', with support 'lanes'`);

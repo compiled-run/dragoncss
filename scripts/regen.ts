@@ -30,6 +30,7 @@ import { MQ_R2 } from './regen-steps/mq-r2.ts';
 import { OVFL } from './regen-steps/ovfl.ts';
 import { PNT1 } from './regen-steps/pnt1.ts';
 import { PNT2 } from './regen-steps/pnt2.ts';
+import { REPL_R } from './regen-steps/repl-r.ts';
 import { SELD_R2 } from './regen-steps/seld-r2.ts';
 import { ENGINE_SOURCES, FIXTURES, FONTS, type ManualOutput, placeSteps, pnpm, type RegenFeature, type Step } from './regen-steps/step.ts';
 
@@ -139,6 +140,7 @@ export const REGEN_FEATURES: { readonly [feature: string]: RegenFeature } = {
   ovfl: OVFL,
   pnt1: PNT1,
   pnt2: PNT2,
+  'repl-r': REPL_R,
   'seld-r2': SELD_R2,
   tdec: TDEC,
   txt1a: TXT1A,

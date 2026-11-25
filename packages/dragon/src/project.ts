@@ -6,6 +6,8 @@ import { styleAttributeRules } from './analysis/style-attribute.ts';
 import { dimensionRefusal, iframeSrcRefusal } from './analysis/elements/replaced.ts';
 import { isSvgShapeTag, svgAttributeRefusal } from './analysis/elements/svg.ts';
 import { compileImages, imageMapProblem } from './images/compile.ts';
+import type { RuntimeImageLayout } from './images/runtime.ts';
+import { runtimeImageNotes, runtimeLayoutRefusals, runtimeSrcSelectorRefusals } from './images/runtime.ts';
 import type { CompiledImages } from './images/compile.ts';
 import { compileVideos } from './videos/compile.ts';
 import type { ImageAssetMap } from './images/manifest.ts';
@@ -91,7 +93,7 @@ import type { FontWireProblem, ProjectedFonts } from './fonts/wire.ts';
 import type { CompilerFaults } from './faults.ts';
 import { NO_FAULTS } from './faults.ts';
 import type { EngineFace } from './lower/ios-layout.ts';
-import { LoweringError, lowerTree, textFontProblem } from './lower/ios-layout.ts';
+import { LoweringError, lowerTree, rootFontSizeOf, textFontProblem } from './lower/ios-layout.ts';
 import { undecidedScrollContainers } from './lower/scroll-decidable.ts';
 import { PROGRAM_VERSIONS } from './lower/native-program.ts';
 import type { TextPlants } from './lower/native-program.ts';
@@ -236,6 +238,8 @@ export type InternalRecord = {
   readonly focusReachable: boolean;
   /** REPL-a: the bytes of every drawable image src, for the native image paint. */
   readonly images: ReadonlyMap<string, Uint8Array>;
+  /** The host draws each <img>'s picture (InternalOptions.hostImages): the native paint writes no image content for an <img>. */
+  readonly hostImages: boolean;
   /** TXT-W: the synthetic bold and oblique plants, which the native lowering reads (native-program.ts textPaint). */
   readonly textPlants: TextPlants;
 };
@@ -318,6 +322,11 @@ export type InternalOptions = {
   readonly hostTextEditing?: boolean;
   /** The host never forces an interaction state (a Markless host), so native skips a state only forcing reaches (forcedOnlyFocus). */
   readonly hostUnforced?: boolean;
+  /**
+   * The host draws each <img>'s picture itself from the file's bytes (a Markless host): Dragon sizes the element from the file's
+   * natural size and paints no image content, so a format REPL-a does not decode is laid out rather than refused.
+   */
+  readonly hostImages?: boolean;
   /** The host's Brotli decoder, which a WOFF2 @font-face src needs; without one a WOFF2 is DRAGON_FONT_UNREADABLE (no-brotli). */
   readonly brotliDecompress?: BrotliDecompress;
   /**
@@ -325,6 +334,11 @@ export type InternalOptions = {
    * (fonts/system-faces.ts), which the export measures per target at build time. Off: native refuses them as before.
    */
   readonly systemFonts?: boolean;
+  /**
+   * REPL-r1: the build-time layout an img whose src is set at run time is proven with (images/runtime.ts). Without it every such img
+   * is DRAGON_RUNTIME_IMAGE_SIZE, as nothing would prove its box does not follow its image.
+   */
+  readonly runtimeImageLayout?: RuntimeImageLayout;
 };
 
 type Viewport = { readonly width: number; readonly height: number };
@@ -345,9 +359,11 @@ type Resolved = {
   readonly hostForms: boolean;
   readonly hostTextEditing: boolean;
   readonly hostUnforced: boolean;
+  readonly hostImages: boolean;
   readonly systemFonts: boolean;
   readonly nativeLanes: NativeLanes | null;
   readonly brotliDecompress: BrotliDecompress | null;
+  readonly runtimeImageLayout: RuntimeImageLayout | null;
 };
 
 function deepFreeze<T>(v: T): T {
@@ -1690,7 +1706,10 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       const assetBytes = new Map(input.snapshot.assets.map((a) => [a.id, a.bytes] as const));
       const sourceText = new Map(input.snapshot.sources.map((s) => [s.ref.uri, s.text] as const));
       const roots = bandCases.flatMap((b) => b.cases.flatMap((c) => (c.resolved === null ? [] : [c.resolved])));
-      const read = compileImages(bandCases.flatMap((b) => b.cases.flatMap((c) => (c.resolved === null ? [] : [c.resolved, ...c.interaction.map((i) => i.resolved)]))), config.images, assetBytes, diagnostics, (uri) => sourceText.get(uri));
+      const read = compileImages(bandCases.flatMap((b) => b.cases.flatMap((c) => (c.resolved === null ? [] : [c.resolved, ...c.interaction.map((i) => i.resolved)]))), config.images, assetBytes, diagnostics, (uri) => sourceText.get(uri), options.hostImages);
+      // REPL-r1: an img whose src is set at run time: its alt text, its fallback note and the selectors that test its src.
+      runtimeImageNotes(bandCases.flatMap((b) => b.cases.flatMap((c) => (c.resolved === null ? [] : [c.resolved, ...c.interaction.map((i) => i.resolved)]))), originOfAddress, diagnostics);
+      runtimeSrcSelectorRefusals(bandCases.map((b, k) => ({ rules: [...(bandRules[k] as Set<Rule>)], roots: b.cases.flatMap((c) => (c.resolved === null ? [] : [c.resolved])) })), options.faults, originOfAddress, diagnostics);
       // MEDIA-EL: the video streams ride in the same maps by src. Every one is a data: URL, so the input digest already holds them.
       const videos = compileVideos(roots, NATIVE_TARGETS.filter((t) => targets.includes(t)), diagnostics);
       images = { ...read, naturals: new Map([...read.naturals, ...videos.naturals]), bytes: new Map([...read.bytes, ...videos.bytes]) };
@@ -1876,6 +1895,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
   if (lowerFor.length > 0 && cases.length > 0) {
     const reported = new Set<string>();
     const order = [nativeBand, ...bandCases.map((_, k) => k).filter((k) => k !== nativeBand)];
+    const runtimeTrees: { tree: LayoutBox; rootFontSize: number; band: Band | null; resolved: ResolvedElement }[] = [];
     for (const k of order) {
       const lowered = loweredByBand[k] as Map<string, LayoutBox>;
       // SELD-R2: each case's interaction variants are lowered beside it, in every band.
@@ -1890,6 +1910,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
           const refused = options.nativeRealFaces && !userOutput ? 'resolves to no real bundled face' : 'is a real face, which native targets refuse until a ready output ships the bundled faces and the shim';
           const tree = lowerTree(c.resolved, options.faults, environmentOf(c.resolved).ua, images === null ? new Map() : images.naturals, { kind: 'native', faceOf: (address) => real.get(address) ?? { kind: 'refused', reason: `${address} ${refused}` } });
           lowered.set(c.key, tree);
+          runtimeTrees.push({ tree, rootFontSize: rootFontSizeOf(c.resolved), band: (bandCases[k] as { band: Band | null }).band, resolved: c.resolved });
           // OVFL-B: a native scroll view clamps to the engine's scroll range on the device, so a container whose range the engine
           // may refuse is refused here, naming the engine's reason.
           for (const u of undecidedScrollContainers(tree)) {
@@ -1909,6 +1930,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
         }
       }
     }
+    runtimeLayoutRefusals(runtimeTrees, options.runtimeImageLayout, originOfAddress, diagnostics);
   }
   const lowered = loweredByBand[nativeBand] ?? new Map<string, LayoutBox>();
   // TXT1a-1: when every native blocker is a deferred font refusal, the engine lane gets an engine-mode lowering; when a native
@@ -1989,6 +2011,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       laneOnlyNative,
       focusReachable: focusable,
       images: images === null ? new Map() : images.bytes,
+      hostImages: options.hostImages === true,
       textPlants: { ahemSyntheticBoldFrom700: options.faults.ahemSyntheticBoldFrom700, ahemBoldUnstroked: options.faults.ahemBoldUnstroked, ahemObliqueUnsheared: options.faults.ahemObliqueUnsheared, textFillIgnored: options.faults.textFillIgnored, textStrokeAccepted: options.faults.textStrokeAccepted },
       cases: cases.map((c) => ({
         key: c.key,
@@ -2134,9 +2157,11 @@ export function createProjectWith<const T extends Targets>(config: ProjectConfig
     hostForms: options.hostForms === true,
     hostTextEditing: options.hostTextEditing === true,
     hostUnforced: options.hostUnforced === true,
+    hostImages: options.hostImages === true,
     systemFonts: options.systemFonts === true,
     nativeLanes: options.nativeLanes === undefined ? null : options.nativeLanes,
     brotliDecompress: options.brotliDecompress ?? null,
+    runtimeImageLayout: options.runtimeImageLayout ?? null,
   };
   const configDiagnostics = validateConfig(config);
   const snapshotConfig = JSON.parse(JSON.stringify(config)) as { projectId: string; targets: object; fonts?: unknown; images?: ImageAssetMap };

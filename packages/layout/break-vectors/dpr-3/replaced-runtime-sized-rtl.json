@@ -1,0 +1,8 @@
+{
+  "case": "replaced-runtime-sized-rtl",
+  "dpr": 3,
+  "texts": [
+    {"id":"line:text0","lines":[[0,3]]},
+    {"id":"line:text1","lines":[[0,4]]}
+  ]
+}
