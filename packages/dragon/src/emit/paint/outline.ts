@@ -175,7 +175,6 @@ public func dragonSetOutline(_ t: DragonTree, _ v: DragonBoxView, _ layer: Strin
   if !(width > 0) || !offset.isFinite { fatalError("dragon: \(v.dragonId): outline width \(width) or offset \(offset) is out of range") }
   if !["solid", "double", "dotted", "dashed", "groove", "ridge", "inset", "outset"].contains(style) { fatalError("dragon: \(v.dragonId): outline style \(style) has no native paint") }
   guard let layerView = t.node(layer) as? DragonBoxView else { fatalError("dragon: \(v.dragonId): its outline's layer \(layer) has no built box view") }
-  if layerView.dragonClipView != nil { fatalError("dragon: \(v.dragonId): its outline's layer \(layer) clips the views it hosts") }
   let host: UIView = dragonOutlinesInRoot ? t.root : layerView
   v.dragonOutlineLayer = layer
   v.dragonOutlineStyle = style
@@ -192,8 +191,8 @@ public func dragonSetOutline(_ t: DragonTree, _ v: DragonBoxView, _ layer: Strin
   dragonAfterLayout(v, v.dragonShape, v.dragonScale)
 }
 
-/// The device px origin from the root of the view an outline view is in: its box's snapped border box (a layer view clips nothing,
-/// so it hosts its children in itself), or the root's.
+/// The device px origin from the root of the view an outline view is in: its box's snapped border box (the outline is a direct child
+/// of the box view, beside any clip view), or the root's.
 func dragonOutlineHostOrigin(_ host: UIView) -> [Double] {
   if let b = host as? DragonBoxView { return [b.dragonShape.edges[0], b.dragonShape.edges[1]] }
   if host is DragonRootView { return [0, 0] }
@@ -443,7 +442,6 @@ fun dragonSetOutline(t: DragonTree, v: DragonBoxView, layer: String, style: Stri
   if (!(width > 0.0) || !offset.isFinite()) throw IllegalStateException("dragon: " + v.dragonId + ": outline width " + width + " or offset " + offset + " is out of range")
   if (style !in listOf("solid", "double", "dotted", "dashed", "groove", "ridge", "inset", "outset")) throw IllegalStateException("dragon: " + v.dragonId + ": outline style " + style + " has no native paint")
   val layerView = t.node(layer) as? DragonBoxView ?: throw IllegalStateException("dragon: " + v.dragonId + ": its outline's layer " + layer + " has no built box view")
-  if (layerView.dragonClipView != null) throw IllegalStateException("dragon: " + v.dragonId + ": its outline's layer " + layer + " clips the views it hosts")
   val host: ViewGroup = if (DRAGON_OUTLINES_IN_ROOT) t.root else layerView
   v.dragonOutlineLayer = layer
   v.dragonOutlineStyle = style
