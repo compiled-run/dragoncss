@@ -224,13 +224,20 @@ export function webFontOutput(usedPinned: readonly DeclaredFace[], declaredFaces
   return { css: rules.join('\n'), assets: sorted, problems };
 }
 
+/**
+ * The spaces HarfBuzz draws with the face's U+0020 where the face lacks them (hb_unicode_funcs_t::space_fallback_type). Core Text
+ * cascades some of them instead (U+3000 to PingFang); such a text then records no fallback and is refused by name, never misdrawn.
+ */
+const SPACE_FALLBACK = new Set([0x00a0, 0x2000, 0x2001, 0x2002, 0x2003, 0x2004, 0x2005, 0x2006, 0x2007, 0x2008, 0x2009, 0x200a, 0x202f, 0x205f, 0x3000]);
+
 /** Whether text has a code point no listed bundled face draws, which the family list leaves to the platform (renderedFaces skips it). */
 export function leavesToPlatform(faces: readonly DeclaredFace[], resolutions: readonly EntryResolution[], text: string, request: FontSelectionRequest): boolean {
   const families = resolutions.flatMap((r) => (r.kind === 'declared' || r.kind === 'pinned' ? [r.family] : []));
+  const draws = (cp: number): boolean => families.some((family) => candidates(faces, family, request, cp).some((f) => f.source !== null && f.source.font.glyphForCodePoint(cp) !== 0));
   for (const ch of new Set(text)) {
     const cp = ch.codePointAt(0) as number;
     if (ch === '\t' || ch === '\n' || ch === '\r' || ch === '\f') continue;
-    if (!families.some((family) => candidates(faces, family, request, cp).some((f) => f.source !== null && f.source.font.glyphForCodePoint(cp) !== 0))) return true;
+    if (!draws(cp) && !(SPACE_FALLBACK.has(cp) && draws(0x20))) return true;
   }
   return false;
 }
