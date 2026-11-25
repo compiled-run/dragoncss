@@ -463,7 +463,6 @@ export function dragonNodeIds(input: MarklessStyleInput): Map<string, string> {
   return out;
 }
 
-/** The input's author font files, read by the caller (who owns file access) from each path relative to the input file. */
 /** An image file of the input, read by the caller: the `<img src>` it is, its path relative to the input, and its bytes. */
 export type MarklessImageFile = { readonly src: string; readonly file: string; readonly bytes: Uint8Array };
 
@@ -479,6 +478,7 @@ const imageAssetId = (file: string): string => `markless-image:${file}`;
 export const marklessImageMap = (images: readonly MarklessImageFile[]): Readonly<Record<string, string>> =>
   Object.fromEntries(images.map((i) => [i.src, imageAssetId(i.file)]));
 
+/** The input's author font files, read by the caller (who owns file access) from each path relative to the input file. */
 export function marklessFontFiles(input: MarklessStyleInput, read: (file: string) => Uint8Array): MarklessFontFile[] {
   return (input.fonts ?? []).map(({ url, file }) => {
     const bytes = read(file);
@@ -822,7 +822,8 @@ export function marklessStyleExport(inputText: string, inputPath: string, readFi
 export function marklessTextHeightProof(inputText: string, inputPath: string, readFont?: (file: string) => Uint8Array, mode: MarklessFonts = 'system'): { readonly [T in NativeStyleTarget]?: string | null } {
   const parsed = parseMarklessStyleInput(inputText);
   const fonts = readFont === undefined ? [] : marklessFontFiles(parsed, readFont);
-  const { styles } = compileMarkless(parsed, inputText, inputPath, fonts, mode);
+  const images = readFont === undefined ? [] : marklessImageFiles(parsed, readFont);
+  const { styles } = compileMarkless(parsed, inputText, inputPath, fonts, mode, undefined, images);
   const out: { [T in NativeStyleTarget]?: string | null } = {};
   for (const t of ['ios', 'android'] as const) {
     const o = styles.targets[t];
@@ -1022,7 +1023,7 @@ function exportMarkless(parsed: MarklessStyleInput, inputText: string, inputPath
     const missing = parsed.nodes.filter((n) => !boxless(n) && !inSelectList(n) && !editorText(n) && !have.has(n.id) && !(n.kind === 'text' && isWhitespaceText(shownText(n, values)))).map((n) => n.id);
     if (missing.length > 0) fail(`${t}: the export has no node ${missing.join(', ')} of the input`);
   }
-  if ((parsed.repeats ?? []).length > 0) checkRows(parsed, inputPath, exported, styles, compiled, fonts, mode, at);
+  if ((parsed.repeats ?? []).length > 0) checkRows(parsed, inputPath, exported, styles, compiled, fonts, mode, at, images);
   const targets = Object.fromEntries(Object.entries(exported.targets).map(([t, x]) => {
     const out = styles.targets[t as NativeStyleTarget];
     if (out?.kind !== 'emitted' || out.schemes.length !== x.assignments.length) fail(`${t}: the compile gives no colour scheme for each assignment`);
@@ -1194,7 +1195,7 @@ function rowStateCombinations(parsed: MarklessStyleInput, repeat: string): Recor
  * twice, must style each row as the template at those states. Refuses a node outside the rows whose style follows a row's own
  * state (`:has()`), a style that follows how many rows a list holds (checkRowCount), and a row's text that the build transforms.
  */
-function checkRows(parsed: MarklessStyleInput, inputPath: string, exported: NativeStyleExport, mainStyles: NativeStyles, compiled: object, fonts: readonly MarklessFontFile[], mode: MarklessFonts, at: MarklessAtSize | undefined): void {
+function checkRows(parsed: MarklessStyleInput, inputPath: string, exported: NativeStyleExport, mainStyles: NativeStyles, compiled: object, fonts: readonly MarklessFontFile[], mode: MarklessFonts, at: MarklessAtSize | undefined, images: readonly MarklessImageFile[]): void {
   const rules = inputRules(parsed);
   checkRowPositions(parsed, rules);
   const mainIds = dragonNodeIds(parsed);
@@ -1217,7 +1218,7 @@ function checkRows(parsed: MarklessStyleInput, inputPath: string, exported: Nati
     return [r.id, [...combos, ...combos].map((states, k): MarklessRow => ({ key: `r${k}`, states, texts: new Map() }))] as const;
   }));
   const written = marklessWithRows(parsed, rowsOf);
-  const writtenStyles = compileMarkless(written, JSON.stringify(written), inputPath, fonts, mode, at).styles;
+  const writtenStyles = compileMarkless(written, JSON.stringify(written), inputPath, fonts, mode, at, images).styles;
   const writtenIds = dragonNodeIds(written);
   const mainKey = cellKey(parsed);
   const writtenKey = cellKey(written);

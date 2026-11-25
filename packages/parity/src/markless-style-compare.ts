@@ -534,7 +534,6 @@ export function pairBoxes(input: MarklessStyleInput, assignment: ExportAssignmen
   return { pairs, problems };
 }
 
-/** A measured box, or (maxDeltaDevicePx null, never passing) a box only one side has, with the problem named. */
 /** The input as Chrome loads it: each `<img src>` that is one of the input's image files becomes a data: URL of the file's bytes. */
 export function withImageDataUrls(input: MarklessStyleInput, images: readonly MarklessImageFile[]): MarklessStyleInput {
   if (images.length === 0) return input;
@@ -555,6 +554,7 @@ export function withImageDataUrls(input: MarklessStyleInput, images: readonly Ma
   };
 }
 
+/** A measured box, or (maxDeltaDevicePx null, never passing) a box only one side has, with the problem named. */
 export type CompareRow = { readonly target: string; readonly values: Values; readonly state?: string; readonly id: string; readonly maxDeltaDevicePx: number | null; readonly pass: boolean; readonly problem?: string };
 
 /** Chrome's computed background-color as 8-bit RGBA, or null when it is not an rgb() or rgba() colour. */

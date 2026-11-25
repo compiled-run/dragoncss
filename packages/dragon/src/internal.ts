@@ -680,7 +680,7 @@ export function interactionLevelInputIn(compiled: object, assignment: Assignment
     const i = c.interaction.find((x) => x.value.key === state);
     if (i === undefined || i.nativeLowered === null) return { kind: 'blocked', reason: `interaction state ${state} has no native lowering in band ${band}` };
     try {
-      return { kind: 'ready', programs: lowerNativePrograms(i.nativeLowered, i.resolved, record.images, movingOf(record), record.textPlants) };
+      return { kind: 'ready', programs: lowerNativePrograms(i.nativeLowered, i.resolved, record.images, movingOf(record), record.textPlants, record.hostImages) };
     } catch (e) {
       if (e instanceof ProgramError) return { kind: 'blocked', reason: e.message };
       throw e;

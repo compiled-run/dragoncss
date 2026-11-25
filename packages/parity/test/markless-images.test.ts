@@ -49,6 +49,13 @@ const IMAGES = [
 ];
 
 describe('images on a styled Markless page', () => {
+  it('lays out an interaction state of a banded page with host-drawn images (the host draws them in every program)', () => {
+    // An @media rule makes the compile banded, and :active an interaction state: its program is lowered with the host images too.
+    const banded = JSON.parse(input(IMAGES)) as { css: string };
+    banded.css += '@media (min-width: 700px) { .page { padding: 24px; } }\n.thumb:active { opacity: 0.5; }\n';
+    const { exported } = marklessStyleExport(JSON.stringify(banded), 'gallery.json', read);
+    for (const t of ['ios', 'android'] as const) expect(exported.targets[t], t).toBeDefined();
+  });
   it('sizes each <img> from its file as Chrome does (natural size, a CSS width with the ratio, EXIF orientation, a GIF), within 1 device px', async () => {
     const text = input(IMAGES);
     const { exported } = marklessStyleExport(text, 'gallery.json', read);
