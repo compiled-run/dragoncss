@@ -1,10 +1,11 @@
 // P4 item 7 (notes/T013-p3-review-p4-plan.md section 2): the Android API floor check over dexdump output and api-versions.xml. A
 // member referenced through an app subclass resolves to the android class that declares it; anything above minSdk is named.
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { checkFloor, parseApiVersions, parseDexdump } from '../src/api-floor.ts';
+import { checkFloor, fileLines, parseApiVersions, parseDexdump } from '../src/api-floor.ts';
 import { repoPath } from '../src/paths.ts';
 
 // packages/parity does not depend on packages/translate, so its missing-toolchain handler is loaded at run time from its source.
@@ -86,6 +87,21 @@ describe('the Android API floor check', () => {
     expect(r.violations.map((v) => v.ref)).toEqual(['android.app.Activity#getDisplay()Landroid/view/Display;', 'android.window.Brand', 'android.view.View#clipBounds']);
     expect(r.violations[0]).toMatchObject({ since: 30, reason: 'since API 30 (declared on android.content.Context)' });
     expect(checkFloor(api, parseDexdump(planted), 33).violations.map((v) => v.ref)).toEqual([]);
+  });
+  it('reads dumps line by line across files and chunk edges, as split text would, so a dump past the longest string still parses', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'api-floor-lines-'));
+    try {
+      const half = DEX.indexOf('\n', DEX.length >> 1) + 1;
+      const files = [join(dir, '0.txt'), join(dir, '1.txt')];
+      writeFileSync(files[0] as string, `${DEX.slice(0, half)}é`);
+      writeFileSync(files[1] as string, DEX.slice(half));
+      const text = `${DEX.slice(0, half)}é\n${DEX.slice(half)}`;
+      for (const chunk of [1, 3, 7, 64, 1 << 16]) expect([...fileLines(files, chunk)]).toEqual(text.split('\n').slice(0, -1));
+      const r = checkFloor(parseApiVersions(API), parseDexdump(fileLines(files, 5)), 29);
+      expect(r).toEqual(checkFloor(parseApiVersions(API), parseDexdump(DEX), 29));
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
   it('a member the SDK does not describe is a violation, never a pass', () => {
     const api = parseApiVersions(API);

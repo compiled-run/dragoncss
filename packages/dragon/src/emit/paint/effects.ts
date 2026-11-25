@@ -1084,7 +1084,7 @@ class DragonGroupView(ctx: Context, val dragonTree: DragonTree, val dragonGroupB
       return v !is ViewGroup || (0 until v.childCount).all { clear(v.getChildAt(it)) }
     }
     dragonClearOfUnstable = dragonUnstable.all { id ->
-      val v = t.node(id) ?: throw IllegalStateException("dragon: " + g.dragonId + ": unstable painter " + id + " is not built")
+      val v = t.node(id) as? View ?: throw IllegalStateException("dragon: " + g.dragonId + ": unstable painter " + id + " is not built")
       clear(v)
     }
     val bw = maxOf(bext[2] - bext[0], 0)
