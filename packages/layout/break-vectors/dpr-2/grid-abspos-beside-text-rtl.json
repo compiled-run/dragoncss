@@ -1,0 +1,27 @@
+{
+  "case": "grid-abspos-beside-text-rtl",
+  "dpr": 2,
+  "texts": [
+    {"id":"g1:text0","lines":[[0,2]]},
+    {"id":"g2:text0","lines":[[0,3],[3,5]]},
+    {"id":"g3:text0","lines":[[0,2]]},
+    {"id":"i1:text0","lines":[[0,1]]},
+    {"id":"t1:text0","lines":[[0,4]]},
+    {"id":"i2:text0","lines":[[0,1]]},
+    {"id":"t2:text0","lines":[[0,4]]},
+    {"id":"i3:text0","lines":[[0,1]]},
+    {"id":"t3:text0","lines":[[0,4]]},
+    {"id":"i4:text0","lines":[[0,1]]},
+    {"id":"t4:text0","lines":[[0,2]]},
+    {"id":"i5:text0","lines":[[0,1]]},
+    {"id":"t5:text0","lines":[[0,4]]},
+    {"id":"i6:text0","lines":[[0,1]]},
+    {"id":"t6:text0","lines":[[0,4]]},
+    {"id":"i7:text0","lines":[[0,1]]},
+    {"id":"t7:text0","lines":[[0,4]]},
+    {"id":"i8:text0","lines":[[0,1]]},
+    {"id":"t8:text0","lines":[[0,2]]},
+    {"id":"b3:text0","lines":[[0,1]]},
+    {"id":"b7:text0","lines":[[0,2]]}
+  ]
+}
