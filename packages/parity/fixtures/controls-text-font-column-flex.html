@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+@font-face { font-family: Brand; src: url("../../../vendor/fonts/Roboto/Roboto-Regular.ttf"); }
+@font-face { font-family: Other; src: url("../../../vendor/fonts/Inter/Inter-Regular.ttf"); }
+* { box-sizing: border-box; }
+body { margin: 0; font-family: Brand; font-size: 16px; line-height: 1.45; color: #1d2a24; }
+input, textarea { font: inherit; color: inherit; }
+.shell { min-height: 100vh; display: flex; flex-direction: column; }
+.content { width: 100%; max-width: 360px; margin: 0 auto; padding: 20px; }
+.search { width: 100%; margin-bottom: 18px; padding: 12px 16px; border: 1px solid #ddd5c4; border-radius: 999px; background: #fffdf8; }
+.form { padding: 20px; border: 1px solid #ddd5c4; }
+.field { display: block; }
+.cap { display: block; margin-bottom: 6px; }
+.field input, .field textarea { display: block; width: 100%; padding: 12px 14px; border: 1px solid #ddd5c4; background: #fbf8f1; }
+.field input { border-radius: 10px; }
+.field textarea { min-height: 120px; resize: none; scrollbar-width: none; }
+.other { display: flex; flex-direction: column-reverse; padding: 0 20px 20px; font-family: Other; line-height: 1; }
+.direct { width: 100%; padding: 8px 10px; border: 1px solid #ddd5c4; background: #fbf8f1; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="sh" class="shell">
+<main data-dragon-id="m" class="content">
+<input data-dragon-id="s1" class="search" type="search" readonly="" placeholder="Search notes">
+<div data-dragon-id="f1" class="form">
+<label data-dragon-id="l1" class="field"><span data-dragon-id="c1" class="cap">Title</span><input data-dragon-id="t1" readonly="" value="Groceries Hg"></label>
+<label data-dragon-id="l2" class="field"><span data-dragon-id="c2" class="cap">Note</span><textarea data-dragon-id="b1" readonly="">Milk, eggs, bread</textarea></label>
+</div>
+</main>
+<div data-dragon-id="o" class="other">
+<input data-dragon-id="t3" class="direct" readonly="" placeholder="Title">
+<div data-dragon-id="i" class="item">
+<input data-dragon-id="s2" class="search" type="search" readonly="" placeholder="Search notes">
+<label data-dragon-id="l3" class="field"><span data-dragon-id="c3" class="cap">Title</span><input data-dragon-id="t2" readonly="" value="Groceries Hg"></label>
+</div>
+</div>
+</div>
+</body>
+</html>

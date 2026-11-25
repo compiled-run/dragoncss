@@ -62,7 +62,7 @@ import type {
 } from './input.ts';
 import type { EngineFaults } from './block.ts';
 import { calcHasPercent, evaluateCalc, resolveCalc } from './calc.ts';
-import { menuListInnerInsets, zoomTrackLength } from './controls.ts';
+import { menuListInnerInsets, textAreaScrollbar, zoomTrackLength } from './controls.ts';
 import type { FontLengths, TextMeasurer } from './text.ts';
 import { AHEM_FONT_DATA, ahemMeasurerWith } from './text.ts';
 import { unsupported } from './unsupported.ts';
@@ -269,11 +269,11 @@ function resolveControl(b: ControlBox, parent: Env): ControlBox {
     const own = resolveStrut({ font: c.font, lineHeight: c.lineHeight }, env);
     const normal = editorLineHeightIsNormal(c, style, env);
     const children = normal ? b.children.map((k) => (k.kind === 'control' && k.control.kind === 'text-editor' ? withNormalLineHeight(k) : k)) : b.children;
-    return { kind: 'control', id: b.id, boxType: b.boxType, style, control: { kind: 'text-field', size: c.size, font: own.font, lineHeight: own.lineHeight, cancelButton: c.cancelButton === null ? null : { marginStart: zoomCssPx(c.cancelButton.marginStart, env.zoom), marginEnd: zoomCssPx(c.cancelButton.marginEnd, env.zoom) } }, strut: resolveStrutOf(b, env), children: resolveChildren(children, env) };
+    return { kind: 'control', id: b.id, boxType: b.boxType, style, control: { kind: 'text-field', size: c.size, font: own.font, lineHeight: own.lineHeight, avgChar: c.avgChar, cancelButton: c.cancelButton === null ? null : { marginStart: zoomCssPx(c.cancelButton.marginStart, env.zoom), marginEnd: zoomCssPx(c.cancelButton.marginEnd, env.zoom) } }, strut: resolveStrutOf(b, env), children: resolveChildren(children, env) };
   }
   if (c.kind === 'text-area') {
     const own = resolveStrut({ font: c.font, lineHeight: c.lineHeight }, env);
-    return { kind: 'control', id: b.id, boxType: b.boxType, style, control: { kind: 'text-area', cols: c.cols, rows: c.rows, font: own.font, lineHeight: own.lineHeight }, strut: resolveStrutOf(b, env), children: resolveChildren(b.children, env) };
+    return { kind: 'control', id: b.id, boxType: b.boxType, style, control: { kind: 'text-area', cols: c.cols, rows: c.rows, font: own.font, lineHeight: own.lineHeight, avgChar: c.avgChar, scrollbarInline: textAreaScrollbar(c.scrollbarInline, env.device), scrollbarBlock: textAreaScrollbar(c.scrollbarBlock, env.device) }, strut: resolveStrutOf(b, env), children: resolveChildren(b.children, env) };
   }
   if (c.kind === 'select-menulist') {
     const own = resolveStrut({ font: c.font, lineHeight: c.lineHeight }, env);

@@ -1506,7 +1506,7 @@ function accommodateItems(ctx: Ctx, c: GridCollection, group: readonly GridItemD
 }
 
 /** Blink ResolveIntrinsicTrackSizes (css-grid-2 §12.5): span groups in increasing size, then every item spanning a flexible track. */
-function resolveIntrinsicTrackSizes(ctx: Ctx, c: GridCollection, items: readonly GridItemData[], contribution: GridContribution): void {
+function resolveIntrinsicTrackSizes(ctx: Ctx, c: GridCollection, items: readonly GridItemData[], contribution: GridContribution, maximums: boolean): void {
   const considered = items.filter((i) => itemProps(i, c.axis).intrinsic);
   const flexible = (i: GridItemData): boolean => itemProps(i, c.axis).flexible;
   const ordered = considered.map((item, k): GridIndexedItem => ({ item, k })).sort((a, b) => {
@@ -1529,8 +1529,10 @@ function resolveIntrinsicTrackSizes(ctx: Ctx, c: GridCollection, items: readonly
     accommodateItems(ctx, c, group, 'intrinsic-minimums', false, contribution);
     accommodateItems(ctx, c, group, 'content-based-minimums', false, contribution);
     accommodateItems(ctx, c, group, 'max-content-minimums', false, contribution);
-    accommodateItems(ctx, c, group, 'intrinsic-maximums', false, contribution);
-    accommodateItems(ctx, c, group, 'max-content-maximums', false, contribution);
+    if (maximums) {
+      accommodateItems(ctx, c, group, 'intrinsic-maximums', false, contribution);
+      accommodateItems(ctx, c, group, 'max-content-maximums', false, contribution);
+    }
     at = end;
   }
   if (at < ordered.length) {
@@ -1661,9 +1663,27 @@ function expandFlexibleTracks(ctx: Ctx, c: GridCollection, items: readonly GridI
   }
 }
 
+/**
+ * Whether no growth limit can change the used column sizes, so the max-content contributions that set them are not read (a text
+ * field's reads its face's average character width): a min-content sizing whose items each span one track (one span group, whose
+ * maximums run last) leaves no free space to maximize or stretch into, and one stretched auto column with a definite free space ends
+ * at max(base size, free space) whatever its limit (css-grid-2 §12.5, §12.6, §12.8).
+ */
+function growthLimitsUnused(ctx: Ctx, grid: GridState, c: GridCollection, available: GridAvailable, constraint: GridSizing): boolean {
+  if (c.axis !== 'columns' || c.props.flexible || ctx.gridFaults.maximizeIgnoresLimit || ctx.gridFaults.stretchIgnoresAlignment) return false;
+  // A later span group's minimums read the limits an earlier group's maximums set, so every item must span one track.
+  if (constraint === 'min-content') {
+    for (const i of grid.items) if (itemProps(i, c.axis).intrinsic && itemSpanSize(i, c.axis) !== 1) return false;
+    return true;
+  }
+  if (constraint !== 'layout' || available.inline === INDEFINITE || !stretchesAutoTracks(grid, 'columns')) return false;
+  const only = c.sets[0];
+  return c.sets.length === 1 && only !== undefined && only.trackCount === 1 && isAuto(only.track.min) && isAuto(only.track.max) && !only.track.fitContent;
+}
+
 /** Blink GridTrackSizingAlgorithm::ComputeUsedTrackSizes (css-grid-2 §12.3). */
 function computeUsedTrackSizes(ctx: Ctx, grid: GridState, c: GridCollection, available: GridAvailable, constraint: GridSizing, contribution: GridContribution): void {
-  if (c.props.intrinsic) resolveIntrinsicTrackSizes(ctx, c, grid.items, contribution);
+  if (c.props.intrinsic) resolveIntrinsicTrackSizes(ctx, c, grid.items, contribution, !growthLimitsUnused(ctx, grid, c, available, constraint));
   for (const s of c.sets) if (s.growthLimit === INDEFINITE) s.growthLimit = s.baseSize;
   maximizeTracks(ctx, c, available, constraint);
   if (c.props.flexible) expandFlexibleTracks(ctx, c, grid.items, available, constraint, contribution);

@@ -16,3 +16,8 @@ export function chromeNumber(v: number): string {
   const fixed = v.toFixed(Math.max(0, 5 - exp));
   return fixed.includes('.') ? fixed.replace(/\.?0+$/, '') : fixed;
 }
+
+/** ComputedStyle::ComputedLineHeight: a computed line height in px truncated to an int, as Blink's text controls read it. */
+export function computedLineHeightInt(px: number): number {
+  return Math.trunc(px);
+}

@@ -5,8 +5,8 @@
 import { createHash } from 'node:crypto';
 import { posix } from 'node:path';
 import { brotliDecompressSync } from 'node:zlib';
-import type { BrotliDecompress, ClassSymbol, Condition, FontMap, FrontEndResult, NativeStyles, NativeStylesConfig, NativeStyleTarget, Rgba8, RuntimeImageLayout, SourceFile, TreeNode } from 'dragon';
-import { BAND_KEY, compiledCases, compileNativeStylesWith, decodeFontFile, isTreeNodeId, LISTED_OPTIONS_ATTRIBUTE, nativeBands, parseStylesheet, resolvedInteractionTextTransforms, resolvedTextTransforms, TREE_SCHEMA_REVISION } from 'dragon';
+import type { BrotliDecompress, ClassSymbol, Condition, FontMap, FrontEndResult, NativeStyles, NativeStylesConfig, NativeStyleTarget, Rgba8, RuntimeImageLayout, SourceFile, TreeNode, WriteKind } from 'dragon';
+import { BAND_KEY, compiledCases, compileNativeStylesWith, decodeFontFile, isTreeNodeId, LISTED_OPTIONS_ATTRIBUTE, nativeBands, parseStylesheet, renameWriteNodes, resolvedInteractionTextTransforms, resolvedTextTransforms, TREE_SCHEMA_REVISION } from 'dragon';
 import type { LayoutInput, rtBand } from '@dragon/layout';
 import { layout, textDecoration } from '@dragon/layout';
 import { referenceMeasurer } from './native-host.ts';
@@ -17,7 +17,7 @@ import { checkPlan, HEIGHT_FEATURES, heightDependence, hexBits, PLAN_HEIGHTS, pl
 import type { MarklessPlan } from './markless-plan.ts';
 import { withFontMapAssets } from './fixture-groups/fonts.ts';
 import { DOCUMENT_ID, PROJECT_ID } from './fixture-reader.ts';
-import type { ExportAssignment, ExportDevice, ExportNode, ExportTarget, NativeStyleExport } from './native-style-export.ts';
+import type { ExportAssignment, ExportDevice, ExportInteractionMatch, ExportNode, ExportTarget, NativeStyleExport } from './native-style-export.ts';
 import { EXPORT_DEVICES, exportBands, nativeStyleExport, valuesOf } from './native-style-export.ts';
 import { programAt } from 'dragon';
 import { isWhitespaceText, rehostAddress, textAddresser } from './node-ids.ts';
@@ -878,10 +878,20 @@ function exportMarkless(parsed: MarklessStyleInput, inputText: string, inputPath
   const dragonIds = dragonNodeIds(parsed);
   const rowOfNode = new Map(parsed.nodes.flatMap((n) => (n.row === undefined ? [] : [[n.id, n.row] as const])));
   const renameIn = (a: ExportAssignment): ((id: string) => string) => marklessNodeId(parsed, (id) => dragonIds.get(id) as string, cellValues(a));
-  const renamed = (a: ExportAssignment): ExportAssignment => {
-    const rename = renameIn(a);
-    return { ...a, nodes: a.nodes.map((n) => ({ ...n, id: rename(n.id), parent: n.parent === null ? null : rename(n.parent) })) };
+  // A write that names a node (a paint-order host, an outline's layer) names it as the nodes are named, or the export refuses it.
+  const renamedNodes = (nodes: readonly ExportNode[], rename: (id: string) => string): ExportNode[] => {
+    const have = new Set(nodes.map((n) => rename(n.id)));
+    return nodes.map((n) => ({
+      ...n,
+      id: rename(n.id),
+      parent: n.parent === null ? null : rename(n.parent),
+      writes: n.writes.map((w) => renameWriteNodes(w as unknown as WriteKind, (id) => {
+        const named = rename(id);
+        return have.has(named) ? named : fail(`${rename(n.id)}'s ${String(w['kind'])} write names ${id}, which the export has no node for`);
+      }) as unknown as ExportNode['writes'][number]),
+    }));
   };
+  const renamed = (a: ExportAssignment): ExportAssignment => ({ ...a, nodes: renamedNodes(a.nodes, renameIn(a)) });
   const exported: NativeStyleExport = {
     ...raw,
     targets: Object.fromEntries(Object.entries(raw.targets).map(([t, x]) => [t, {
@@ -900,7 +910,7 @@ function exportMarkless(parsed: MarklessStyleInput, inputText: string, inputPath
             const row = rowOfNode.get(id);
             return row === undefined ? [] : [[id, row] as const];
           })),
-          states: l.states.map((st) => ({ ...st, nodes: st.nodes.map((n) => ({ ...n, id: rename(n.id), parent: n.parent === null ? null : rename(n.parent) })) })),
+          states: l.states.map((st) => ({ ...st, nodes: renamedNodes(st.nodes, rename) })),
           matches: l.matches.map((m) => ({ hover: m.hover.map(rename), active: m.active.map(rename), focus: one(m.focus), focusVisible: one(m.focusVisible), force: m.force.map((f) => ({ ...f, address: rename(f.address) })) })),
         };
       }) } }),
@@ -990,12 +1000,15 @@ function exportMarkless(parsed: MarklessStyleInput, inputText: string, inputPath
       })),
       ...(x.interaction === undefined ? {} : { interaction: { levels: x.interaction.levels.map((l, i) => ({
         ...l,
-        states: l.states.map((a, k) => ({
-          ...a,
-          values: cellValues(a),
-          colorScheme: (schemes[i] as UsedScheme).colorScheme,
-          ...rootPaint(a.nodes, `${t} assignment ${i} interaction state ${k}`, bandScheme(x.bands, a.values[BAND_KEY]), schemes[i] as UsedScheme),
-        })),
+        states: l.states.map((s, k) => {
+          const a = withoutRootFocusRing(s, l.matches[k]);
+          return {
+            ...a,
+            values: cellValues(a),
+            colorScheme: (schemes[i] as UsedScheme).colorScheme,
+            ...rootPaint(a.nodes, `${t} assignment ${i} interaction state ${k}`, bandScheme(x.bands, a.values[BAND_KEY]), schemes[i] as UsedScheme),
+          };
+        }),
       })) } }),
     }];
   }));
@@ -1306,6 +1319,22 @@ function checkHostGroups(nodes: readonly ExportNode[], where: string): void {
     };
     visit(g);
   }
+}
+
+/** The page's root boxes, whose paint the hosts draw as the canvas and the body's background only. */
+const ROOT_BOXES: ReadonlySet<string> = new Set(['html', 'body']);
+
+/**
+ * The planner's ruling (Markless #974): a phone cannot focus the root with a keyboard ring. Dragon gives every element that a
+ * page-wide `:focus-visible { outline }` rule reaches an interaction state, html and body included, which Chrome reaches only by
+ * forcing the pseudo-class: neither is focusable (markless-root-paint.test.ts). In a state whose focused element (:focus or :focus-visible) is html or body, that element's outline is
+ * accepted and not drawn: it loses its outline write. The base assignments keep checkRootPaint's refusal, and so does a root
+ * outline in a state that focuses another element.
+ */
+function withoutRootFocusRing<A extends { readonly nodes: readonly ExportNode[] }>(state: A, match: ExportInteractionMatch | undefined): A {
+  const focused = match === undefined ? null : (match.focusVisible ?? match.focus);
+  if (focused === null || !ROOT_BOXES.has(focused)) return state;
+  return { ...state, nodes: state.nodes.map((n) => (n.id === focused ? { ...n, writes: n.writes.filter((w) => w['kind'] !== 'outline') } : n)) };
 }
 
 function checkRootPaint(nodes: readonly ExportNode[], id: string, where: string): void {
