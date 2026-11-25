@@ -27,12 +27,13 @@ import type { Projection } from '../src/pipeline.ts';
 import { compileFixture } from '../src/pipeline.ts';
 
 const controlIds = new Set(CONTROLS.map((f) => f.id));
-// Later fixtures that hold buttons by design are not earlier cases: OVFL's overflow-controls (buttons in scroll boxes), the
+// Later fixtures that hold controls by design are not earlier cases: OVFL's overflow-controls (buttons in scroll boxes),
+// overflow-textarea and overflow-select (a textarea and a select in scroll boxes and on the page), the
 // anchor group's anchor-control (a button as an anchor), the Markless ladder's ms-button-disabled (:disabled on a button) and
 // FORM-attrs' attr-neutral-form-* pairs (each form attribute on a form, a button and a range) and HIT-atomic-inline's hit-atomic-inline
 // (block buttons holding an inline-block and an inline img, for the button content shift).
 const FORM_ATTRIBUTE_PAIRS: readonly string[] = ['none', 'name', 'autocomplete', 'required', 'minlength', 'maxlength'].map((a) => `attr-neutral-form-${a}`);
-const LATER_WITH_CONTROLS: readonly string[] = ['overflow-controls', 'anchor-control', 'ms-button-disabled', 'grid-controls', 'grid-controls-fields', 'opacity-group-button', 'hit-atomic-inline', 'controls-text-font', 'controls-text-font-column-flex', 'controls-text-font-grid', ...FORM_ATTRIBUTE_PAIRS];
+const LATER_WITH_CONTROLS: readonly string[] = ['overflow-controls', 'overflow-textarea', 'overflow-select', 'anchor-control', 'ms-button-disabled', 'grid-controls', 'grid-controls-fields', 'opacity-group-button', 'hit-atomic-inline', 'controls-text-font', 'controls-text-font-column-flex', 'controls-text-font-grid', ...FORM_ATTRIBUTE_PAIRS];
 const notEarlier = new Set([...controlIds, ...LATER_WITH_CONTROLS]);
 const earlier = FIXTURES.filter((f) => f.kind === 'layout' && !notEarlier.has(f.id));
 

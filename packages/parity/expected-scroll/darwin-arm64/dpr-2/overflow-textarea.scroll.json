@@ -1,0 +1,48 @@
+{
+ "case": "overflow-textarea",
+ "chrome": "145.0.7632.6",
+ "platform": "darwin-arm64",
+ "devicePixelRatio": 2,
+ "direction": "ltr",
+ "scrollbars": "overlay",
+ "scrollbarArgs": "-AppleShowScrollBars WhenScrolling",
+ "records": [
+  {
+   "id": "viewport",
+   "scrollWidth": 400,
+   "scrollHeight": 586,
+   "clientWidth": 400,
+   "clientHeight": 300
+  },
+  {
+   "id": "s1",
+   "scrollWidth": 158,
+   "scrollHeight": 60,
+   "clientWidth": 100,
+   "clientHeight": 60
+  },
+  {
+   "id": "s2",
+   "scrollWidth": 100,
+   "scrollHeight": 60,
+   "clientWidth": 100,
+   "clientHeight": 60
+  }
+ ],
+ "extents": [
+  {
+   "id": "s1",
+   "minLeft": 0,
+   "maxLeft": 58,
+   "minTop": 0,
+   "maxTop": 0
+  },
+  {
+   "id": "s2",
+   "minLeft": 0,
+   "maxLeft": 0,
+   "minTop": 0,
+   "maxTop": 0
+  }
+ ]
+}
