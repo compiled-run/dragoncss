@@ -1,0 +1,178 @@
+{
+ "platform": "darwin-arm64",
+ "devicePixelRatio": 2.625,
+ "input": [
+  {
+   "id": "html",
+   "parent": null,
+   "x": 0,
+   "y": 0,
+   "width": 67200,
+   "height": 50400
+  },
+  {
+   "id": "body",
+   "parent": "html",
+   "x": 0,
+   "y": 0,
+   "width": 67200,
+   "height": 50400
+  },
+  {
+   "id": "row1",
+   "parent": "body",
+   "x": 0,
+   "y": 0,
+   "width": 67200,
+   "height": 14368
+  },
+  {
+   "id": "press",
+   "parent": "row1",
+   "x": 4032,
+   "y": 4032,
+   "width": 13696,
+   "height": 10336
+  },
+  {
+   "id": "pic1",
+   "parent": "press",
+   "x": 128,
+   "y": 128,
+   "width": 21840,
+   "height": 6720
+  },
+  {
+   "id": "turn",
+   "parent": "row1",
+   "x": 24448,
+   "y": 4032,
+   "width": 13696,
+   "height": 10336
+  },
+  {
+   "id": "tall1",
+   "parent": "turn",
+   "x": 128,
+   "y": 128,
+   "width": 13440,
+   "height": 15120
+  },
+  {
+   "id": "rel",
+   "parent": "row1",
+   "x": 44864,
+   "y": 4032,
+   "width": 13696,
+   "height": 10336
+  },
+  {
+   "id": "pic2",
+   "parent": "rel",
+   "x": 128,
+   "y": 128,
+   "width": 21840,
+   "height": 6720
+  },
+  {
+   "id": "tall2",
+   "parent": "rel",
+   "x": 128,
+   "y": 6848,
+   "width": 13440,
+   "height": 15120
+  }
+ ],
+ "output": [
+  {
+   "id": "html",
+   "left": 0,
+   "top": 0,
+   "right": 1050,
+   "bottom": 788,
+   "width": 1050,
+   "height": 788
+  },
+  {
+   "id": "body",
+   "left": 0,
+   "top": 0,
+   "right": 1050,
+   "bottom": 788,
+   "width": 1050,
+   "height": 788
+  },
+  {
+   "id": "row1",
+   "left": 0,
+   "top": 0,
+   "right": 1050,
+   "bottom": 225,
+   "width": 1050,
+   "height": 225
+  },
+  {
+   "id": "press",
+   "left": 63,
+   "top": 63,
+   "right": 277,
+   "bottom": 225,
+   "width": 214,
+   "height": 162
+  },
+  {
+   "id": "pic1",
+   "left": 65,
+   "top": 65,
+   "right": 406,
+   "bottom": 170,
+   "width": 341,
+   "height": 105
+  },
+  {
+   "id": "turn",
+   "left": 382,
+   "top": 63,
+   "right": 596,
+   "bottom": 225,
+   "width": 214,
+   "height": 162
+  },
+  {
+   "id": "tall1",
+   "left": 384,
+   "top": 65,
+   "right": 594,
+   "bottom": 301,
+   "width": 210,
+   "height": 236
+  },
+  {
+   "id": "rel",
+   "left": 701,
+   "top": 63,
+   "right": 915,
+   "bottom": 225,
+   "width": 214,
+   "height": 162
+  },
+  {
+   "id": "pic2",
+   "left": 703,
+   "top": 65,
+   "right": 1044,
+   "bottom": 170,
+   "width": 341,
+   "height": 105
+  },
+  {
+   "id": "tall2",
+   "left": 703,
+   "top": 170,
+   "right": 913,
+   "bottom": 406,
+   "width": 210,
+   "height": 236
+  }
+ ]
+}
