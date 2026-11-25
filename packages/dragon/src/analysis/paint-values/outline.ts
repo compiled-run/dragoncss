@@ -144,8 +144,8 @@ const clips = (el: ResolvedElement): boolean => CLIPPING.includes(keywordOf(el, 
  * positioned or sticky box is covered by it, and one inside it paints in its layer. The native targets refuse at the outline:
  * an outline under an overflow clip or scroller (the clip check), an outline inside a layer that paints as a group (opacity,
  * transform, filter and the like: the outline would have to join the group's composite), and the own outline of a layer item
- * that clips its overflow with a negative outline-offset (its view holds the outline beside its clip view, above what that holds). propagated is the element whose overflow the viewport takes
- * (css-overflow-3 §3.3), which does not clip.
+ * that clips its overflow with a negative outline-offset (the outline beside its clip view would cover what that holds). propagated
+ * is the element whose overflow the viewport takes (css-overflow-3 §3.3), which does not clip.
  */
 export function checkOutlinePlacement(root: ResolvedElement, propagated: ResolvedElement | null, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, opacityGroups: ReadonlySet<string> = new Set()): void {
   const outlined: { readonly el: ResolvedElement; readonly clip: ResolvedElement | null; readonly ancestors: readonly ResolvedElement[] }[] = [];
@@ -203,8 +203,7 @@ export function checkOutlinePlacement(root: ResolvedElement, propagated: Resolve
       refuse(el, 'stacking', `has an outline, and ${kept} is a layer item Dragon keeps under the overflow clip of ${facts.get(kept)?.host ?? 'an ancestor'}, so it would paint beneath the outlines its layer paints before it`, `Let the clipping ancestor of ${kept} overflow visibly, or outline: none.`, targets, diagnostics, reported);
       continue;
     }
-    // A clipping layer's own outline sits in its view beside the clip view, outside the clip; one reaching inside its border box would
-    // paint over the layer items its clip view holds, which Chrome paints after the layer's outlines.
+    // A clipping layer's own outline sits beside its clip view; a negative offset could cover the layer items Chrome paints over it.
     if (el !== root && factsOf(el).paintLayer === el.element.address && el !== propagated && clips(el) && outlineOffsetOf(el) < 0) {
       refuse(el, 'stacking', `has an outline with a negative outline-offset and ${layerReason(el)}, and clips its overflow; Dragon draws a layer's own outline above what its clip holds`, 'Use an outline-offset of 0 or more, or let the box overflow visibly.', targets, diagnostics, reported);
     }

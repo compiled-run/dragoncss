@@ -191,8 +191,8 @@ public func dragonSetOutline(_ t: DragonTree, _ v: DragonBoxView, _ layer: Strin
   dragonAfterLayout(v, v.dragonShape, v.dragonScale)
 }
 
-/// The device px origin from the root of the view an outline view is in: its box's snapped border box (a layer view clips nothing,
-/// so it hosts its children in itself), or the root's.
+/// The device px origin from the root of the view an outline view is in: its box's snapped border box (the outline is a direct child
+/// of the box view, beside any clip view), or the root's.
 func dragonOutlineHostOrigin(_ host: UIView) -> [Double] {
   if let b = host as? DragonBoxView { return [b.dragonShape.edges[0], b.dragonShape.edges[1]] }
   if host is DragonRootView { return [0, 0] }
