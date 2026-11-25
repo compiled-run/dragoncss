@@ -5,16 +5,16 @@
 import { createHash } from 'node:crypto';
 import { posix } from 'node:path';
 import { brotliDecompressSync } from 'node:zlib';
-import type { BrotliDecompress, ClassSymbol, Condition, FontMap, FrontEndResult, NativeStyles, NativeStylesConfig, NativeStyleTarget, Rgba8, SourceFile, TreeNode } from 'dragon';
-import { BAND_KEY, compiledCases, compileNativeStylesWith, decodeFontFile, isTreeNodeId, nativeBands, parseStylesheet, resolvedTextTransforms, TREE_SCHEMA_REVISION } from 'dragon';
+import type { BrotliDecompress, ClassSymbol, Condition, FontMap, FrontEndResult, NativeStyles, NativeStylesConfig, NativeStyleTarget, Rgba8, SourceFile, TreeNode, WriteKind } from 'dragon';
+import { BAND_KEY, compiledCases, compileNativeStylesWith, decodeFontFile, isTreeNodeId, LISTED_OPTIONS_ATTRIBUTE, nativeBands, parseStylesheet, renameWriteNodes, resolvedInteractionTextTransforms, resolvedTextTransforms, TREE_SCHEMA_REVISION } from 'dragon';
 import type { rtBand } from '@dragon/layout';
 import { textDecoration } from '@dragon/layout';
 import { FONT_REFERENCE_MAP } from './font-reference.ts';
-import { checkPlan, hexBits, PLAN_HEIGHTS, slottedLayout } from './markless-plan.ts';
+import { checkPlan, HEIGHT_FEATURES, heightDependence, hexBits, PLAN_HEIGHTS, planStateProgram, slottedLayout } from './markless-plan.ts';
 import type { MarklessPlan } from './markless-plan.ts';
 import { withFontMapAssets } from './fixture-groups/fonts.ts';
 import { DOCUMENT_ID, PROJECT_ID } from './fixture-reader.ts';
-import type { ExportAssignment, ExportDevice, ExportNode, ExportTarget, NativeStyleExport } from './native-style-export.ts';
+import type { ExportAssignment, ExportDevice, ExportInteractionMatch, ExportNode, ExportTarget, NativeStyleExport } from './native-style-export.ts';
 import { EXPORT_DEVICES, exportBands, nativeStyleExport, valuesOf } from './native-style-export.ts';
 import { programAt } from 'dragon';
 import { isWhitespaceText, rehostAddress, textAddresser } from './node-ids.ts';
@@ -290,6 +290,7 @@ export function parseMarklessStyleInput(text: string): MarklessStyleInput {
       if (!isRecord(node['attributes']) || !Object.values(node['attributes']).every(isString)) fail(`${id}: attributes are not strings`);
       if (node['boxless'] !== undefined && node['boxless'] !== true) fail(`${id}: boxless is true or absent`);
       if (MARKLESS_BOXLESS_ATTRIBUTE in (node['attributes'] as Record<string, unknown>)) fail(`${id}: ${MARKLESS_BOXLESS_ATTRIBUTE} is Dragon's own attribute`);
+      if (LISTED_OPTIONS_ATTRIBUTE in (node['attributes'] as Record<string, unknown>)) fail(`${id}: ${LISTED_OPTIONS_ATTRIBUTE} is Dragon's own attribute`);
       if (node['classByState'] !== undefined) {
         if ('class' in (node['attributes'] as Record<string, unknown>)) fail(`${id}: class is both a fixed attribute and a class by state`);
         checkByState('classByState', node['classByState']);
@@ -300,7 +301,7 @@ export function parseMarklessStyleInput(text: string): MarklessStyleInput {
         for (const [name, byState] of Object.entries(attributesByState as Record<string, unknown>)) {
           if (name === 'class' || !/^[a-z][a-z0-9-]*$/.test(name)) fail(`${id}: attributesByState names ${JSON.stringify(name)}, which is not a non-class attribute name`);
           if (name in (node['attributes'] as Record<string, unknown>)) fail(`${id}: ${name} is both a fixed attribute and an attribute by state`);
-          if (name === MARKLESS_BOXLESS_ATTRIBUTE) fail(`${id}: ${MARKLESS_BOXLESS_ATTRIBUTE} is Dragon's own attribute`);
+          if (name === MARKLESS_BOXLESS_ATTRIBUTE || name === LISTED_OPTIONS_ATTRIBUTE) fail(`${id}: ${name} is Dragon's own attribute`);
           checkByState(`attributesByState.${name}`, byState);
         }
       }
@@ -555,6 +556,8 @@ export function marklessFrontEnd(slotted: MarklessStyleInput, inputText: string,
         ...Object.entries(n.attributes).filter(([name]) => name !== 'class').map(([name, value]) => ({ name, value: [{ when: { kind: 'true' }, value }], origin })),
         ...(marklessShownModal(n) && !('open' in n.attributes) ? [{ name: 'open', value: [{ when: { kind: 'true' }, value: '' }], origin }] : []),
         ...(n.boxless === true ? [{ name: MARKLESS_BOXLESS_ATTRIBUTE, value: [{ when: { kind: 'true' }, value: '' }], origin }] : []),
+        // FORM-b S4: a select holding a list's rows has only the template option here, so Dragon keeps its widest-option refusals.
+        ...(n.kind === 'element' && n.element === 'select' && input.nodes.some((k) => k.parent === n.id && k.row !== undefined) ? [{ name: LISTED_OPTIONS_ATTRIBUTE, value: [{ when: { kind: 'true' }, value: '' }], origin }] : []),
         // An attribute that follows state: each distinct value (null: absent) holds in exactly the combinations that give it.
         ...Object.entries(n.attributesByState ?? {}).map(([name, byState]) => {
           const entryOf = entriesOf(n.id, `attributesByState.${name}`, byState);
@@ -633,7 +636,7 @@ function compileMarkless(parsed: MarklessStyleInput, inputText: string, inputPat
   const map = mode === 'system' ? MARKLESS_SYSTEM_FONT_MAP : FONT_REFERENCE_MAP;
   const input = withFontMapAssets(marklessFrontEnd(parsed, inputText, inputPath, fonts, mode), map);
   const devices = marklessDevices(parsed, at);
-  const config: NativeStylesConfig = { projectId: PROJECT_ID, name: parsed.component, targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 } }, fonts: map, viewport: devices.ios.viewport, support: 'lanes', topLayer: 'host', canvas: 'host', output: 'program', brotliDecompress: NODE_BROTLI, ...(mode === 'system' ? { systemFonts: 'measured' as const } : {}) };
+  const config: NativeStylesConfig = { projectId: PROJECT_ID, name: parsed.component, targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 } }, fonts: map, viewport: devices.ios.viewport, support: 'lanes', topLayer: 'host', canvas: 'host', forms: 'host', textEditing: 'host', output: 'program', brotliDecompress: NODE_BROTLI, ...(mode === 'system' ? { systemFonts: 'measured' as const } : {}) };
   const { styles, compiled } = compileNativeStylesWith(config, input);
   const errors = styles.diagnostics.filter((d) => d.severity === 'error');
   if (errors.length > 0) fail(`${parsed.component} does not compile:\n${errors.map((d) => `  ${d.code} [${d.target ?? 'all'}] ${d.message}`).join('\n')}`);
@@ -723,6 +726,8 @@ export function marklessStyleExport(inputText: string, inputPath: string, readFo
     return got;
   });
   const targets = Object.fromEntries(Object.entries(done.exported.targets).map(([t, x]) => {
+    // The slot bindings cover the program's assignments only; a pressed or focused state would lay out at the initial slot values.
+    if (x.interaction !== undefined) fail(`${parsed.component} has style values that follow state (slots ${slots.map((s) => s.id).join(', ')}) and interaction states (:hover, :active, :focus) together, which a phone does not apply yet`);
     const plan = x.plan;
     const per = bindings[t as NativeStyleTarget];
     if (plan === undefined || per === undefined) return fail(`${t}: no plan to carry the slots in`);
@@ -744,6 +749,22 @@ export function marklessStyleExport(inputText: string, inputPath: string, readFo
     return [t, { ...x, plan: slotted }];
   }));
   return { ...done, exported: { ...done.exported, slots: slots.map((s) => ({ ...s })), targets } as MarklessStyleExport };
+}
+
+/**
+ * Per target, what may make the page's text change with the viewport height (markless-plan.ts heightDependence), or null when
+ * Dragon's analysis proves it cannot, so the layout plan does not check its text at PLAN_HEIGHTS' heights.
+ */
+export function marklessTextHeightProof(inputText: string, inputPath: string, readFont?: (file: string) => Uint8Array, mode: MarklessFonts = 'system'): { readonly [T in NativeStyleTarget]?: string | null } {
+  const parsed = parseMarklessStyleInput(inputText);
+  const fonts = readFont === undefined ? [] : marklessFontFiles(parsed, readFont);
+  const { styles } = compileMarkless(parsed, inputText, inputPath, fonts, mode);
+  const out: { [T in NativeStyleTarget]?: string | null } = {};
+  for (const t of ['ios', 'android'] as const) {
+    const o = styles.targets[t];
+    if (o?.kind === 'emitted') out[t] = heightDependence(planStateProgram(o.program, o.interaction), (o.bands?.table.atoms ?? []).map((a) => a.feature));
+  }
+  return out;
 }
 
 /**
@@ -771,6 +792,18 @@ export function marklessHeightDependence(parsed: MarklessStyleInput, fonts: read
   return [...out];
 }
 
+/** Whether a node is an option or optgroup inside a select, or a node inside such an option: Chrome's closed control draws only the shown label, so it has no box. */
+export function inSelectOptions(byId: ReadonlyMap<string, MarklessStyleInput['nodes'][number]>, n: MarklessStyleInput['nodes'][number]): boolean {
+  let at: MarklessStyleInput['nodes'][number] | undefined = n;
+  let listed = false;
+  while (at !== undefined) {
+    if (at.kind === 'element' && at.element === 'select') return listed;
+    if (at.kind === 'element' && (at.element === 'option' || at.element === 'optgroup')) listed = true;
+    at = at.parent === null ? undefined : byId.get(at.parent);
+  }
+  return false;
+}
+
 type PlanNode = { readonly id: string; readonly kind: string; readonly children?: readonly PlanNode[] };
 
 /**
@@ -785,9 +818,12 @@ function withTransformed(plan: MarklessPlan, compiled: object): MarklessPlan {
     for (const c of compiledCases(compiled)) {
       const transforms = resolvedTextTransforms(compiled, c.assignment, band);
       if (transforms === null) return fail(`a case did not resolve in band ${band}`);
-      for (const [address, transform] of transforms) {
-        elements.add(address);
-        if (transform !== 'none') on.add(address);
+      // An interaction state's own text-transform counts too: the phone lays that state's text out as the plan recorded it.
+      for (const map of [transforms, ...(resolvedInteractionTextTransforms(compiled, c.assignment, band) ?? [])]) {
+        for (const [address, transform] of map) {
+          elements.add(address);
+          if (transform !== 'none') on.add(address);
+        }
       }
     }
   }
@@ -801,8 +837,12 @@ function withTransformed(plan: MarklessPlan, compiled: object): MarklessPlan {
   return leaves.size === 0 ? plan : { ...plan, transformed: [...leaves].sort() };
 }
 
-/** The media features whose value changes with the viewport's height. */
-const HEIGHT_FEATURES: ReadonlySet<rtBand.BandFeature> = new Set(['height', 'orientation', 'aspect-ratio']);
+
+/** Each Dragon id an assignment's plan geometry names, with the input's id for it, where they differ. */
+const planNamesOf = (a: ExportAssignment, rename: (id: string) => string): (readonly [string, string])[] => a.nodes.map((n) => [n.id, rename(n.id)] as const).filter(([d, m]) => d !== m);
+
+/** Every interaction state's assignment of a target, in level order. */
+const interactionStates = (x: NativeStyleExport['targets'][NativeStyleTarget] & object): readonly ExportAssignment[] => x.interaction?.levels.flatMap((l) => l.states) ?? [];
 
 function exportMarkless(parsed: MarklessStyleInput, inputText: string, inputPath: string, fonts: readonly MarklessFontFile[], mode: MarklessFonts, at: MarklessAtSize | undefined, plan: boolean): { readonly input: FrontEndResult; readonly styles: NativeStyles; readonly exported: MarklessStyleExport; readonly decoded: readonly { readonly file: string; readonly bytes: Uint8Array }[] } {
   const { input, styles, compiled, devices } = compileMarkless(parsed, inputText, inputPath, fonts, mode, at);
@@ -810,26 +850,62 @@ function exportMarkless(parsed: MarklessStyleInput, inputText: string, inputPath
   const rekey = cellKey(parsed);
   const cellValues = (a: ExportAssignment): Record<string, unknown> => Object.fromEntries(Object.entries(a.values).map(([k, v]) => [rekey(k), v]));
   const dragonIds = dragonNodeIds(parsed);
+  const rowOfNode = new Map(parsed.nodes.flatMap((n) => (n.row === undefined ? [] : [[n.id, n.row] as const])));
   const renameIn = (a: ExportAssignment): ((id: string) => string) => marklessNodeId(parsed, (id) => dragonIds.get(id) as string, cellValues(a));
-  const renamed = (a: ExportAssignment): ExportAssignment => {
-    const rename = renameIn(a);
-    return { ...a, nodes: a.nodes.map((n) => ({ ...n, id: rename(n.id), parent: n.parent === null ? null : rename(n.parent) })) };
+  // A write that names a node (a paint-order host, an outline's layer) names it as the nodes are named, or the export refuses it.
+  const renamedNodes = (nodes: readonly ExportNode[], rename: (id: string) => string): ExportNode[] => {
+    const have = new Set(nodes.map((n) => rename(n.id)));
+    return nodes.map((n) => ({
+      ...n,
+      id: rename(n.id),
+      parent: n.parent === null ? null : rename(n.parent),
+      writes: n.writes.map((w) => renameWriteNodes(w as unknown as WriteKind, (id) => {
+        const named = rename(id);
+        return have.has(named) ? named : fail(`${rename(n.id)}'s ${String(w['kind'])} write names ${id}, which the export has no node for`);
+      }) as unknown as ExportNode['writes'][number]),
+    }));
   };
+  const renamed = (a: ExportAssignment): ExportAssignment => ({ ...a, nodes: renamedNodes(a.nodes, renameIn(a)) });
   const exported: NativeStyleExport = {
     ...raw,
     targets: Object.fromEntries(Object.entries(raw.targets).map(([t, x]) => [t, {
       ...x,
       assignments: x.assignments.map(renamed),
+      // An interaction state is laid out under its assignment's values, so it takes that assignment's names.
+      ...(x.interaction === undefined ? {} : { interaction: { levels: x.interaction.levels.map((l, i) => {
+        const rename = renameIn(x.assignments[i] as ExportAssignment);
+        const one = (id: string | null): string | null => (id === null ? null : rename(id));
+        const addresses = l.addresses.map(rename);
+        return {
+          ...l,
+          addresses,
+          // A list row's node is the template a phone copies per row: the state applies to the copy the touch or focus is in.
+          rows: Object.fromEntries(addresses.flatMap((id) => {
+            const row = rowOfNode.get(id);
+            return row === undefined ? [] : [[id, row] as const];
+          })),
+          states: l.states.map((st) => ({ ...st, nodes: renamedNodes(st.nodes, rename) })),
+          matches: l.matches.map((m) => ({ hover: m.hover.map(rename), active: m.active.map(rename), focus: one(m.focus), focusVisible: one(m.focusVisible), force: m.force.map((f) => ({ ...f, address: rename(f.address) })) })),
+        };
+      }) } }),
       // The plan lays out Dragon's own ids; a host names each assignment's geometry with the input's, by the export's rule.
-      ...(x.plan === undefined ? {} : { plan: withTransformed(x.plan, compiled), planNames: x.assignments.map((a) => {
-        const rename = renameIn(a);
-        return a.nodes.map((n) => [n.id, rename(n.id)] as const).filter(([d, m]) => d !== m);
-      }), planRepeats: planRepeats(parsed, dragonIds) }),
+      ...(x.plan === undefined ? {} : { plan: withTransformed(x.plan, compiled), planNames: [
+        ...x.assignments.map((a) => planNamesOf(a, renameIn(a))),
+        ...(x.interaction?.levels.flatMap((l, i) => l.states.map((st) => planNamesOf(st, renameIn(x.assignments[i] as ExportAssignment)))) ?? []),
+      ], planRepeats: planRepeats(parsed, dragonIds) }),
     }])),
   };
-  for (const [t, x] of Object.entries(exported.targets)) for (const a of x.assignments) {
+  for (const [t, x] of Object.entries(exported.targets)) for (const a of [...x.assignments, ...interactionStates(x)]) {
     const have = new Set(a.nodes.map((n) => n.id));
     if (have.size !== a.nodes.length) fail(`${t}: the export names ${a.nodes.length - have.size} node(s) by an id another node has`);
+  }
+  // The animator keeps one state for the page, so a row's copies would share one clock and a row added later would never run.
+  const inRows = new Map(parsed.nodes.flatMap((n) => (n.row === undefined ? [] : [[dragonIds.get(n.id) as string, n.id] as const])));
+  for (const [t, x] of Object.entries(exported.targets)) {
+    if (x.anim === undefined) continue;
+    const animated = [...x.anim.slots, ...x.anim.animations, ...x.anim.bases].map((e) => e.node);
+    const row = animated.find((node) => inRows.has(node));
+    if (row !== undefined) fail(`${t}: ${inRows.get(row)} has a transition or animation inside a @for row, which a phone runs only for the page, not per row, yet`);
   }
   // Named with no frame: an element a hidden attribute (fixed or by state) or a style state another assignment shows it in hides here, and its contents.
   const boxless = (a: ExportAssignment, shown: ReadonlySet<string>): ExportAssignment => {
@@ -860,17 +936,26 @@ function exportMarkless(parsed: MarklessStyleInput, inputText: string, inputPath
     return { ...a, nodes: [...a.nodes, ...added] };
   };
   for (const x of Object.values(exported.targets)) {
-    const shown = new Set(x.assignments.flatMap((a) => a.nodes.map((n) => n.id)));
+    const shown = new Set([...x.assignments, ...interactionStates(x)].flatMap((a) => a.nodes.map((n) => n.id)));
     (x as { assignments: unknown }).assignments = x.assignments.map((a) => boxless(a, shown));
+    if (x.interaction !== undefined) (x as { interaction: unknown }).interaction = { levels: x.interaction.levels.map((l) => ({ ...l, states: l.states.map((st) => boxless(st, shown)) })) };
   }
-  for (const [t, x] of Object.entries(exported.targets)) for (const a of x.assignments) {
+  const byId = new Map(parsed.nodes.map((n) => [n.id, n]));
+  const inSelectList = (n: MarklessStyleInput['nodes'][number]): boolean => inSelectOptions(byId, n);
+  for (const [t, x] of Object.entries(exported.targets)) for (const a of [...x.assignments, ...interactionStates(x)]) {
     const have = new Set(a.nodes.map((n) => n.id));
     const values = cellValues(a);
     const boxless = (n: MarklessStyleInput['nodes'][number]): boolean => n.kind === 'element' && n.boxless === true;
     const boxed = parsed.nodes.filter((n) => boxless(n) && have.has(n.id)).map((n) => n.id);
     if (boxed.length > 0) fail(`${t}: ${boxed.join(', ')} must generate no box (an ancestor in the markup, there for selectors and inheritance), but the CSS gives it a display other than contents`);
     // Whitespace-only text Dragon drops where it collapses away, as Chrome generates no box for it.
-    const missing = parsed.nodes.filter((n) => !boxless(n) && !have.has(n.id) && !(n.kind === 'text' && isWhitespaceText(shownText(n, values)))).map((n) => n.id);
+    // A textarea's text is its editor's text leaf, <textarea id>::editor:text0, absent while it is empty.
+    const editorText = (n: MarklessStyleInput['nodes'][number]): boolean => {
+      if (n.kind !== 'text') return false;
+      const parent = byId.get(n.parent);
+      return parent !== undefined && parent.kind === 'element' && parent.element === 'textarea' && (shownText(n, values) === '' || have.has(`${parent.id}::editor:text0`));
+    };
+    const missing = parsed.nodes.filter((n) => !boxless(n) && !inSelectList(n) && !editorText(n) && !have.has(n.id) && !(n.kind === 'text' && isWhitespaceText(shownText(n, values)))).map((n) => n.id);
     if (missing.length > 0) fail(`${t}: the export has no node ${missing.join(', ')} of the input`);
   }
   if ((parsed.repeats ?? []).length > 0) checkRows(parsed, inputPath, exported, styles, compiled, fonts, mode, at);
@@ -887,6 +972,18 @@ function exportMarkless(parsed: MarklessStyleInput, inputText: string, inputPath
         colorScheme: (schemes[i] as UsedScheme).colorScheme,
         ...rootPaint(a.nodes, `${t} assignment ${i}`, bandScheme(x.bands, a.values[BAND_KEY]), schemes[i] as UsedScheme),
       })),
+      ...(x.interaction === undefined ? {} : { interaction: { levels: x.interaction.levels.map((l, i) => ({
+        ...l,
+        states: l.states.map((s, k) => {
+          const a = withoutRootFocusRing(s, l.matches[k]);
+          return {
+            ...a,
+            values: cellValues(a),
+            colorScheme: (schemes[i] as UsedScheme).colorScheme,
+            ...rootPaint(a.nodes, `${t} assignment ${i} interaction state ${k}`, bandScheme(x.bands, a.values[BAND_KEY]), schemes[i] as UsedScheme),
+          };
+        }),
+      })) } }),
     }];
   }));
   const decoded = [...new Map(fonts.filter((f) => f.sfntFile !== f.file).map((f) => [f.sfntFile, { file: f.sfntFile, bytes: f.sfnt }])).values()];
@@ -895,15 +992,18 @@ function exportMarkless(parsed: MarklessStyleInput, inputText: string, inputPath
 
 /**
  * Each list of the input as a phone lays its rows out (harness.ts runMarklessRowsLayout): the box its rows hang from and the ids of
- * one row's top boxes in order, as the plan names them. A row is elements at its top; text right in a row has no box to copy.
+ * one row's top boxes in order, as the plan names them. A row is elements at its top; text right in a row has no box to copy. A list
+ * of a select's options has no rows to lay out: the closed control draws only the shown label.
  */
 function planRepeats(parsed: MarklessStyleInput, dragonIds: ReadonlyMap<string, string>): { readonly id: string; readonly parent: string; readonly template: readonly string[] }[] {
-  return (parsed.repeats ?? []).map((r) => {
+  const byId = new Map(parsed.nodes.map((n) => [n.id, n] as const));
+  return (parsed.repeats ?? []).flatMap((r) => {
     const top = parsed.nodes.filter((n) => n.row === r.id && n.parent === r.parent);
+    if (top.length > 0 && top.every((n) => inSelectOptions(byId, n))) return [];
     const text = top.find((n) => n.kind === 'text');
     if (text !== undefined) fail(`${text.id}: text right inside a row of ${r.id} has no box a phone can copy per row; wrap it in an element`);
     if (top.length === 0) fail(`${r.id}: its rows hold no node`);
-    return { id: r.id, parent: r.parent === null ? 'body' : (dragonIds.get(r.parent) as string), template: top.map((n) => dragonIds.get(n.id) as string) };
+    return [{ id: r.id, parent: r.parent === null ? 'body' : (dragonIds.get(r.parent) as string), template: top.map((n) => dragonIds.get(n.id) as string) }];
   });
 }
 
@@ -1147,7 +1247,8 @@ export function checkMarklessExport(exported: NativeStyleExport): MarklessStyleE
   const o = exported as unknown as Record<string, unknown>;
   if (o['fontMode'] !== 'system' && o['fontMode'] !== 'pinned') throw new Error(`the export's fontMode ${JSON.stringify(o['fontMode'] ?? null)} is neither system nor pinned`);
   for (const [t, x] of Object.entries(exported.targets)) {
-    for (const [i, a] of (x?.assignments ?? []).entries()) {
+    const states = (x?.interaction?.levels ?? []).flatMap((l, i) => l.states.map((a, k) => [`${i} interaction state ${k}`, a] as const));
+    for (const [i, a] of [...(x?.assignments ?? []).entries(), ...states]) {
       const p = a as unknown as Record<string, unknown>;
       if (!isRgba8(p['canvas'])) throw new Error(`${t} assignment ${i}: canvas ${JSON.stringify(p['canvas'] ?? null)} is not a colour`);
       if (p['bodyBackground'] !== null && !isRgba8(p['bodyBackground'])) throw new Error(`${t} assignment ${i}: bodyBackground ${JSON.stringify(p['bodyBackground'])} is not a colour or null`);
@@ -1165,6 +1266,50 @@ const backgroundOf = (nodes: readonly ExportNode[], id: string): Rgba8 => {
 
 /** The writes html and body may carry: the hosts draw the canvas and body's background, and no border, image or effect of either. */
 const ROOT_WRITES: ReadonlySet<string> = new Set(['background-color', 'border-widths', 'border-styles', 'border-colors']);
+
+/**
+ * The hosts draw a pre-composited group without cc's per-tile fold, so the export holds only groups cc never folds on any tiling:
+ * no box of it one draw op (a lone fill, a lone border, or a member's outline ring; text never folds, and a group's own outline lies in
+ * its box's item).
+ */
+function checkHostGroups(nodes: readonly ExportNode[], where: string): void {
+  const kids = new Map<string, ExportNode[]>();
+  for (const n of nodes) if (n.parent !== null) kids.set(n.parent, [...(kids.get(n.parent) ?? []), n]);
+  const ops = (n: ExportNode): number => {
+    const fill = n.writes.some((w) => w['kind'] === 'background-color' && isRecord(w['color']) && (w['color'] as Rgba8).alpha > 0) ? 1 : 0;
+    const styles = n.writes.find((w) => w['kind'] === 'border-styles')?.['styles'];
+    const widths = n.borderWidths === null ? [0, 0, 0, 0] : [n.borderWidths.top, n.borderWidths.right, n.borderWidths.bottom, n.borderWidths.left];
+    const sides = widths.filter((w, k) => (w ?? 0) > 0 && Array.isArray(styles) && styles[k] !== 'none' && styles[k] !== 'hidden').length;
+    return fill + (sides === 4 ? 1 : sides);
+  };
+  for (const g of nodes) {
+    if (!g.writes.some((w) => w['kind'] === 'opacity-group' || w['kind'] === 'filter-group')) continue;
+    if (ops(g) === 1) fail(`${where}: ${g.id} is a see-through group whose own box is one draw op, which cc may fold; the hosts draw no per-tile fold`);
+    const visit = (n: ExportNode): void => {
+      for (const c of kids.get(n.id) ?? []) {
+        if (c.kind !== 'text' && (ops(c) === 1 || c.writes.some((w) => w['kind'] === 'outline'))) fail(`${where}: ${c.id} inside the see-through group ${g.id} is one draw op, which cc may fold; the hosts draw no per-tile fold`);
+        visit(c);
+      }
+    };
+    visit(g);
+  }
+}
+
+/** The page's root boxes, whose paint the hosts draw as the canvas and the body's background only. */
+const ROOT_BOXES: ReadonlySet<string> = new Set(['html', 'body']);
+
+/**
+ * The planner's ruling (Markless #974): a phone cannot focus the root with a keyboard ring. Dragon gives every element that a
+ * page-wide `:focus-visible { outline }` rule reaches an interaction state, html and body included, which Chrome reaches only by
+ * forcing the pseudo-class: neither is focusable (markless-root-paint.test.ts). In a state whose focused element (:focus or :focus-visible) is html or body, that element's outline is
+ * accepted and not drawn: it loses its outline write. The base assignments keep checkRootPaint's refusal, and so does a root
+ * outline in a state that focuses another element.
+ */
+function withoutRootFocusRing<A extends { readonly nodes: readonly ExportNode[] }>(state: A, match: ExportInteractionMatch | undefined): A {
+  const focused = match === undefined ? null : (match.focusVisible ?? match.focus);
+  if (focused === null || !ROOT_BOXES.has(focused)) return state;
+  return { ...state, nodes: state.nodes.map((n) => (n.id === focused ? { ...n, writes: n.writes.filter((w) => w['kind'] !== 'outline') } : n)) };
+}
 
 function checkRootPaint(nodes: readonly ExportNode[], id: string, where: string): void {
   const node = nodes.find((n) => n.id === id);
@@ -1220,6 +1365,7 @@ const onBase = (base: Rgba8, src: Rgba8): Rgba8 => {
 function rootPaint(nodes: readonly ExportNode[], where: string, band: 'light' | 'dark' | null, used: UsedScheme): { readonly canvas: Rgba8; readonly bodyBackground: Rgba8 | null } {
   checkRootPaint(nodes, 'html', where);
   checkRootPaint(nodes, 'body', where);
+  checkHostGroups(nodes, where);
   const html = backgroundOf(nodes, 'html');
   const body = backgroundOf(nodes, 'body');
   // Owner ruling: a light page keeps the white base in a dark band, where Chrome 145 uses rgb(18, 18, 18), so see-through is refused there.

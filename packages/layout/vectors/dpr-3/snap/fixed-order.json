@@ -1,0 +1,144 @@
+{
+ "platform": "darwin-arm64",
+ "devicePixelRatio": 3,
+ "input": [
+  {
+   "id": "html",
+   "parent": null,
+   "x": 0,
+   "y": 0,
+   "width": 76800,
+   "height": 30720
+  },
+  {
+   "id": "body",
+   "parent": "html",
+   "x": 0,
+   "y": 0,
+   "width": 76800,
+   "height": 30720
+  },
+  {
+   "id": "row",
+   "parent": "body",
+   "x": 0,
+   "y": 0,
+   "width": 76800,
+   "height": 11520
+  },
+  {
+   "id": "r",
+   "parent": "row",
+   "x": 0,
+   "y": 0,
+   "width": 23040,
+   "height": 11520
+  },
+  {
+   "id": "grid",
+   "parent": "body",
+   "x": 0,
+   "y": 19200,
+   "width": 76800,
+   "height": 11520
+  },
+  {
+   "id": "gr",
+   "parent": "grid",
+   "x": 0,
+   "y": 0,
+   "width": 23040,
+   "height": 11520
+  },
+  {
+   "id": "f",
+   "parent": "row",
+   "x": 0,
+   "y": 0,
+   "width": 15360,
+   "height": 7680
+  },
+  {
+   "id": "gf",
+   "parent": "grid",
+   "x": 0,
+   "y": 0,
+   "width": 15360,
+   "height": 7680
+  }
+ ],
+ "output": [
+  {
+   "id": "html",
+   "left": 0,
+   "top": 0,
+   "right": 1200,
+   "bottom": 480,
+   "width": 1200,
+   "height": 480
+  },
+  {
+   "id": "body",
+   "left": 0,
+   "top": 0,
+   "right": 1200,
+   "bottom": 480,
+   "width": 1200,
+   "height": 480
+  },
+  {
+   "id": "row",
+   "left": 0,
+   "top": 0,
+   "right": 1200,
+   "bottom": 180,
+   "width": 1200,
+   "height": 180
+  },
+  {
+   "id": "r",
+   "left": 0,
+   "top": 0,
+   "right": 360,
+   "bottom": 180,
+   "width": 360,
+   "height": 180
+  },
+  {
+   "id": "grid",
+   "left": 0,
+   "top": 300,
+   "right": 1200,
+   "bottom": 480,
+   "width": 1200,
+   "height": 180
+  },
+  {
+   "id": "gr",
+   "left": 0,
+   "top": 300,
+   "right": 360,
+   "bottom": 480,
+   "width": 360,
+   "height": 180
+  },
+  {
+   "id": "f",
+   "left": 0,
+   "top": 0,
+   "right": 240,
+   "bottom": 120,
+   "width": 240,
+   "height": 120
+  },
+  {
+   "id": "gf",
+   "left": 0,
+   "top": 300,
+   "right": 240,
+   "bottom": 420,
+   "width": 240,
+   "height": 120
+  }
+ ]
+}

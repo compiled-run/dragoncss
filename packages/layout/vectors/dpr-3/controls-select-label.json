@@ -616,7 +616,40 @@
           },
           "lineHeight": {
            "kind": "normal"
-          }
+          },
+          "arrowWidth": 0,
+          "options": [
+           {
+            "kind": "text",
+            "id": "l1::option0:text0",
+            "text": "L   L",
+            "font": {
+             "family": "Ahem",
+             "size": 10,
+             "specifiedSize": {
+              "kind": "px",
+              "value": 10
+             },
+             "absoluteSize": true
+            },
+            "lineHeight": {
+             "kind": "normal"
+            },
+            "whiteSpaceCollapse": "preserve",
+            "textWrapMode": "nowrap",
+            "letterSpacing": {
+             "kind": "px",
+             "value": 0
+            },
+            "wordSpacing": {
+             "kind": "px",
+             "value": 0
+            },
+            "overflowWrap": "normal",
+            "wordBreak": "normal",
+            "smallCaps": false
+           }
+          ]
          },
          "strut": null,
          "children": [
@@ -967,7 +1000,40 @@
           },
           "lineHeight": {
            "kind": "normal"
-          }
+          },
+          "arrowWidth": 0,
+          "options": [
+           {
+            "kind": "text",
+            "id": "l2::option0:text0",
+            "text": "X Y",
+            "font": {
+             "family": "Ahem",
+             "size": 10,
+             "specifiedSize": {
+              "kind": "px",
+              "value": 10
+             },
+             "absoluteSize": true
+            },
+            "lineHeight": {
+             "kind": "normal"
+            },
+            "whiteSpaceCollapse": "collapse",
+            "textWrapMode": "nowrap",
+            "letterSpacing": {
+             "kind": "px",
+             "value": 0
+            },
+            "wordSpacing": {
+             "kind": "px",
+             "value": 0
+            },
+            "overflowWrap": "normal",
+            "wordBreak": "normal",
+            "smallCaps": false
+           }
+          ]
          },
          "strut": null,
          "children": [
@@ -1318,7 +1384,70 @@
           },
           "lineHeight": {
            "kind": "normal"
-          }
+          },
+          "arrowWidth": 0,
+          "options": [
+           {
+            "kind": "text",
+            "id": "l3::option0:text0",
+            "text": "AA",
+            "font": {
+             "family": "Ahem",
+             "size": 10,
+             "specifiedSize": {
+              "kind": "px",
+              "value": 10
+             },
+             "absoluteSize": true
+            },
+            "lineHeight": {
+             "kind": "normal"
+            },
+            "whiteSpaceCollapse": "collapse",
+            "textWrapMode": "nowrap",
+            "letterSpacing": {
+             "kind": "px",
+             "value": 0
+            },
+            "wordSpacing": {
+             "kind": "px",
+             "value": 0
+            },
+            "overflowWrap": "normal",
+            "wordBreak": "normal",
+            "smallCaps": false
+           },
+           {
+            "kind": "text",
+            "id": "l3::option1:text0",
+            "text": "LL",
+            "font": {
+             "family": "Ahem",
+             "size": 10,
+             "specifiedSize": {
+              "kind": "px",
+              "value": 10
+             },
+             "absoluteSize": true
+            },
+            "lineHeight": {
+             "kind": "normal"
+            },
+            "whiteSpaceCollapse": "collapse",
+            "textWrapMode": "nowrap",
+            "letterSpacing": {
+             "kind": "px",
+             "value": 0
+            },
+            "wordSpacing": {
+             "kind": "px",
+             "value": 0
+            },
+            "overflowWrap": "normal",
+            "wordBreak": "normal",
+            "smallCaps": false
+           }
+          ]
          },
          "strut": null,
          "children": [
@@ -1669,7 +1798,9 @@
           },
           "lineHeight": {
            "kind": "normal"
-          }
+          },
+          "arrowWidth": 0,
+          "options": []
          },
          "strut": null,
          "children": [

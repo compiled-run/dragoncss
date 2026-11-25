@@ -2,9 +2,11 @@
 // lanes' (packages/parity anim-frames.test.ts); its translation is the animator suite's (packages/translate).
 import { describe, expect, it } from 'vitest';
 import type { ControlBox, LayoutInput } from '../src/input.ts';
-import { NO_RT_FAULTS } from '../src/rt-easing.ts';
+import { LINEAR as LINEAR_EASING, NO_RT_FAULTS } from '../src/rt-easing.ts';
+import type { AnimationEntry, RunningAnimation } from '../src/rt-animations.ts';
+import { updateAnimations } from '../src/rt-animations.ts';
 import type { AnimTables, EasingCode, ListingCode, ValueCode } from '../src/rt-animator.ts';
-import { animatorAdvance, animatorBusy, animatorEvent, animatorFrame, animatorRestyle, animatorStart, colorOf, frameColors, lengthBase, NO_ANIMATOR_FAULTS, patchInput } from '../src/rt-animator.ts';
+import { animationEvents, animatorAdvance, animatorBusy, animatorEvent, animatorFrame, animatorRestyle, animatorStart, colorOf, frameColors, lengthBase, NO_ANIMATOR_FAULTS, patchInput } from '../src/rt-animator.ts';
 import { legacyColor, serializeColor, serializeValue } from '../src/rt-interpolate.ts';
 import { box, control, divStyle, neutralEnvironment, pct, px } from './helpers.ts';
 
@@ -173,5 +175,30 @@ describe('rt-animator', () => {
       const s = animatorStart(TABLES, INPUTS, 0, NO_RT_FAULTS, NO_ANIMATOR_FAULTS);
       expect(() => animatorRestyle(s, TABLES, INPUTS, WIDE.slice(0, 2), 0, 1, NO_RT_FAULTS, NO_ANIMATOR_FAULTS)).toThrow(/3 and 2 resolved engine inputs for 3 assignments/);
     });
+  });
+});
+
+describe('animationEvents across a timing change of a kept animation', () => {
+  // Pages cannot reach the after phase cells (the compiler refuses a timing change of a finite animation), so they are pinned here.
+  const tables: AnimTables = { ...TABLES, animations: [{ node: 'n', lists: [] }] };
+  const entry = (delay: number, duration: number): AnimationEntry => ({ name: 'k', hasKeyframes: true, paused: false, timing: { delay, duration, iterations: 1, direction: 'normal', fill: 'none', easing: LINEAR_EASING } });
+  const at = (list: readonly RunningAnimation[]): ReturnType<typeof animatorStart> => ({ current: 0, transitions: [null, null], lists: [list], composed: [] });
+  const events = (from: AnimationEntry, to: AnimationEntry, seconds: number): string[] => {
+    const was = updateAnimations([], [from], NO_RT_FAULTS).map((a) => ({ ...a, held: { seconds, runMs: seconds * 1000 } }));
+    return animationEvents(at(was), at(updateAnimations(was, [to], NO_RT_FAULTS)), tables, NO_RT_FAULTS).map((e) => `${e.type} ${e.elapsedTime}`);
+  };
+  it('fires start at the interval end when a finished animation is lengthened back into its active phase', () => {
+    expect(events(entry(0, 0.2), entry(0, 1), 0.35)).toEqual(['animationstart 1']);
+  });
+  it('fires start at the interval end then end at the interval start when a finished animation is delayed back before it', () => {
+    expect(events(entry(0, 0.2), entry(2, 0.2), 0.35)).toEqual(['animationstart 0.2', 'animationend 0']);
+  });
+  it('fires end at the interval start when an active animation is delayed back before it, and nothing for before to before', () => {
+    expect(events(entry(0, 1), entry(2, 1), 0.35)).toEqual(['animationend 0']);
+    expect(events(entry(1, 1), entry(2, 1), 0.35)).toEqual([]);
+  });
+  it('fires start then end when a delayed animation is shortened past its end, and end alone from active', () => {
+    expect(events(entry(2, 1), entry(0, 0.2), 0.35)).toEqual(['animationstart 0', 'animationend 0.2']);
+    expect(events(entry(0, 1), entry(0, 0.2), 0.35)).toEqual(['animationend 0.2']);
   });
 });

@@ -11,13 +11,20 @@
 //   height is the editor's; the editor is centred in the content box unsafely (a 41px field puts a 10px editor 15.5px down, a 4px
 //   one 3px up), and the placeholder is placed with its baseline on the editor's, or at the editor's top when either has no
 //   baseline (Chrome 145 probes).
+// - a textarea (text-area, FORM-b): the same pair of parts, both at the content box start. Its default content inline size is cols
+//   x the advance of 0, rounded up to a whole px, and its auto content height rows x its line height (Chrome 145 under Ahem: cols
+//   5 rows 3 at 10px is 50 x 30, with line-height 7px 50 x 21). Chrome adds the platform's scrollbar thickness to the inline size
+//   when overflow-y is not hidden or clip, and to the height when overflow-x is scroll, even under overlay scrollbars, where it
+//   reserves no gutter (the reference, macOS overlay: 16 DIP at scrollbar-width auto, 14 at thin, as trunc(DIP x the device scale)
+//   device px whatever the zoom: thin is 36 device px at DPR 2.625; Chrome 145 probes).
 // - a block button (button-block): its in-flow contents are centred in the block axis, safely (html.css
 //   `-internal-align-content-block: center`, block_layout_algorithm_utils.cc:185-203 AlignBlockContent). A flex or grid button is
 //   the plain container its display says (html_button_element.cc:59-74 CreateLayoutObject). There is no anonymous inner box.
-import type { ControlBox, ControlKind, Direction, LayoutBox } from './input.ts';
+import type { CancelButton, ControlBox, ControlKind, Direction, LayoutBox } from './input.ts';
+import type { SvgPathShape, SvgSegment } from './svg-path-types.ts';
 import type { TextMeasurer } from './text.ts';
 import type { LU } from './units.ts';
-import { ceilFloatToWholePx, clampNegativeToZero, divInt, doubleMul, float32, floatMul, fromCssPx, fromDouble, roundfPx, sub, toPx, ZERO } from './units.ts';
+import { add, ceilFloatToWholePx, clampNegativeToZero, divInt, doubleMul, float32, floatAdd, floatDiv, floatMax, floatMin, floatMul, fromCssPx, fromDouble, intDiv, roundfPx, sub, toPx, truncPxToInt, ZERO } from './units.ts';
 
 /** A range's default track length in CSS px: Chrome 145 lays out an auto-width range with a 129 px content box (FORM-0 boxes). */
 export const SLIDER_DEFAULT_TRACK_LENGTH = 129;
@@ -40,6 +47,14 @@ export function controlAsBox(c: ControlBox): LayoutBox {
 /** The control facts of a box, or null for a plain box. */
 export function controlOf(box: LayoutBox | ControlBox): ControlKind | null {
   return box.kind === 'control' ? box.control : null;
+}
+
+/**
+ * css-sizing-3 §5.2.2: a select, text field or textarea is compressible, so a percentage width resolves against zero in its min-content
+ * contribution; Chrome 145 compresses neither a button's width nor any control's percentage max-width (grid-controls, select-compress).
+ */
+export function compressesPercentWidth(box: LayoutBox | ControlBox): boolean {
+  return box.kind === 'control' && (box.control.kind === 'text-field' || box.control.kind === 'text-area' || box.control.kind === 'select-menulist');
 }
 
 /** The plain box of a box or control box. */
@@ -84,7 +99,135 @@ export function textFieldInlineSize(measurer: TextMeasurer, c: Extract<ControlKi
   return ceilFloatToWholePx(floatMul(rounded > avg ? rounded : avg, float32(c.size)));
 }
 
+/**
+ * FORM-b: the side of a search field's cancel button in zoomed px, lroundf(clamp(9 x size / 13, 5, 21)) of its zoomed font size
+ * rounded to a whole px (Chromium's LayoutThemeDefault::AdjustSearchFieldCancelButtonStyle; Chrome 145 under Ahem probed at 1x,
+ * 2.625x and 3x: 7px at 10px, 17px at 25px, 5px at 4px, 21px at 40px; 8px at 10.5px and 12px at 18.375px zoomed).
+ */
+export function searchCancelButtonSize(c: Extract<ControlKind, { kind: 'text-field' }>): number {
+  return roundfPx(floatMin(floatMax(5, floatMul(9, floatDiv(roundfPx(c.font.size), 13))), 21));
+}
+
+/** FORM-b: the inline size a search field's cancel button and its margins take from the editor's line, in LU. */
+export function searchDecorationInlineSize(c: Extract<ControlKind, { kind: 'text-field' }>, cancel: CancelButton): LU {
+  return add(fromCssPx(searchCancelButtonSize(c)), add(fromCssPx(cancel.marginStart), fromCssPx(cancel.marginEnd)));
+}
+
+/** FORM-b: a textarea's default content inline size, cols x the float advance of 0, rounded up to a whole px, plus its scrollbar. */
+export function textAreaInlineSize(measurer: TextMeasurer, c: Extract<ControlKind, { kind: 'text-area' }>): LU {
+  const zero = measurer.lengths({ family: c.font.family, size: c.font.size, letterSpacing: 0, wordSpacing: 0, smallCaps: false }).zeroWidth;
+  return add(ceilFloatToWholePx(floatMul(zero, float32(c.cols))), fromCssPx(c.scrollbarInline));
+}
+
+/** FORM-b: a scrollbar thickness in DIP as the whole device px Chrome adds to a textarea's default size, at a device scale. */
+export function textAreaScrollbar(dip: number, device: number): number {
+  return truncPxToInt(floatMul(dip, float32(device)));
+}
+
 /** FORM-b: the offset of a field's editor from its content box top: (content box block size - editor block size) / 2, unclamped. */
 export function textEditorShift(contentBoxBlockSize: LU, editorBlockSize: LU): LU {
   return divInt(sub(contentBoxBlockSize, editorBlockSize), 2);
+}
+
+/**
+ * FORM-b: the width of a menulist-button select's arrow box in zoomed px, as Chrome 145 sizes it (layout_theme_default.cc
+ * ClampedMenuListArrowPaddingSize, a reference: the captured inner element margins and arrow pixels pin it). arrowWidth is the
+ * platform's arrow width in DIP; the box is the scaled width at a zoom below the device scale, else the width times the zoom.
+ */
+export function menuListArrowBox(arrowWidth: number, zoom: number, device: number): number {
+  const scaled = truncPxToInt(floatMul(arrowWidth, float32(device)));
+  const deviceScale = floatDiv(scaled, arrowWidth);
+  return float32(zoom) < deviceScale ? scaled : floatMul(arrowWidth, float32(zoom));
+}
+
+/** FORM-b: a menulist-button select's inner element margins (inline start, end) and paddings (block start, end) in zoomed px, whole. */
+export type MenuListInsets = { readonly start: number; readonly end: number; readonly top: number; readonly bottom: number };
+
+export function menuListInnerInsets(arrowWidth: number, zoom: number, device: number): MenuListInsets {
+  const z = float32(zoom);
+  const block = truncPxToInt(z);
+  return { start: truncPxToInt(floatMul(4, z)), end: truncPxToInt(floatAdd(z, menuListArrowBox(arrowWidth, zoom, device))), top: block, bottom: block };
+}
+
+/** FORM-b: a menulist-button select's drop-down arrow, an open "v" stroked 2 device px wide in the select's colour, in device px. */
+export type MenuListArrow = { readonly shape: SvgPathShape; readonly strokeWidth: number };
+
+function minInt(a: number, b: number): number {
+  return a < b ? a : b;
+}
+
+function maxInt(a: number, b: number): number {
+  return a > b ? a : b;
+}
+
+/**
+ * FORM-b: the arrow of a menulist-button select whose snapped border box is left, top, width, height in device px with whole
+ * border widths borderLeft and borderRight, in horizontal-tb: centred in the arrow box at the inline end (theme_painter_default.cc
+ * SetupMenuListArrow, a reference pinned by the captured arrow pixels), as an 8:4 "v" scaled with the box and fitted to the
+ * border box (native_theme_base.cc:691-800 NativeThemeBase::PaintMenuList), in Chrome's int and float steps.
+ */
+export function menuListArrow(left: number, top: number, width: number, height: number, borderLeft: number, borderRight: number, arrowBox: number, arrowWidth: number, inlineEndLeft: boolean): MenuListArrow {
+  const innerLeft = left + truncPxToInt(borderLeft);
+  const innerRight = left + width - truncPxToInt(borderRight);
+  const middle = top + intDiv(height, 2);
+  const size = floatMul(8, floatDiv(arrowBox, arrowWidth));
+  const arrowX = truncPxToInt(inlineEndLeft ? innerLeft + (arrowBox - size) / 2 : innerRight - (arrowBox + size) / 2);
+  const wantW = truncPxToInt(size);
+  const wantH = intDiv(wantW, 2);
+  const wantY = middle - intDiv(wantH, 2);
+  let x = maxInt(arrowX, left);
+  let y = maxInt(wantY, top);
+  let w = minInt(arrowX + wantW, left + width) - x;
+  let h = minInt(wantY + wantH, top + height) - y;
+  if (w <= 0 || h <= 0) {
+    x = 0;
+    y = 0;
+    w = 0;
+    h = 0;
+  }
+  if (w !== wantW || h !== wantH) {
+    if ((wantH - h) * 2 > wantW - w) w = h * 2;
+    else h = intDiv(w, 2);
+    x = arrowX + intDiv(wantW - w, 2);
+    y = middle - intDiv(h, 2);
+  }
+  const segments: SvgSegment[] = [
+    { kind: 'move', x: x, y: y },
+    { kind: 'line', x: x + intDiv(w, 2), y: y + h },
+    { kind: 'line', x: x + w, y: y },
+  ];
+  return { shape: { kind: 'path', segments: segments }, strokeWidth: 2 };
+}
+
+/**
+ * FORM-checkbox: what Chrome's theme draws for a checkbox, in device px from its snapped border box's top left: the largest centred
+ * square, a plain square when it is at most 2 CSS px, else a background inset 0.2, a 1 px border inset 0.5 and the check's three
+ * points with its stroke width, every length scaled by zoom.
+ */
+export type CheckboxMarks = {
+  readonly x: number;
+  readonly y: number;
+  readonly side: number;
+  readonly plain: boolean;
+  readonly radius: number;
+  readonly backgroundInset: number;
+  readonly borderInset: number;
+  readonly borderWidth: number;
+  readonly check: readonly number[];
+  readonly checkWidth: number;
+};
+
+/**
+ * The checkbox marks of a snapped border box width x height device px at zoom (the device pixel ratio), as
+ * native_theme_base.cc NativeThemeBase::PaintCheckbox and PaintCheckboxRadioCommon draw them.
+ */
+export function checkboxMarks(width: number, height: number, zoom: number): CheckboxMarks {
+  // The theme paints at zoom 1 in a whole-px rect, the border box divided by the zoom and truncated (measured at DPR 2.625).
+  const w = truncPxToInt(width / zoom);
+  const h = truncPxToInt(height / zoom);
+  const side = (w < h ? w : h) * zoom;
+  const x = (w * zoom - side) / 2;
+  const y = (h * zoom - side) / 2;
+  const check: number[] = [x + side * 0.2, y + side / 2, x + side * 0.4, y + side * 0.7, x + side * 0.8, y + side * 0.2];
+  return { x: x, y: y, side: side, plain: side <= 2 * zoom, radius: 2 * zoom, backgroundInset: 0.2 * zoom, borderInset: 0.5 * zoom, borderWidth: zoom, check: check, checkWidth: side * 0.16 };
 }

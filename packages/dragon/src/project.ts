@@ -31,7 +31,8 @@ import { inDomain, validateInput, type ValidInput } from './analysis/input.ts';
 import type { InteractionPartition, InteractionValue } from './analysis/interaction.ts';
 import { checkGeneratedIdentity, generatedRuleRefusals, markerRuleRefusals } from './analysis/generated.ts';
 import { checkStaticEmptyHosts } from './analysis/pseudo-hosts.ts';
-import { emptyPartition, firstInteractionPseudo, stateMembers, hitUnmodelledBox, hitUnmodelledControl, hitUnmodelledFact, interactionCapRefusal, interactionPartition, interactionRefusals, interactionRuleOrigin, focusReachable, gateInteractionFeatures, provesPointerRow, ruleIsInteractive, selectFocusRefusals } from './analysis/interaction.ts';
+import { emptyPartition, firstInteractionPseudo, stateMembers, hitUnmodelledBox, hitUnmodelledControl, hitUnmodelledFact, interactionCapRefusal, interactionPartition, interactionRefusals, interactionRuleOrigin, focusReachable, gateInteractionFeatures, provesPointerRow, ruleIsInteractive } from './analysis/interaction.ts';
+import { isCheckboxType, isTextFieldType } from './analysis/elements/controls.ts';
 import type { Linked, LinkedElement } from './analysis/link.ts';
 import type { InteractionState } from './analysis/match.ts';
 import { assignmentKey, linkDocument } from './analysis/link.ts';
@@ -78,7 +79,8 @@ import type { BrotliDecompress } from './fonts/woff.ts';
 import { candidates, foldFamily } from './fonts/selection.ts';
 import { isSystemFaceRole, systemFaceId } from './fonts/system-faces.ts';
 import type { SystemFaceRole } from './fonts/system-faces.ts';
-import { synthesisTraits } from './fonts/metrics.ts';
+import { faceMetrics, synthesisTraits } from './fonts/metrics.ts';
+import { computedLineHeightInt } from './css/chrome-number.ts';
 import type { SynthesisAllowed, TextFontValue } from './fonts/weight.ts';
 import { requestOf, serializeFontStyle, serializeFontWeight, synthesisOf } from './fonts/weight.ts';
 import { synthesisAllowedOf, textFontOfProps } from './analysis/computed.ts';
@@ -254,7 +256,7 @@ export type InternalBands = {
 };
 
 /** @internal One case in one band. */
-export type InternalBandCase = { readonly key: string; readonly resolved: ResolvedElement | null; readonly nativeLowered: LayoutBox | null; readonly partition: InteractionPartition | null };
+export type InternalBandCase = { readonly key: string; readonly resolved: ResolvedElement | null; readonly nativeLowered: LayoutBox | null; readonly partition: InteractionPartition | null; readonly interaction: readonly InternalInteraction[] };
 
 const records = new WeakMap<object, InternalRecord>();
 
@@ -309,6 +311,10 @@ export type InternalOptions = {
   readonly hostTopLayer?: boolean;
   /** The host paints the canvas in the root's used colour scheme (a Markless host), so native draws a dark root; else it is refused. */
   readonly hostCanvas?: boolean;
+  /** The host app runs a form's submission and reset (a Markless host), so a submit or reset button inside a <form> compiles. */
+  readonly hostForms?: boolean;
+  /** The host draws and edits every single-line text field natively (a Markless host), so an editable one is laid out; else native refuses it. */
+  readonly hostTextEditing?: boolean;
   /** The host's Brotli decoder, which a WOFF2 @font-face src needs; without one a WOFF2 is DRAGON_FONT_UNREADABLE (no-brotli). */
   readonly brotliDecompress?: BrotliDecompress;
   /**
@@ -333,6 +339,8 @@ type Resolved = {
   readonly interactionLanes: boolean;
   readonly hostTopLayer: boolean;
   readonly hostCanvas: boolean;
+  readonly hostForms: boolean;
+  readonly hostTextEditing: boolean;
   readonly systemFonts: boolean;
   readonly nativeLanes: NativeLanes | null;
   readonly brotliDecompress: BrotliDecompress | null;
@@ -493,6 +501,45 @@ function checkSvgContent(valid: ValidInput, diagnostics: Diagnostic[]): void {
     }
   };
   walk(valid.rootComponent.root, 'html', new Map(), [valid.rootComponent.id]);
+}
+
+/**
+ * FORM-attrs: a button whose form owner is an ancestor <form> submits it when activated (HTML §4.10.6: type submit, the missing
+ * and invalid value default) or resets it (type reset): Chrome navigates, or moves a range back to its value, and a form with a
+ * submit button also submits implicitly on Enter in a range (§4.10.22.2). The native outputs do none of that, so such a button is
+ * refused; type=button, whose activation does nothing, compiles. Walked on the expanded tree, as checkSvgContent is, so a
+ * component's button is checked in each form it is called in.
+ */
+function checkFormButtons(valid: ValidInput, diagnostics: Diagnostic[]): void {
+  const reported = new Set<TreeNode>();
+  const walk = (nodes: readonly TreeNode[], form: Extract<TreeNode, { kind: 'element' }> | null, slots: SlotScope, stack: readonly string[]): void => {
+    for (const n of nodes) {
+      if (n.kind === 'element') {
+        if (n.tag === 'button' && form !== null && !reported.has(n)) {
+          const type = n.attributes.find((a) => a.name === 'type');
+          const values = type === undefined ? [null] : type.value.map((c) => c.value);
+          const live = values.find((v) => v === null || v.toLowerCase() !== 'button');
+          if (live !== undefined) {
+            reported.add(n);
+            const what = live?.toLowerCase() === 'reset' ? 'resets the form' : 'submits the form (and Chrome navigates)';
+            diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_ELEMENT', { origin: n.origin, message: `<button> ${n.id} inside <form> ${form.id} ${what} when activated (type ${live ?? 'missing, so submit'}), which the native outputs do not do`, manual: `Set type="button" on <button> ${n.id} and handle the action in the app, or move it out of <form> ${form.id}.` }));
+          }
+        }
+        walk(n.children, n.tag === 'form' ? (form ?? n) : form, slots, stack);
+      } else if (n.kind === 'branch') {
+        walk(n.then, form, slots, stack);
+        walk(n.else, form, slots, stack);
+      } else if (n.kind === 'call') {
+        const callee = valid.components.get(n.component);
+        if (callee === undefined || stack.includes(callee.id)) continue;
+        walk(callee.root, form, new Map(n.slots.map((s) => [s.name, { children: s.children, slots, stack }])), [...stack, callee.id]);
+      } else if (n.kind === 'projection') {
+        const slot = slots.get(n.slot);
+        if (slot !== undefined) walk(slot.children, form, slot.slots, slot.stack);
+      }
+    }
+  };
+  walk(valid.rootComponent.root, null, new Map(), [valid.rootComponent.id]);
 }
 
 const list = (values: readonly string[]): string => (values.length <= 1 ? values.join('') : `${values.slice(0, -1).join(', ')} or ${values[values.length - 1] as string}`);
@@ -920,6 +967,50 @@ function checkCaseFonts(root: ResolvedElement, fonts: ProjectFonts, faults: Comp
 type InteractionResult = { value: InteractionValue; resolved: ResolvedElement; used: UsedKey[] };
 type CaseResult = { key: string; assignment: Assignment; isInitial: boolean; resolved: ResolvedElement | null; used: UsedKey[]; partition: InteractionPartition | null; interaction: InteractionResult[] };
 
+/**
+ * FORM-text-font: a single-line field whose inner editor falls back to line-height normal (its font size is at least its computed
+ * line height in whole px, or its height is a percentage or a length above it, as the engine's editorLineHeightIsNormal decides
+ * from text_control_inner_elements.cc) in a face with a line gap, which no Chrome capture measures; the engine refuses it too.
+ */
+function checkTextFieldLineGap(root: ResolvedElement, fonts: ProjectFonts | null, realFaces: ReadonlyMap<string, EngineFace>, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+  if (fonts === null) return;
+  const byId = new Map<string, DeclaredFace>();
+  for (const f of bundledFaces(fonts)) if (f.source !== null) byId.set(`sha256:${sha256HexBytes(f.source.bytes)}`, f);
+  const walk = (el: ResolvedElement): void => {
+    for (const c of el.children) if (c.kind === 'element') walk(c);
+    if (el.element.tag !== 'input' || !isTextFieldType(el.element.attributes.get('type'))) return;
+    const face = realFaces.get(el.element.address);
+    const declared = face === undefined || face.kind !== 'face' ? undefined : byId.get(face.id);
+    if (declared === undefined || declared.source === null) return;
+    const size = (el.props.get('font-size') as ResolvedValue).value;
+    const line = (el.props.get('line-height') as ResolvedValue).value;
+    if (size.kind !== 'length') return;
+    const lhPx = line.kind === 'number' ? line.value * size.value : line.kind === 'length' ? line.value : null;
+    if (lhPx === null) return;
+    const lh = computedLineHeightInt(lhPx);
+    const height = (el.props.get('height') as ResolvedValue).value;
+    const normal = size.value >= lh || height.kind === 'percentage' || (height.kind === 'length' && height.value > lh);
+    if (!normal) return;
+    const d = declared.descriptors;
+    const over = (v: number | 'normal' | undefined): number | undefined => (v === undefined || v === 'normal' ? undefined : v);
+    const measured = faceMetrics(declared.source.font, size.value, 1, { ...(d.sizeAdjust === undefined ? {} : { sizeAdjust: d.sizeAdjust }), ...(over(d.ascentOverride) === undefined ? {} : { ascentOverride: over(d.ascentOverride) as number }), ...(over(d.descentOverride) === undefined ? {} : { descentOverride: over(d.descentOverride) as number }), ...(over(d.lineGapOverride) === undefined ? {} : { lineGapOverride: over(d.lineGapOverride) as number }) });
+    if (!measured.ok || measured.metrics.lineGap === 0) return;
+    for (const target of targets) {
+      if (target !== 'ios' && target !== 'android') continue;
+      const id = `${target}|${el.element.address}|text-field-line-gap`;
+      if (reported.has(id)) continue;
+      reported.add(id);
+      diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_VALUE', {
+        origin: el.element.node.origin,
+        target,
+        message: `<input> ${el.element.address} takes line-height normal in its field (its ${size.value}px font size is at least its ${lh}px line height, or its height overrides it) in a face with a line gap, whose field height Chrome is not measured for`,
+        manual: `Give <input> ${el.element.address} a line height of at least its font size + 1px, or use a face without a line gap.`,
+      }));
+    }
+  };
+  walk(root);
+}
+
 /** A case's used keys with those of every interaction state, for the value checks' context lists. */
 const allUsed = (c: CaseResult): UsedKey[] => [...c.used, ...c.interaction.flatMap((i) => i.used)];
 
@@ -963,7 +1054,7 @@ function checkCases(linked: Linked, rules: readonly Rule[], targets: readonly Kn
   const { contextual: reported, refused, fonts, fenced, fontDeferrals } = seen;
   const keys = projectFonts === null ? NO_FONTS : projectFonts.keys;
   const out: CaseResult[] = [];
-  const env = { direction: options.direction, rootFont: options.rootFont, ua: options.ua, registered, colorScheme, hostCanvas: options.hostCanvas };
+  const env = { direction: options.direction, rootFont: options.rootFont, ua: options.ua, registered, colorScheme, hostCanvas: options.hostCanvas, hostTextEditing: options.hostTextEditing };
   // Every check of a case runs on each of its interaction states too, so a refusal inside a hover rule is reported (SELD-R2a).
   const check = (resolved: ResolvedElement): UsedKey[] => {
     const computedAt = diagnostics.length;
@@ -992,6 +1083,7 @@ function checkCases(linked: Linked, rules: readonly Rule[], targets: readonly Kn
     if (!options.interactionLanes) checkTranslucentPaint(resolved, NATIVE_TARGETS.filter((t) => targets.includes(t)), diagnostics, refused);
     const ahemDeclared = projectFonts !== null && [...projectFonts.keys.declared].some((d) => foldFamily(d) === foldFamily('Ahem'));
     for (const t of NATIVE_TARGETS) if (targets.includes(t)) checkFonts(resolved, diagnostics, fonts, t, ahemDeclared, fontDeferrals, realFaceAt);
+    if (options.nativeRealFaces) checkTextFieldLineGap(resolved, projectFonts, realFaces, targets, diagnostics, refused);
     if (projectFonts !== null) for (const t of NATIVE_TARGETS) if (targets.includes(t)) checkSyntheticStyles(resolved, projectFonts, t, diagnostics, fonts);
     if (projectFonts !== null) checkCaseFonts(resolved, projectFonts, options.faults, diagnostics, fenced);
     const used = usedKeys(resolved, keys);
@@ -1096,6 +1188,42 @@ function checkCases(linked: Linked, rules: readonly Rule[], targets: readonly Kn
 const assignmentLabel = (a: Assignment): string => (a.length === 0 ? '(the initial assignment)' : a.map((x) => `${x.state.state}=${String(x.value)}`).join(', '));
 
 /**
+ * FORM-checkbox: Chrome draws a themed checkbox in its pressed or hovered colours while it is :active or :hover, which Dragon does
+ * not draw yet, so an author rule that tests either on a themed checkbox is refused on native rather than shown beside the resting
+ * colours.
+ */
+function checkboxPressRefusals(cases: readonly CaseResult[], targets: readonly KnownTarget[], diagnostics: Diagnostic[]): void {
+  const seen = new Set<string>();
+  for (const c of cases) {
+    if (c.resolved === null || c.partition === null) continue;
+    const p = c.partition;
+    for (const el of themedCheckboxes(c.resolved)) {
+      for (const pseudo of ['hover', 'active'] as const) {
+        if (!p.candidates[pseudo].includes(el.element.address)) continue;
+        for (const t of NATIVE_TARGETS.filter((x) => targets.includes(x))) {
+          const id = `${t}|${pseudo}|${el.element.address}`;
+          if (seen.has(id)) continue;
+          seen.add(id);
+          diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_SELECTOR', { origin: el.element.node.origin, target: t, message: `:${pseudo} on the themed checkbox ${el.element.address} is not supported: Dragon does not draw Chrome's ${pseudo === 'hover' ? 'hovered' : 'pressed'} checkbox colours yet (FORM-checkbox)`, manual: `Style the state on a wrapper element, or with a component state.` }));
+        }
+      }
+    }
+  }
+}
+
+/** The input[type=checkbox] elements of a resolved tree whose appearance is auto, in preorder. */
+function themedCheckboxes(root: ResolvedElement): ResolvedElement[] {
+  const out: ResolvedElement[] = [];
+  const visit = (el: ResolvedElement): void => {
+    const a = el.props.get('appearance');
+    if (el.element.tag === 'input' && isCheckboxType(el.element.attributes.get('type')) && a !== undefined && a.value.kind === 'keyword' && a.value.value === 'auto') out.push(el);
+    for (const k of el.children) if (k.kind === 'element') visit(k);
+  };
+  visit(root);
+  return out;
+}
+
+/**
  * R13: on native, a pointer-reachable interaction state needs Dragon's hit test, which models only the HIT_MODELLED paint facts.
  * A case with a reachable state and an unmodelled fact that compiles for the target (no error already refuses its declaration
  * there) refuses every interaction rule on that target, naming SELD-R2b. Run after the value checks, so a refused value is not
@@ -1129,7 +1257,7 @@ function hitModelRefusals(cases: readonly CaseResult[], rules: readonly Rule[], 
           ? `:${pseudo} needs Dragon hit testing through ${fact.property} on ${fact.address}, which is not built yet (package SELD-R2b)`
           : control !== null
             ? `:${pseudo} needs Dragon hit testing through the form control ${control}, which is not built yet (FORM-a)`
-            : `:${pseudo} needs Dragon hit testing through the ${unmodelled?.kind} ${unmodelled?.address}, which is not built yet (package ${unmodelled?.pkg} hit model)`;
+            : `:${pseudo} needs Dragon hit testing through the ${unmodelled?.kind} ${unmodelled?.address}${unmodelled?.reason === undefined ? '' : ` (${unmodelled.reason})`}, which is not built yet (package ${unmodelled?.pkg} hit model)`;
         const id = `${t}|${JSON.stringify(origin)}|${message}`;
         if (seen.has(id)) continue;
         seen.add(id);
@@ -1137,7 +1265,13 @@ function hitModelRefusals(cases: readonly CaseResult[], rules: readonly Rule[], 
           ? `Keep ${fact.property} at its initial value in a document with :${pseudo} rules, or style the state with a component state until SELD-R2b.`
           : control !== null
             ? `Style the state with a component state in a document with a form control until control hit testing is built.`
-            : `Keep ${unmodelled?.address} in flow in a document with :${pseudo} rules, or style the state with a component state until its hit testing is built.`;
+            : unmodelled?.pkg === 'INL2a'
+              ? `Use lengths for the padding of ${unmodelled.address} in a document with :${pseudo} rules, or style the state with a component state.`
+              : unmodelled?.pkg === 'INL2c'
+                ? `Make ${unmodelled.address} a stacking context with opacity or a scale or translate transform only, not ${unmodelled.reason}, in a document with :${pseudo} rules, or style the state with a component state.`
+                : unmodelled?.pkg === 'INL2d'
+                  ? `Make ${unmodelled.address} block-level, or put it outside a line of text, in a document with :${pseudo} rules, or style the state with a component state.`
+                  : `Keep ${unmodelled?.address} in flow in a document with :${pseudo} rules, or style the state with a component state until its hit testing is built.`;
         diagnostics.push(diagnostic('DRAGON_UNSUPPORTED_SELECTOR', { origin, target: t, message, manual }));
       }
     }
@@ -1479,6 +1613,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
     const withStyles = [...rules, ...styleRules];
     checkStaticEmptyHosts(rules, [...valid.components.values()].map((c) => c.root), options.faults, diagnostics, options.hostTopLayer);
     checkSvgContent(valid, diagnostics);
+    if (!options.hostForms) checkFormButtons(valid, diagnostics);
     // MQ-a, MQ-R1: every band is checked for every target, since native switches bands at run time as web does; a rule-level check
     // reports a rule for the targets of the bands it applies in, so a rule in no band blocks nothing.
     const bandList = bands === null ? [null] : bands.partition.bands;
@@ -1496,7 +1631,6 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       diagnostics.push(...preLinkDiagnostics);
     }
     focusable = focusReachable(interactionRules, linked?.cases ?? null);
-    diagnostics.push(...selectFocusRefusals(interactionRules, linked?.cases ?? null, options.faults));
     const nativeRefusals = gateInteractionFeatures(interactionRules, linked?.cases ?? null, NATIVE_TARGETS.filter((t) => targets.includes(t)), options.profiles === 'enforce' ? (t) => profileFor(profiles, t) : null, options.faults);
     if (options.interactionLanes) laneOnlyNative = NATIVE_TARGETS.filter((t) => nativeRefusals.some((d) => d.target === t));
     else {
@@ -1616,6 +1750,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
         diagnostics.splice(valuesAt, 0, ...withoutRepeatedBrowserOnly(values, diagnostics));
       }
       hitModelRefusals(cases, [...(bandRules[nativeBand] as Set<Rule>)], targets, options, diagnostics);
+      checkboxPressRefusals(cases, targets, diagnostics);
       // PNT1: the lanes lower a fractional opacity and a layer item kept under a clip on native (T154: and a selectable user-select),
       // but a user's compile refuses them there until PNT1-opacity-b, a clip-chain view and P6c, so a document that uses one is
       // lane-only on native and proves no native row (pipeline.ts). So is one with a unicode-bidi that can reorder text (analysis/bidi.ts).
@@ -1827,7 +1962,10 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
         conditions: bands.partition.bands.map((b) => b.condition),
         initial: nativeBand,
         container: containerQueries,
-        cases: bandCases.map((r, k) => r.cases.map((c) => ({ key: c.key, resolved: c.resolved, nativeLowered: nativeChecked ? ((loweredByBand[k] as Map<string, LayoutBox>).get(c.key) ?? null) : null, partition: c.partition }))),
+        cases: bandCases.map((r, k) => r.cases.map((c) => {
+          const band = loweredByBand[k] as Map<string, LayoutBox>;
+          return { key: c.key, resolved: c.resolved, nativeLowered: nativeChecked ? (band.get(c.key) ?? null) : null, partition: c.partition, interaction: c.interaction.map((i) => ({ value: i.value, resolved: i.resolved, nativeLowered: nativeChecked ? (band.get(interactionKey(c.key, i.value)) ?? null) : null })) };
+        })),
       },
       laneOnlyNative,
       focusReachable: focusable,
@@ -1974,6 +2112,8 @@ export function createProjectWith<const T extends Targets>(config: ProjectConfig
     interactionLanes: options.interactionLanes === true,
     hostTopLayer: options.hostTopLayer === true,
     hostCanvas: options.hostCanvas === true,
+    hostForms: options.hostForms === true,
+    hostTextEditing: options.hostTextEditing === true,
     systemFonts: options.systemFonts === true,
     nativeLanes: options.nativeLanes === undefined ? null : options.nativeLanes,
     brotliDecompress: options.brotliDecompress ?? null,

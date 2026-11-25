@@ -1,0 +1,11 @@
+{
+  "case": "opacity-group-button-rtl",
+  "chrome": "145.0.7632.6",
+  "dpr": 3,
+  "texts": [
+    {"id":"word1:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"delete:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"word2:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"plain:text0","data":"XX","lines":1,"units":[0,0],"blank":[]}
+  ]
+}

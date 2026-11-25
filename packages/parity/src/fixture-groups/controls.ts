@@ -4,7 +4,10 @@
 // A3 refuses: a themed button (FORM-b), an inline-level one (RF-INL), the UA control font, an absolutely positioned button, an
 // auto-width flex button in block flow, and an inline element that appearance makes inline-block. A fieldset lays out its rendered
 // legend in its block-start border (HTML §15.3.13); the rejects name the legend cutout paint, a non-block fieldset and the UA groove.
-// FORM-b adds a single select with appearance: none, and refuses a list box, any other appearance, a shrink-to-fit width and an optgroup.
+// FORM-b adds a single select with appearance: none or devolved to menulist-button, and refuses a list box, a themed menulist, a
+// shrink-to-fit width and an optgroup.
+// An inline-block text field (the UA default) is an atomic inline on its line, with its editor line's baseline; the rejects name a
+// field in a right-to-left line, off the baseline and inline-flex.
 import type { FixtureSpec } from '../fixtures.ts';
 import { both, layout, reject } from './define.ts';
 
@@ -35,11 +38,66 @@ export const CONTROLS: readonly FixtureSpec[] = [
   both('controls-range-block'),
   both('controls-range-flex'),
   layout('controls-text-field'),
+  // FIELD-font-width FW1: a field in a face Dragon does not measure, accepted natively only where its width never reads its intrinsic
+  // width. ltr only, as controls-text-field: an rtl field's editor keeps its white space in an rtl block (DRAGON_UNSUPPORTED_BIDI).
+  layout('controls-text-field-font-definite'),
+  reject('reject-controls-text-font-float', 'DRAGON_UNSUPPORTED_FONT', '100%', 'width: 100% on <input> t is not supported here: <div> d takes its width from its content (float: left with an auto width)'),
+  reject('reject-controls-text-font-inline-block', 'DRAGON_UNSUPPORTED_FONT', '100%', 'width: 100% on <input> t is not supported here: <div> d takes its width from its content (display: inline-block with an auto width)'),
+  reject('reject-controls-text-font-max-content', 'DRAGON_UNSUPPORTED_FONT', '100%', 'width: 100% on <input> t is not supported here: <div> d takes its width from its content (width: max-content)'),
+  reject('reject-controls-text-font-absolute', 'DRAGON_UNSUPPORTED_FONT', '100%', 'width: 100% on <input> t is not supported here: <div> d takes its width from its content (position: absolute with an auto width)'),
+  reject('reject-controls-text-font-grid-columns', 'DRAGON_UNSUPPORTED_FONT', '<input data-dragon-id="t" readonly="" value="Hg">', '<input> t is a grid item with min-width: auto, whose automatic minimum Chrome takes from the field\'s intrinsic width'),
+  reject('reject-controls-text-font-grid-start', 'DRAGON_UNSUPPORTED_FONT', '<input data-dragon-id="t" readonly="" value="Hg">', '<input> t is a grid item with min-width: auto, whose automatic minimum Chrome takes from the field\'s intrinsic width'),
+  reject('reject-controls-text-font-grid-auto-columns', 'DRAGON_UNSUPPORTED_FONT', '<input data-dragon-id="t" readonly="" value="Hg">', '<input> t is a grid item with min-width: auto, whose automatic minimum Chrome takes from the field\'s intrinsic width'),
+  reject('reject-controls-text-font-grid-areas', 'DRAGON_UNSUPPORTED_FONT', '<input data-dragon-id="t" readonly="" value="Hg">', '<input> t is a grid item with min-width: auto, whose automatic minimum Chrome takes from the field\'s intrinsic width'),
+  reject('reject-controls-text-font-grid-flow-column', 'DRAGON_UNSUPPORTED_FONT', '<input data-dragon-id="t" readonly="" value="Hg">', '<input> t is a grid item with min-width: auto, whose automatic minimum Chrome takes from the field\'s intrinsic width'),
+  reject('reject-controls-text-font-grid-column-2', 'DRAGON_UNSUPPORTED_FONT', '<input data-dragon-id="t" readonly="" value="Hg">', '<input> t is a grid item with min-width: auto, whose automatic minimum Chrome takes from the field\'s intrinsic width'),
+  reject('reject-controls-text-font-justify-self', 'DRAGON_UNSUPPORTED_FONT', '100%', 'width: 100% on <input> t is not supported here: <div> a takes its width from its content (justify-self: start with an auto width)'),
+  reject('reject-controls-text-font-grid-min0', 'DRAGON_UNSUPPORTED_FONT', '100%', 'width: 100% on <input> t is not supported here: it is a grid item of <div> d, whose column is not its whole content box'),
+  reject('reject-controls-text-font-min-width', 'DRAGON_UNSUPPORTED_FONT', '100%', 'width: 100% on <input> t is not supported here: <div> d takes its width from its content (min-width: max-content)'),
+  reject('reject-controls-text-font-grid-item-start', 'DRAGON_UNSUPPORTED_FONT', '100%', 'width: 100% on <input> t is not supported here: <div> a takes its width from its content (a grid item with justify-self: start)'),
+  reject('reject-controls-text-font-grid-items-start', 'DRAGON_UNSUPPORTED_FONT', '100%', 'width: 100% on <input> t is not supported here: <div> a takes its width from its content (a grid item with justify-self: auto (justify-items: start))'),
+  reject('reject-controls-text-font-grid-item-margin', 'DRAGON_UNSUPPORTED_FONT', '100%', 'width: 100% on <input> t is not supported here: <div> a takes its width from its content (a grid item with margin-left: auto)'),
+  reject('reject-controls-text-font-grid-row-locked', 'DRAGON_UNSUPPORTED_FONT', '100%', 'width: 100% on <input> t is not supported here: <div> a takes its width from its content (a grid item in a grid whose column is not its whole content box)'),
+  reject('reject-controls-text-font-grid-flex-basis', 'DRAGON_UNSUPPORTED_FONT', '<input data-dragon-id="t" readonly="" value="Hg">', 'width: auto on <input> t is not supported here'),
+  reject('reject-controls-text-font-flex-row', 'DRAGON_UNSUPPORTED_FONT', '100%', 'width: 100% on <input> t is not supported here: <div> a takes its width from its content (a row flex item with min-width: auto)'),
+  reject('reject-controls-text-font-flex-wrap', 'DRAGON_UNSUPPORTED_FONT', '100%', 'width: 100% on <input> t is not supported here: <div> a takes its width from its content (a stretched column flex item in a flex-wrap: wrap container)'),
+  reject('reject-controls-text-font-flex-align', 'DRAGON_UNSUPPORTED_FONT', '100%', 'width: 100% on <input> t is not supported here: <div> a takes its width from its content (a column flex item with align-items: center and an auto width)'),
+  reject('reject-controls-text-font-flex-margin', 'DRAGON_UNSUPPORTED_FONT', '100%', 'width: 100% on <input> t is not supported here: <div> a takes its width from its content (a column flex item with margin-left: auto and an auto width)'),
+  reject('reject-controls-text-font-inline-flex', 'DRAGON_UNSUPPORTED_FONT', '100%', 'width: 100% on <input> t is not supported here: <div> d takes its width from its content (display: inline-flex with an auto width)'),
+  reject('reject-controls-text-font-flex-float', 'DRAGON_UNSUPPORTED_FONT', '100%', 'width: 100% on <input> t is not supported here: <div> d takes its width from its content (float: left with an auto width)'),
+  layout('controls-text-field-search'),
+  // OVFL-B with PNT1: the Markless notes form's field, a rounded textarea (1px border, 10px radius, padding 12px 14px, a background),
+  // and the same field with a 4px border, whose corners the sampler can reach. Native clips a textarea at rest, so its content is
+  // clipped to the rounded padding box as Chrome's scroll container clips it (pnt1-radius.test.ts).
+  layout('controls-textarea-rounded'),
+  layout('controls-textarea'),
+  // FORM-b: the scrollbar thickness Chrome adds to a textarea's default size (16 DIP at auto, 14 at thin, to the width unless
+  // overflow-y is hidden or clip and to the height at overflow-x: scroll), with no gutter under overlay scrollbars; the last case
+  // is the Markless notes form's field, resize: vertical included, which a phone draws no grip for, without its border-radius
+  // (a rounded scroll container: Dragon #682).
+  layout('controls-textarea-scrollbar'),
+  layout('controls-text-field-inline'),
+  reject('reject-controls-text-field-inline-dir', 'DRAGON_UNSUPPORTED_VALUE', 'rtl', 'the inline-block <input> f is on a right-to-left line of d'),
+  reject('reject-controls-text-field-inline-valign', 'DRAGON_UNSUPPORTED_VALUE', 'middle', 'vertical-align: middle on the inline-block <input> f is not supported'),
+  reject('reject-controls-text-field-inline-flex', 'DRAGON_UNSUPPORTED_VALUE', 'inline-flex', 'display: inline-flex on <input> f is not supported on a text field'),
+  // FORM-checkbox: a themed checkbox, 13px unless sized, as a block and a flex item (the notes form's row), checked
+  // and not, under a dark and a light accent; the rejects name what the slice does not draw.
+  both('controls-checkbox'),
+  reject('reject-checkbox-inline', 'DRAGON_UNSUPPORTED_VALUE', 'inline-block', 'display: inline-block on <input> c makes it an inline-level control'),
+  reject('reject-checkbox-appearance', 'DRAGON_UNSUPPORTED_VALUE', 'none', 'appearance: none on <input type=checkbox> c is not supported'),
+  reject('reject-checkbox-padding', 'DRAGON_UNSUPPORTED_VALUE', '3px', 'padding-top: 3px on <input type=checkbox> c is not supported'),
+  reject('reject-checkbox-accent-alpha', 'DRAGON_UNSUPPORTED_VALUE', 'rgb(0 0 0 / 0.5)', 'a translucent accent-color on <input type=checkbox> c'),
+  reject('reject-checkbox-disabled', 'DRAGON_UNSUPPORTED_ATTRIBUTE', '<input data-dragon-id="c" type="checkbox" disabled="">', 'attribute disabled on c is not supported'),
+  reject('reject-checkbox-stretch', 'DRAGON_UNSUPPORTED_VALUE', '<input data-dragon-id="c" type="checkbox">', '<input type=checkbox> c with width: auto is stretched by its flex container'),
+  reject('reject-checkbox-radio', 'DRAGON_UNSUPPORTED_ELEMENT', '<input data-dragon-id="c" type="radio">', '<input> c of type radio is not supported'),
+  layout('controls-search'),
   both('controls-select-none'),
+  both('controls-select-button'),
   layout('controls-select-label'),
+  both('controls-select-natural-width'),
   reject('reject-controls-select-multiple', 'DRAGON_UNSUPPORTED_ELEMENT', '<select data-dragon-id="s" multiple=""><option data-dragon-id="o">A</option></select>', '<select multiple> s is a list box, which waits for the FORM-b listbox package'),
-  reject('reject-controls-select-appearance', 'DRAGON_UNSUPPORTED_VALUE', '<select data-dragon-id="s"><option data-dragon-id="o">A</option></select>', '<select> s with appearance: auto draws Chrome\'s drop-down arrow and internal paddings, which wait for FORM-b select S2'),
-  reject('reject-controls-select-width', 'DRAGON_UNSUPPORTED_VALUE', '<select data-dragon-id="s"><option data-dragon-id="o">A</option></select>', 'width: auto on <select> s is not supported: Chrome sizes a select to its widest option'),
+  reject('reject-controls-select-appearance', 'DRAGON_UNSUPPORTED_VALUE', '<select data-dragon-id="s"><option data-dragon-id="o">A</option></select>', '<select> s with appearance: auto and no author background, border or box-shadow is Chrome\'s themed menulist'),
+  reject('reject-controls-select-width', 'DRAGON_UNSUPPORTED_VALUE', '<select data-dragon-id="s" data-dragon-listed-options=""><option data-dragon-id="o">A</option></select>', 'width: auto on <select> s is not supported: Chrome sizes a select to its widest option'),
   reject('reject-controls-select-optgroup', 'DRAGON_UNSUPPORTED_ELEMENT', '<optgroup data-dragon-id="g"><option data-dragon-id="o">A</option></optgroup>', '<optgroup> g is not supported: an option group waits for FORM-b select'),
   // GRID-items: a range stays refused as a grid item; a fieldset's refusal is reject-fieldset-grid-item.
   reject('reject-grid-control-range', 'DRAGON_UNSUPPORTED_VALUE', '<input data-dragon-id="r" type="range">', '<input> r is a grid item, and a form control as a grid item is not supported yet'),

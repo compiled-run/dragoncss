@@ -1,0 +1,9 @@
+<div lst
+{list === "one" ? 'one' : ''}
+<div ph
+{ph === "later" ? 'later' : ''}
+list: ["two", "one"] = "two"
+ph: ["run", "later"] = "run"
+component App
+<html>
+<body>

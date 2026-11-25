@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+@font-face { font-family: Brand; src: url("../../../vendor/fonts/Roboto/Roboto-Regular.ttf"); }
+@font-face { font-family: Other; src: url("../../../vendor/fonts/Inter/Inter-Regular.ttf"); }
+* { box-sizing: border-box; }
+body { margin: 0; font-family: Brand; font-size: 16px; line-height: 1.45; color: #1d2a24; }
+input, textarea { font: inherit; color: inherit; }
+.page { width: 362px; margin: 20px; }
+.narrow { width: 60px; }
+.other { font-family: Other; line-height: 1; }
+.form { display: grid; gap: 18px; padding: 20px; border: 1px solid #ddd5c4; }
+.field { display: grid; gap: 6px; }
+.cap { font-family: Ahem; }
+.field input, .field textarea { width: 100%; padding: 12px 14px; border: 1px solid #ddd5c4; background: #fbf8f1; }
+.field input { border-radius: 10px; }
+.field textarea { min-height: 120px; resize: none; scrollbar-width: none; }
+.single { display: grid; }
+.direct { width: 100%; padding: 8px 10px; border: 1px solid #ddd5c4; background: #fbf8f1; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="p1" class="page">
+<div data-dragon-id="f1" class="form">
+<label data-dragon-id="l1" class="field"><span data-dragon-id="c1" class="cap">Title</span><input data-dragon-id="t1" readonly="" value="Groceries Hg"></label>
+<label data-dragon-id="l2" class="field"><span data-dragon-id="c2" class="cap">Note</span><textarea data-dragon-id="b1" readonly="">Milk, eggs, bread</textarea></label>
+</div>
+</div>
+<div data-dragon-id="p2" class="page narrow other">
+<div data-dragon-id="f2" class="form">
+<label data-dragon-id="l3" class="field"><span data-dragon-id="c3" class="cap">Title</span><input data-dragon-id="t2" readonly="" value="Groceries Hg"></label>
+<label data-dragon-id="l4" class="field"><span data-dragon-id="c4" class="cap">Note</span><textarea data-dragon-id="b2" readonly="">Milk</textarea></label>
+</div>
+</div>
+<div data-dragon-id="p3" class="page other">
+<div data-dragon-id="g" class="single"><input data-dragon-id="t3" class="direct" readonly="" placeholder="Title"></div>
+</div>
+</body>
+</html>

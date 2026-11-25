@@ -398,28 +398,62 @@ describe('FORM-a control boxes: what the engine and the validator refuse', () =>
     const editor = control('t::editor', { kind: 'text-editor' }, {}, [text('t::editor:text0', 'XX')]);
     const empty = control('t::editor', { kind: 'text-editor' }, {}, [], strut);
     const placeholder = control('t::placeholder', { kind: 'text-placeholder' }, {}, [text('t::placeholder:text0', 'PP')]);
-    const field = (children: (LayoutBox | ControlBox)[]): ControlBox => control('t', { kind: 'text-field', size: 20, font: ahemFont(10), lineHeight: { kind: 'normal' } }, {}, children);
+    const field = (children: (LayoutBox | ControlBox)[]): ControlBox => control('t', { kind: 'text-field', size: 20, font: ahemFont(10), lineHeight: { kind: 'normal' }, avgChar: 'ahem', cancelButton: null }, {}, children);
     const under = (n: LayoutBox | ControlBox): LayoutInput => ({ ...range({}, []), root: { ...box('root', {}), children: [n] } });
     expect(codes(under(field([editor])))).toEqual([]);
     expect(codes(under(field([placeholder, empty])))).toEqual([]);
     expect(codes(under(field([])))).toEqual(['$.root.children[0].children a text field control holds exactly one text-editor control']);
     expect(codes(under(field([box('d', {})])))).toEqual([
-      '$.root.children[0].children[0] a text field control holds only its text-editor control and at most one text-placeholder control',
+      '$.root.children[0].children[0] a text field control holds only its text-editor control, at most one text-placeholder control and, for a search field, its empty cancel-button box',
       '$.root.children[0].children a text field control holds exactly one text-editor control',
     ]);
     expect(codes(under(field([editor, { ...empty, id: 'e2' }])))).toEqual(['$.root.children[0].children a text field control holds exactly one text-editor control']);
     expect(codes(under(field([placeholder, { ...placeholder, id: 'p2', children: [], strut: null }, editor])))).toEqual(['$.root.children[0].children a text field control holds at most one text-placeholder control']);
     expect(codes(under(box('d', {}, [editor])))).toEqual(['$.root.children[0].children[0].control a text-editor control is a part of a text field control: its parent is one']);
     expect(codes(under(field([{ ...empty, strut: null }])))).toEqual(['$.root.children[0].children[0].strut an empty text-editor control has a strut, whose one empty line it lays out']);
+    const search = (children: (LayoutBox | ControlBox)[]): ControlBox => ({ ...field(children), control: { kind: 'text-field', size: 20, font: ahemFont(10), lineHeight: { kind: 'normal' }, avgChar: 'ahem', cancelButton: { marginStart: 1, marginEnd: 3 } } });
+    const cancel: LayoutBox = { ...box('t::cancel', {}), boxType: 'anonymous' };
+    expect(codes(under(search([editor, cancel])))).toEqual([]);
+    expect(codes(under(search([editor])))).toEqual(['$.root.children[0].children a search field control holds exactly one cancel-button box']);
+    expect(codes(under(field([editor, cancel])))).toContainEqual('$.root.children[0].children[1] a text field control holds only its text-editor control, at most one text-placeholder control and, for a search field, its empty cancel-button box');
     // The engine's own guard names the validator, which now rejects that input.
     expect(() => layout(under(field([box('d', {})])), ahemMeasurer)).toThrow('validateLayoutInput rejects this input');
+    const area = (children: (LayoutBox | ControlBox)[]): ControlBox => control('t', { kind: 'text-area', cols: 20, rows: 2, font: ahemFont(10), lineHeight: { kind: 'normal' }, avgChar: 'ahem', scrollbarInline: 0, scrollbarBlock: 0 }, {}, children);
+    expect(codes(under(area([placeholder, editor])))).toEqual([]);
+    expect(codes(under(area([])))).toEqual(['$.root.children[0].children a text area control holds exactly one text-editor control']);
+    // A readonly textarea's empty editor has no line (a null strut); an edited one holds one empty line in its strut, as an input's does.
+    expect(codes(under(area([{ ...empty, strut: null }])))).toEqual([]);
+    expect(codes(under(area([empty])))).toEqual([]);
+  });
+
+  it('adds a textarea\'s scrollbar thickness to its default inline size and height as whole device px, whatever the zoom', () => {
+    // Chrome 145 on the reference (macOS overlay scrollbars): a 5-column, 3-row 10px Ahem textarea is 50 x 30, 66 wide at
+    // scrollbar-width auto (16 DIP) and 64 at thin (14 DIP), and 16 or 14 taller at overflow-x: scroll. At DPR 2.625 thin is
+    // trunc(14 x 2.625) = 36 device px; auto is 42. A CSS zoom does not scale it (zoom 2 at DPR 1: 100 + 16).
+    const area = (inline: number, block: number, style: Partial<LayoutStyle> = {}): ControlBox =>
+      control('t', { kind: 'text-area', cols: 5, rows: 3, font: ahemFont(10), lineHeight: { kind: 'normal' }, avgChar: 'ahem', scrollbarInline: inline, scrollbarBlock: block }, { ...style, display: 'block' }, [control('t::editor', { kind: 'text-editor' }, {}, [], null)]);
+    const size = (b: ControlBox, dpr = 1): [number, number] => {
+      const r = layoutRects(box('root', {}, [b]), layout, dpr).get('t') as LayoutRect;
+      return [r.width / 64, r.height / 64];
+    };
+    expect(size(area(0, 0))).toEqual([50, 30]);
+    expect(size(area(16, 0))).toEqual([66, 30]);
+    expect(size(area(14, 14))).toEqual([64, 44]);
+    expect(size(area(0, 16))).toEqual([50, 46]);
+    const [w, h] = size(area(0, 0), 2.625);
+    expect(size(area(14, 0), 2.625)).toEqual([w + 36, h]);
+    expect(size(area(16, 16), 2.625)).toEqual([w + 42, h + 42]);
+    expect(size(area(16, 0), 3)).toEqual([150 + 48, 90]);
+    expect(size(area(16, 0, { zoom: [2] }))).toEqual([100 + 16, 60]);
+    // An author width or height leaves no default size to add it to.
+    expect(size(area(16, 16, { width: px(40), height: px(20) }))).toEqual([40, 20]);
   });
 
   it('the validator refuses a select without exactly one inner element, a stray inner element, and an empty one without a strut', () => {
     const strut = { font: ahemFont(10), lineHeight: { kind: 'normal' } } as const;
     const inner = control('s::inner', { kind: 'select-inner' }, {}, [text('s::inner:text0', 'XX')]);
     const empty = control('s::inner', { kind: 'select-inner' }, {}, [], strut);
-    const select = (children: (LayoutBox | ControlBox)[]): ControlBox => control('s', { kind: 'select-menulist', font: ahemFont(10), lineHeight: { kind: 'normal' } }, { display: 'flex' }, children);
+    const select = (children: (LayoutBox | ControlBox)[]): ControlBox => control('s', { kind: 'select-menulist', font: ahemFont(10), lineHeight: { kind: 'normal' }, arrowWidth: 0, options: [] }, { display: 'flex' }, children);
     const under = (n: LayoutBox | ControlBox): LayoutInput => ({ ...range({}, []), root: { ...box('root', {}), children: [n] } });
     expect(codes(under(select([inner])))).toEqual([]);
     expect(codes(under(select([empty])))).toEqual([]);
@@ -447,6 +481,28 @@ describe('FORM-a control boxes: what the engine and the validator refuse', () =>
     }
     // CSS2 §10.8.1: inline content needs its container's strut, in a control too.
     expect(codes({ ...env, root: box('root', {}, [{ ...button, strut: null }]) })).toContain('$.root.children[0].strut a box with inline content has a strut');
+  });
+
+  it('an inline-block text field is an atomic inline on its line, with the baseline of its editor line; its parts stay block containers', () => {
+    const env = { viewport: { width: 400, height: 300 }, ...neutralEnvironment({ width: 400, height: 300 }), devicePixelRatio: 1 };
+    const strut = { font: ahemFont(10), lineHeight: { kind: 'normal' } } as const;
+    const edges = { borderTopWidth: px(2), borderRightWidth: px(2), borderBottomWidth: px(2), borderLeftWidth: px(2), paddingTop: px(1), paddingRight: px(2), paddingBottom: px(1), paddingLeft: px(2) };
+    const editor = control('t::editor', { kind: 'text-editor' }, { overflowX: 'clip', overflowY: 'clip' }, [text('t::editor:text0', 'X')]);
+    const field = (display: 'inline-block' | 'block', parts: ControlBox = editor): ControlBox => control('t', { kind: 'text-field', size: 3, font: ahemFont(10), lineHeight: { kind: 'normal' }, avgChar: 'ahem', cancelButton: null }, { ...edges, display, marginBottom: px(4) }, [parts]);
+    const input = (f: ControlBox): LayoutInput => ({ ...env, root: box('root', {}, [text('root:text0', 'XX '), f], strut) });
+    expect(codes(input(field('inline-block')))).toEqual([]);
+    const r = layout(input(field('inline-block')), ahemMeasurer);
+    if (r.kind !== 'ok') throw new Error(JSON.stringify(r));
+    const at = (id: string): Rect => {
+      const b = r.boxes.find((x) => x.id === id);
+      if (b === undefined) throw new Error(`no box ${id}`);
+      return [b.x, b.y, b.width, b.height];
+    };
+    // The field's baseline is 2 + 1 + 8px below its top, 3px below the strut's ascent; its 4px bottom margin deepens the line to 20px.
+    expect([at('t'), at('root:text0'), at('root')[3]]).toEqual([[30 * 64, 0, 38 * 64, 16 * 64], [0, 3 * 64, 30 * 64, 10 * 64], 20 * 64]);
+    expect(codes(input(field('inline-block', { ...editor, style: { ...editor.style, display: 'inline-block' } })))).toEqual(['$.root.children[1].children[0].style.display the parts of a text field are block containers']);
+    // A block-level field among inline content is a box beside it, which the compiler wraps in anonymous boxes.
+    expect(codes(input(field('block')))).toContain('$.root.children a box has either inline-level children or box children; wrap the inline content in anonymous boxes');
   });
 
   it('the engine throws on a block button control with display flex, which the validator rejects', () => {

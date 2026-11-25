@@ -6,7 +6,6 @@
 // inline axis and rows the block axis; rtl mirrors the inline offsets at the end.
 import type {
   AlignItems,
-  ControlBox,
   Direction,
   GridAutoRepeat,
   GridContainerStyle,
@@ -15,6 +14,7 @@ import type {
   GridSelfAlign,
   GridSpan,
   CalcExpr,
+  ControlBox,
   LayoutBox,
   LayoutNode,
   LayoutStyle,
@@ -79,7 +79,7 @@ import {
 } from './box.ts';
 import type { Ctx, EngineFaults } from './block.ts';
 import { directionOf, layoutContents, NO_ENGINE_FAULTS } from './block.ts';
-import { plainBox } from './controls.ts';
+import { compressesPercentWidth, plainBox } from './controls.ts';
 import { intrinsicContentInlineSize } from './intrinsic.ts';
 import { isOutOfFlow, relativeOffsetWith } from './position.ts';
 import { hasAspectRatio } from './ratio.ts';
@@ -1506,7 +1506,7 @@ function accommodateItems(ctx: Ctx, c: GridCollection, group: readonly GridItemD
 }
 
 /** Blink ResolveIntrinsicTrackSizes (css-grid-2 §12.5): span groups in increasing size, then every item spanning a flexible track. */
-function resolveIntrinsicTrackSizes(ctx: Ctx, c: GridCollection, items: readonly GridItemData[], contribution: GridContribution): void {
+function resolveIntrinsicTrackSizes(ctx: Ctx, c: GridCollection, items: readonly GridItemData[], contribution: GridContribution, maximums: boolean): void {
   const considered = items.filter((i) => itemProps(i, c.axis).intrinsic);
   const flexible = (i: GridItemData): boolean => itemProps(i, c.axis).flexible;
   const ordered = considered.map((item, k): GridIndexedItem => ({ item, k })).sort((a, b) => {
@@ -1529,8 +1529,10 @@ function resolveIntrinsicTrackSizes(ctx: Ctx, c: GridCollection, items: readonly
     accommodateItems(ctx, c, group, 'intrinsic-minimums', false, contribution);
     accommodateItems(ctx, c, group, 'content-based-minimums', false, contribution);
     accommodateItems(ctx, c, group, 'max-content-minimums', false, contribution);
-    accommodateItems(ctx, c, group, 'intrinsic-maximums', false, contribution);
-    accommodateItems(ctx, c, group, 'max-content-maximums', false, contribution);
+    if (maximums) {
+      accommodateItems(ctx, c, group, 'intrinsic-maximums', false, contribution);
+      accommodateItems(ctx, c, group, 'max-content-maximums', false, contribution);
+    }
     at = end;
   }
   if (at < ordered.length) {
@@ -1661,9 +1663,27 @@ function expandFlexibleTracks(ctx: Ctx, c: GridCollection, items: readonly GridI
   }
 }
 
+/**
+ * Whether no growth limit can change the used column sizes, so the max-content contributions that set them are not read (a text
+ * field's reads its face's average character width): a min-content sizing whose items each span one track (one span group, whose
+ * maximums run last) leaves no free space to maximize or stretch into, and one stretched auto column with a definite free space ends
+ * at max(base size, free space) whatever its limit (css-grid-2 §12.5, §12.6, §12.8).
+ */
+function growthLimitsUnused(ctx: Ctx, grid: GridState, c: GridCollection, available: GridAvailable, constraint: GridSizing): boolean {
+  if (c.axis !== 'columns' || c.props.flexible || ctx.gridFaults.maximizeIgnoresLimit || ctx.gridFaults.stretchIgnoresAlignment) return false;
+  // A later span group's minimums read the limits an earlier group's maximums set, so every item must span one track.
+  if (constraint === 'min-content') {
+    for (const i of grid.items) if (itemProps(i, c.axis).intrinsic && itemSpanSize(i, c.axis) !== 1) return false;
+    return true;
+  }
+  if (constraint !== 'layout' || available.inline === INDEFINITE || !stretchesAutoTracks(grid, 'columns')) return false;
+  const only = c.sets[0];
+  return c.sets.length === 1 && only !== undefined && only.trackCount === 1 && isAuto(only.track.min) && isAuto(only.track.max) && !only.track.fitContent;
+}
+
 /** Blink GridTrackSizingAlgorithm::ComputeUsedTrackSizes (css-grid-2 §12.3). */
 function computeUsedTrackSizes(ctx: Ctx, grid: GridState, c: GridCollection, available: GridAvailable, constraint: GridSizing, contribution: GridContribution): void {
-  if (c.props.intrinsic) resolveIntrinsicTrackSizes(ctx, c, grid.items, contribution);
+  if (c.props.intrinsic) resolveIntrinsicTrackSizes(ctx, c, grid.items, contribution, !growthLimitsUnused(ctx, grid, c, available, constraint));
   for (const s of c.sets) if (s.growthLimit === INDEFINITE) s.growthLimit = s.baseSize;
   maximizeTracks(ctx, c, available, constraint);
   if (c.props.flexible) expandFlexibleTracks(ctx, c, grid.items, available, constraint, contribution);
@@ -1848,8 +1868,10 @@ function layoutReplacedItem(ctx: Ctx, grid: GridState, item: GridItemData, leaf:
 function inlineContributionOf(ctx: Ctx, box: LayoutBox | ControlBox, kind: 'min' | 'max'): LU {
   const s = box.style;
   const bp = borderPaddingOf(ctx, box, 'columns', INDEFINITE);
+  const compressed = kind === 'min' && compressesPercentWidth(box);
   let size: LU;
   if (s.width.kind === 'px') size = borderBoxFromSpecified(fromCssPx(s.width.value), bp, s.boxSizing);
+  else if (compressed && (s.width.kind === 'percent' || s.width.kind === 'calc') && hasPercent(s.width)) size = borderBoxFromSpecified(resolveLength(s.width, ZERO, ctx.faults), bp, s.boxSizing);
   else size = add(intrinsicContentInlineSize(ctx, box, kind), bp);
   if (s.maxWidth.kind === 'px') size = minLu(size, borderBoxFromSpecified(fromCssPx(s.maxWidth.value), bp, s.boxSizing));
   const minWidth = s.minWidth.kind === 'px' ? borderBoxFromSpecified(fromCssPx(s.minWidth.value), bp, s.boxSizing) : bp;
@@ -2193,6 +2215,11 @@ function logicalBsp(pad: Edges, bor: Edges, rtl: boolean): Edges {
   return { top: add(bor.top, pad.top), right: rtl ? left : right, bottom: add(bor.bottom, pad.bottom), left: rtl ? right : left };
 }
 
+/** FORM: the controls the grid places as items, laid out by their kind as in block flow and flex: a block button, a select, a text field and a textarea. */
+function gridPlacesControl(c: ControlBox): boolean {
+  return c.control.kind === 'button-block' || c.control.kind === 'select-menulist' || c.control.kind === 'text-field' || c.control.kind === 'text-area';
+}
+
 /** Builds the items, their placement and the two track collections of a grid container. */
 function buildGrid(ctx: Ctx, box: LayoutBox, pad: Edges, bor: Edges, available: GridAvailable): GridState {
   const s = box.style;
@@ -2202,7 +2229,7 @@ function buildGrid(ctx: Ctx, box: LayoutBox, pad: Edges, bor: Edges, available: 
   const outOfFlow: LayoutBox[] = [];
   for (const k of box.children) {
     if (k.kind !== 'box' && k.kind !== 'replaced' && k.kind !== 'control') throw new Error(`${k.id} is inline content directly in grid container ${box.id}; validateLayoutInput rejects this input`);
-    if (k.kind === 'control' && k.control.kind !== 'button-block') unsupported('grid-control', k.id, 'css-grid-2 §6', `a ${k.control.kind} control as a grid item (not yet supported)`);
+    if (k.kind === 'control' && !gridPlacesControl(k)) unsupported('grid-control', k.id, 'css-grid-2 §6', `a ${k.control.kind} control as a grid item (not yet supported)`);
     // css-grid-2 §9: an absolutely positioned child is no grid item and takes no part in placement or track sizing.
     if (!isOutOfFlow(ctx, k)) inFlow.push(k);
     else if (k.kind === 'box') outOfFlow.push(k);

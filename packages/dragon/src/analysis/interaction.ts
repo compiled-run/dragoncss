@@ -4,7 +4,8 @@
 // focus-visible), resolves every combination of them and stores each distinct resolution once. The combinations are a second
 // level under the case's app assignment, so case keys and counts do not change; each dimension is linear in the elements.
 import { GENERATED_TAGS, MARKER_TAG } from './elements.ts';
-import { isControlTag } from './elements/controls.ts';
+import { inputTypeState, isCheckboxType, isControlTag, isTextFieldType } from './elements/controls.ts';
+import { isReplacedTag } from './elements/replaced.ts';
 import { authored, diagnostic } from '../diagnostics/catalogue.ts';
 import { PROPERTY_ASPECTS } from '../css/properties.ts';
 import { isAnimationProperty } from '../css/properties/animation.ts';
@@ -22,9 +23,12 @@ import type { ResolvedValue } from './computed.ts';
 import { initialValue } from './computed.ts';
 import type { LinkedElement } from './link.ts';
 import type { InteractionProbe, InteractionState } from './match.ts';
-import { NO_INTERACTION, selectorMatches } from './match.ts';
+import { NO_INTERACTION } from './match.ts';
 import type { ResolvedElement } from './resolve.ts';
-import { propagatedFrom } from './computed-checks.ts';
+import { selectPartOf, textFieldPartOf } from './resolve.ts';
+import { holdsAtomicLine, lineAtomics, propagatedFrom } from './computed-checks.ts';
+import { hitFactContext, hitFactOtherContext } from '../lower/paint/stacking.ts';
+import { matrixParts, TRANSFORM_LIST_TYPE, transformFunctionsOf } from '../css/properties/transform.ts';
 
 /** R7: the distinct reachable interaction states one app assignment compiles; more are refused (package SELD-R2s). */
 export const MAX_INTERACTION_STATES = 256;
@@ -96,7 +100,7 @@ export const validTabindex = (v: string): boolean => /^[\t\n\f\r ]*[-+]?[0-9]/.t
  */
 const NEVER_FOCUSABLE: ReadonlySet<string> = new Set([
   'html', 'body', 'div', 'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'section', 'article', 'header', 'footer', 'nav', 'main', 'aside',
-  'ul', 'ol', 'li', 'blockquote', 'figure', 'figcaption', 'address', 'hr', 'dl', 'dt', 'dd', 'center', 'fieldset', 'legend', 'span', 'a', 'label', 'br', 'img',
+  'ul', 'ol', 'li', 'blockquote', 'figure', 'figcaption', 'address', 'hr', 'dl', 'dt', 'dd', 'center', 'fieldset', 'legend', 'form', 'span', 'a', 'label', 'br', 'img',
   'svg', 'path', 'rect', 'circle', 'b', 'strong', 'em', 'i',
 ]);
 
@@ -232,9 +236,12 @@ export function interactionPartition(root: LinkedElement, resolve: (ix: Interact
       focusAt.set(key, focusValues.length - 1);
       return focusValues.length - 1;
     };
-    // R6 and R8: a tap or click focuses the nearest focusable inclusive ancestor, without focus-visible; keyboard focus sets it.
+    // R6 and R8: a tap or click focuses the nearest focusable inclusive ancestor, with focus-visible as pointerFocusVisible says; keyboard focus sets it.
     const pointerFocusOf = nodes.map((n) => {
-      for (let x: string | null | undefined = n.el.address; x !== null && x !== undefined; x = parentOf.get(x)) if (focusable[order.get(x) as number]) return focusValue(x, false);
+      for (let x: string | null | undefined = n.el.address; x !== null && x !== undefined; x = parentOf.get(x)) {
+        const i = order.get(x) as number;
+        if (focusable[i]) return focusValue(x, pointerFocusVisible((nodes[i] as { el: LinkedElement }).el));
+      }
       return 0;
     });
     const keyboardFocusOf = nodes.map((n, i) => (focusable[i] ? focusValue(n.el.address, true) : -1));
@@ -445,31 +452,16 @@ export function interactionRefusals(rules: readonly Rule[]): Diagnostic[] {
   return out;
 }
 
-/** FORM-b: a :focus or :focus-visible rule matching a select, focused or not, is refused until FORM-c's focus states land. */
-export function selectFocusRefusals(rules: readonly Rule[], cases: readonly { readonly root: LinkedElement }[] | null, faults: CompilerFaults): Diagnostic[] {
-  const focusRules = rules.filter((r) => r.declarations.length > 0 && interactionPseudosOf(r).some((p) => p === 'focus' || p === 'focus-visible'));
-  if (cases === null || focusRules.length === 0) return [];
-  const out: Diagnostic[] = [];
-  const seen = new Set<string>();
-  const walk = (el: LinkedElement, chain: readonly LinkedElement[]): void => {
-    const here = [...chain, el];
-    if (el.tag === 'select' && !seen.has(el.address)) {
-      const ix: InteractionState = { hover: new Set(), active: new Set(), focus: new Set([el.address]), focusVisible: new Set([el.address]) };
-      const rule = focusRules.find((r) => r.selectors.some((sel) => selectorMatches(r, sel, here, here.length - 1, 0, faults, ix) || selectorMatches(r, sel, here, here.length - 1, 0, faults, NO_INTERACTION)));
-      if (rule !== undefined) {
-        seen.add(el.address);
-        out.push(diagnostic('DRAGON_UNSUPPORTED_SELECTOR', {
-          origin: authored((rule.declarations[0] as Rule['declarations'][number]).span),
-          message: `a :focus or :focus-visible rule on <select> ${el.address} is not supported: a focused select's style and Chrome's focus ring wait for FORM-c's focus states`,
-          manual: `Remove the :focus and :focus-visible rules that match <select> ${el.address}.`,
-        }));
-      }
-    }
-    for (const c of el.children) if (c.kind === 'element') walk(c, here);
-  };
-  for (const c of cases) walk(c.root, []);
-  return out;
+/**
+ * Whether a tap or click that focuses el gives it :focus-visible, as Chrome 145 does for a text field and a textarea (T064 P6) and
+ * a select (form-b-select-focus.test.ts); every other element gets :focus alone. The partition and the runtime both read this.
+ */
+export function pointerFocusVisible(el: LinkedElement): boolean {
+  return el.tag === 'select' || el.tag === 'textarea' || (el.tag === 'input' && KEYBOARD_INPUT_TYPES.has(inputTypeState(el.attributes.get('type'))));
 }
+
+/** The input types a tap gives focus-visible, as for an element that may show a virtual keyboard (T064 P6). */
+const KEYBOARD_INPUT_TYPES: ReadonlySet<string> = new Set(['text', 'search', 'url', 'tel', 'email', 'password', 'number']);
 
 /** SELD-R2 PR 5: the inputs an interaction row is proven for, each its own profile context interaction/<input>. */
 export const INTERACTION_INPUTS = ['forced-only', 'keyboard', 'mouse', 'touch'] as const;
@@ -547,17 +539,25 @@ export function interactionCapRefusal(caseLabel: string, over: NonNullable<Inter
 }
 
 const all = (): boolean => true;
-const zeroLength = (v: CssValue): boolean => v.kind === 'length' && v.value === 0;
 // OVFL: rt-hit clips hidden and clip at the padding box. auto and scroll are native scroll views (OVFL-B) the user scrolls, and the
 // hit test does not read scroll offsets yet (OVFL-B2), so they are unmodelled facts.
 const OVERFLOW_AT_REST = new Set(['visible', 'hidden', 'clip']);
 const overflowAtRest = (v: CssValue): boolean => v.kind === 'keyword' && OVERFLOW_AT_REST.has(v.value);
+/** none, or translate and non-negative scale functions (no translate after a scale) with a rotate only by 0, as rt-hit.ts hitTransformRefusal models. */
+export const hitModelsTransform = (v: CssValue): boolean => {
+  if (v.kind === 'keyword') return v.value === 'none';
+  if (v.kind !== 'other' || v.type !== TRANSFORM_LIST_TYPE) return false;
+  const fs = transformFunctionsOf(v.text);
+  const scaled = fs.findIndex((f) => f.kind === 'scale' && (f.sx !== 1 || f.sy !== 1));
+  if (scaled >= 0 && fs.slice(scaled + 1).some((f) => f.kind === 'translate')) return false;
+  return fs.every((f) => f.kind === 'translate' || (f.kind === 'scale' && f.sx >= 0 && f.sy >= 0) || (f.kind !== 'scale' && (f.kind === 'rotate' ? f.deg : matrixParts(f.values).deg) === 0));
+};
 
 /**
  * R13: the paint longhands Dragon's hit test (packages/layout/src/rt-hit.ts) models, each with the values it models. Box
  * geometry (every layout longhand) and pointer-events are modelled too. Every other paint longhand at any value but its
  * initial one is an unmodelled fact (fail closed): a later paint package is refused here until the hit test reads it (T146).
- * transform-origin only moves a transform, which is itself unmodelled.
+ * The individual translate, rotate and scale stay unmodelled until a Chrome capture covers them.
  */
 export const HIT_MODELLED: ReadonlyMap<Longhand, (v: CssValue) => boolean> = new Map<Longhand, (v: CssValue) => boolean>([
   ['color', all],
@@ -573,6 +573,15 @@ export const HIT_MODELLED: ReadonlyMap<Longhand, (v: CssValue) => boolean> = new
   ['overflow-x', overflowAtRest],
   ['overflow-y', overflowAtRest],
   ['transform-origin', all],
+  // SELD-R2b: rt-hit.ts clips a hit to the rounded border box, and a clipping box's in-flow content to its rounded padding edge.
+  ['border-top-left-radius', all],
+  ['border-top-right-radius', all],
+  ['border-bottom-right-radius', all],
+  ['border-bottom-left-radius', all],
+  // Blink hits the border box (box-shadow is ink only); opacity, 0 too, moves no hit, and below 1 is a layer rt-hit.ts orders.
+  ['box-shadow', all],
+  ['opacity', all],
+  ['transform', hitModelsTransform],
   // css-view-transitions-2: a name only captures its box once a transition starts, and the only one that compiles is the UA
   // sheet's :root { view-transition-name: root } (scroll-containment.ts VIEW_TRANSITION), so it changes no hit.
   ['view-transition-name', all],
@@ -612,16 +621,30 @@ export const HIT_MODELLED: ReadonlyMap<Longhand, (v: CssValue) => boolean> = new
   ['dominant-baseline', all],
   ['alignment-baseline', all],
   ['d', all],
-  // PNT1: the outline longhands at their computed initial values (the webref initial auto and medium compute to currentcolor and 0px).
-  ['outline-color', (v) => v.kind === 'keyword' && v.value === 'currentcolor'],
-  ['outline-style', (v) => v.kind === 'keyword' && v.value === 'none'],
-  ['outline-width', zeroLength],
-  ['outline-offset', zeroLength],
+  // SELD-R2b: Blink hit-tests a box by its border box and never by its outline, so no outline value moves a hit; the outline-*
+  // fixtures in the hit lane (parity hit-report.test) match Chrome with rt-hit.ts reading no outline.
+  ['outline-color', all],
+  ['outline-style', all],
+  ['outline-width', all],
+  ['outline-offset', all],
 ]);
 
-/** FORM-a: the first form control of a resolved tree in preorder, or null; the hit table does not model a control's box (rt-hit.ts). */
+/** A select, text field or textarea (textFieldPartOf holds both), whose UA shadow parts Chrome retargets to it, so the hit table holds it as one box (rt-hit.ts hitControlBox). */
+export function hitRetargetsParts(el: ResolvedElement): boolean {
+  return selectPartOf(el)?.part === null || textFieldPartOf(el)?.part === null;
+}
+
+/**
+ * FORM-a: the first form control of a resolved tree in preorder whose box the hit table does not model (rt-hit.ts hitModelsControl),
+ * or null. A button, a select, a text field, a textarea and a checkbox (a plain box in the layout input, FORM-checkbox) are modelled;
+ * a range is not (its touch, T064 P7), nor a block fieldset or any other control tag.
+ */
 export function hitUnmodelledControl(root: ResolvedElement): string | null {
-  if (isControlTag(root.element.tag)) return root.element.address;
+  const tag = root.element.tag;
+  if (isControlTag(tag) && tag !== 'button' && tag !== 'select' && tag !== 'textarea' && !(tag === 'input' && (isTextFieldType(root.element.attributes.get('type')) || isCheckboxType(root.element.attributes.get('type'))))) return root.element.address;
+  // A block fieldset lays out as the fieldset control with its rendered legend (ios-layout.ts), which the table refuses too.
+  const display = root.props.get('display');
+  if (tag === 'fieldset' && display !== undefined && display.value.kind === 'keyword' && display.value.value === 'block') return root.element.address;
   for (const c of root.children) {
     if (c.kind !== 'element') continue;
     const found = hitUnmodelledControl(c);
@@ -630,17 +653,40 @@ export function hitUnmodelledControl(root: ResolvedElement): string | null {
   return null;
 }
 
+/** The kinds of box hitUnmodelledBox names, with the package each waits for. */
+export type HitUnmodelledBox = {
+  readonly address: string;
+  readonly kind: 'float' | 'inline-grid box' | 'block with percentage padding around atomic inlines' | 'atomic inline forming a stacking context' | 'inline replaced element';
+  readonly pkg: 'FLT' | 'G-INL' | 'INL2a' | 'INL2c' | 'INL2d';
+  /** For INL2c, what besides opacity or a transform makes the atomic inline a stacking context (stacking.ts hitFactOtherContext). */
+  readonly reason?: string;
+};
+
 /**
  * The first box of a resolved tree the hit table does not model whose value compiles, in preorder, or null: a float in block flow
- * (FLT), which rt-hit.ts refuses in a block or inline-block container, a fixed box (POSX-f) and a sticky box (POSX-s). No Chrome hit
- * capture has them yet.
+ * (FLT), which rt-hit.ts refuses in a block or inline-block container, and a block container of an atomic inline's line with
+ * percentage padding (INL2a), whose lines rt-hit.ts places over a content box it does not resolve percentages for. No Chrome hit
+ * capture has a float yet. A sticky or fixed box is hit where the layout places it at scroll offset 0 (layout.ts), as a positioned layer.
  */
-export function hitUnmodelledBox(root: ResolvedElement, compiles: (v: ResolvedValue) => boolean = () => true): { readonly address: string; readonly kind: 'float' | 'fixed box' | 'sticky box' | 'inline-grid box'; readonly pkg: 'FLT' | 'POSX-f' | 'POSX-s' | 'G-INL' } | null {
+export function hitUnmodelledBox(root: ResolvedElement, compiles: (v: ResolvedValue) => boolean = () => true): HitUnmodelledBox | null {
   const key = (el: ResolvedElement, p: 'display' | 'float' | 'position'): string => {
     const v = el.props.get(p);
     return v !== undefined && v.value.kind === 'keyword' ? v.value.value : '';
   };
-  const visit = (el: ResolvedElement): { address: string; kind: 'float' | 'fixed box' | 'sticky box' | 'inline-grid box'; pkg: 'FLT' | 'POSX-f' | 'POSX-s' | 'G-INL' } | null => {
+  const percent = (v: ResolvedValue): boolean => v.value.kind === 'percentage' || (v.value.kind === 'other' && v.value.text.includes('%'));
+  const visit = (el: ResolvedElement): HitUnmodelledBox | null => {
+    if (holdsAtomicLine(el)) {
+      for (const p of ['padding-top', 'padding-right', 'padding-bottom', 'padding-left'] as const) {
+        const v = el.props.get(p);
+        if (v !== undefined && percent(v) && compiles(v)) return { address: el.element.address, kind: 'block with percentage padding around atomic inlines', pkg: 'INL2a' };
+      }
+    }
+    for (const a of lineAtomics(el)) {
+      const other = hitFactContext(a) ? hitFactOtherContext(a) : '';
+      if (other !== '') return { address: a.element.address, kind: 'atomic inline forming a stacking context', pkg: 'INL2c', reason: other };
+      // Only an inline <img> has a Chrome hit capture on a line (inline-replaced-img, hit-atomic-inline); an inline <svg> is refused as SVG.
+      if (isReplacedTag(a.element.tag) && a.element.tag !== 'img' && a.element.tag !== 'svg') return { address: a.element.address, kind: 'inline replaced element', pkg: 'INL2d' };
+    }
     const block = key(el, 'display') === 'block' || key(el, 'display') === 'inline-block';
     for (const c of el.children) {
       if (c.kind !== 'element') continue;
@@ -649,8 +695,6 @@ export function hitUnmodelledBox(root: ResolvedElement, compiles: (v: ResolvedVa
       // rt-hit.ts refuses an inline-grid as an atomic inline (G-INL); a block-level grid is hit in order-modified document order.
       const d = c.props.get('display');
       if (d !== undefined && key(c, 'display') === 'inline-grid' && compiles(d)) return { address: c.element.address, kind: 'inline-grid box', pkg: 'G-INL' };
-      if (p !== undefined && key(c, 'position') === 'fixed' && compiles(p)) return { address: c.element.address, kind: 'fixed box', pkg: 'POSX-f' };
-      if (p !== undefined && key(c, 'position') === 'sticky' && compiles(p)) return { address: c.element.address, kind: 'sticky box', pkg: 'POSX-s' };
       if (block && f !== undefined && key(c, 'float') !== 'none' && key(c, 'position') !== 'absolute' && key(c, 'position') !== 'fixed' && compiles(f)) return { address: c.element.address, kind: 'float', pkg: 'FLT' };
       const found = visit(c);
       if (found !== null) return found;
@@ -669,10 +713,13 @@ export function hitUnmodelledFact(root: ResolvedElement, ua: UaDataset, compiles
     if (el.element.tag === 'svg') return { property: 'fill', address: el.element.address };
     // An overflow value computed from its partner (computeOverflowPair) has no declaration: it compiles only when the partner does.
     const partner = (p: Longhand): ResolvedValue | undefined => (p === 'overflow-x' ? el.props.get('overflow-y') : p === 'overflow-y' ? el.props.get('overflow-x') : undefined);
+    const oneBox = hitRetargetsParts(el);
     for (const [p, v] of el.props) {
       const other = partner(p);
       if (!PROPERTY_ASPECTS[p].paint || !compiles(v) || (other !== undefined && !compiles(other))) continue;
       if (other !== undefined && el === propagated) continue;
+      // A control hit as one box has no content its scrolling could move, and Chrome hits its border box at any scroll offset.
+      if (other !== undefined && oneBox) continue;
       const modelled = HIT_MODELLED.get(p);
       if (modelled !== undefined) {
         if (modelled(v.value)) continue;
@@ -685,6 +732,7 @@ export function hitUnmodelledFact(root: ResolvedElement, ua: UaDataset, compiles
       }
       if (JSON.stringify(v.value) !== init) return { property: p, address: el.element.address };
     }
+    if (oneBox) return null;
     for (const c of el.children) {
       if (c.kind !== 'element') continue;
       const found = visit(c);

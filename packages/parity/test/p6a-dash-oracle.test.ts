@@ -6,7 +6,7 @@
 // planted fault must make crisp pixels differ. T116: boxes whose visible sides are all solid use the same reference, and every case
 // with a solid side is compared the same way (border-join pins its no-miter corners).
 import { describe, expect, it } from 'vitest';
-import type { DashFaults, LayoutBox, LayoutRect } from '@dragon/layout';
+import type { ControlBox, DashFaults, LayoutBox, LayoutRect } from '@dragon/layout';
 import { borderNeedsSidePainter, borderPaintOps, NO_DASH_FAULTS, snapEdges } from '@dragon/layout';
 import type { NativeProgram, ProgramWrite } from 'dragon';
 import { borderDevicePx, programInput } from 'dragon';
@@ -51,10 +51,10 @@ function backgroundOf(p: NativeProgram, id: string): number[] {
  */
 export function positionedLayer(root: LayoutBox): Set<string> {
   const out = new Set<string>();
-  const walk = (b: LayoutBox, inLayer: boolean): void => {
+  const walk = (b: LayoutBox | ControlBox, inLayer: boolean): void => {
     const here = inLayer || b.style.position !== 'static';
     if (here) out.add(b.id);
-    for (const c of b.children) if (c.kind === 'box') walk(c, here);
+    for (const c of b.children) if (c.kind === 'box' || c.kind === 'control') walk(c, here);
   };
   walk(root, false);
   return out;
@@ -66,15 +66,16 @@ export function positionedLayer(root: LayoutBox): Set<string> {
  */
 export function paintOrder(root: LayoutBox): string[] {
   const out: string[] = [];
-  const walk = (b: LayoutBox): void => {
+  // A form control paints in its tree-order slot like any box, so a later control's background covers an earlier one's border.
+  const walk = (b: LayoutBox | ControlBox): void => {
     out.push(b.id);
-    const kids = b.children.filter((c): c is LayoutBox => c.kind === 'box');
+    const kids = b.children.filter((c): c is LayoutBox | ControlBox => c.kind === 'box' || c.kind === 'control');
     const flex = b.style.display === 'flex';
     // Only in-flow children are flex items; an absolutely positioned child keeps its slot in tree order.
-    const outOfFlow = (c: LayoutBox): boolean => c.style.position === 'absolute';
+    const outOfFlow = (c: LayoutBox | ControlBox): boolean => c.style.position === 'absolute';
     const items = kids.map((c, i) => ({ c, i })).filter((x) => !outOfFlow(x.c)).sort((x, y) => x.c.style.order - y.c.style.order || x.i - y.i).map((x) => x.c);
     let next = 0;
-    const sorted = flex ? kids.map((c) => (outOfFlow(c) ? c : (items[next++] as LayoutBox))) : kids;
+    const sorted = flex ? kids.map((c) => (outOfFlow(c) ? c : (items[next++] as LayoutBox | ControlBox))) : kids;
     for (const c of sorted) walk(c);
   };
   walk(root);
@@ -112,6 +113,7 @@ type Result = { readonly boxes: number; readonly crisp: number; readonly mismatc
 /** The pre-T116 comparison: dashed or dotted boxes only, no raster-bounds or glyph skip (the subset proof uses it). */
 type Mode = { readonly preT116: boolean };
 const CURRENT: Mode = { preT116: false };
+const NO_CLIP: Box = { left: -Infinity, top: -Infinity, right: Infinity, bottom: Infinity };
 
 /** Every dashed or dotted box of a case at a DPR against Chrome's committed PNG. */
 function compareCase(nc: NativeCase, dpr: number, faults: DashFaults, mode: Mode = CURRENT): Result {
@@ -124,7 +126,7 @@ function compareCase(nc: NativeCase, dpr: number, faults: DashFaults, mode: Mode
   const out = engine.layout(input, engine.measurer);
   if (out.kind !== 'ok') throw new Error(`the engine refused ${nc.case.id}@${dpr}`);
   const snapped = snapEdges(out.boxes);
-  const borders = borderDevicePx(engine, input);
+  const borders = borderDevicePx(engine, input, engine.measurer);
   const boxOf = new Map<string, Box>(out.boxes.map((b: LayoutRect, i) => [b.id, snapped[i] as Box]));
   const order = paintOrder(p.root);
   const layer = positionedLayer(p.root);
@@ -135,9 +137,9 @@ function compareCase(nc: NativeCase, dpr: number, faults: DashFaults, mode: Mode
     return o === undefined ? null : intersect(o, { left: o.left + bw[3], top: o.top + bw[0], right: o.right - bw[1], bottom: o.bottom - bw[2] });
   };
   const positionOf = new Map<string, string>();
-  const walkPositions = (b: LayoutBox): void => {
+  const walkPositions = (b: LayoutBox | ControlBox): void => {
     positionOf.set(b.id, b.style.position);
-    for (const c of b.children) if (c.kind === 'box') walkPositions(c);
+    for (const c of b.children) if (c.kind === 'box' || c.kind === 'control') walkPositions(c);
   };
   walkPositions(p.root);
   /**
@@ -234,11 +236,14 @@ function compareCase(nc: NativeCase, dpr: number, faults: DashFaults, mode: Mode
     // Glyphs that paint over this border (textPaintsOver) hide it too (text that overflows its line box); a translucent run still
     // changes the pixel, so it hides it; text painted below a positioned border is compared.
     if (!mode.preT116) for (const g of glyphs) if (textPaintsOver(order, layer, n.id, g.owner)) over.push(g.box);
+    const clip = mode.preT116 ? NO_CLIP : clipOf(n.id, false);
     for (let y = b.top; y < b.bottom; y++) {
       for (let x = b.left; x < b.right; x++) {
         const inBand = y < b.top + (w[0] as number) || y >= b.bottom - (w[2] as number) || x < b.left + (w[3] as number) || x >= b.right - (w[1] as number);
         // Pixels outside Chrome's raster (a box past the viewport) are not painted.
         if (!mode.preT116 && (x < 0 || y < 0 || x >= chrome.width || y >= chrome.height)) continue;
+        // Pixels outside its ancestors' overflow clips are not painted (css-overflow-3 §3).
+        if (clip === null || x < clip.left || x >= clip.right || y < clip.top || y >= clip.bottom) continue;
         if (!inBand || over.some((o) => x >= o.left && x < o.right && y >= o.top && y < o.bottom)) continue;
         const side = crispSide(ops, x, y);
         if (side === null) continue;
@@ -355,6 +360,33 @@ describe('the solid border reference against Chrome 145 (T116: same-colour sides
       // Different colours meet on an anti-aliased soft miter, so those corners are not crisp.
       const count = (id: string): number => r.corners.filter((c) => c.startsWith(`${id}:`)).length;
       expect(Object.fromEntries(['all4', 'all1', 'frac', 'two', 'three', 'cols', 'uneven', 'alpha'].map((id) => [id, count(id)])), `DPR ${dpr}`).toEqual({ all4: 4, all1: 4, frac: 4, two: 3, three: 2, cols: 0, uneven: 4, alpha: 0 });
+    }
+  });
+});
+
+describe('a border is compared only inside its ancestors\' overflow clips', () => {
+  // s4i and s7i overflow their scroll containers s4 and s7; Chrome clips their borders to the containers' padding boxes.
+  const cases = ['scroll-scrollbar-values', 'scroll-scrollbar-values-rtl', 'scroll-webkit-scrollbar', 'scroll-webkit-scrollbar-rtl'].map((id) => {
+    const nc = solid.find((c) => c.case.id === id);
+    if (nc === undefined) throw new Error(`no solid-border case ${id}`);
+    return nc;
+  });
+  const unclipped = (nc: NativeCase, ancestor: string): NativeCase => {
+    const p = nc.programs.uikit;
+    if (p.nodes.find((m) => m.id === ancestor)?.clips !== true) throw new Error(`${nc.case.id}: ${ancestor} does not clip`);
+    const nodes = p.nodes.map((m) => (m.id === ancestor ? { ...m, clips: false, writes: m.writes.filter((w) => w.kind !== 'padding-box-clip') } : m));
+    return { ...nc, programs: { ...nc.programs, uikit: { ...p, nodes } } };
+  };
+  it('a planted fault that drops the container\'s clip fails at every DPR, on the clipped child only', () => {
+    for (const nc of cases) {
+      const ancestor = nc.case.id.startsWith('scroll-scrollbar-values') ? 's4' : 's7';
+      const child = `${ancestor}i`;
+      for (const dpr of DPRS) {
+        expect(compareCase(nc, dpr, NO_DASH_FAULTS).mismatches, `${nc.case.id}@${dpr}`).toEqual([]);
+        const bad = compareCase(unclipped(nc, ancestor), dpr, NO_DASH_FAULTS).mismatches;
+        expect(bad.length, `${nc.case.id}@${dpr}`).toBeGreaterThan(0);
+        expect(bad.filter((m) => !m.startsWith(`${nc.case.id}@${dpr} ${child} `)), `${nc.case.id}@${dpr}`).toEqual([]);
+      }
     }
   });
 });

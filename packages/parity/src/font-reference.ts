@@ -161,9 +161,22 @@ export async function platformFonts(page: Page, selectors: readonly string[]): P
     const { root } = await cdp.send('DOM.getDocument', { depth: -1 });
     const out: PlatformFont[][] = [];
     for (const sel of selectors) {
-      const { nodeId } = await cdp.send('DOM.querySelector', { nodeId: root.nodeId, selector: sel });
+      // A control's UA shadow part (host::part) has no selectable node: its host's layout subtree holds the part's text.
+      const host = sel.includes('::') ? `${sel.slice(0, sel.indexOf('::'))}"]` : sel;
+      const { nodeId } = await cdp.send('DOM.querySelector', { nodeId: root.nodeId, selector: host });
       if (nodeId === 0) throw new Error(`no node for ${sel}`);
-      const { fonts } = await cdp.send('CSS.getPlatformFontsForNode', { nodeId });
+      let { fonts } = await cdp.send('CSS.getPlatformFontsForNode', { nodeId });
+      if (fonts.length === 0 && host !== sel) {
+        // A textarea's value is copied into its shadow editor: read the shadow root's elements, the first holding text.
+        const { node } = await cdp.send('DOM.describeNode', { nodeId, depth: -1, pierce: true });
+        const shadow = (node.shadowRoots ?? []).flatMap((r) => r.children ?? []);
+        const { nodeIds } = await cdp.send('DOM.pushNodesByBackendIdsToFrontend', { backendNodeIds: shadow.map((n) => n.backendNodeId) });
+        for (const id of nodeIds) {
+          if (id === 0) continue;
+          const r = await cdp.send('CSS.getPlatformFontsForNode', { nodeId: id });
+          if (r.fonts.length > 0) { fonts = r.fonts; break; }
+        }
+      }
       out.push(fonts.map((f) => ({ familyName: f.familyName, postScriptName: f.postScriptName, isCustomFont: f.isCustomFont, glyphCount: f.glyphCount }))
         .sort((a, b) => (a.postScriptName < b.postScriptName ? -1 : a.postScriptName > b.postScriptName ? 1 : 0)));
     }
