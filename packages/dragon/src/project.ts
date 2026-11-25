@@ -31,7 +31,7 @@ import { inDomain, validateInput, type ValidInput } from './analysis/input.ts';
 import type { InteractionPartition, InteractionValue } from './analysis/interaction.ts';
 import { checkGeneratedIdentity, generatedRuleRefusals, markerRuleRefusals } from './analysis/generated.ts';
 import { checkStaticEmptyHosts } from './analysis/pseudo-hosts.ts';
-import { emptyPartition, firstInteractionPseudo, stateMembers, hitUnmodelledBox, hitUnmodelledControl, hitUnmodelledFact, interactionCapRefusal, interactionPartition, interactionRefusals, interactionRuleOrigin, focusReachable, gateInteractionFeatures, provesPointerRow, ruleIsInteractive } from './analysis/interaction.ts';
+import { emptyPartition, firstInteractionPseudo, stateMembers, hitUnmodelledBox, hitUnmodelledControl, hitUnmodelledFact, interactionCapRefusal, interactionPartition, interactionRefusals, interactionRuleOrigin, focusReachable, forcedOnlyFocus, gateInteractionFeatures, provesPointerRow, ruleIsInteractive } from './analysis/interaction.ts';
 import { isCheckboxType, isTextFieldType } from './analysis/elements/controls.ts';
 import type { Linked, LinkedElement } from './analysis/link.ts';
 import type { InteractionState } from './analysis/match.ts';
@@ -204,7 +204,8 @@ export type InternalCase = {
 };
 
 /** @internal One interaction state of a case: its value, resolution and native lowering; the web classes are the case's. */
-export type InternalInteraction = { readonly value: InteractionValue; readonly resolved: ResolvedElement; readonly nativeLowered: LayoutBox | null };
+/** forcedOnly: a state only forcing reaches, which a host that never forces skips (resolved is then the case's own tree). */
+export type InternalInteraction = { readonly value: InteractionValue; readonly resolved: ResolvedElement; readonly nativeLowered: LayoutBox | null; readonly forcedOnly: boolean };
 
 /**
  * @internal
@@ -317,6 +318,8 @@ export type InternalOptions = {
   readonly hostForms?: boolean;
   /** The host draws and edits every single-line text field natively (a Markless host), so an editable one is laid out; else native refuses it. */
   readonly hostTextEditing?: boolean;
+  /** The host never forces an interaction state (a Markless host), so native skips a state only forcing reaches (forcedOnlyFocus). */
+  readonly hostUnforced?: boolean;
   /** The host's Brotli decoder, which a WOFF2 @font-face src needs; without one a WOFF2 is DRAGON_FONT_UNREADABLE (no-brotli). */
   readonly brotliDecompress?: BrotliDecompress;
   /**
@@ -343,6 +346,7 @@ type Resolved = {
   readonly hostCanvas: boolean;
   readonly hostForms: boolean;
   readonly hostTextEditing: boolean;
+  readonly hostUnforced: boolean;
   readonly systemFonts: boolean;
   readonly nativeLanes: NativeLanes | null;
   readonly brotliDecompress: BrotliDecompress | null;
@@ -973,7 +977,8 @@ function checkCaseFonts(root: ResolvedElement, fonts: ProjectFonts, faults: Comp
 }
 
 /** One interaction state of a case, resolved and checked like the case (SELD-R2). */
-type InteractionResult = { value: InteractionValue; resolved: ResolvedElement; used: UsedKey[] };
+/** native and nativeUsed: what the phones lower and check, the case itself for a state only forcing reaches (forcedOnlyFocus). */
+type InteractionResult = { value: InteractionValue; resolved: ResolvedElement; used: UsedKey[]; native: ResolvedElement; nativeUsed: UsedKey[] };
 type CaseResult = { key: string; assignment: Assignment; isInitial: boolean; resolved: ResolvedElement | null; used: UsedKey[]; partition: InteractionPartition | null; interaction: InteractionResult[] };
 
 /**
@@ -1021,7 +1026,7 @@ function checkTextFieldLineGap(root: ResolvedElement, fonts: ProjectFonts | null
 }
 
 /** A case's used keys with those of every interaction state, for the value checks' context lists. */
-const allUsed = (c: CaseResult): UsedKey[] => [...c.used, ...c.interaction.flatMap((i) => i.used)];
+const allUsed = (c: CaseResult, native = false): UsedKey[] => [...c.used, ...c.interaction.flatMap((i) => (native ? i.nativeUsed : i.used))];
 
 /**
  * TXT1a-2: the faces of a case's nodes that resolve to one real bundled static face, as engine mode resolves them, by address;
@@ -1065,35 +1070,39 @@ function checkCases(linked: Linked, rules: readonly Rule[], targets: readonly Kn
   const out: CaseResult[] = [];
   const env = { direction: options.direction, rootFont: options.rootFont, ua: options.ua, registered, colorScheme, hostCanvas: options.hostCanvas, hostTextEditing: options.hostTextEditing };
   // Every check of a case runs on each of its interaction states too, so a refusal inside a hover rule is reported (SELD-R2a).
+  // The targets a check reports for, and the set its refusals dedupe by: for a state the phones never reach (forcedOnlyFocus), web
+  // only, against a copy, so an id it records cannot hide a later tree's native refusal.
+  let scope: readonly KnownTarget[] = targets;
+  let dedupe: Set<string> = refused;
   const check = (resolved: ResolvedElement): UsedKey[] => {
     const computedAt = diagnostics.length;
     const realFaces = realFacesOf(resolved, projectFonts, options.ua, options.systemFonts);
     // On by default (InternalOptions.nativeRealFaces); turned off, native targets refuse real faces, and the engine lane lowers them
     // in engine mode (TXT1a-1's deferred font refusal).
     const realFaceAt = (address: string): boolean => options.nativeRealFaces && realFaces.has(address);
-    checkComputed(resolved, targets, diagnostics, refused, options.profiles === 'derive' ? null : (t) => profileFor(options.supportProfiles, t as KnownTarget), keys, realFaceAt, (address) => realFaces.has(address), options.faults);
+    checkComputed(resolved, scope, diagnostics, dedupe, options.profiles === 'derive' ? null : (t) => profileFor(options.supportProfiles, t as KnownTarget), keys, realFaceAt, (address) => realFaces.has(address), options.faults);
     // BG2-t: a no-repeat gradient layer away from the start edge, refused natively unless its tile provably starts inside the box.
-    checkGradientPhase(resolved, targets, diagnostics, refused, options.faults);
+    checkGradientPhase(resolved, scope, diagnostics, dedupe, options.faults);
     // (The second predicate is INL2a's: an atomic inline is proven only beside Ahem text, on every target.)
     // The UA font-weight and font-style refusal is native-only: the engine resolves those faces (engine mode refuses synthesis).
     for (const d of diagnostics.slice(computedAt)) if (d.code === 'DRAGON_UNSUPPORTED_FONT') fontDeferrals.add(deferralKey(d));
     // PNT1: outside the parity lanes, native refuses a fractional opacity (PNT1-opacity-b); the lanes run it to prove its web rows.
-    if (!options.interactionLanes) checkTranslucent(resolved, NATIVE_TARGETS.filter((t) => targets.includes(t)), diagnostics, refused);
+    if (!options.interactionLanes) checkTranslucent(resolved, NATIVE_TARGETS.filter((t) => scope.includes(t)), diagnostics, dedupe);
     // T154: outside the parity lanes, native refuses an author user-select that changes what Chrome selects beyond none (P6c); the
     // lanes run it to prove its web rows.
-    if (!options.interactionLanes) checkSelectable(resolved, NATIVE_TARGETS.filter((t) => targets.includes(t)), diagnostics, refused);
+    if (!options.interactionLanes) checkSelectable(resolved, NATIVE_TARGETS.filter((t) => scope.includes(t)), diagnostics, dedupe);
     // css-writing-modes-4 §2.2: outside the parity lanes, native refuses an author unicode-bidi that can reorder text (analysis/bidi.ts).
-    if (!options.interactionLanes) checkBidi(resolved, NATIVE_TARGETS.filter((t) => targets.includes(t)), diagnostics, refused);
+    if (!options.interactionLanes) checkBidi(resolved, NATIVE_TARGETS.filter((t) => scope.includes(t)), diagnostics, dedupe);
     // PNT1: outside the parity lanes, native refuses a layer item whose re-hosting would leave or enter an overflow clip wrongly
     // (analysis/paint-values/stacking.ts); the lanes keep it under the clip, and the device pixels judge it.
-    if (!options.interactionLanes) checkStackingClips(resolved, propagatedFrom(resolved), NATIVE_TARGETS.filter((t) => targets.includes(t)), diagnostics, refused);
+    if (!options.interactionLanes) checkStackingClips(resolved, propagatedFrom(resolved), NATIVE_TARGETS.filter((t) => scope.includes(t)), diagnostics, dedupe);
     // PNT1: outside the parity lanes, native refuses a translucent side-painter outline and a translucent rounded double border; the
     // lanes run them to prove their web rows.
-    if (!options.interactionLanes) checkTranslucentPaint(resolved, NATIVE_TARGETS.filter((t) => targets.includes(t)), diagnostics, refused);
+    if (!options.interactionLanes) checkTranslucentPaint(resolved, NATIVE_TARGETS.filter((t) => scope.includes(t)), diagnostics, dedupe);
     const ahemDeclared = projectFonts !== null && [...projectFonts.keys.declared].some((d) => foldFamily(d) === foldFamily('Ahem'));
-    for (const t of NATIVE_TARGETS) if (targets.includes(t)) checkFonts(resolved, diagnostics, fonts, t, ahemDeclared, fontDeferrals, realFaceAt);
-    if (options.nativeRealFaces) checkTextFieldLineGap(resolved, projectFonts, realFaces, targets, diagnostics, refused);
-    if (projectFonts !== null) for (const t of NATIVE_TARGETS) if (targets.includes(t)) checkSyntheticStyles(resolved, projectFonts, t, diagnostics, fonts);
+    for (const t of NATIVE_TARGETS) if (scope.includes(t)) checkFonts(resolved, diagnostics, fonts, t, ahemDeclared, fontDeferrals, realFaceAt);
+    if (options.nativeRealFaces) checkTextFieldLineGap(resolved, projectFonts, realFaces, scope, diagnostics, dedupe);
+    if (projectFonts !== null) for (const t of NATIVE_TARGETS) if (scope.includes(t)) checkSyntheticStyles(resolved, projectFonts, t, diagnostics, fonts);
     if (projectFonts !== null) checkCaseFonts(resolved, projectFonts, options.faults, diagnostics, fenced);
     const used = usedKeys(resolved, keys);
     if (options.profiles !== 'derive') checkContexts(used);
@@ -1101,7 +1110,7 @@ function checkCases(linked: Linked, rules: readonly Rule[], targets: readonly Kn
   };
   const checkContexts = (used: readonly UsedKey[]): void => {
     for (const u of used) {
-      for (const t of targets) {
+      for (const t of scope) {
         const profile = profileFor(options.supportProfiles, t);
         if (statusOf(profile, u.feature, u.context) !== 'unsupported') continue;
         const id = `${t}|${u.key}|${u.declaration.span.start}|${u.declaration.span.source.uri}`;
@@ -1186,7 +1195,17 @@ function checkCases(linked: Linked, rules: readonly Rule[], targets: readonly Kn
     const partition = built.partition;
     const interaction = partition.states.map((value, k): InteractionResult => {
       const r = built.resolved[k] as ResolvedElement;
-      return { value, resolved: r, used: check(r) };
+      // The parity lanes force every candidate to prove the forced-only rows, so only a host that never forces skips them.
+      if (!options.hostUnforced || !forcedOnlyFocus(value, partition, [resolved, r])) {
+        const used = check(r);
+        return { value, resolved: r, used, native: r, nativeUsed: used };
+      }
+      scope = targets.filter((t) => t === 'web');
+      dedupe = new Set(refused);
+      const used = check(r);
+      scope = targets;
+      dedupe = refused;
+      return { value, resolved: r, used, native: resolved, nativeUsed: [] };
     });
     out.push({ key: c.key, assignment: c.assignment, isInitial: c.isInitial, resolved, used, partition, interaction });
   }
@@ -1742,7 +1761,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
         : bandCases.some((r) => r.cases.some((c) => c.interaction.length > 0)) ? 'interaction states'
         : animated ? 'transitions or animations'
         : bands !== null && bands.partition.bands.length > 1 ? 'media bands' : null;
-      refuseStatefulStrokes(stateful, bandCases.flatMap((r) => r.cases.flatMap((c) => [...(c.resolved === null ? [] : [c.resolved]), ...c.interaction.map((i) => i.resolved)])), nativeTargets, diagnostics, options.faults);
+      refuseStatefulStrokes(stateful, bandCases.flatMap((r) => r.cases.flatMap((c) => [...(c.resolved === null ? [] : [c.resolved]), ...c.interaction.map((i) => i.native)])), nativeTargets, diagnostics, options.faults);
       // MQ-R1: the (assignment, band) pairs of a native state table count against its 64-assignment limit.
       if (bands !== null) refuseBandedStateSpace(cases.length, bands.partition.bands.length, bands.conditions, nativeTargets, diagnostics);
       // MQ-R1 R8: on native, a transition a size change would start is refused until MQ-Rt; each band's listings are analysed apart.
@@ -1754,7 +1773,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       if (options.profiles === 'enforce') {
         const values: Diagnostic[] = [];
         // A target's messages list the contexts of the bands it is resolved in.
-        const usedOf = (t: KnownTarget): UsedKey[] => bandCases.filter((_, k) => passTargets(k).includes(t)).flatMap((r) => r.cases.flatMap(allUsed));
+        const usedOf = (t: KnownTarget): UsedKey[] => bandCases.filter((_, k) => passTargets(k).includes(t)).flatMap((r) => r.cases.flatMap((c) => allUsed(c, t !== 'web')));
         checkValues(withStyles, targets, profiles, usedOf, values, keys, scopeOf);
         diagnostics.splice(valuesAt, 0, ...withoutRepeatedBrowserOnly(values, diagnostics));
       }
@@ -1767,7 +1786,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
         const pending: Diagnostic[] = [];
         const native = NATIVE_TARGETS.filter((t) => targets.includes(t));
         for (const c of cases) {
-          for (const r of [c.resolved, ...c.interaction.map((i) => i.resolved)]) {
+          for (const r of [c.resolved, ...c.interaction.map((i) => i.native)]) {
             if (r === null) continue;
             checkTranslucent(r, native, pending, new Set());
             checkSelectable(r, native, pending, new Set());
@@ -1777,7 +1796,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
         }
         // Every band, since native switches bands at run time.
         for (const c of bandCases.flatMap((b) => b.cases)) {
-          for (const r of [c.resolved, ...c.interaction.map((i) => i.resolved)]) if (r !== null) checkTranslucentPaint(r, native, pending, new Set());
+          for (const r of [c.resolved, ...c.interaction.map((i) => i.native)]) if (r !== null) checkTranslucentPaint(r, native, pending, new Set());
         }
         bandCases.forEach((r, k) => refuseAnimatedGroups(bandAnimations[k] as AnimationAnalysis, r.cases.flatMap((c) => (c.resolved === null ? [] : [c.resolved])), native, pending));
         laneOnlyNative = native.filter((t) => laneOnlyNative.includes(t) || pending.some((d) => d.target === t));
@@ -1795,7 +1814,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
         const scratchCases = (bands === null ? [null] : bands.partition.bands).flatMap((b) =>
           checkCases(scratchLinked, [...rulesIn(rules, bands, b, options.faults), ...unwrapped], targets, options, scratch, fonts, scratchSeen, registered),
         );
-        if (options.profiles === 'enforce') checkValues(unwrapped, targets, profiles, scratchCases.flatMap(allUsed), scratch, keys);
+        if (options.profiles === 'enforce') checkValues(unwrapped, targets, profiles, (t) => scratchCases.flatMap((c) => allUsed(c, t !== 'web')), scratch, keys);
         for (const e of enclosed) {
           const found = [...e.diagnostics, ...scratch.filter((d) => inside(d.origin, e))];
           const related = found.map((d) => ({ origin: d.origin, message: `${d.code}${d.target === null ? '' : ` [${d.target}]`}: ${d.message}` }));
@@ -1871,7 +1890,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
     for (const k of order) {
       const lowered = loweredByBand[k] as Map<string, LayoutBox>;
       // SELD-R2: each case's interaction variants are lowered beside it, in every band.
-      const lowerings = (bandCases[k] as { cases: CaseResult[] }).cases.flatMap((c) => (c.resolved === null ? [] : [{ key: c.key, resolved: c.resolved }, ...c.interaction.map((i) => ({ key: interactionKey(c.key, i.value), resolved: i.resolved }))]));
+      const lowerings = (bandCases[k] as { cases: CaseResult[] }).cases.flatMap((c) => (c.resolved === null ? [] : [{ key: c.key, resolved: c.resolved }, ...c.interaction.map((i) => ({ key: interactionKey(c.key, i.value), resolved: i.native }))]));
       for (const c of lowerings) {
         try {
           // On by default (InternalOptions.nativeRealFaces); turned off, every non-Ahem face is refused natively; an element's own
@@ -1977,7 +1996,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
         container: containerQueries,
         cases: bandCases.map((r, k) => r.cases.map((c) => {
           const band = loweredByBand[k] as Map<string, LayoutBox>;
-          return { key: c.key, resolved: c.resolved, nativeLowered: nativeChecked ? (band.get(c.key) ?? null) : null, partition: c.partition, interaction: c.interaction.map((i) => ({ value: i.value, resolved: i.resolved, nativeLowered: nativeChecked ? (band.get(interactionKey(c.key, i.value)) ?? null) : null })) };
+          return { key: c.key, resolved: c.resolved, nativeLowered: nativeChecked ? (band.get(c.key) ?? null) : null, partition: c.partition, interaction: c.interaction.map((i) => ({ value: i.value, resolved: i.native, forcedOnly: i.native !== i.resolved, nativeLowered: nativeChecked ? (band.get(interactionKey(c.key, i.value)) ?? null) : null })) };
         })),
       },
       laneOnlyNative,
@@ -1995,7 +2014,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
         webClassOf: webClasses === null ? null : (webClasses.get(c.key) ?? null),
         features: new Map(targets.map((t) => [t, [...new Set(c.used.map((u) => u.key))].sort()])),
         partition: c.partition,
-        interaction: c.interaction.map((i) => ({ value: i.value, resolved: i.resolved, nativeLowered: nativeChecked ? (lowered.get(interactionKey(c.key, i.value)) ?? null) : null })),
+        interaction: c.interaction.map((i) => ({ value: i.value, resolved: i.native, forcedOnly: i.native !== i.resolved, nativeLowered: nativeChecked ? (lowered.get(interactionKey(c.key, i.value)) ?? null) : null })),
       })),
     },
   };
@@ -2127,6 +2146,7 @@ export function createProjectWith<const T extends Targets>(config: ProjectConfig
     hostCanvas: options.hostCanvas === true,
     hostForms: options.hostForms === true,
     hostTextEditing: options.hostTextEditing === true,
+    hostUnforced: options.hostUnforced === true,
     systemFonts: options.systemFonts === true,
     nativeLanes: options.nativeLanes === undefined ? null : options.nativeLanes,
     brotliDecompress: options.brotliDecompress ?? null,
