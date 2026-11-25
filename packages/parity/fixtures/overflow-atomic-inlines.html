@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.sc { overflow: auto; width: 100px; height: 60px; padding: 4px; border: 1px solid #000; margin-bottom: 6px; }
+.button { display: inline-flex; align-items: center; gap: 4px; padding: 3px 8px; border: 1px solid #036; background-color: #cdf; color: #000; text-decoration: none; }
+.block { display: inline-block; width: 30px; height: 80px; background-color: #fc9; }
+.spill { display: inline-block; width: 20px; height: 10px; background-color: #9cf; }
+.spill div { width: 140px; height: 90px; background-color: #ddd; }
+.clips { display: inline-block; width: 20px; height: 10px; overflow: hidden; background-color: #9cf; }
+.clips div { width: 140px; height: 90px; background-color: #ddd; }
+.neg { display: inline-block; width: 30px; height: 80px; margin-bottom: -60px; background-color: #c9c; }
+.wide { display: inline-block; width: 150px; height: 10px; margin-right: 20px; margin-left: 6px; background-color: #cc9; }
+.tall { height: 700px; width: 30px; background-color: #ddd; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="s1" class="sc">XX XX <a data-dragon-id="b1" class="button" href="/x">XXXXXXXX</a> XX</div>
+<div data-dragon-id="s2" class="sc">XX <span data-dragon-id="k1" class="block"></span> XX</div>
+<div data-dragon-id="s3" class="sc">XX <span data-dragon-id="k2" class="spill"><div data-dragon-id="k2c"></div></span> XX</div>
+<div data-dragon-id="s4" class="sc">XX <span data-dragon-id="k3" class="clips"><div data-dragon-id="k3c"></div></span> XX</div>
+<div data-dragon-id="s6" class="sc">XX <span data-dragon-id="k5" class="neg"></span> XX</div>
+<div data-dragon-id="s7" class="sc">XX <span data-dragon-id="k6" class="wide"></span> XX</div>
+<p data-dragon-id="p1">XX XX <a data-dragon-id="b2" class="button" href="/y">XXXX</a> XX</p>
+<div data-dragon-id="t" class="tall"></div>
+</body>
+</html>

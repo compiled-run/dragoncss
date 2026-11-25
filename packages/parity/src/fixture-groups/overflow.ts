@@ -52,6 +52,9 @@ export const OVERFLOW: readonly FixtureSpec[] = [
   layout('overflow-textarea'),
   // A menulist select clips its contents (Chrome's control clip), so it too adds only its border box.
   layout('overflow-select'),
+  // An atomic inline on a line (the Markless notes .button link, an inline-block, one whose child spills, one that clips, a negative
+  // block-end margin, inline margins) widens its line box to its margin box and adds its own overflow unless it clips (ScrollableOverflowForLine).
+  both('overflow-atomic-inlines'),
   // OVFL-B with PNT1: rounded scroll containers, whose content Chrome clips to the rounded padding box (inner radius = outer radius
   // less the adjacent border widths): one border, uneven borders, elliptical and per-corner radii, an inner corner made square by a
   // thick border, a hidden x axis with overflow-y auto, padding, content that fits, and one inside another. No scroller paints a

@@ -201,20 +201,17 @@ describe('replaced leaves and line-level boxes (pre-landing review of #96)', () 
     expect(size(input([box('s', sc('auto', pad(10)), [img])]), 's')).toEqual([lu(120), lu(10 + 150 + 7 + 10), lu(120), lu(120)]);
   });
 
-  it('an atomic inline (a box child of an inline formatting context) is refused as an OverflowRefusal, never a plain error', () => {
+  it('an atomic inline (a box child of an inline formatting context) is a line item the overflow measures, never refused', () => {
     const ifc = box('s', sc('auto'), [text('t', 'XX')]);
-    expect(() => refuseLineLevelBoxes(ifc)).not.toThrow();
-    const atomic = { ...ifc, children: [...ifc.children, box('k', { width: px(10), height: px(10) })] };
-    expect(() => refuseLineLevelBoxes(atomic)).toThrow(OverflowRefusal);
-    expect(() => refuseLineLevelBoxes(atomic)).toThrow('an atomic inline in the inline formatting context of s');
+    const atomic = { ...ifc, children: [...ifc.children, box('k', { display: 'inline-block', width: px(10), height: px(10) })] };
+    expect(() => refuseLineLevelBoxes(atomic)).not.toThrow();
   });
 
-  it('an atomic inline alone in a scroll container, with no text, is an inline formatting context and is refused, never measured as a block child', () => {
+  it('an atomic inline alone in a scroll container is decided, its border box where its line placed it (parity fixture overflow-atomic-inlines)', () => {
     const k = box('k', { display: 'inline-block', width: px(50), height: px(150), marginBottom: px(20) });
     const s = box('s', sc('auto', { height: px(50), paddingBottom: px(10) }), [k], { font: ahemFont(10), lineHeight: { kind: 'normal' } });
-    expect(() => refuseLineLevelBoxes(s)).toThrow('an atomic inline in the inline formatting context of s');
-    const r = scrollMetrics(input([s]), ahemMeasurer, 'ltr');
-    expect(r.kind === 'refused' ? [r.nodeId, r.detail] : r.kind).toEqual(['k', expect.stringContaining('(R16, INL2)')]);
+    expect(() => refuseLineLevelBoxes(s)).not.toThrow();
+    expect(scrollMetrics(input([s]), ahemMeasurer, 'ltr').kind).toBe('ok');
   });
 
   it('an inline box or a <br> in an inline formatting context (INL1a line items addLines does not measure) is refused', () => {
