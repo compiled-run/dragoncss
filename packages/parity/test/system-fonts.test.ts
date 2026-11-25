@@ -546,8 +546,8 @@ describe('a Markless export with system fonts', () => {
     const ios = 'system:fallback:.CJKSymbolsFallbackSC-Bold';
     const android = 'system:fallback:NotoSansSymbols-Regular-Subsetted.ttf#0';
     expect(exported.systemFonts?.map((e) => e.id)).toEqual(['system:default:400', ios, android, 'system:system-ui:700'].sort());
-    expect(exported.systemFonts?.find((e) => e.id === ios)).toEqual({ id: ios, ios: { face: { kind: 'cascade', base: { kind: 'system', weight: 0.4, design: 'default' }, text: '◎', postScriptName: '.CJKSymbolsFallbackSC-Bold' } } });
-    expect(exported.systemFonts?.find((e) => e.id === android)).toMatchObject({ android: { file: 'NotoSansSymbols-Regular-Subsetted.ttf', index: 0 } });
+    expect(exported.systemFonts?.find((e) => e.id === ios)).toEqual({ id: ios, fallback: true, ios: { face: { kind: 'cascade', base: { kind: 'system', weight: 0.4, design: 'default' }, text: '◎', postScriptName: '.CJKSymbolsFallbackSC-Bold' } } });
+    expect(exported.systemFonts?.find((e) => e.id === android)).toMatchObject({ fallback: true, android: { file: 'NotoSansSymbols-Regular-Subsetted.ttf', index: 0 } });
     for (const [t, face] of [['ios', ios], ['android', android]] as const) {
       const text = exported.targets[t]!.assignments[0]!.nodes.find((n) => n.id === 'h1:text0')!;
       expect(text.lines!.flatMap((l) => l.runs.map((r) => [r.face, r.glyphs.length]))).toEqual([['system:system-ui:700', 5], [face, 1], ['system:system-ui:700', 8]]);

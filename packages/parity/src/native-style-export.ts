@@ -146,8 +146,8 @@ export type NativeStyleExport = {
   readonly targets: { readonly [T in NativeStyleTarget]?: ExportTarget };
 };
 
-/** A system face of the export: its id, and per target the platform font a host draws it with. */
-export type SystemFontEntry = { readonly id: string } & { readonly [T in NativeStyleTarget]?: Omit<Extract<SystemFaceDescriptor, { platform: T }>, 'platform'> };
+/** A system face of the export: its id, and per target the platform font a host draws it with; a fallback face is one platform's only. */
+export type SystemFontEntry = { readonly id: string; readonly fallback?: true } & { readonly [T in NativeStyleTarget]?: Omit<Extract<SystemFaceDescriptor, { platform: T }>, 'platform'> };
 
 let vendored: ReadonlyMap<string, string> | null = null;
 
@@ -311,7 +311,7 @@ export function nativeStyleExport(styles: NativeStyles, component: string, sourc
     const useSystem = (id: string): void => {
       if (system === null) throw new Error(`${component}: ${t} draws text in the system face ${id}, and the export was given no system fonts`);
       const { platform: _platform, ...descriptor } = system.descriptor(id);
-      systemUsed.set(id, { ...(systemUsed.get(id) ?? { id }), [t]: descriptor });
+      systemUsed.set(id, { ...(systemUsed.get(id) ?? { id, ...(isFallbackFace(id) ? { fallback: true } : {}) }), [t]: descriptor });
     };
     const exportAt = (program: NativeProgram, a: StateProgram['assignments'][number]): ExportAssignment => {
       const laid = engineBoxes(program, d.viewport, d.dpr, measurer());
