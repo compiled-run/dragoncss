@@ -23,8 +23,8 @@ import type { ResolvedValue } from './computed.ts';
 import { initialValue } from './computed.ts';
 import type { LinkedElement } from './link.ts';
 import type { InteractionProbe, InteractionState } from './match.ts';
-import { NO_INTERACTION } from './match.ts';
 import type { ResolvedElement } from './resolve.ts';
+import { NO_INTERACTION } from './match.ts';
 import { selectPartOf, textFieldPartOf } from './resolve.ts';
 import { holdsAtomicLine, lineAtomics, propagatedFrom } from './computed-checks.ts';
 import { hitFactContext, hitFactOtherContext } from '../lower/paint/stacking.ts';
@@ -135,6 +135,29 @@ export function rulesMayScroll(rules: readonly Rule[]): boolean {
   const scrolls = (lh: { readonly property: string; readonly value: CssValue }): boolean =>
     (lh.property === 'overflow-x' || lh.property === 'overflow-y') && !(lh.value.kind === 'keyword' && NEVER_SCROLLS.has(lh.value.value));
   return rules.some((r) => r.declarations.some((d) => d.longhands.some(scrolls) || (d.pending?.longhands ?? []).some((p) => p === 'overflow-x' || p === 'overflow-y')));
+}
+
+/**
+ * Whether a state is reached only by forcing :focus or :focus-visible onto an element no key, tap or click can focus: one isFocusable
+ * rejects that is no scroll container in the case or the state (Chrome 130 and later keyboard-focus a scroller). Nothing on a phone
+ * forces a state, so the native targets neither check nor lower it; the web output keeps it for a forced Chrome.
+ */
+export function forcedOnlyFocus(v: InteractionValue, p: InteractionPartition, trees: readonly ResolvedElement[]): boolean {
+  if (v.kind !== 'forced-focus' && v.kind !== 'forced-focus-visible') return false;
+  const address = v.force[0]?.address;
+  if (address === undefined || p.elements.find((e) => e.address === address)?.focusable !== false) return false;
+  return !trees.some((t) => mayScrollAt(t, address));
+}
+
+function mayScrollAt(root: ResolvedElement, address: string): boolean {
+  if (root.element.address === address) {
+    const axis = (prop: 'overflow-x' | 'overflow-y'): boolean => {
+      const v = (root.props.get(prop) as ResolvedValue | undefined)?.value;
+      return v === undefined || v.kind !== 'keyword' || !NEVER_SCROLLS.has(v.value);
+    };
+    return axis('overflow-x') || axis('overflow-y');
+  }
+  return root.children.some((c) => c.kind === 'element' && mayScrollAt(c, address));
 }
 
 function preorder(root: LinkedElement): { el: LinkedElement; parent: string | null }[] {

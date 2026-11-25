@@ -878,10 +878,10 @@ function checkPreservedText(el: ResolvedElement, t: ResolvedText, refuse: (at: R
 }
 
 // CSS2 §9.2.1.1 and §10.3.7: an absolutely positioned box beside text in a block container would take its static position inside
-// the text's inline formatting context, which milestone 1 does not lay out (the engine's abspos-in-inline). In a flex container the
-// text is an anonymous flex item (css-flexbox-1 §4) and the box is not a flex item (§4.1); that combination has no fixture, so it is
-// refused too. An absolutely positioned root has no in-flow box for the initial containing block. All are refused on every target
-// at the position declaration.
+// the text's inline formatting context, which milestone 1 does not lay out (the engine's abspos-in-inline). In a flex or grid
+// container the text is an anonymous item (css-flexbox-1 §4, css-grid-2 §6) and the box takes its static position alone (flexbox
+// §4.1, grid §9.2), so the text never moves it. An absolutely positioned root has no in-flow box for the initial containing block.
+// The refusals hold on every target at the position declaration.
 function checkPosition(el: ResolvedElement, isRoot: boolean, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
   const refuse = (target: ResolvedElement, message: string): void => {
     const v = target.props.get('position') as ResolvedValue;
@@ -897,13 +897,13 @@ function checkPosition(el: ResolvedElement, isRoot: boolean, targets: readonly s
   if (isRoot && (own === 'absolute' || own === 'fixed')) refuse(el, `position: ${own} on the root element ${el.element.address} is not supported in milestone 1`);
   // Inline content: text, or an inline box (INL1a), beside which the box would take a static position in the formatting context.
   if (!el.children.some((c) => c.kind === 'text' || displayKeyword(c) === 'inline' || isAtomic(c))) return;
+  const display = keywordOf(el.props.get('display') as ResolvedValue);
+  if (display === 'flex' || display === 'grid') return;
   for (const c of el.children) {
     if (c.kind !== 'element' || keywordOf(c.props.get('display') as ResolvedValue) === 'none') continue;
     const pos = keywordOf(c.props.get('position') as ResolvedValue);
     if (pos !== 'absolute' && pos !== 'fixed') continue;
-    refuse(c, keywordOf(el.props.get('display') as ResolvedValue) === 'flex'
-      ? `position: ${pos} on ${c.element.address} beside text in the flex container ${el.element.address}: the text becomes an anonymous flex item (css-flexbox-1 §4) and the absolutely positioned child is not a flex item (§4.1); milestone 1 does not lay out this combination (POSX-IFC)`
-      : `position: ${pos} on ${c.element.address} beside text in ${el.element.address} would place it in the text's inline formatting context (CSS2 §9.2.1.1), which milestone 1 does not lay out (POSX-IFC)`);
+    refuse(c, `position: ${pos} on ${c.element.address} beside text in ${el.element.address} would place it in the text's inline formatting context (CSS2 §9.2.1.1), which milestone 1 does not lay out (POSX-IFC)`);
   }
 }
 
