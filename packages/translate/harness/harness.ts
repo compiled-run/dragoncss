@@ -1518,7 +1518,8 @@ function replayShaper(calls: readonly ReplayCall[], fallbacks: readonly ReplayFa
   return {
     fallback(face: string, text: string, start: number, end: number, script: string, language: string): string {
       const c = recordedFallback(fallbacks, face, text, start, end, script, language);
-      return c === null ? fail(`the shape transcript holds no fallback from ${face} [${start}, ${end}) of ${text}`) : c.got;
+      if (c === null) return fail(`the shape transcript holds no fallback from ${face} [${start}, ${end}) of ${text}`);
+      return c.got;
     },
     shape(face: string, size: number, text: string, start: number, end: number, script: string, rtl: boolean, language: string, features: readonly number[]): readonly number[] {
       for (const c of calls) {
