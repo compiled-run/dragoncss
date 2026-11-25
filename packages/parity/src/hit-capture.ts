@@ -33,11 +33,13 @@ export const expectedHitPath = (caseId: string): string => `${expectedHitDir()}/
  * cases check that px radii (CSS px in the hit facts) scale to device px, on the border box and on a rounded clip's padding edge. The
  * transform cases check that a scaled box's paint offset rounds to whole device px, which at 2.625 is almost every box.
  * The HIT-INL2c cases pin the notes button's scaled edge (F13b), which Chrome hits differently at DPR 1 and above.
+ * The SELD-R2b object-fit cases pin a replaced box's border-box hit at the device DPRs, wherever its image is fitted; the check-in
+ * rows run at 2 and 3 only, as at 2.625 their centred grid item's text top is within a device px of Chrome's (the DPR lane's gate).
  */
 export const HIT_DPR_CAPTURES: readonly { readonly dpr: number; readonly ids: readonly string[] }[] = [
-  { dpr: 2, ids: ['hit-atomic-inline-context', 'hit-atomic-inline-context-rtl', 'hit-atomic-inline-context-nest', 'hit-atomic-inline-context-nest-rtl', 'hit-atomic-inline-notes', 'hit-atomic-inline-notes-rtl', 'controls-textarea', 'grid-controls-fields'] },
-  { dpr: 2.625, ids: ['interaction-combo', 'interaction-combo-rtl', 'radius-basic', 'radius-clip', 'transform-hit-scale', 'transform-hit-subpixel', 'transform-hit-snap', 'opacity-group-transform', 'hit-atomic-inline-context', 'hit-atomic-inline-context-rtl', 'hit-atomic-inline-context-nest', 'hit-atomic-inline-context-nest-rtl', 'hit-atomic-inline-notes', 'hit-atomic-inline-notes-rtl', 'controls-textarea', 'grid-controls-fields'] },
-  { dpr: 3, ids: ['hit-atomic-inline-context', 'hit-atomic-inline-context-rtl', 'hit-atomic-inline-context-nest', 'hit-atomic-inline-context-nest-rtl', 'hit-atomic-inline-notes', 'hit-atomic-inline-notes-rtl', 'controls-textarea', 'grid-controls-fields'] },
+  { dpr: 2, ids: ['hit-atomic-inline-context', 'hit-atomic-inline-context-rtl', 'hit-atomic-inline-context-nest', 'hit-atomic-inline-context-nest-rtl', 'hit-atomic-inline-notes', 'hit-atomic-inline-notes-rtl', 'controls-textarea', 'grid-controls-fields', 'hit-object-fit-rows', 'hit-object-fit-rows-rtl', 'replaced-fit', 'replaced-fit-rtl'] },
+  { dpr: 2.625, ids: ['interaction-combo', 'interaction-combo-rtl', 'radius-basic', 'radius-clip', 'transform-hit-scale', 'transform-hit-subpixel', 'transform-hit-snap', 'opacity-group-transform', 'hit-atomic-inline-context', 'hit-atomic-inline-context-rtl', 'hit-atomic-inline-context-nest', 'hit-atomic-inline-context-nest-rtl', 'hit-atomic-inline-notes', 'hit-atomic-inline-notes-rtl', 'controls-textarea', 'grid-controls-fields', 'replaced-fit', 'replaced-fit-rtl'] },
+  { dpr: 3, ids: ['hit-atomic-inline-context', 'hit-atomic-inline-context-rtl', 'hit-atomic-inline-context-nest', 'hit-atomic-inline-context-nest-rtl', 'hit-atomic-inline-notes', 'hit-atomic-inline-notes-rtl', 'controls-textarea', 'grid-controls-fields', 'hit-object-fit-rows', 'hit-object-fit-rows-rtl', 'replaced-fit', 'replaced-fit-rtl'] },
 ];
 export const expectedHitDprDir = (dpr: number): string => `${expectedHitDir()}/dpr-${dpr}`;
 export const expectedHitDprPath = (caseId: string, dpr: number): string => `${expectedHitDprDir(dpr)}/${caseId.replace(/#/g, '~')}.hit.json`;
