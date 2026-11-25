@@ -1,7 +1,7 @@
 {
  "schema": "dragon.native-style-export/1",
  "units": "device px; frames relative to the parent box",
- "compiler": "b2b868888ebbb5e6d95241711c8b7040ea1d4208de57c92097d9620b6eb2d688",
+ "compiler": "322e69dd350d0d7619d008016475c1dbb6d64ff7e96feaab1b59a5df466dfc18",
  "component": "Flex",
  "source": "packages/parity/fixtures/ms-flex",
  "warnings": [],
