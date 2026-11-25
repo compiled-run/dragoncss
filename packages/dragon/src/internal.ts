@@ -79,7 +79,7 @@ export type { FormattingContext, TextContext } from './analysis/context.ts';
 export { TEXT_LONGHANDS } from './css/properties.ts';
 export type { TextLonghand } from './css/properties.ts';
 export type { BorderStyleName, NativeBackend, NativeProgram, ProgramNode, ProgramWrite, Technique, WriteKind } from './lower/native-program.ts';
-export { BACKEND_TARGET, NATIVE_BACKENDS, NATIVE_CLASSES, PROGRAM_VERSIONS, VOCABULARY, WRITE_CSS } from './lower/native-program.ts';
+export { BACKEND_TARGET, NATIVE_BACKENDS, NATIVE_CLASSES, PROGRAM_VERSIONS, renameWriteNodes, VOCABULARY, WRITE_CSS } from './lower/native-program.ts';
 export type { ExpectedDump, ExpectedEngine, ExpectedNode, NodeGeometry } from './emit/expected-dump.ts';
 export { appliedKeyMap, appliedValue, borderDevicePx, cssCoverage, EXPECTED_SCHEMA, expectedDigest, expectedDump, programInput, replacedGeometries, textInstanceSize } from './emit/expected-dump.ts';
 export { clipPathInsets, clipPathRect, clipShapeGeometry, clipShapeKind, clipShapeValues } from './emit/paint/clip.ts';

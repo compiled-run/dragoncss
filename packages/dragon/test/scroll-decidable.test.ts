@@ -1,7 +1,7 @@
 // OVFL-B: the compiler refuses on native every auto or scroll container whose scroll range the engine may refuse
 // (lower/scroll-decidable.ts), so a native scroll view never meets an engine refusal on the device. Checked against the engine.
 import { describe, expect, it } from 'vitest';
-import type { FontSpec, InlineBox, InlineChild, LayoutBox, LayoutInput, LayoutStyle, LineBreak, Overflow, ReplacedLeaf, TextLeaf } from '@dragon/layout';
+import type { ControlBox, ControlKind, FontSpec, InlineBox, InlineChild, LayoutBox, LayoutInput, LayoutStyle, LineBreak, Overflow, ReplacedLeaf, TextLeaf } from '@dragon/layout';
 import { ahemMeasurer, scrollRanges } from '@dragon/layout';
 import { undecidedScrollContainers } from '../src/lower/scroll-decidable.ts';
 import { createProjectWith, NO_FAULTS } from '../src/internal.ts';
@@ -20,7 +20,7 @@ const DIV: LayoutStyle = {
   alignSelf: 'auto', alignContent: 'normal', rowGap: { kind: 'normal' }, columnGap: { kind: 'normal' }, textAlign: 'start', aspectRatio: { kind: 'auto' },
   verticalAlign: { kind: 'keyword', value: 'baseline' }, textOverflow: 'clip', textIndent: { kind: 'px', value: 0 }, lineClamp: 0, containLayout: false, containPaint: false, containSize: 'none', containIntrinsicWidth: { kind: 'none' }, containIntrinsicHeight: { kind: 'none' }, textWrapStyle: { kind: 'auto' }, multicol: null, textBoxTrim: null, grid: null, gridItem: null, anchor: null, zoom: [],
 };
-type Child = LayoutBox | ReplacedLeaf | InlineChild;
+type Child = LayoutBox | ControlBox | ReplacedLeaf | InlineChild;
 const AHEM: FontSpec = { family: 'Ahem', size: 10, specifiedSize: { kind: 'px', value: 10 }, absoluteSize: true };
 const px = (value: number) => ({ kind: 'px', value }) as const;
 const pct = (value: number) => ({ kind: 'percent', value }) as const;
@@ -28,6 +28,12 @@ const box = (id: string, style: Partial<LayoutStyle>, children: Child[] = []): L
   kind: 'box', id, boxType: 'element', style: { ...DIV, ...style }, marker: null, children,
   strut: children.some((c) => c.kind === 'text' || c.kind === 'inline' || c.kind === 'br') ? { font: AHEM, lineHeight: { kind: 'normal' } } : null,
 });
+const control = (id: string, kind: ControlKind, style: Partial<LayoutStyle>, children: (LayoutBox | ControlBox | TextLeaf)[] = []): ControlBox => ({
+  kind: 'control', id, boxType: 'element', style: { ...DIV, ...style }, control: kind, children,
+  strut: children.some((c) => c.kind === 'text') ? { font: AHEM, lineHeight: { kind: 'normal' } } : null,
+});
+const CLIP: Partial<LayoutStyle> = { overflowX: 'clip', overflowY: 'clip' };
+const AREA: ControlKind = { kind: 'text-area', cols: 20, rows: 2, font: AHEM, lineHeight: { kind: 'normal' }, avgChar: 'ahem', scrollbarInline: 0, scrollbarBlock: 0 };
 const span = (id: string, children: InlineChild[]): InlineBox => ({ kind: 'inline', id, style: { ...DIV, display: 'inline' }, font: AHEM, lineHeight: { kind: 'normal' }, children });
 const br = (id: string): LineBreak => ({ kind: 'br', id, font: AHEM, lineHeight: { kind: 'normal' } });
 const leaf = (id: string, value: string): TextLeaf => ({ kind: 'text', id, text: value, font: AHEM, lineHeight: { kind: 'normal' }, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap', letterSpacing: { kind: 'px', value: 0 }, wordSpacing: { kind: 'px', value: 0 }, overflowWrap: 'normal', wordBreak: 'normal', smallCaps: false });
@@ -76,6 +82,11 @@ const KIDS: Record<string, Kid> = {
   float: (id) => box(id, { float: 'left', width: px(20), height: px(90) }),
   deepFloat: (id) => box(id, {}, [box(`${id}f`, { float: 'right', width: px(20), height: px(90) })]),
   abs: (id) => box(id, { position: 'absolute', width: px(20), height: px(20) }, [leaf(`${id}t`, 'XX'), span(`${id}s`, [leaf(`${id}st`, 'YY')])]),
+  // FORM-a: a textarea that clips (as the native lowering makes it) and a menulist select add their border box, their parts
+  // unread; a textarea that does not clip is refused.
+  textArea: (id) => control(id, AREA, { ...CLIP, height: px(90) }, [control(`${id}e`, { kind: 'text-editor' }, {}, [leaf(`${id}t`, 'XX XX')]), control(`${id}p`, { kind: 'text-placeholder' }, { overflowX: 'hidden', overflowY: 'hidden' })]),
+  textAreaVisible: (id) => control(id, AREA, { height: px(90) }, [control(`${id}e`, { kind: 'text-editor' }, {}, [leaf(`${id}t`, 'XX')])]),
+  select: (id) => control(id, { kind: 'select-menulist', font: AHEM, lineHeight: { kind: 'normal' }, arrowWidth: 0, options: [leaf(`${id}o`, 'XXXXXXXXXXXX')] }, { display: 'flex', width: px(12), height: px(90) }, [control(`${id}i`, { kind: 'select-inner' }, { overflowX: 'hidden', overflowY: 'hidden' }, [leaf(`${id}t`, 'XXXXXXXXXXXX')])]),
 };
 
 /** As the lowering does (CSS2 §9.2.1.1): inline-level children beside a block-level one are wrapped in an anonymous block. */
