@@ -1728,8 +1728,8 @@ function checkButton(el: ResolvedElement, parentDisplay: string | null, targets:
   const d = valueToString(display.value);
   if (d === 'inline-grid' || d === 'inline') {
     refuse(display, 'inline', `display: ${d} on <${tag}> ${address} makes it an inline-level control that RF-INL does not lay out yet (only inline-block and inline-flex buttons are)`, `Set display: inline-block (or block or flex) on <${tag}> ${address}.`);
-  } else if (d === 'inline-flex' && !boxKids(el).some((c) => (c.kind === 'element' ? displayKeyword(c) !== 'none' : !/^[ \t\n\r\f]*$/.test(c.text) || keywordOf(c.props.get('white-space-collapse') as ResolvedValue) !== 'collapse'))) {
-    // Chrome synthesizes an itemless flex button's baseline at its content box (html_button_element.cc:76-80); the engine's plain inline-flex box takes its margin box.
+  } else if (d === 'inline-flex' && !boxKids(el).some((c) => (c.kind === 'element' ? displayKeyword(c) !== 'none' && !['absolute', 'fixed'].includes(keywordOf(c.props.get('position') as ResolvedValue)) : !/^[ \t\n\r\f]*$/.test(c.text)))) {
+    // An itemless flex button (css-flexbox-1 §4: no in-flow child, white space only) has Chrome's content-box baseline (html_button_element.cc:76-80), not the engine's margin box.
     refuse(display, 'inline', `display: inline-flex on the empty <${tag}> ${address} synthesizes its baseline at its content box, which Dragon does not lay out for a flex button`, `Use display: inline-block on <${tag}> ${address}, or give it content.`);
   } else if (d !== 'block' && d !== 'flex' && d !== 'inline-block' && d !== 'inline-flex') {
     refuse(display, 'display', `display: ${d} on <${tag}> ${address} is not supported on a button; only block, flex, inline-block and inline-flex buttons are laid out`, `Set display: block (or flex) on <${tag}> ${address}.`);

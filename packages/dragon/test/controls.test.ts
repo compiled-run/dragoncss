@@ -67,7 +67,7 @@ describe('FORM-a controls', () => {
 
   it('refuses an inline-flex button with no flex item, looking through display: contents and past display: none (RF-INL)', () => {
     const flexButton = (kids: (r: SourceRef) => Kids) => (r: SourceRef) => [div(r, 'p', ['p'], [text(r, 'pt', 'XX '), { ...div(r, 'b', ['b', 'f'], kids(r)), tag: 'button' }])];
-    const css = `${BODY}${BUTTON}.f { display: inline-flex; width: 20px; height: 20px; } .c { display: contents; } .n { display: none; } `;
+    const css = `${BODY}${BUTTON}.f { display: inline-flex; width: 20px; height: 20px; } .c { display: contents; } .n { display: none; } .a { position: absolute; width: 5px; height: 5px; } .w { white-space: pre; } `;
     const refused = (kids: (r: SourceRef) => Kids): boolean =>
       errors(compile(css, flexButton(kids), NATIVE).diagnostics).some((e) => e.includes('display: inline-flex on the empty <button>'));
     expect(refused(() => [])).toBe(true);
@@ -75,6 +75,9 @@ describe('FORM-a controls', () => {
     expect(refused((r) => [{ ...div(r, 's', ['c'], [{ ...div(r, 'n', ['n'], [text(r, 'nt', 'YY')]), tag: 'span' }]), tag: 'span' }])).toBe(true);
     expect(refused((r) => [{ ...div(r, 's', ['c'], [text(r, 'st', 'YY')]), tag: 'span' }])).toBe(false);
     expect(refused((r) => [text(r, 'bt', 'YY')])).toBe(false);
+    // An absolutely positioned child is no flex item, and white space alone makes none, whatever its white-space (css-flexbox-1 §4).
+    expect(refused((r) => [{ ...div(r, 'a', ['a']), tag: 'span' }])).toBe(true);
+    expect(refused((r) => [{ ...div(r, 's', ['c', 'w'], [text(r, 'wt', '  ')]), tag: 'span' }])).toBe(true);
   });
 
   it('refuses on native a control that scrolls, or a scrolling box inside one, and keeps them on web', () => {

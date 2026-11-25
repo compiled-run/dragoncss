@@ -501,6 +501,10 @@ describe('FORM-a control boxes: what the engine and the validator refuse', () =>
       return (absoluteRects(o.boxes).get('b') as LayoutRect).y / 64;
     };
     expect([clipped('hidden'), clipped('visible')]).toEqual([2, 0]);
+    // A last baseline a block-level flex child would decide is refused, as for a plain inline-block (CSS2 §10.8.1).
+    const flexLast = control('b', { kind: 'button-block' }, { display: 'inline-block' }, [box('f', { display: 'flex' }, [box('fi', {}, [text('fi:t', 'YY')])])]);
+    const fr = layout(line(flexLast), ahemMeasurer);
+    expect(fr.kind === 'unsupported' ? fr.unsupported.code : fr.kind).toBe('flex-baseline');
     // Only a button control is inline-level: a range among inline content stays refused.
     const inlineRange = control('r', { kind: 'range', defaultInlineSize: 129 }, { display: 'inline-block' });
     expect(codes(line(inlineRange))).not.toEqual([]);

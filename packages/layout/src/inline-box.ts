@@ -116,8 +116,9 @@ function atomicBaseline(ctx: Ctx, box: LayoutBox, frag: Frag, last: LU | null, l
  * (html_button_element.cc:76-80 sets kContentBox; logical_box_fragment.cc:70-81), and overflow never forces the synthesis; a
  * scroll container button clamps its last baseline to [0, its border-box height] (logical_box_fragment.h:61-70).
  */
-function controlBaseline(ctx: Ctx, box: ControlBox, frag: Frag, last: LU | null, cbInline: LU): LU | null {
+function controlBaseline(ctx: Ctx, box: ControlBox, frag: Frag, last: LU | null, lastFlex: string, cbInline: LU): LU | null {
   if (box.control.kind !== 'button-block') return last;
+  if (lastFlex !== '') unsupported('flex-baseline', lastFlex, 'CSS2 §10.8.1, css-flexbox-1 §8.5', `the last baseline of flex container ${lastFlex} would give the baseline of inline-block button ${box.id}`);
   if (last === null) {
     const pad = resolvePaddingWith(box.style, cbInline, ctx.faults);
     const bor = resolveBorder(box.style, ctx.devicePixelRatio);
@@ -170,7 +171,7 @@ export function layoutAtomic(ctx: Ctx, atom: AtomicNode, cbInline: LU): AtomicLa
     bfcLineOffset: ZERO,
     blockStretch: NO_STRETCH,
   });
-  const baseline = box.kind === 'control' ? controlBaseline(ctx, box, r.frag, r.lastBaseline, cbInline) : atomicBaseline(ctx, box, r.frag, r.lastBaseline, r.lastBaselineFlex);
+  const baseline = box.kind === 'control' ? controlBaseline(ctx, box, r.frag, r.lastBaseline, r.lastBaselineFlex, cbInline) : atomicBaseline(ctx, box, r.frag, r.lastBaseline, r.lastBaselineFlex);
   const marginBox = add(add(marginTop, r.frag.height), marginBottom);
   const above = baseline === null ? marginBox : add(marginTop, baseline);
   return { frag: r.frag, marginLeft, marginRight, marginTop, advance: add(add(marginLeft, width), marginRight), above, below: sub(marginBox, above) };
