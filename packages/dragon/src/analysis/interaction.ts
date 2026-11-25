@@ -25,7 +25,7 @@ import type { LinkedElement } from './link.ts';
 import type { InteractionProbe, InteractionState } from './match.ts';
 import type { ResolvedElement } from './resolve.ts';
 import { NO_INTERACTION } from './match.ts';
-import { selectPartOf, textFieldPartOf } from './resolve.ts';
+import { isShared, selectPartOf, textFieldPartOf } from './resolve.ts';
 import { holdsAtomicLine, lineAtomics, propagatedFrom } from './computed-checks.ts';
 import { hitFactContext, hitFactOtherContext } from '../lower/paint/stacking.ts';
 import { matrixParts, TRANSFORM_LIST_TYPE, transformFunctionsOf } from '../css/properties/transform.ts';
@@ -175,11 +175,24 @@ export function resolvedPrint(root: ResolvedElement): string {
   const out: string[] = [];
   const walk = (el: ResolvedElement): void => {
     out.push(el.element.address);
-    for (const [p, v] of el.props) out.push(`${p}=${JSON.stringify(v.value)}@${v.origin}`);
+    if (el.props.size > 0) out.push(propsPrint(el.props));
     for (const c of el.children) if (c.kind === 'element') walk(c);
   };
   walk(root);
   return out.join('\u0000');
+}
+
+const PRINTS = new WeakMap<ReadonlyMap<Longhand, ResolvedValue>, string>();
+
+/** One element's longhands in resolvedPrint, made once for shared longhands. */
+function propsPrint(props: ReadonlyMap<Longhand, ResolvedValue>): string {
+  const known = PRINTS.get(props);
+  if (known !== undefined) return known;
+  const out: string[] = [];
+  for (const [p, v] of props) out.push(`${p}=${JSON.stringify(v.value)}@${v.origin}`);
+  const print = out.join('\u0000');
+  if (isShared(props)) PRINTS.set(props, print);
+  return print;
 }
 
 /**

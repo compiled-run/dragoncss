@@ -58,7 +58,7 @@ import type { PropertySource, Registrations } from './css/at-rules/property.ts';
 import { NO_REGISTRATIONS } from './css/at-rules/property.ts';
 import { registrationsOf } from './analysis/registered.ts';
 import { rankLayers, revertLayerInAtRules } from './analysis/layers.ts';
-import { environmentOf, resolveTree, SUPPORTED_TAGS, valueToString } from './analysis/resolve.ts';
+import { environmentOf, newResolveMemo, resolveTree, SUPPORTED_TAGS, valueToString } from './analysis/resolve.ts';
 import { usedColorScheme } from './css/properties/color-scheme.ts';
 import type { ContainerBand, ContainerRefusals, ContainerUnitRefusals } from './analysis/container-rules.ts';
 import { containerAtoms, containerBand, containerConditionsOf, resolveWithContainers } from './analysis/container-rules.ts';
@@ -677,7 +677,18 @@ function engineFaceFor(fonts: ProjectFonts, family: ResolvedValue, text: string,
   if (face.source.font.variable) return { kind: 'refused', reason: 'it resolves to a variable face, which TXT1b proves' };
   const synthetic = syntheticStyle(face, request, font.synthesis);
   if (synthetic !== null) return { kind: 'refused', reason: `Chrome would draw it in ${synthetic} (DRAGON_SYNTHETIC_FONT_STYLE)` };
-  return { kind: 'face', id: `sha256:${sha256HexBytes(face.source.bytes)}` };
+  return { kind: 'face', id: faceIdOf(face.source.bytes) };
+}
+
+const FACE_IDS = new WeakMap<Uint8Array, string>();
+
+/** A bundled face's id, the sha256 of its bytes, hashed once per face. */
+function faceIdOf(bytes: Uint8Array): string {
+  const known = FACE_IDS.get(bytes);
+  if (known !== undefined) return known;
+  const id = `sha256:${sha256HexBytes(bytes)}`;
+  FACE_IDS.set(bytes, id);
+  return id;
 }
 
 /** The system face of a role at a text font (fonts/system-faces.ts); a weight or style no system face is requested at is refused. */
@@ -967,8 +978,10 @@ function checkCaseFonts(root: ResolvedElement, fonts: ProjectFonts, faults: Comp
   walk(root, false);
 }
 
-/** One interaction state of a case, resolved and checked like the case (SELD-R2). */
-/** native and nativeUsed: what the phones lower and check, the case itself for a state only forcing reaches (forcedOnlyFocus). */
+/**
+ * One interaction state of a case, resolved and checked like the case (SELD-R2). native and nativeUsed: what the phones lower and
+ * check, the case itself for a state only forcing reaches (forcedOnlyFocus); used and nativeUsed hold only keys earlier ones lack.
+ */
 type InteractionResult = { value: InteractionValue; resolved: ResolvedElement; used: UsedKey[]; native: ResolvedElement; nativeUsed: UsedKey[] };
 type CaseResult = { key: string; assignment: Assignment; isInitial: boolean; resolved: ResolvedElement | null; used: UsedKey[]; partition: InteractionPartition | null; interaction: InteractionResult[] };
 
@@ -1165,9 +1178,11 @@ function checkCases(linked: Linked, rules: readonly Rule[], targets: readonly Kn
     }
   };
   const interactive = rules.some(ruleIsInteractive);
+  const declarationIds = new Map<Declaration, number>();
   // CQ: a band with @container rules resolves each case twice (analysis/container-rules.ts).
+  const memo = newResolveMemo(env);
   const resolve = (root: LinkedElement, ix?: InteractionState): ResolvedElement =>
-    containers === null ? resolveTree(root, rules, options.faults, env, ix) : resolveWithContainers(root, rules, options.faults, env, containers, ix);
+    containers === null ? resolveTree(root, rules, options.faults, env, ix, memo) : resolveWithContainers(root, rules, options.faults, env, containers, ix, memo);
   for (const c of linked.cases) {
     const resolved = resolve(c.root);
     const used = check(resolved);
@@ -1184,19 +1199,36 @@ function checkCases(linked: Linked, rules: readonly Rule[], targets: readonly Kn
       continue;
     }
     const partition = built.partition;
+    // checkValues reads only a used key's declaration, property, context and whether it resolved a keyword.
+    const usedKey = (u: UsedKey): string => {
+      let id = declarationIds.get(u.declaration);
+      if (id === undefined) {
+        id = declarationIds.size;
+        declarationIds.set(u.declaration, id);
+      }
+      return `${id}|${u.property}|${u.context}|${u.resolved !== undefined}`;
+    };
+    const given = new Set(used.map(usedKey));
+    const givenNative = new Set(given);
+    const fresh = (seen: Set<string>, keys: readonly UsedKey[]): UsedKey[] => keys.filter((u) => {
+      const key = usedKey(u);
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
     const interaction = partition.states.map((value, k): InteractionResult => {
       const r = built.resolved[k] as ResolvedElement;
       // The parity lanes force every candidate to prove the forced-only rows, so only a host that never forces skips them.
       if (!options.hostUnforced || !forcedOnlyFocus(value, partition, [resolved, r])) {
         const used = check(r);
-        return { value, resolved: r, used, native: r, nativeUsed: used };
+        return { value, resolved: r, used: fresh(given, used), native: r, nativeUsed: fresh(givenNative, used) };
       }
       scope = targets.filter((t) => t === 'web');
       dedupe = new Set(refused);
       const used = check(r);
       scope = targets;
       dedupe = refused;
-      return { value, resolved: r, used, native: resolved, nativeUsed: [] };
+      return { value, resolved: r, used: fresh(given, used), native: resolved, nativeUsed: [] };
     });
     out.push({ key: c.key, assignment: c.assignment, isInitial: c.isInitial, resolved, used, partition, interaction });
   }
