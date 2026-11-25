@@ -111,7 +111,7 @@ export function renameWriteNodes<W extends WriteKind>(w: W, rename: (id: string)
     case 'background-image': case 'background-layers': case 'border-colors': case 'border-radius': case 'border-styles': case 'border-widths':
     case 'box-shadow': case 'checkbox': case 'clip-path-inset': case 'clip-path-shape': case 'clip-rect-empty': case 'clip-rect-label': case 'clip-text':
     case 'font': case 'foreign-view': case 'list-marker': case 'mask-layer': case 'opacity': case 'opacity-nested': case 'padding-box-clip':
-    case 'replaced-image': case 'scroll-bounce': case 'scroll-container': case 'scroll-indicators-hidden': case 'select-arrow': case 'svg-shapes':
+    case 'replaced-image': case 'runtime-image': case 'scroll-bounce': case 'scroll-container': case 'scroll-indicators-hidden': case 'select-arrow': case 'svg-shapes':
     case 'synthetic-bold': case 'synthetic-oblique': case 'text-color': case 'text-stroke': case 'transform': case 'video-view':
     case 'visibility':
       return w;
