@@ -1061,36 +1061,38 @@ function checkCases(linked: Linked, rules: readonly Rule[], targets: readonly Kn
   const out: CaseResult[] = [];
   const env = { direction: options.direction, rootFont: options.rootFont, ua: options.ua, registered, colorScheme, hostCanvas: options.hostCanvas, hostTextEditing: options.hostTextEditing };
   // Every check of a case runs on each of its interaction states too, so a refusal inside a hover rule is reported (SELD-R2a).
-  // The targets a check reports for: every target, or only web for a state the phones never reach (forcedOnlyFocus).
+  // The targets a check reports for, and the set its refusals dedupe by: for a state the phones never reach (forcedOnlyFocus), web
+  // only, against a copy, so an id it records cannot hide a later tree's native refusal.
   let scope: readonly KnownTarget[] = targets;
+  let dedupe: Set<string> = refused;
   const check = (resolved: ResolvedElement): UsedKey[] => {
     const computedAt = diagnostics.length;
     const realFaces = realFacesOf(resolved, projectFonts, options.ua, options.systemFonts);
     // On by default (InternalOptions.nativeRealFaces); turned off, native targets refuse real faces, and the engine lane lowers them
     // in engine mode (TXT1a-1's deferred font refusal).
     const realFaceAt = (address: string): boolean => options.nativeRealFaces && realFaces.has(address);
-    checkComputed(resolved, scope, diagnostics, refused, options.profiles === 'derive' ? null : (t) => profileFor(options.supportProfiles, t as KnownTarget), keys, realFaceAt, (address) => realFaces.has(address), options.faults);
+    checkComputed(resolved, scope, diagnostics, dedupe, options.profiles === 'derive' ? null : (t) => profileFor(options.supportProfiles, t as KnownTarget), keys, realFaceAt, (address) => realFaces.has(address), options.faults);
     // BG2-t: a no-repeat gradient layer away from the start edge, refused natively unless its tile provably starts inside the box.
-    checkGradientPhase(resolved, scope, diagnostics, refused, options.faults);
+    checkGradientPhase(resolved, scope, diagnostics, dedupe, options.faults);
     // (The second predicate is INL2a's: an atomic inline is proven only beside Ahem text, on every target.)
     // The UA font-weight and font-style refusal is native-only: the engine resolves those faces (engine mode refuses synthesis).
     for (const d of diagnostics.slice(computedAt)) if (d.code === 'DRAGON_UNSUPPORTED_FONT') fontDeferrals.add(deferralKey(d));
     // PNT1: outside the parity lanes, native refuses a fractional opacity (PNT1-opacity-b); the lanes run it to prove its web rows.
-    if (!options.interactionLanes) checkTranslucent(resolved, NATIVE_TARGETS.filter((t) => scope.includes(t)), diagnostics, refused);
+    if (!options.interactionLanes) checkTranslucent(resolved, NATIVE_TARGETS.filter((t) => scope.includes(t)), diagnostics, dedupe);
     // T154: outside the parity lanes, native refuses an author user-select that changes what Chrome selects beyond none (P6c); the
     // lanes run it to prove its web rows.
-    if (!options.interactionLanes) checkSelectable(resolved, NATIVE_TARGETS.filter((t) => scope.includes(t)), diagnostics, refused);
+    if (!options.interactionLanes) checkSelectable(resolved, NATIVE_TARGETS.filter((t) => scope.includes(t)), diagnostics, dedupe);
     // css-writing-modes-4 §2.2: outside the parity lanes, native refuses an author unicode-bidi that can reorder text (analysis/bidi.ts).
-    if (!options.interactionLanes) checkBidi(resolved, NATIVE_TARGETS.filter((t) => scope.includes(t)), diagnostics, refused);
+    if (!options.interactionLanes) checkBidi(resolved, NATIVE_TARGETS.filter((t) => scope.includes(t)), diagnostics, dedupe);
     // PNT1: outside the parity lanes, native refuses a layer item whose re-hosting would leave or enter an overflow clip wrongly
     // (analysis/paint-values/stacking.ts); the lanes keep it under the clip, and the device pixels judge it.
-    if (!options.interactionLanes) checkStackingClips(resolved, propagatedFrom(resolved), NATIVE_TARGETS.filter((t) => scope.includes(t)), diagnostics, refused);
+    if (!options.interactionLanes) checkStackingClips(resolved, propagatedFrom(resolved), NATIVE_TARGETS.filter((t) => scope.includes(t)), diagnostics, dedupe);
     // PNT1: outside the parity lanes, native refuses a translucent side-painter outline and a translucent rounded double border; the
     // lanes run them to prove their web rows.
-    if (!options.interactionLanes) checkTranslucentPaint(resolved, NATIVE_TARGETS.filter((t) => scope.includes(t)), diagnostics, refused);
+    if (!options.interactionLanes) checkTranslucentPaint(resolved, NATIVE_TARGETS.filter((t) => scope.includes(t)), diagnostics, dedupe);
     const ahemDeclared = projectFonts !== null && [...projectFonts.keys.declared].some((d) => foldFamily(d) === foldFamily('Ahem'));
     for (const t of NATIVE_TARGETS) if (scope.includes(t)) checkFonts(resolved, diagnostics, fonts, t, ahemDeclared, fontDeferrals, realFaceAt);
-    if (options.nativeRealFaces) checkTextFieldLineGap(resolved, projectFonts, realFaces, scope, diagnostics, refused);
+    if (options.nativeRealFaces) checkTextFieldLineGap(resolved, projectFonts, realFaces, scope, diagnostics, dedupe);
     if (projectFonts !== null) for (const t of NATIVE_TARGETS) if (scope.includes(t)) checkSyntheticStyles(resolved, projectFonts, t, diagnostics, fonts);
     if (projectFonts !== null) checkCaseFonts(resolved, projectFonts, options.faults, diagnostics, fenced);
     const used = usedKeys(resolved, keys);
@@ -1190,8 +1192,10 @@ function checkCases(linked: Linked, rules: readonly Rule[], targets: readonly Kn
         return { value, resolved: r, used, native: r, nativeUsed: used };
       }
       scope = targets.filter((t) => t === 'web');
+      dedupe = new Set(refused);
       const used = check(r);
       scope = targets;
+      dedupe = refused;
       return { value, resolved: r, used, native: resolved, nativeUsed: [] };
     });
     out.push({ key: c.key, assignment: c.assignment, isInitial: c.isInitial, resolved, used, partition, interaction });

@@ -7,6 +7,7 @@ import * as dragon from 'dragon';
 import { forcedOnlyFocus, interactionPartition } from '../../dragon/src/analysis/interaction.ts';
 import { resolveTree } from '../../dragon/src/analysis/resolve.ts';
 import { parseStylesheet } from '../../dragon/src/css/stylesheet.ts';
+import { forcedOnlyStatesIn, interactionPartitionIn } from '../../dragon/src/internal.ts';
 import { internalRecord } from '../../dragon/src/project.ts';
 import { referenceDataset } from '../../dragon/src/ua/datasets.ts';
 import { launchChrome } from '../src/chrome.ts';
@@ -115,5 +116,13 @@ describe('forced-only :focus and :focus-visible states (hostUnforced)', () => {
         .sort();
     expect(outlineRefusals(false)).toEqual(['a', 'as', 'ast', 'nh', 'ps']);
     expect(outlineRefusals(true)).toEqual(['a']);
+    // The compile's own record marks the same states skipped: every forced focus state (the link's equal its reachable ones).
+    const compiled = dragon.createProjectWith({ projectId: 'dragon-parity', targets: { ios: { minimum: '15.0' } } }, { faults: dragon.NO_FAULTS, profiles: 'derive', direction: 'ltr', rootFont: 'ahem', interactionLanes: true, hostUnforced: true }).compile(fixtureToInput('focus-forced-only', inline));
+    const partition = interactionPartitionIn(compiled, [], 0);
+    if (partition === null) throw new Error('no partition');
+    const skipped = forcedOnlyStatesIn(compiled, [], 0);
+    const focusOwners = (keep: boolean): string[] => [...new Set(partition.states.flatMap((v, k) => ((v.kind === 'forced-focus' || v.kind === 'forced-focus-visible') && skipped[k] === keep ? [idOf(v.force[0]?.address as string)] : [])))].sort();
+    expect(focusOwners(true)).toEqual(['as', 'ast', 'body', 'html', 'nh', 'p', 'ps']);
+    expect(focusOwners(false)).toEqual([]);
   });
 });
