@@ -175,8 +175,8 @@ function interactionProgramOf(compiled: Compiled<NativeStyleTarget>, program: St
     if (typeof input === 'string') return input;
     inputs.push(input);
     const skipped = forcedOnlyStatesIn(compiled, assignment.filter((x) => !isBand(x)), band);
-    // A skipped state is the assignment's own styles, so it matches and forces nothing.
-    values.push(input.partition.states.map((v, k) => (skipped[k] === true ? { ...v, hover: [], active: [], focus: null, focusVisible: null, force: [] } : v)));
+    // A skipped state keeps its matches but is the assignment's own styles, so it forces nothing.
+    values.push(input.partition.states.map((v, k) => (skipped[k] === true ? { ...v, force: [] } : v)));
   }
   return { program: deriveInteractionProgram(program, inputs), values };
 }
