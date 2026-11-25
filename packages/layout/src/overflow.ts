@@ -417,8 +417,13 @@ function overflowOf(ix: Index, n: Node): OverflowRect {
     const dy = sub(kn.rect.y, n.rect.y);
     if (k.kind === 'control') controlChecked(kn, k.control);
     addOverflow(c, shifted(propagated(ix, kn), dx, dy));
-    // An atomic inline is a line item: its line's inflow holds its border box where the line placed it (ScrollableOverflowForLine).
-    if (sc && !grid) addInflow(c, inline ? { x: dx, y: dy, width: kn.rect.width, height: kn.rect.height } : inflowBounds(ix, n, kn, dx, dy));
+    if (inline) {
+      // An atomic inline is a line item: its line box spans its margin box where the line placed it (ComputeInlinePositions), and
+      // the line box, never the item, is the scroll container's inflow (ScrollableOverflowCalculator AddItemsInternal).
+      const line = lineItemBounds(ix, n, kn, dx, dy, sc);
+      c.overflow = uniteEvenIfEmpty(c.overflow, line);
+      if (sc && !grid) addInflow(c, line);
+    } else if (sc && !grid) addInflow(c, inflowBounds(ix, n, kn, dx, dy));
   }
   const oofs = ix.oofByCb.get(b.id);
   if (oofs !== undefined) {
@@ -561,6 +566,24 @@ function inflowBounds(ix: Index, p: Node, k: Node, dx: LU, dy: LU): OverflowRect
   const top = sides.top ? max(mt, sub(ZERO, h)) : clampNegativeToZero(mt);
   const bottomM = sides.top ? clampNegativeToZero(blockEnd) : max(blockEnd, sub(ZERO, h));
   return span(sub(x, left), sub(y, top), add(add(x, w), rightM), add(add(y, h), bottomM));
+}
+
+/** The part of its line box an atomic inline spans: its margin box at its position before any relative offset. */
+function lineItemBounds(ix: Index, p: Node, k: Node, dx: LU, dy: LU, sc: boolean): OverflowRect {
+  const s = k.box.style;
+  const cb = contentWidthOf(p);
+  if (sc && s.position === 'relative' && (hasPercentInset(s.top) || hasPercentInset(s.bottom))) {
+    throw new OverflowRefusal(k.box.id, 'a relative offset with a percentage top or bottom inside a scroll container: its basis is not decided here');
+  }
+  const rel = relativeOffsetWith(k.box, cb, INDEFINITE, directionOf(ix.ctx, p.box), ix.ctx.faults);
+  const x = sub(dx, rel.dx);
+  const y = sub(dy, rel.dy);
+  const f = ix.ctx.faults;
+  const ml = resolveMarginWith(s.marginLeft, cb, f).value;
+  const mr = resolveMarginWith(s.marginRight, cb, f).value;
+  const mt = resolveMarginWith(s.marginTop, cb, f).value;
+  const mb = resolveMarginWith(s.marginBottom, cb, f).value;
+  return span(sub(x, ml), sub(y, mt), add(add(x, k.rect.width), mr), add(add(y, k.rect.height), mb));
 }
 
 function hasPercentInset(v: LayoutBox['style']['top']): boolean {

@@ -10,7 +10,7 @@
   {
    "id": "viewport",
    "scrollWidth": 400,
-   "scrollHeight": 1036,
+   "scrollHeight": 1188,
    "clientWidth": 400,
    "clientHeight": 300
   },
@@ -48,6 +48,20 @@
    "scrollHeight": 90,
    "clientWidth": 20,
    "clientHeight": 10
+  },
+  {
+   "id": "s6",
+   "scrollWidth": 108,
+   "scrollHeight": 84,
+   "clientWidth": 108,
+   "clientHeight": 68
+  },
+  {
+   "id": "s7",
+   "scrollWidth": 184,
+   "scrollHeight": 68,
+   "clientWidth": 108,
+   "clientHeight": 68
   }
  ],
  "extents": [
@@ -85,6 +99,20 @@
    "maxLeft": 120,
    "minTop": 0,
    "maxTop": 80
+  },
+  {
+   "id": "s6",
+   "minLeft": 0,
+   "maxLeft": 0,
+   "minTop": 0,
+   "maxTop": 16
+  },
+  {
+   "id": "s7",
+   "minLeft": 0,
+   "maxLeft": 76,
+   "minTop": 0,
+   "maxTop": 0
   }
  ]
 }
