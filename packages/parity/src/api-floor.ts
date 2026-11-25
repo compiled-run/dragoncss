@@ -1,6 +1,8 @@
 // The Android API floor, proven at build time (notes/T013-p3-review-p4-plan.md section 2 item 7): every android.* class and member
 // that classes.dex references, directly or through an app class's inherited members, must exist at the minSdk according to the
 // SDK's platforms/android-<n>/data/api-versions.xml. The iOS floor is swiftc's own availability checking at the iOS 15 target.
+import { closeSync, openSync, readSync } from 'node:fs';
+import { StringDecoder } from 'node:string_decoder';
 
 /** One class of api-versions.xml: its since level, supertypes, and members with their since levels (null: the class's). */
 export type ApiClass = { readonly since: number; readonly supers: readonly string[]; readonly methods: ReadonlyMap<string, number | null>; readonly fields: ReadonlyMap<string, number | null> };
@@ -49,7 +51,7 @@ export type MethodFacts = { readsSdkInt: boolean; readonly ints: Set<number> };
 const internal = (desc: string): string => desc.replace(/^L/, '').replace(/;$/, '');
 
 /** Parses `dexdump -d` output: the app's classes and every class, method and field reference in its code and declarations. */
-export function parseDexdump(text: string): { classes: Map<string, DexClass>; refs: DexRef[]; methods: Map<string, MethodFacts> } {
+export function parseDexdump(text: string | Iterable<string>): { classes: Map<string, DexClass>; refs: DexRef[]; methods: Map<string, MethodFacts> } {
   const classes = new Map<string, DexClass>();
   const refs: DexRef[] = [];
   const methods = new Map<string, MethodFacts>();
@@ -60,7 +62,7 @@ export function parseDexdump(text: string): { classes: Map<string, DexClass>; re
   const flush = (): void => {
     if (current !== null) classes.set(current.name, { superclass: current.superclass, interfaces: current.interfaces, methods: current.methods, fields: current.fields });
   };
-  for (const line of text.split('\n')) {
+  for (const line of typeof text === 'string' ? text.split('\n') : text) {
     const cls = /^\s*Class descriptor\s*:\s*'([^']+)'/.exec(line);
     if (cls !== null) {
       flush();
@@ -115,6 +117,27 @@ export function parseDexdump(text: string): { classes: Map<string, DexClass>; re
   }
   flush();
   return { classes, refs, methods };
+}
+
+/** The lines of dexdump files in order, read in chunks: a whole app's dump is larger than the longest string Node can hold. */
+export function* fileLines(paths: readonly string[], chunkBytes = 1 << 24): Generator<string> {
+  const buf = Buffer.alloc(chunkBytes);
+  for (const path of paths) {
+    const fd = openSync(path, 'r');
+    try {
+      const decoder = new StringDecoder('utf8');
+      let rest = '';
+      for (let n = readSync(fd, buf); n > 0; n = readSync(fd, buf)) {
+        const lines = (rest + decoder.write(buf.subarray(0, n))).split('\n');
+        rest = lines.pop() ?? '';
+        yield* lines;
+      }
+      rest += decoder.end();
+      if (rest !== '') yield rest;
+    } finally {
+      closeSync(fd);
+    }
+  }
 }
 
 /** The API level an app class is guarded for: a class whose simple name ends in Api<N> holds only code reached behind SDK_INT >= N. */

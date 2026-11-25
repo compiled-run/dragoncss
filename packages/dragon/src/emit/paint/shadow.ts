@@ -197,6 +197,7 @@ const KOTLIN = String.raw`package dev.dragon.views
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.view.ViewGroup
 import dev.dragon.dump.DumpJson
 import dev.dragon.layout.BackdropFill
 import dev.dragon.layout.JsArray
