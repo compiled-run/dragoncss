@@ -144,7 +144,7 @@ const clips = (el: ResolvedElement): boolean => CLIPPING.includes(keywordOf(el, 
  * positioned or sticky box is covered by it, and one inside it paints in its layer. The native targets refuse at the outline:
  * an outline under an overflow clip or scroller (the clip check), an outline inside a layer that paints as a group (opacity,
  * transform, filter and the like: the outline would have to join the group's composite), and the own outline of a layer item
- * that clips its overflow (its view clips the views it hosts). propagated is the element whose overflow the viewport takes
+ * that clips its overflow with a negative outline-offset (its view holds the outline beside its clip view, above what that holds). propagated is the element whose overflow the viewport takes
  * (css-overflow-3 §3.3), which does not clip.
  */
 export function checkOutlinePlacement(root: ResolvedElement, propagated: ResolvedElement | null, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, opacityGroups: ReadonlySet<string> = new Set()): void {
@@ -203,10 +203,18 @@ export function checkOutlinePlacement(root: ResolvedElement, propagated: Resolve
       refuse(el, 'stacking', `has an outline, and ${kept} is a layer item Dragon keeps under the overflow clip of ${facts.get(kept)?.host ?? 'an ancestor'}, so it would paint beneath the outlines its layer paints before it`, `Let the clipping ancestor of ${kept} overflow visibly, or outline: none.`, targets, diagnostics, reported);
       continue;
     }
-    if (el !== root && factsOf(el).paintLayer === el.element.address && el !== propagated && clips(el)) {
-      refuse(el, 'stacking', `has an outline and ${layerReason(el)}, and clips its overflow; Dragon draws a layer's own outline in its view, inside that clip`, 'Outline a box that does not clip its overflow, or let it overflow visibly.', targets, diagnostics, reported);
+    // A clipping layer's own outline sits in its view beside the clip view, outside the clip; one reaching inside its border box would
+    // paint over the layer items its clip view holds, which Chrome paints after the layer's outlines.
+    if (el !== root && factsOf(el).paintLayer === el.element.address && el !== propagated && clips(el) && outlineOffsetOf(el) < 0) {
+      refuse(el, 'stacking', `has an outline with a negative outline-offset and ${layerReason(el)}, and clips its overflow; Dragon draws a layer's own outline above what its clip holds`, 'Use an outline-offset of 0 or more, or let the box overflow visibly.', targets, diagnostics, reported);
     }
   }
+}
+
+function outlineOffsetOf(el: ResolvedElement): number {
+  const v = (el.props.get('outline-offset') as ResolvedValue | undefined)?.value;
+  if (v === undefined || v.kind !== 'length') throw new Error(`${el.element.address}: outline-offset did not compute to a length`);
+  return v.value;
 }
 
 /** The styles Blink and Dragon paint with the side painter (paint-dash.ts outlinePaintOps), the others being solid and double rings. */
