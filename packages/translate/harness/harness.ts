@@ -1492,6 +1492,7 @@ function sameNumbers(a: readonly number[], b: readonly number[]): boolean {
 /** A GlyphShaper that answers a call the build recorded as recorded, and any other (a row's text) with the device's own shaper. */
 function recordedOrLive(calls: readonly ReplayCall[], live: GlyphShaper): GlyphShaper {
   return {
+    fallback: (): string => '',
     shape(face: string, size: number, text: string, start: number, end: number, script: string, rtl: boolean, language: string, features: readonly number[]): readonly number[] {
       for (const c of calls) {
         if (c.face === face && c.size === size && c.text === text && c.start === start && c.end === end && c.script === script && c.rtl === rtl && c.language === language && sameNumbers(c.features, features)) return c.glyphs;
@@ -1504,6 +1505,7 @@ function recordedOrLive(calls: readonly ReplayCall[], live: GlyphShaper): GlyphS
 /** R3: a GlyphShaper that replays a transcript; a call the transcript does not hold is a harness error. */
 function replayShaper(calls: readonly ReplayCall[]): GlyphShaper {
   return {
+    fallback: (): string => '',
     shape(face: string, size: number, text: string, start: number, end: number, script: string, rtl: boolean, language: string, features: readonly number[]): readonly number[] {
       for (const c of calls) {
         if (c.face === face && c.size === size && c.text === text && c.start === start && c.end === end && c.script === script && c.rtl === rtl && c.language === language && sameNumbers(c.features, features)) return c.glyphs;

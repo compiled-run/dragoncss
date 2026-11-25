@@ -39,6 +39,7 @@ export function systemMeasurer(system: SystemFonts, program: unknown, bundled: r
   const platform = new Set(used);
   for (const [id, bytes] of authorFiles) if (system.authorFace(id, bytes)) platform.add(id);
   const shaper: GlyphShaper = {
+    fallback: (): string => '',
     shape: (face, ...rest) => {
       const glyphs = platform.has(face) ? system.shaper.shape(face, ...rest) : hostShaper.shape(face, ...rest);
       recorder?.shape([face, ...rest], glyphs);

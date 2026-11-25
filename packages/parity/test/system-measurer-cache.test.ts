@@ -29,7 +29,7 @@ function countingFonts(): { readonly fonts: SystemFonts; readonly asked: string[
       return { ascent: sizePx * 64 * dpr, descent: sizePx * 16, lineGap: 0, normalGapAbove: 0 } as unknown as FontMetrics;
     },
     authorFace: () => false,
-    shaper: { shape: () => [] },
+    shaper: { shape: () => [], fallback: (): string => '' },
   };
   return { fonts, asked };
 }

@@ -33,6 +33,7 @@ const fonts = new Map<number, number>();
 
 /** The host side of R1 over the bundled Ahem, as each app's shim answers the bridge. */
 const ahemShaper: GlyphShaper = {
+  fallback: (): string => '',
   shape(face: string, size: number, text: string, start: number, end: number, script: string, rtl: boolean, language: string, features: readonly number[]): readonly number[] {
     if (face !== AHEM_FACE_ID) throw new Error(`no face ${face}`);
     let font = fonts.get(size);
@@ -151,6 +152,7 @@ describe('pieceGlyphs', () => {
   it('takes code point offsets, keeps a cluster of several units as one glyph, starts its pen at the piece and names the code point of each glyph', () => {
     // A scripted shaper: "fi" is one ligature glyph (cluster 0), a supplementary code point one glyph of two units.
     const scripted: GlyphShaper = {
+      fallback: (): string => '',
       shape(_face: string, _size: number, text: string, start: number, end: number): readonly number[] {
         expect([start, end]).toEqual([0, text.length]);
         return [

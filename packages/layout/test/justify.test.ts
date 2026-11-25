@@ -70,6 +70,7 @@ const hb = (wasm.DragonHB as { load(): HB }).load();
 const ahemFace = hb.createFace(readFileSync(join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', 'vendor/fonts/Ahem.ttf')));
 const SHAPED = 'AhemShaped';
 const shaper: GlyphShaper = {
+  fallback: (): string => '',
   shape(face: string, size: number, value: string, start: number, end: number, script: string, rtl: boolean, language: string): readonly number[] {
     if (face !== SHAPED) throw new Error(`no face ${face}`);
     return Array.from(hb.shape(hb.createFont(ahemFace, { size }), value, start, end - start, { script, direction: rtl ? 'rtl' : 'ltr', language }));

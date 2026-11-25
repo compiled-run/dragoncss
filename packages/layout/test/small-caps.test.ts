@@ -83,6 +83,7 @@ describe('small caps on the shaped path', () => {
   // A face whose every code unit is one glyph (its code unit) of the size's advance, in its own cluster.
   const calls: string[] = [];
   const shaper: GlyphShaper = {
+    fallback: (): string => '',
     shape(_face, size, t, start, end) {
       calls.push(`${size}:${t.slice(start, end)}`);
       const out: number[] = [];

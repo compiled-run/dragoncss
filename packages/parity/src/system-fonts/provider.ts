@@ -133,6 +133,7 @@ export function iosSystemFonts(dpr: number): SystemFonts {
       return { ascent: lu(Math.ceil(v.ascent) + extra), descent: lu(Math.ceil(v.descent)), lineGap: lu(Math.ceil(v.leading)), normalGapAbove: lu(Math.ceil(v.leading) / 2) };
     },
     shaper: {
+      fallback: (): string => '',
       shape(face, size, text, start, end, _script, rtl, language, fs) {
         if (rtl) refuse(`${face}: right-to-left text in a system face is not shaped yet`);
         // Safari shapes at the CSS size and scales the page by the device ratio; San Francisco's optical size and tracking follow the size.
@@ -215,6 +216,7 @@ export function androidSystemFonts(files: AndroidSystemFiles = new AndroidSystem
       return { xHeight: data.xHeight * k, capHeight: data.capHeight * k, zeroWidth: data.zeroAdvance * k };
     },
     shaper: {
+      fallback: (): string => '',
       shape(face, size, text, start, end, script, rtl, language, fs) {
         return Array.from(hb.shape(fontAt(face, size), text, start, end - start, { script, direction: rtl ? 'rtl' : 'ltr', language, features: features(fs) }));
       },

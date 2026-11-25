@@ -49,6 +49,9 @@ const bytes = new Map(FAMILIES.map((f) => [f, readFileSync(join(root, (oracle.fa
 
 /** The host side of R1: one DragonHB, faces and fonts created on first use. */
 class WasmShaper implements GlyphShaper {
+  fallback(): string {
+    return '';
+  }
   private readonly faces = new Map<string, number>();
   private readonly fonts = new Map<string, number>();
   face(id: string): number {
