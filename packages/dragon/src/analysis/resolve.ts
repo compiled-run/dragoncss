@@ -300,16 +300,34 @@ export function resolvedCustoms(el: ResolvedElement): CustomProperties {
 // css-cascade-5 §4-§7: the winning declaration, inheritance, then user-agent or initial values, for every longhand. interaction:
 // the hovered and focused elements the selectors match against (SELD-R2a); none by default.
 // Logical ancestry is the linked tree: projected children match under their insertion parent (docs/api.md §3.1).
-export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults: CompilerFaults, environment: ResolveEnvironment, interaction: InteractionState = NO_INTERACTION): ResolvedElement {
-  const tree = resolveTreeWith(root, rules, faults, environment, interaction);
+export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults: CompilerFaults, environment: ResolveEnvironment, interaction: InteractionState = NO_INTERACTION, memo: ResolveMemo | null = null): ResolvedElement {
+  const tree = resolveTreeWith(root, rules, faults, environment, interaction, memo);
   if (environment.hostCanvas !== true || environment.ua.colorScheme === 'dark') return tree;
   if (usedColorScheme((tree.props.get('color-scheme') as ResolvedValue).value, environment.colorScheme ?? null) !== 'dark') return tree;
   // css-color-adjust-1 §2.1: the root's used scheme is dark, so its UA colours are the dark capture's; without one the check refuses it.
   const dark = darkDatasetFor(environment.ua.platform);
-  return dark.kind === 'ok' ? resolveTreeWith(root, rules, faults, { ...environment, ua: dark.dataset }, interaction) : tree;
+  return dark.kind === 'ok' ? resolveTreeWith(root, rules, faults, { ...environment, ua: dark.dataset }, interaction, memo) : tree;
 }
 
-function resolveTreeWith(root: LinkedElement, rules: readonly Rule[], faults: CompilerFaults, environment: ResolveEnvironment, interaction: InteractionState): ResolvedElement {
+/**
+ * An element's longhands by everything they are computed from, shared by the cases and interaction states of one resolution: most
+ * elements keep their cascade inputs from one assignment to the next, so each would otherwise hold its own copy of every longhand.
+ */
+export type ResolveMemo = Map<string, Map<Longhand, ResolvedValue>>;
+
+export const newResolveMemo = (): ResolveMemo => new Map();
+
+const identities = new WeakMap<object, number>();
+let nextIdentity = 0;
+const identity = (o: object): number => {
+  const known = identities.get(o);
+  if (known !== undefined) return known;
+  nextIdentity += 1;
+  identities.set(o, nextIdentity);
+  return nextIdentity;
+};
+
+function resolveTreeWith(root: LinkedElement, rules: readonly Rule[], faults: CompilerFaults, environment: ResolveEnvironment, interaction: InteractionState, memo: ResolveMemo | null): ResolvedElement {
   // GEN-a: the generated pseudo-elements some rule selects; only these are cascaded on each element.
   const selected = new Set(rules.flatMap((r) => r.selectors.flatMap((sel) => (sel.pseudoElement !== null && sel.pseudoElement.kind === 'generated' ? [sel.pseudoElement.name] : []))));
   // A generated box cascades only the rules with a selector for its pseudo-element (cascade.ts matches no other selector on it).
@@ -342,6 +360,18 @@ function resolveTreeWith(root: LinkedElement, rules: readonly Rule[], faults: Co
     const cascadePseudo = pseudo === null ? null : { name: pseudo, direction: keywordDirection((parent as ResolvedElement).props.get('direction') as ResolvedValue) };
     const cascadePart = part === null ? null : { name: PART_PSEUDO[part], direction: keywordDirection((parent as ResolvedElement).props.get('direction') as ResolvedValue) };
     const { winners, matched, scope } = cascadeElement(applying(pseudo === null ? rules : (rulesOf.get(pseudo) as readonly Rule[]), chain, pseudo === null && part === null ? el : null, selects), here, faults, directionContext(parent, faults, environment), parent === null ? new Map() : (customsOf.get(parent) as CustomProperties), interaction, environment.registered, cascadePseudo, cascadePart, pseudo === null && part === null ? attachedDeclarations(el) : undefined);
+    // Everything an element's longhands are computed from besides the cascade's declarations: the element, its parent's longhands, the
+    // root font size, the environment. A generated box, a UA shadow part or a page with ::-webkit-scrollbar rules is not shared.
+    const key = memo === null || pseudo !== null || part !== null || scrollbarRules ? null : [
+      el.address, identity(el.node), el.tag, JSON.stringify([...el.attributes]), JSON.stringify(el.classes),
+      parent === null ? 0 : identity(parent.props), resolvedRoot === null ? '' : JSON.stringify((resolvedRoot.props.get('font-size') as ResolvedValue).value),
+      identity(environment), identity(rules), identity(faults),
+      el.tag === 'option' && parent !== null ? JSON.stringify([...parent.element.attributes]) : '',
+      JSON.stringify([...scope.customs]),
+      [...matched].map(([p, ds]) => `${p}:${identity(winners.get(p)?.declaration ?? {})}:${ds.map((d) => identity(d)).join(',')}`).join(';'),
+    ].join('|');
+    const known = key === null ? undefined : memo?.get(key);
+    const props = known ?? (() => {
     const props = new Map<Longhand, ResolvedValue>();
     const tag = uaTagOf(el.tag, el.attributes.get('type'), pseudo === null && part === null && isDisabled(here));
     const none = { declaration: null, declared: null, losing: [] } as const;
@@ -479,6 +509,9 @@ function resolveTreeWith(root: LinkedElement, rules: readonly Rule[], faults: Co
     computeJustifyItems(props, parent === null ? null : parent.props);
     if (pseudo === null) computeLists(props, faults);
     else if (pseudo !== 'marker' && pseudo !== 'backdrop') computePseudoContent(props, faults);
+    return props;
+    })();
+    if (key !== null && known === undefined) memo?.set(key, props);
     // R3: a generated box's one text child (none for an empty string); the element is built once its content is computed.
     const content = pseudo === null || pseudo === 'marker' || pseudo === 'backdrop' ? null : generatedText(props.get('content') as ResolvedValue, (props.get('display') as ResolvedValue).value, faults);
     const host = pseudo === null ? null : (chain[chain.length - 1] as LinkedElement);

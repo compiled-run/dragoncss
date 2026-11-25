@@ -26,7 +26,7 @@ import type { ScrollContainmentFaults } from '../faults/scroll-containment.ts';
 import { SCROLL_CONTAINMENT_FAULTS } from '../faults/scroll-containment.ts';
 import type { InteractionState } from './match.ts';
 import type { LinkedElement } from './link.ts';
-import type { ResolvedElement } from './resolve.ts';
+import type { ResolvedElement, ResolveMemo } from './resolve.ts';
 import { resolveTree, valueToString } from './resolve.ts';
 
 /** A query container's content-box width at viewport width vw: clamp(vw - shift, lo, hi); a constant when lo = hi. */
@@ -85,9 +85,18 @@ function widthText(w: ContainerWidth, faults: ScrollContainmentFaults): string {
  */
 function resolveContainerUnits(root: ResolvedElement, found: ReadonlyMap<LinkedElement, QueryContainer>, refusals: ContainerUnitRefusals, faults: ScrollContainmentFaults): ResolvedElement {
   const visit = (el: ResolvedElement, container: QueryContainer | null, parent: ResolvedElement | null): void => {
-    // resolveTree builds each element's props as a Map, and the tree is keyed by identity (resolve.ts environmentOf), so the
-    // values are replaced in place, as computed.ts replaces em leaves while it builds them.
-    const props = el.props as Map<Longhand, ResolvedValue>;
+    // The tree is keyed by identity (resolve.ts environmentOf), so the values are replaced on the element itself; its props may be
+    // shared with other cases (resolve.ts ResolveMemo), so the element takes its own copy before the first one.
+    let own: Map<Longhand, ResolvedValue> | null = null;
+    const props = {
+      set: (p: Longhand, v: ResolvedValue): void => {
+        if (own === null) {
+          own = new Map(el.props);
+          (el as { props: ReadonlyMap<Longhand, ResolvedValue> }).props = own;
+        }
+        own.set(p, v);
+      },
+    };
     for (const [p, v] of el.props) {
       if (!hasContainerUnits(v.value)) continue;
       if (v.origin === 'inherited') {
@@ -289,8 +298,8 @@ function uniformInBand(w: ContainerWidth, list: MediaQueryList, band: ContainerB
  * decided by the element's own container. A container whose width Dragon cannot read, or whose width can change inside the band,
  * refuses the rule; so does a @container rule that changes a container.
  */
-export function resolveWithContainers(root: LinkedElement, rules: readonly Rule[], faults: CompilerFaults, env: ResolveEnvironment, band: ContainerBand, ix?: InteractionState): ResolvedElement {
-  const base = resolveTree(root, rules, faults, env, ix);
+export function resolveWithContainers(root: LinkedElement, rules: readonly Rule[], faults: CompilerFaults, env: ResolveEnvironment, band: ContainerBand, ix?: InteractionState, memo: ResolveMemo | null = null): ResolvedElement {
+  const base = resolveTree(root, rules, faults, env, ix, memo);
   const found = containersOf(base, faults);
   if (!rules.some((r) => r.container !== undefined)) {
     return resolveContainerUnits(base, found, band.units, faults);
@@ -313,7 +322,7 @@ export function resolveWithContainers(root: LinkedElement, rules: readonly Rule[
     // css-conditional-5 §3.2: with no query container the query is unknown, so the rule does not apply.
     return false;
   };
-  const resolved = resolveTree(root, rules, faults, { ...env, container: (rule, ancestors, self) => (rule.container ?? []).every((c) => holds(c, ancestors, self)) }, ix);
+  const resolved = resolveTree(root, rules, faults, { ...env, container: (rule, ancestors, self) => (rule.container ?? []).every((c) => holds(c, ancestors, self)) }, ix, memo);
   const after = containersOf(resolved, faults);
   const same = after.size === found.size && [...after].every(([el, c]) => JSON.stringify(found.get(el)) === JSON.stringify(c));
   if (!same) {

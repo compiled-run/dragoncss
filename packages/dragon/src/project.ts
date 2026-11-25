@@ -58,7 +58,7 @@ import type { PropertySource, Registrations } from './css/at-rules/property.ts';
 import { NO_REGISTRATIONS } from './css/at-rules/property.ts';
 import { registrationsOf } from './analysis/registered.ts';
 import { rankLayers, revertLayerInAtRules } from './analysis/layers.ts';
-import { environmentOf, resolveTree, SUPPORTED_TAGS, valueToString } from './analysis/resolve.ts';
+import { environmentOf, newResolveMemo, resolveTree, SUPPORTED_TAGS, valueToString } from './analysis/resolve.ts';
 import { usedColorScheme } from './css/properties/color-scheme.ts';
 import type { ContainerBand, ContainerRefusals, ContainerUnitRefusals } from './analysis/container-rules.ts';
 import { containerAtoms, containerBand, containerConditionsOf, resolveWithContainers } from './analysis/container-rules.ts';
@@ -1157,8 +1157,9 @@ function checkCases(linked: Linked, rules: readonly Rule[], targets: readonly Kn
   };
   const interactive = rules.some(ruleIsInteractive);
   // CQ: a band with @container rules resolves each case twice (analysis/container-rules.ts).
+  const memo = newResolveMemo();
   const resolve = (root: LinkedElement, ix?: InteractionState): ResolvedElement =>
-    containers === null ? resolveTree(root, rules, options.faults, env, ix) : resolveWithContainers(root, rules, options.faults, env, containers, ix);
+    containers === null ? resolveTree(root, rules, options.faults, env, ix, memo) : resolveWithContainers(root, rules, options.faults, env, containers, ix, memo);
   for (const c of linked.cases) {
     const resolved = resolve(c.root);
     const used = check(resolved);
