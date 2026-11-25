@@ -86,7 +86,7 @@ import { requestOf, serializeFontStyle, serializeFontWeight, synthesisOf } from 
 import { synthesisAllowedOf, textFontOfProps } from './analysis/computed.ts';
 import { fenceVariableInstance } from './fonts/variable-fence.ts';
 import type { VariableFontRefusal } from './fonts/variable-fence.ts';
-import { collectFontFaces, familySupport, isSkippedFamily, pinnedFacesOf, projectFonts, renderedFaces, webFontOutput } from './fonts/wire.ts';
+import { collectFontFaces, familySupport, isSkippedFamily, leavesToPlatform, pinnedFacesOf, projectFonts, renderedFaces, webFontOutput } from './fonts/wire.ts';
 import type { FontWireProblem, ProjectedFonts } from './fonts/wire.ts';
 import type { CompilerFaults } from './faults.ts';
 import { NO_FAULTS } from './faults.ts';
@@ -676,7 +676,9 @@ function engineFaceFor(fonts: ProjectFonts, family: ResolvedValue, text: string,
   const synthetic = syntheticStyle(face, request, font.synthesis);
   if (synthetic !== null) return { kind: 'refused', reason: `Chrome would draw it in ${synthetic} (DRAGON_SYNTHETIC_FONT_STYLE)` };
   const id = `sha256:${sha256HexBytes(face.source.bytes)}`;
-  // A code point no listed bundled face draws goes on down the list (renderedFaces leaves it to the platform) to its first platform entry.
+  // A code point no listed bundled face draws goes on down the list to its first platform entry; only text that has one needs it, so
+  // a face drawn at two weights (a 700 heading, a 600 icon) has one fallback while only one of them leaves code points to the platform.
+  if (!systemFonts || !leavesToPlatform(bundledFaces(fonts), support.resolutions, text, request)) return { kind: 'face', id };
   const chosen = support.resolutions.findIndex((r) => (r.kind === 'declared' || r.kind === 'pinned') && r.family === (rendered[0] as { family: string }).family);
   const next = systemFonts ? support.resolutions.slice(chosen + 1).find((r) => r.kind === 'platform') : undefined;
   const fallback = next?.kind === 'platform' && isSystemFaceRole(next.key) ? systemFaceFor(next.key, font) : null;

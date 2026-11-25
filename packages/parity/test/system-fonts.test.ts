@@ -578,6 +578,24 @@ describe('a Markless export with system fonts', () => {
     expect(exported.systemFonts?.map((e) => e.id)).toEqual(['system:default:400', 'system:fallback:.CJKSymbolsFallbackSC-Regular', 'system:fallback:NotoSansSymbols-Regular-Subsetted.ttf#0', 'system:system-ui:400']);
   });
 
+  it('gives a web font one fallback when only one of the weights it is drawn at has a code point it lacks', () => {
+    if (process.platform !== 'darwin' || androidSystemImagePathOrNull() === null) {
+      missingToolchain('system fonts', 'Core Text (macOS) and the Android SDK system image');
+      return;
+    }
+    const lato = new Uint8Array(readFileSync(new URL('../../dragon/test/fonts/woff/Lato-Regular.woff2', import.meta.url)));
+    const face = "@font-face { font-family: 'Harbour Lato'; src: url('./fonts/Lato-Regular.woff2') format('woff2'); font-weight: 400; } ";
+    // The heading (500) and the icon (400) are both Lato Regular, which goes on to system-ui at 500 and at 400; only the icon needs it.
+    const web = JSON.stringify({
+      ...JSON.parse(input.replace('No font family at all', '◎ Shop')),
+      css: `${face}.page { padding: 24px; font-family: 'Harbour Lato', system-ui, sans-serif; line-height: 1; font-weight: 400; } .ui { font-size: 28px; font-weight: 500; }`,
+      fonts: [{ url: './fonts/Lato-Regular.woff2', file: '../styles/fonts/Lato-Regular.woff2' }],
+    });
+    const { exported } = marklessStyleExport(web, 'almanac.json', () => lato, 'system');
+    const runs = exported.targets.ios!.assignments[0]!.nodes.find((n) => n.id === 'h2:text0')!.lines!.flatMap((l) => l.runs.map((r) => r.face));
+    expect(runs.slice(0, 1)).toEqual(['system:fallback:.CJKSymbolsFallbackSC-Regular']);
+  });
+
   it('shapes an iOS fallback face from the iOS runtime\'s own file where the Mac\'s is another version', () => {
     if (process.platform !== 'darwin' || androidSystemImagePathOrNull() === null) {
       missingToolchain('system fonts', 'Core Text (macOS) and the Android SDK system image');
