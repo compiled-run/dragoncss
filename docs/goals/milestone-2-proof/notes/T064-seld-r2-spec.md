@@ -281,6 +281,19 @@ measure it.
 - Form controls whose touch Chrome consumes (range, P7) carry `touchConsumesTap` from FORM-a's control kind.
 - Plant `focusOnNonFocusable`.
 
+**R9a. A host that never forces skips the forced focus of an element nothing focuses** (amendment, 2026-11-25, owner ruling on
+Markless #974):
+- The partition still builds a forced `:focus` and `:focus-visible` state for every candidate, and the web output and the parity
+  lanes keep them (the lanes prove the forced-only rows by forcing).
+- A compile with `hostUnforced` (`compileNativeStyles`, the Markless hosts, which never force a state) skips such a state when its
+  element is not R9-focusable and is no scroll container in the case or the state (Chrome 130 and later keyboard-focus a
+  scroller). Native does not lower its styles (its program is the case's own, and the export's match for it forces nothing), and its
+  checks report for web only; a refusal that names no target (one that blocks every target) still applies.
+- An R9-focusable element (a link, a button, a form control, a valid `tabindex`, `contenteditable`) and a possible scroller keep
+  every state.
+- Proof: `packages/parity/test/focus-forced-only.test.ts`. Chrome 145 never gives `:focus` or `:focus-visible` to a skipped element
+  under Tab, a click or a tap, and gives `:focus-visible` to every kept one under Tab.
+
 **R10. Keyboard order is fixed now and built in P6e.**
 - Sequential focus navigation follows HTML §6.6.3:
   - positive `tabindex` first, ascending, ties in tree order;
