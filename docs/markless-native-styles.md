@@ -211,3 +211,29 @@ Hit testing still gates what compiles: a pressed or focused style through opacit
 - Native text is Ahem-only in production (see above).
 - One call compiles one component in its own document. Generated names are per component (`Dragon<Name>States`), so two components need two different names.
 - The generated Kotlin is in the package `dev.dragon.cases`, which the support files share.
+
+## Factored states: `dragon.native-style-export/2`
+
+A page whose reachable assignments one native table cannot hold (more than 1,024, or more than 64 rows of (assignment, band)) is compiled in groups when it comes from a Markless input (`compileNativeStyles` `states: 'factored'`). Two free states share a group when some element's classes, attributes or presence, or those of one of its ancestors, read both. Its siblings and descendants count too when the page's selectors test them (`+`, `~`, `:nth-*`, `:only-*`, `:empty`, `:has()`). Each group has one table over its own states, with every other state at its initial value. Every other page keeps `/1`, unchanged.
+
+**What a `/2` target holds.**
+- **The page table:** `states`, `initial`, `assignments`, `next`, `interaction` and `plan` hold the initial assignment in each band.
+- **`groups`:** one table per group, with the same fields except `plan`, plus:
+  - `groupStates`: the group's state keys;
+  - `owned`: `node:<id>` for each node only that group changes, and `box:<id>` for each layout box.
+- **Bands:** a group's table has the `@env#band` state unless no element it changes is styled differently in another band. Then it has one row per assignment.
+- **Limits:** the 1,024 and 64 limits count per table.
+
+**How a host combines them.** The TypeScript reference is `packages/parity/src/state-groups.ts`.
+- **Current entries:** a host keeps one current entry per table. Setting a state moves only the table of the group that has it, through that table's `next`. A band change moves every table with `@env#band`.
+- **Node styles:** a node's style comes from the current entry of the group that owns it, or from the page table when no group does. A group owns every node its assignments or their interaction states change, and a `<select>` reads its options' states.
+- **Interaction:** each table has its own interaction level per entry. The host runs each table's interaction runtime with the same touch, pointer and focus events, and a node shows its owner's state.
+- **Layout:** `plan` covers every table. `plan.groups[k]` gives the first plan assignment of group k, the boxes it owns (`owned`), and the nodes whose plan facts it gives (`nodes`: dashed borders, scrollers, checkboxes). `runMarklessLayout` takes `"groups": [entry of group 0, …]`, each a plan assignment within that group's block (its entries, then its interaction states), next to `"assignment"` for the page table's entry. It lays out the page entry's variant with each owned box, and each box only a group shows, taken from that group's variant, in the order every table gives its siblings (harness.ts `groupedVariant`). A host names each box of the result with the `planNames` of the table entry that gave it: the owning group's, or the page table's.
+
+**Refused, by name:**
+- a node or box two groups change (the grouping is wrong, so the tables could not be combined);
+- a paragraph whose text two groups change, since a phone shapes a paragraph only as Dragon laid it out;
+- states in groups together with `@for` rows, slots, or transitions and animations;
+- a page linked before its bands are known (a color-scheme preference, `@container` rules) is not factored at all.
+
+Checks: `packages/parity/test/markless-state-groups.test.ts`. For three inputs (`groups`, `arms`, `tabs`), every assignment of the full product and every interaction state are combined from the groups and compared with the product's nodes, and with its plan layout through `runMarklessLayout`, on iOS and Android.
