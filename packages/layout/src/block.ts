@@ -219,9 +219,12 @@ export type EngineFaults = {
   readonly textBoxTrimIgnored: boolean;
   /** FORM-search: a search field's editor and placeholder take the whole content box, as if it had no cancel button. */
   readonly searchCancelIgnored: boolean;
+  /** REPL-r2a: an img that follows its image gives its natural size to every read, not only a used size with a definite width. */
+  readonly runtimeFollowsReadUnguarded: boolean;
 };
 
 export const NO_ENGINE_FAULTS: EngineFaults = {
+  runtimeFollowsReadUnguarded: false,
   breakOffByOne: false,
   rtlAsLtr: false,
   ignoreOrder: false,

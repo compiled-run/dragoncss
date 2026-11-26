@@ -3,7 +3,7 @@
 // §5.5 and §5.6, not ported: Chrome's layout_replaced.cc is LGPL (docs/ports.json); the REPL-0 quadrant probe pins it to Chrome
 // (replaced.test.ts). It is snapped as ImagePainter::PaintIntoRect does. Every size here is border-box LU in zoomed px unless
 // named otherwise.
-import type { LayoutStyle, ReplacedLeaf } from './input.ts';
+import type { LayoutStyle, ReplacedLeaf, SizeValue } from './input.ts';
 import type { Ctx, EngineFaults } from './block.ts';
 import type { Frag, HeightBasis, LengthPercent, MinMax } from './box.ts';
 import { borderBoxFromSpecified, constrain, hasPercent, lengthHeight, lengthMaxHeight, lengthMaxWidth, lengthMinHeight, lengthMinWidth, lengthWidth, resolveBorder, resolveLength, resolvePaddingWith, sumEdges } from './box.ts';
@@ -127,11 +127,13 @@ function mainNeedsContent(v: LengthPercent, basis: LU | null): boolean {
  * Blink's ComputeReplacedSizeInternal first uses them, so a natural size set at run time (null) is read only by a size that
  * follows it, which refuses the layout (runtimeNaturalRead).
  */
-export function replacedSize(nodeId: string, s: LayoutStyle, natural: NaturalSizing | null, defaultSize: ReplacedSize, bp: BorderPadding, space: ReplacedSpace, mode: ReplacedSizeMode, faults: EngineFaults, reader: NaturalReader): ReplacedSize {
+export function replacedSize(nodeId: string, s: LayoutStyle, natural: NaturalSizing | null, defaultSize: ReplacedSize, bp: BorderPadding, space: ReplacedSpace, mode: ReplacedSizeMode, faults: EngineFaults, reader: NaturalReader, followed: NaturalSizing | null): ReplacedSize {
   const sizing = ratioBoxSizing(s);
+  const width = lengthWidth(nodeId, s.width);
   const read = (what: 'ratio' | 'size'): NaturalSizing => {
-    if (natural === null) return runtimeNaturalRead(nodeId, s, what, reader);
-    return natural;
+    if (natural !== null) return natural;
+    if (followed !== null && (faults.runtimeFollowsReadUnguarded || followsRead(width, space, mode, reader))) return followed;
+    return runtimeNaturalRead(nodeId, s, what, reader);
   };
   let ratioKnown = false;
   let ratioValue: LayoutRatio | null = null;
@@ -152,7 +154,6 @@ export function replacedSize(nodeId: string, s: LayoutStyle, natural: NaturalSiz
     }
     return naturalValue;
   };
-  const width = lengthWidth(nodeId, s.width);
   const minWidth = lengthMinWidth(nodeId, s.minWidth);
   const maxWidth = lengthMaxWidth(nodeId, s.maxWidth);
   const height = lengthHeight(nodeId, s.height);
@@ -163,7 +164,7 @@ export function replacedSize(nodeId: string, s: LayoutStyle, natural: NaturalSiz
   const blockContent = (): LU | null => {
     const ratio = ratioOf();
     if (ratio === null) return (naturalSizeOf() as ReplacedSize).block;
-    if (mode === 'normal') return replacedSize(nodeId, s, natural, defaultSize, bp, space, 'ignore-block-lengths', faults, reader).block;
+    if (mode === 'normal') return replacedSize(nodeId, s, natural, defaultSize, bp, space, 'ignore-block-lengths', faults, reader, followed).block;
     const n = naturalSizeOf();
     return n === null ? null : n.block;
   };
@@ -203,7 +204,7 @@ export function replacedSize(nodeId: string, s: LayoutStyle, natural: NaturalSiz
     if (ratio === null) return (naturalSizeOf() as ReplacedSize).inline;
     if (replacedBlock !== null) return inlineFromRatio(bp, ratio, sizing, replacedBlock);
     const n = naturalSizeOf();
-    if (n !== null) return mode === 'normal' ? replacedSize(nodeId, s, natural, defaultSize, bp, space, 'ignore-inline-lengths', faults, reader).inline : n.inline;
+    if (n !== null) return mode === 'normal' ? replacedSize(nodeId, s, natural, defaultSize, bp, space, 'ignore-inline-lengths', faults, reader, followed).inline : n.inline;
     return null;
   };
 
@@ -287,11 +288,31 @@ export function blockFlowSpace(cbInline: LU, cbBlock: LU | null, inlineMargins: 
  */
 export function naturalSizingOf(leaf: ReplacedLeaf): NaturalSizing | null {
   const n = leaf.natural;
-  if (n.kind === 'runtime') return null;
+  if (n.kind === 'runtime' || n.kind === 'followed') return null;
   if (n.kind === 'none') return { width: null, height: null, ratio: null };
   const w = fromCssPx(n.width);
   const h = fromCssPx(n.height);
   return { width: w, height: h, ratio: w > 0 && h > 0 ? { width: w, height: h } : null };
+}
+
+/** REPL-r2a: the natural size the device gave an img that follows its image, which only followsRead lets a size read. */
+export function followedSizingOf(leaf: ReplacedLeaf): NaturalSizing | null {
+  const n = leaf.natural;
+  if (n.kind !== 'followed') return null;
+  const w = fromCssPx(n.width);
+  const h = fromCssPx(n.height);
+  return { width: w, height: h, ratio: w > 0 && h > 0 ? { width: w, height: h } : null };
+}
+
+/**
+ * REPL-r2a rule 1 (Judge amendment 1): a used size whose inline size is definite without the image, so the natural size reaches
+ * only the block size: a fixed inline size, or a width that resolves without content, in a pass that keeps the inline lengths.
+ */
+function followsRead(width: SizeValue, space: ReplacedSpace, mode: ReplacedSizeMode, reader: NaturalReader): boolean {
+  if (reader !== 'used-size' || mode === 'ignore-inline-lengths') return false;
+  if (space.fixedInline !== null) return true;
+  if (width.kind === 'auto') return false;
+  return !hasPercent(width) || space.percentInline !== null;
 }
 
 /** The default object size in LU. */
@@ -335,7 +356,7 @@ function marginSum(ctx: Ctx, a: LayoutStyle['marginLeft'], b: LayoutStyle['margi
 
 /** The leaf's size in a space. */
 export function sizeReplaced(ctx: Ctx, leaf: ReplacedLeaf, bp: BorderPadding, space: ReplacedSpace, mode: ReplacedSizeMode, reader: NaturalReader): ReplacedSize {
-  return replacedSize(leaf.id, leaf.style, naturalSizingOf(leaf), defaultSizeOf(leaf), bp, space, mode, ctx.faults, reader);
+  return replacedSize(leaf.id, leaf.style, naturalSizingOf(leaf), defaultSizeOf(leaf), bp, space, mode, ctx.faults, reader, followedSizingOf(leaf));
 }
 
 /** A block-level replaced box in normal flow (CSS 2.2 §10.3.4, §10.6.2): its border-box fragment. */

@@ -90,7 +90,7 @@ public func marker_layoutMarker(_ ctx: Ctx, _ m: ListMarker) throws -> MarkerBox
   if (!r.ok) {
     // ts: packages/layout/src/marker.ts:51
     if ((r as! MeasureResult_okFalse).code == S.s_text_script) {
-      try unsupported_unsupported(S.s_text_script, m.id, S.s1000, (r as! MeasureResult_okFalse).reason)
+      try unsupported_unsupported(S.s_text_script, m.id, S.s1001, (r as! MeasureResult_okFalse).reason)
     }
     try unsupported_unsupported(S.s_text_glyph, m.id, S.s719, (r as! MeasureResult_okFalse).reason)
   }

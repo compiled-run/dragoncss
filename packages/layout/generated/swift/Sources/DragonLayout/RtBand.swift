@@ -350,7 +350,7 @@ public func rtBand_bandIndex(_ table: BandTable, _ width: Double, _ height: Doub
       bits += (x ? S.s264 : S.s262)
     }
   }
-  throw try BandError(jsConcat(S.s971, bits, S.s21, jsNumberToString(width), S.s211, jsNumberToString(height), S.s36))
+  throw try BandError(jsConcat(S.s972, bits, S.s21, jsNumberToString(width), S.s211, jsNumberToString(height), S.s36))
 }
 
 // ts: packages/layout/src/rt-band.ts:178
@@ -362,7 +362,7 @@ public func rtBand_bandAtPx(_ table: BandTable, _ widthPx: Double, _ heightPx: D
 public func rtBand_hasSource(_ sources: Double, _ source: Double) throws -> Bool {
   // ts: packages/layout/src/rt-band.ts:205
   if try ((((!(sources >= 0.0)) || (sources != rtEasing_truncOf(sources))) || (!(source > 0.0))) || (source != rtEasing_truncOf(source))) {
-    throw try BandError(jsConcat(S.s880, jsNumberToString(sources), S.s15, jsNumberToString(source)))
+    throw try BandError(jsConcat(S.s881, jsNumberToString(sources), S.s15, jsNumberToString(source)))
   }
   var s: Double = sources
   var m: Double = source

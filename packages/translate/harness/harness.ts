@@ -1080,6 +1080,10 @@ function naturalSizeValue(v: JsonValue, path: string): NaturalSizeValue {
     obj(v, ['kind'], path);
     return { kind: 'runtime' };
   }
+  if (k === 'followed') {
+    const o = obj(v, ['kind', 'width', 'height'], path);
+    return { kind: 'followed', width: numField(o, 'width', path), height: numField(o, 'height', path) };
+  }
   return fail(`${path}: unknown kind ${k}`);
 }
 
@@ -1292,7 +1296,7 @@ const FAULT_KEYS: readonly string[] = [
   'orderHalfEven', 'orderUnclamped', 'gutterReserved', 'overflowIgnoresPadding', 'ellipsisInTextFont', 'noDotsFallback', 'truncateChangesBlockSize',
   'preservedSpaceCollapsed', 'trailingPreWrapNotHanging', 'breakSpacesHanging', 'indentEveryLine', 'indentAfterBr', 'indentPercentInIntrinsic', 'indentRtlFromLeft',
   'anywhereMinContentIgnored', 'breakWordShrinksMinContent', 'breakAnywhereAlways', 'emergencyBreakBeforeOpportunity', 'wordBreakBreakWordIgnored', 'breakAllIgnored',
-  'clampHeightIncludesHiddenLines', 'clampEllipsisMissingWhenLineFits', 'clampEllipsisOnExactLastLine', 'containedContentSized', 'menuListShownLabelOnly', 'containerJoinsFlow', 'wrapStyleGreedy', 'textBoxTrimIgnored', 'searchCancelIgnored',
+  'clampHeightIncludesHiddenLines', 'clampEllipsisMissingWhenLineFits', 'clampEllipsisOnExactLastLine', 'containedContentSized', 'menuListShownLabelOnly', 'containerJoinsFlow', 'wrapStyleGreedy', 'textBoxTrimIgnored', 'searchCancelIgnored', 'runtimeFollowsReadUnguarded',
   'inlineBlockFirstBaseline', 'overflowBaselineIgnored', 'inlineFlexLastBaseline', 'atomicMarginExcluded', 'noBreakAroundAtomic', 'atomicShrinkToFitIgnored',
   'inlineGridLastItemBaseline',
 ];
@@ -1389,6 +1393,7 @@ function decodeFaults(v: JsonValue): EngineFaults {
     wrapStyleGreedy: b('wrapStyleGreedy'),
     textBoxTrimIgnored: b('textBoxTrimIgnored'),
     searchCancelIgnored: b('searchCancelIgnored'),
+    runtimeFollowsReadUnguarded: b('runtimeFollowsReadUnguarded'),
   };
 }
 

@@ -355,7 +355,7 @@ public func box_lengthHeight(_ nodeId: JsString, _ v: any U_Auto_FitContent_Leng
   }
   // ts: packages/layout/src/box.ts:214
   if ((((v as! any U_Auto_FitContent_LengthCalc_MaxContent_MinContent_Percent_Px).kind == S.s_min_content) || ((v as! any U_Auto_FitContent_LengthCalc_MaxContent_Percent_Px).kind == S.s_max_content)) || ((v as! any U_Auto_FitContent_LengthCalc_Percent_Px).kind == S.s_fit_content)) {
-    try unsupported_unsupported(S.s_intrinsic_size_keyword, nodeId, S.s730, jsConcat(S.s850, (v as! any U_FitContent_MaxContent_MinContent).kind, S.s168, nodeId, S.s239))
+    try unsupported_unsupported(S.s_intrinsic_size_keyword, nodeId, S.s730, jsConcat(S.s851, (v as! any U_FitContent_MaxContent_MinContent).kind, S.s168, nodeId, S.s239))
   }
   return (v as! any U_Auto_LengthCalc_Percent_Px)
 }
@@ -436,7 +436,7 @@ public func box_specifiedBlockSizeWith(_ box: LayoutBox, _ basis: any U_HeightBa
   }
   // ts: packages/layout/src/box.ts:291
   if ((((h as! any U_FitContent_LengthCalc_MaxContent_MinContent_Percent_Px).kind == S.s_min_content) || ((h as! any U_FitContent_LengthCalc_MaxContent_Percent_Px).kind == S.s_max_content)) || ((h as! any U_FitContent_LengthCalc_Percent_Px).kind == S.s_fit_content)) {
-    try unsupported_unsupported(S.s_intrinsic_size_keyword, box.id, S.s730, jsConcat(S.s850, (h as! any U_FitContent_MaxContent_MinContent).kind, S.s168, box.id, S.s239))
+    try unsupported_unsupported(S.s_intrinsic_size_keyword, box.id, S.s730, jsConcat(S.s851, (h as! any U_FitContent_MaxContent_MinContent).kind, S.s168, box.id, S.s239))
   }
   let v: Double? = try box_resolveLengthOrNull((h as! any U_LengthCalc_Percent_Px), box_blockBasisFor(box, (h as! any U_LengthCalc_Percent_Px), basis, S.s_height), faults)
   return try ((v == nil) ? (nil as Double?) : (box_borderBoxFromSpecified(jsUnwrap(v), borderPadding, box.style.boxSizing) as Double?))
