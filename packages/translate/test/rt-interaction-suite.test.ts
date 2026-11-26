@@ -85,8 +85,8 @@ describe('interaction suite (SELD-R2, T064 R12)', () => {
     // A tap never hovers; a tap on the range keeps the button's focus; the text input gets focus-visible.
     expect(at(1).every((r) => r[0].length === 0)).toBe(true);
     expect([at(1)[1]?.[2], at(1)[3]?.[2], at(1)[5]?.[3]]).toEqual([3, 3, 6]);
-    // A modified key changes nothing; a plain key after pointer focus turns focus-visible on; a press turns it off.
-    expect([at(2)[2]?.[3], at(2)[3]?.[3], at(2)[4]?.[3], at(2)[5]?.[3]]).toEqual([-1, 3, -1, 3]);
+    // A modified key changes nothing; a plain key after pointer focus turns focus-visible on; a press on the focused button keeps it, on the range turns it off.
+    expect([at(2)[2]?.[3], at(2)[3]?.[3], at(2)[4]?.[3], at(2)[6]?.[3], at(2)[7]?.[3]]).toEqual([-1, 3, 3, -1, 5]);
     // A hover exit then a mouse press keeps hover through the frame.
     expect(at(3)[3]?.[0]).toEqual([0, 1, 2, 3, 4]);
     // A layout change under the hovering pointer re-hits it.

@@ -106,8 +106,8 @@ const HAND_A: readonly (readonly InteractionStep[])[] = [
   [['move', 4], ['mouse-down', 4], ['mouse-up'], ['move', 7], ['mouse-down', 7], ['mouse-up'], ['mouse-down', 6], ['mouse-up'], ['mouse-down', -1], ['mouse-up']],
   // A tap never hovers; it focuses at release, except on the range, which consumes it; a keyboard input gets focus-visible.
   [['touch-down', 4], ['touch-up', 4], ['touch-down', 5], ['touch-up', 5], ['touch-down', 6], ['touch-up', 6], ['touch-down', 3], ['touch-cancel'], ['touch-down', 7], ['touch-up', 7]],
-  // A non-modified key after pointer focus turns focus-visible on; a pointer press turns it off; keyboard focus sets it.
-  [['mouse-down', 4], ['mouse-up'], ['key', true], ['key', false], ['mouse-down', 3], ['key', false], ['key-focus', 5], ['mouse-down', 7], ['key', false], ['key-focus', -1], ['key', false]],
+  // A non-modified key after pointer focus turns focus-visible on; a press on the focused element keeps it, on another turns it off.
+  [['mouse-down', 4], ['mouse-up'], ['key', true], ['key', false], ['mouse-down', 3], ['mouse-up'], ['mouse-down', 5], ['key', false], ['key-focus', 5], ['mouse-down', 7], ['key', false], ['key-focus', -1], ['key', false]],
   // Android's hover exit before a press keeps hover through the press; a frame without a press clears it.
   [['move', 4], ['exit-start'], ['mouse-down', 4], ['frame'], ['mouse-up'], ['exit-start'], ['frame'], ['move', 7], ['exit-start'], ['move', 2], ['frame'], ['exit']],
   // A layout change re-hits under a hovering pointer, remaps press and focus, and drops what left the tree.
