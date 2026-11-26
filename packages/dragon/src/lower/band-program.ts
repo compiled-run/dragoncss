@@ -29,6 +29,9 @@ export const BAND_KEY = stateKey(ENV_INSTANCE, BAND_STATE);
 
 export class BandProgramError extends Error {}
 
+/** The most app assignments one native state table holds when every one is laid out in each of bands @media bands. */
+export const tableAssignmentsIn = (bands: number): number => (MAX_STATE_TABLE_ASSIGNMENTS - (MAX_STATE_TABLE_ASSIGNMENTS % bands)) / bands;
+
 // ---------------------------------------------------------------- the band table
 
 const OPS: { readonly [C in Comparison]: rtBand.BandOp } = { '<': 'lt', '<=': 'le', '>': 'gt', '>=': 'ge', '=': 'eq' };

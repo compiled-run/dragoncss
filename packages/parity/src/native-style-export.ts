@@ -5,7 +5,7 @@ import { createHash } from 'node:crypto';
 import { readdirSync, readFileSync } from 'node:fs';
 import type { BorderOp, LayoutBox, LU, ScrollRange, TextMeasurer } from '@dragon/layout';
 import { absoluteRects, borderNeedsSidePainter, borderPaintOps, LU_PER_PX, NO_DASH_FAULTS, NO_ENGINE_FAULTS, pieceGlyphs, resolveBorder, scrollRanges, snapRect } from '@dragon/layout';
-import type { Assignment, NativeProgram, NativeStyles, NativeStyleTarget, Scalar, StateProgram } from 'dragon';
+import type { Assignment, InteractionProgram, NativeProgram, NativeStyleOutput, NativeStyles, NativeStyleTarget, Scalar, StateProgram } from 'dragon';
 import { animTablesOf, borderDevicePx, interactionProgramAt, isScalar, programAt, programInput } from 'dragon';
 import type { AnimTables, InteractionTables } from '@dragon/layout';
 import { scrollMetricsWithFaults } from '../../layout/src/overflow.ts';
@@ -19,13 +19,15 @@ import { registerFace } from './text-shaper-host.ts';
 import { repoPath } from './paths.ts';
 import { systemMeasurer } from './system-fonts/measurer.ts';
 import type { MarklessPlan } from './markless-plan.ts';
-import { heightDependence, marklessPlan, PLAN_DENSITIES, planInteractionAssignments, planStateProgram } from './markless-plan.ts';
+import { heightDependence, marklessPlan, mergedPlan, PLAN_DENSITIES, planInteractionAssignments, planStateProgram } from './markless-plan.ts';
 import type { DensityJob, DensityResult } from './markless-plan-workers.ts';
 import { planWorkers, recordDensitiesInWorkers } from './markless-plan-workers.ts';
 import type { SystemFaceDescriptor, SystemFonts } from './system-fonts/provider.ts';
 import { systemFontsFor, systemRequestOf } from './system-fonts/provider.ts';
 
 export const NATIVE_STYLE_EXPORT_SCHEMA = 'dragon.native-style-export/1';
+/** An export with factored states (ExportTarget groups): a host that reads only /1 would show every group at its initial values. */
+export const NATIVE_STYLE_EXPORT_SCHEMA_GROUPS = 'dragon.native-style-export/2';
 
 export type ExportDevice = { readonly viewport: { readonly width: number; readonly height: number }; readonly dpr: number };
 
@@ -106,6 +108,8 @@ export type ExportTarget = {
    * assignment, laid out as `assignments` are. The host runs the tables on touch, pointer and focus and shows the state's nodes.
    */
   readonly interaction?: { readonly levels: readonly ExportInteractionLevel[] };
+  /** Factored states (schema /2): the groups' tables; the target's own table then holds only the initial assignment of every group. */
+  readonly groups?: readonly ExportGroup[];
   /** With a plan: each list's parent box and the ids of a row's top boxes, which a phone copies once per row. */
   readonly planRepeats?: readonly { readonly id: string; readonly parent: string; readonly template: readonly string[] }[];
 };
@@ -129,8 +133,19 @@ export type ExportInteractionLevel = {
   readonly planAssignments?: readonly number[];
 };
 
+/**
+ * Factored states (schema /2): one group's table, as a target's own (states, initial, assignments, next, interaction) over
+ * its states with every other state initial; owned names the nodes ("node:<id>") and layout boxes ("box:<id>") only this group
+ * changes, which a host takes from this table's current assignment and every other node from the target's.
+ */
+export type ExportGroup = Pick<ExportTarget, 'states' | 'initial' | 'assignments' | 'next' | 'interaction'> & {
+  /** The group's state keys, without @env#band, which every table shares. */
+  readonly groupStates: readonly string[];
+  readonly owned: readonly string[];
+};
+
 export type NativeStyleExport = {
-  readonly schema: typeof NATIVE_STYLE_EXPORT_SCHEMA;
+  readonly schema: typeof NATIVE_STYLE_EXPORT_SCHEMA | typeof NATIVE_STYLE_EXPORT_SCHEMA_GROUPS;
   readonly units: string;
   readonly compiler: string;
   readonly component: string;
@@ -350,33 +365,53 @@ export function nativeStyleExport(styles: NativeStyles, component: string, sourc
       if ('undecided' in scroll.page) return { values: valuesOf(a.assignment), pageScroll: null, pageScrollUndecided: { nodeId: scroll.page.nodeId, detail: scroll.page.detail }, nodes };
       return { values: valuesOf(a.assignment), pageScroll: scroll.page, nodes };
     };
-    const assignments = sp.assignments.map((a, i) => exportAt(programAt(sp, i), a));
-    // Each assignment's interaction states, laid out as the assignments are; the host selects one with Dragon's interaction runtime.
-    const ip = o.interaction;
-    const planStates = ip === undefined ? null : planInteractionAssignments(sp, ip);
-    const interaction = ip === undefined ? {} : {
-      interaction: {
-        levels: ip.levels.map((l, i): ExportInteractionLevel => ({
-          tables: l.tables,
-          addresses: l.addresses,
-          states: l.deltas.map((_, k) => exportAt(interactionProgramAt(ip, i, k), sp.assignments[i] as StateProgram['assignments'][number])),
-          matches: (o.interactionValues?.[i] ?? []).map((v): ExportInteractionMatch => ({ hover: v.hover, active: v.active, focus: v.focus, focusVisible: v.focusVisible, force: v.force })),
-          ...(plan ? { planAssignments: (planStates as number[][])[i] as number[] } : {}),
-        })),
-      },
+    // One table's assignments and interaction levels, laid out at the device; the host selects one with Dragon's interaction runtime.
+    const tableOf = (sp: StateProgram, ip: InteractionProgram | undefined, values: NativeStyleOutput['interactionValues']) => {
+      const assignments = sp.assignments.map((a, i) => exportAt(programAt(sp, i), a));
+      const planStates = ip === undefined ? null : planInteractionAssignments(sp, ip);
+      const interaction = ip === undefined ? {} : {
+        interaction: {
+          levels: ip.levels.map((l, i): ExportInteractionLevel => ({
+            tables: l.tables,
+            addresses: l.addresses,
+            states: l.deltas.map((_, k) => exportAt(interactionProgramAt(ip, i, k), sp.assignments[i] as StateProgram['assignments'][number])),
+            matches: (values?.[i] ?? []).map((v): ExportInteractionMatch => ({ hover: v.hover, active: v.active, focus: v.focus, focusVisible: v.focusVisible, force: v.force })),
+            ...(plan ? { planAssignments: (planStates as number[][])[i] as number[] } : {}),
+          })),
+        },
+      };
+      return { states: sp.states.map((s) => ({ key: s.key, domain: s.domain })), initial: sp.initial, assignments, next: sp.next, ...interaction };
     };
+    const page = tableOf(sp, o.interaction, o.interactionValues);
     const r = o.readiness;
     if (r.kind === 'blocked') throw new Error(`${component}: ${t} is emitted but its output state is blocked`);
     const readiness = r.kind === 'ready' ? { kind: 'ready' as const } : { kind: 'analysis-only' as const, reason: r.reason };
     if (plan && systemFonts === null) throw new Error(`${component}: a layout plan records the text a target's system fonts shape, and the export was given no system fonts`);
     if (o.anim !== undefined && !plan) throw new Error(`${component}: ${t} has transitions or animations, which a phone runs only with a layout plan`);
     const animated = plan && o.anim !== undefined ? { anim: animTablesOf(o.anim) } : {};
-    const laidOut = plan && systemFonts !== null ? { plan: marklessPlan(t, sp, (dpr) => systemFonts(t, dpr), [...inputFaces.keys()], new Map(inputFonts.map((f) => [registerFace(f.bytes), f.bytes])), d.viewport.height, o.interaction, recorded.get(t), checksHeights(o)) } : {};
-    targets[t] = { backend: o.backend, viewport: d.viewport, dpr: d.dpr, readiness, states: sp.states.map((s) => ({ key: s.key, domain: s.domain })), initial: sp.initial, assignments, next: sp.next, ...exportBands(o), ...laidOut, ...animated, ...interaction };
+    const planOf = (program: StateProgram, ip: InteractionProgram | undefined, densities: readonly DensityResult[] | undefined): MarklessPlan | null =>
+      plan && systemFonts !== null ? marklessPlan(t, program, (dpr) => systemFonts(t, dpr), [...inputFaces.keys()], new Map(inputFonts.map((f) => [registerFace(f.bytes), f.bytes])), d.viewport.height, ip, densities, checksHeights(o)) : null;
+    const pagePlan = planOf(sp, o.interaction, recorded.get(t));
+    // Factored states: each group's table beside the page's, which holds the initial assignment; a node shows its owner's record.
+    // One plan lays every table out; a group's entries follow the page's, so a phone combines its tables' variants.
+    const groupPlans = o.groups?.map((g) => ({ plan: planOf(g.program, g.interaction, undefined), owned: g.owned })) ?? [];
+    const merged = pagePlan === null || groupPlans.length === 0 ? pagePlan : mergedPlan(pagePlan, groupPlans.map((g) => ({ plan: g.plan as MarklessPlan, owned: g.owned })));
+    const laidOut = merged === null ? {} : { plan: merged };
+    const groups = o.groups === undefined ? {} : {
+      groups: o.groups.map((g, k): ExportGroup => {
+        const table = tableOf(g.program, g.interaction, g.interactionValues);
+        // A group's interaction states lay out as plan assignments after its own entries, which follow the tables before it.
+        const first = merged?.groups?.[k]?.first ?? 0;
+        const interaction = table.interaction === undefined ? {} : { interaction: { levels: table.interaction.levels.map((l) => (l.planAssignments === undefined ? l : { ...l, planAssignments: l.planAssignments.map((x) => x + first) })) } };
+        return { groupStates: g.states, owned: g.owned, ...table, ...interaction };
+      }),
+    };
+    const { interaction: pageInteraction, ...own } = page;
+    targets[t] = { backend: o.backend, viewport: d.viewport, dpr: d.dpr, readiness, ...own, ...exportBands(o), ...laidOut, ...animated, ...(pageInteraction === undefined ? {} : { interaction: pageInteraction }), ...groups };
   }
   const files = vendoredFaces();
   return {
-    schema: NATIVE_STYLE_EXPORT_SCHEMA,
+    schema: Object.values(targets).some((x) => x?.groups !== undefined) ? NATIVE_STYLE_EXPORT_SCHEMA_GROUPS : NATIVE_STYLE_EXPORT_SCHEMA,
     units: 'device px; frames relative to the parent box',
     compiler: styles.digest,
     component,
@@ -406,7 +441,8 @@ export function parseNativeStyleExport(text: string): NativeStyleExport {
     throw new Error(`native style export: ${what}`);
   };
   const v: unknown = JSON.parse(text);
-  if (!isRecord(v) || v['schema'] !== NATIVE_STYLE_EXPORT_SCHEMA) fail(`not ${NATIVE_STYLE_EXPORT_SCHEMA}`);
+  if (!isRecord(v) || (v['schema'] !== NATIVE_STYLE_EXPORT_SCHEMA && v['schema'] !== NATIVE_STYLE_EXPORT_SCHEMA_GROUPS)) fail(`not ${NATIVE_STYLE_EXPORT_SCHEMA} or ${NATIVE_STYLE_EXPORT_SCHEMA_GROUPS}`);
+  const grouped = (v as Record<string, unknown>)['schema'] === NATIVE_STYLE_EXPORT_SCHEMA_GROUPS;
   const o = v as Record<string, unknown>;
   if (typeof o['component'] !== 'string') fail('component is not a string');
   if (!Array.isArray(o['fonts']) || !o['fonts'].every((f) => isRecord(f) && typeof f['id'] === 'string' && typeof f['file'] === 'string' && (f['from'] === undefined || f['from'] === 'input'))) fail('fonts is not a list of { id, file, from? "input" }');
@@ -431,7 +467,10 @@ export function parseNativeStyleExport(text: string): NativeStyleExport {
     if (!isNumber(target['dpr']) || target['dpr'] <= 0) fail(`${t}: dpr is not a positive number`);
     const viewport = target['viewport'];
     if (!isRecord(viewport) || !isNumber(viewport['width']) || !isNumber(viewport['height']) || viewport['width'] <= 0 || viewport['height'] <= 0) fail(`${t}: viewport is not a positive size`);
-    if (!Array.isArray(target['states']) || !target['states'].every((s) => isRecord(s) && typeof s['key'] === 'string' && Array.isArray(s['domain']))) fail(`${t}: states is not a list of keys and domains`);
+    const tableStates = (x: Record<string, unknown>, at: string): void => {
+      if (!Array.isArray(x['states']) || !x['states'].every((s) => isRecord(s) && typeof s['key'] === 'string' && Array.isArray(s['domain']))) fail(`${at}: states is not a list of keys and domains`);
+    };
+    tableStates(target, t);
     const bands = target['bands'];
     if (bands !== undefined) {
       if (!isRecord(bands) || !Array.isArray(bands['atoms']) || !bands['atoms'].every(isRecord) || !Array.isArray(bands['bands']) || !Array.isArray(bands['conditions'])) fail(`${t}: bands is not atoms, bands and conditions`);
@@ -439,8 +478,9 @@ export function parseNativeStyleExport(text: string): NativeStyleExport {
       if (b.bands.length === 0 || !b.bands.every((r) => Array.isArray(r) && r.length === b.atoms.length && r.every((x) => typeof x === 'boolean'))) fail(`${t}: a band is not one truth value per atom`);
       if (b.conditions.length !== b.bands.length || !b.conditions.every((c) => typeof c === 'string')) fail(`${t}: conditions are not one string per band`);
     }
-    if (!Array.isArray(target['assignments'])) fail(`${t}: assignments is not a list`);
-    (target['assignments'] as unknown[]).forEach((a, i) => {
+    const tableAssignments = (table: Record<string, unknown>, t: string): void => {
+    if (!Array.isArray(table['assignments'])) fail(`${t}: assignments is not a list`);
+    (table['assignments'] as unknown[]).forEach((a, i) => {
       if (!isRecord(a) || !isRecord(a['values']) || !Array.isArray(a['nodes'])) fail(`${t}: assignment ${i} is not values and nodes`);
       const { values, nodes } = a as { values: Record<string, unknown>; nodes: unknown[] };
       for (const [k, x] of Object.entries(values)) if (!isScalar(x)) fail(`${t}: assignment ${i} gives ${k} a value that is not a scalar`);
@@ -455,6 +495,29 @@ export function parseNativeStyleExport(text: string): NativeStyleExport {
       }
       for (const n of nodes as { id: string; parent: string | null }[]) if (n.parent !== null && !ids.has(n.parent)) fail(`${t}: assignment ${i} node ${n.id} has parent ${n.parent}, which is not one of its nodes`);
     });
+    };
+    tableAssignments(target, t);
+    const groups = target['groups'];
+    if (groups !== undefined) {
+      if (!grouped) fail(`${t}: groups are only in a ${NATIVE_STYLE_EXPORT_SCHEMA_GROUPS} export`);
+      if (!Array.isArray(groups) || groups.length === 0) fail(`${t}: groups is not a list of tables`);
+      const owners = new Map<string, number>();
+      (groups as unknown[]).forEach((g, k) => {
+        const at = `${t} group ${k}`;
+        if (!isRecord(g)) return fail(`${at} is not an object`);
+        tableStates(g, at);
+        tableAssignments(g, at);
+        const keys = new Set((g['states'] as { key: string }[]).map((s) => s.key));
+        if (!Array.isArray(g['groupStates']) || g['groupStates'].length === 0 || !g['groupStates'].every((s) => typeof s === 'string' && keys.has(s))) fail(`${at}: groupStates is not a list of its states' keys`);
+        if (!Array.isArray(g['owned']) || !g['owned'].every((x) => typeof x === 'string' && (x.startsWith('node:') || x.startsWith('box:')))) fail(`${at}: owned is not a list of node: and box: ids`);
+        for (const x of g['owned'] as string[]) {
+          const other = owners.get(x);
+          if (other !== undefined) fail(`${at}: ${x} is owned by group ${other} too`);
+          owners.set(x, k);
+        }
+      });
+    }
   }
+  if (grouped && !Object.values(o['targets'] as Record<string, unknown>).some((x) => isRecord(x) && x['groups'] !== undefined)) fail(`a ${NATIVE_STYLE_EXPORT_SCHEMA_GROUPS} export has no target with groups`);
   return v as NativeStyleExport;
 }

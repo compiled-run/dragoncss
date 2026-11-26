@@ -67,7 +67,36 @@ export type MarklessPlan = {
   readonly slots?: readonly (readonly [id: string, type: 'number' | 'integer'])[];
   /** The text leaves the build lays out with a text-transform; the phone refuses a page text for one (harness.ts withPageTexts). */
   readonly transformed?: readonly string[];
+  /**
+   * Factored states: per group, where its table's entries start in assignments and the layout boxes it owns. The phone lays out
+   * the page entry's variant with each owned box (and the boxes only its group shows) taken from its group's current entry.
+   */
+  readonly groups?: readonly PlanGroup[];
 };
+
+export type PlanGroup = { readonly first: number; readonly count: number; readonly owned: readonly string[] };
+
+/**
+ * One plan of a target's own table and its groups' (factored states): every table's variants and entries in table order, the text
+ * every one of them shapes, and each group's entries and owned boxes. A group's assignment k is plan assignment first + k.
+ */
+export function mergedPlan(page: MarklessPlan, groups: readonly { readonly plan: MarklessPlan; readonly owned: readonly string[] }[]): MarklessPlan {
+  const all = [page, ...groups.map((g) => g.plan)];
+  const union = (lists: readonly (readonly (readonly unknown[])[])[]): (readonly unknown[])[] => [...new Map(lists.flat().map((x) => [JSON.stringify(x), x])).values()];
+  const densities = page.densities.map((d, i) => ({ dpr: d.dpr, calls: union(all.map((p) => (p.densities[i] as PlanDensity).calls)), metrics: union(all.map((p) => (p.densities[i] as PlanDensity).metrics)), lengths: union(all.map((p) => (p.densities[i] as PlanDensity).lengths)) }));
+  const faces = [...new Map(all.flatMap((p) => p.faces).map((f) => [f.id, f])).values()];
+  const variants: MarklessPlan['variants'][number][] = [];
+  const assignments: PlanAssignment[] = [];
+  const out: PlanGroup[] = [];
+  all.forEach((p, k) => {
+    const at = variants.length;
+    variants.push(...p.variants);
+    const first = assignments.length;
+    assignments.push(...p.assignments.map((a) => ({ ...a, variant: a.variant + at })));
+    if (k > 0) out.push({ first, count: p.assignments.length, owned: (groups[k - 1] as { owned: readonly string[] }).owned.flatMap((o) => (o.startsWith('box:') ? [o.slice('box:'.length)] : [])) });
+  });
+  return { ...page, faces, densities, variants, assignments, groups: out };
+}
 
 type Write = { readonly kind: string } & Readonly<Record<string, unknown>>;
 

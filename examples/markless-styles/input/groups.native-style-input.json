@@ -1,0 +1,233 @@
+{
+	"version": "markless.native-style-input/0",
+	"component": "App",
+	"nodes": [
+		{
+			"kind": "element",
+			"id": "h0",
+			"element": "main",
+			"parent": null,
+			"attributes": {
+				"class": "page mk-g"
+			}
+		},
+		{
+			"kind": "element",
+			"id": "h1",
+			"element": "button",
+			"parent": "h0",
+			"attributes": {
+				"class": "t mk-g",
+				"type": "button"
+			},
+			"attributesByState": {
+				"aria-pressed": [
+					{
+						"when": {
+							"state:a": false,
+							"state:b": false
+						},
+						"value": "false"
+					},
+					{
+						"when": {
+							"state:a": false,
+							"state:b": true
+						},
+						"value": "false"
+					},
+					{
+						"when": {
+							"state:a": true,
+							"state:b": false
+						},
+						"value": "true"
+					},
+					{
+						"when": {
+							"state:a": true,
+							"state:b": true
+						},
+						"value": "true"
+					}
+				]
+			}
+		},
+		{
+			"kind": "text",
+			"id": "h1:text0",
+			"parent": "h1",
+			"text": "Alpha"
+		},
+		{
+			"kind": "element",
+			"id": "h2",
+			"element": "div",
+			"parent": "h0",
+			"attributes": {
+				"class": "panel mk-g"
+			},
+			"attributesByState": {
+				"hidden": [
+					{
+						"when": {
+							"state:a": false,
+							"state:b": false
+						},
+						"value": ""
+					},
+					{
+						"when": {
+							"state:a": false,
+							"state:b": true
+						},
+						"value": ""
+					},
+					{
+						"when": {
+							"state:a": true,
+							"state:b": false
+						},
+						"value": null
+					},
+					{
+						"when": {
+							"state:a": true,
+							"state:b": true
+						},
+						"value": null
+					}
+				]
+			}
+		},
+		{
+			"kind": "text",
+			"id": "h2:text0",
+			"parent": "h2",
+			"text": "Alpha panel"
+		},
+		{
+			"kind": "element",
+			"id": "h3",
+			"element": "button",
+			"parent": "h0",
+			"attributes": {
+				"class": "t mk-g",
+				"type": "button"
+			},
+			"attributesByState": {
+				"aria-pressed": [
+					{
+						"when": {
+							"state:a": false,
+							"state:b": false
+						},
+						"value": "false"
+					},
+					{
+						"when": {
+							"state:a": false,
+							"state:b": true
+						},
+						"value": "true"
+					},
+					{
+						"when": {
+							"state:a": true,
+							"state:b": false
+						},
+						"value": "false"
+					},
+					{
+						"when": {
+							"state:a": true,
+							"state:b": true
+						},
+						"value": "true"
+					}
+				]
+			}
+		},
+		{
+			"kind": "text",
+			"id": "h3:text0",
+			"parent": "h3",
+			"text": "Beta"
+		},
+		{
+			"kind": "element",
+			"id": "h4",
+			"element": "p",
+			"parent": "h0",
+			"attributes": {
+				"class": "note mk-g"
+			},
+			"arm": {
+				"branch": "branch-site:0",
+				"index": 0
+			}
+		},
+		{
+			"kind": "text",
+			"id": "h4:text0",
+			"parent": "h4",
+			"text": "Shown",
+			"arm": {
+				"branch": "branch-site:0",
+				"index": 0
+			}
+		},
+		{
+			"kind": "element",
+			"id": "h5",
+			"element": "p",
+			"parent": "h0",
+			"attributes": {
+				"class": "note other mk-g"
+			},
+			"arm": {
+				"branch": "branch-site:0",
+				"index": 1
+			}
+		},
+		{
+			"kind": "text",
+			"id": "h5:text0",
+			"parent": "h5",
+			"text": "Other arm",
+			"arm": {
+				"branch": "branch-site:0",
+				"index": 1
+			}
+		}
+	],
+	"css": ".page.mk-g { display: flex; flex-direction: column; gap: 6px; padding: 8px; }\n.t.mk-g { font-family: inherit; font-size: 16px; padding: 8px 12px; border: 2px solid #22223b; background-color: #eeeeee; color: #22223b; }\n.t.mk-g[aria-pressed=\"true\"] { background-color: #3a7d44; color: #ffffff; }\n.t.mk-g:hover { background-color: #cccccc; }\n.t.mk-g:active { background-color: #999999; }\n.t.mk-g:focus-visible { outline: 3px solid #0066cc; }\n.panel.mk-g { margin: 4px 0; padding: 6px; background-color: #f4e9cd; }\n.note.mk-g { margin: 0; color: #444444; }\n.other.mk-g { color: #aa2222; }\n@media (min-width: 500px) { .t.mk-g { padding: 12px 16px; } }\n",
+	"states": [
+		{
+			"cell": "state:a",
+			"domain": [
+				false,
+				true
+			],
+			"initial": false
+		},
+		{
+			"cell": "state:b",
+			"domain": [
+				false,
+				true
+			],
+			"initial": false
+		}
+	],
+	"branches": [
+		{
+			"id": "branch-site:0",
+			"domain": [
+				"0",
+				"1"
+			],
+			"initial": "0"
+		}
+	]
+}

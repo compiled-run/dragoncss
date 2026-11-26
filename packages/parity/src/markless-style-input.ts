@@ -14,7 +14,7 @@ import { checkPlan, HEIGHT_FEATURES, heightDependence, hexBits, PLAN_HEIGHTS, pl
 import type { MarklessPlan } from './markless-plan.ts';
 import { withFontMapAssets } from './fixture-groups/fonts.ts';
 import { DOCUMENT_ID, PROJECT_ID } from './fixture-reader.ts';
-import type { ExportAssignment, ExportDevice, ExportInteractionMatch, ExportNode, ExportTarget, NativeStyleExport } from './native-style-export.ts';
+import type { ExportAssignment, ExportDevice, ExportGroup, ExportInteractionMatch, ExportNode, ExportTarget, NativeStyleExport } from './native-style-export.ts';
 import { EXPORT_DEVICES, exportBands, nativeStyleExport, valuesOf } from './native-style-export.ts';
 import { programAt } from 'dragon';
 import { isWhitespaceText, rehostAddress, textAddresser } from './node-ids.ts';
@@ -631,12 +631,15 @@ export type MarklessAtSize = { readonly [T in NativeStyleTarget]: ExportDevice }
 export const marklessDevices = (parsed: MarklessStyleInput, at?: MarklessAtSize): { readonly [T in NativeStyleTarget]: ExportDevice } =>
   at !== undefined ? at : parsed.viewports === undefined ? EXPORT_DEVICES : { ios: { ...EXPORT_DEVICES.ios, viewport: parsed.viewports.ios }, android: { ...EXPORT_DEVICES.android, viewport: parsed.viewports.android } };
 
-/** The input compiled as the device lanes compile (support 'lanes'), with the font map of its font mode; a compile error is refused. */
+/**
+ * The input compiled as the device lanes compile (support 'lanes'), with the font map of its font mode; a compile error is refused.
+ * DRAGON_STATE_GROUPS=always factors the states of every input with more than one group, to compare its tables with the product's.
+ */
 function compileMarkless(parsed: MarklessStyleInput, inputText: string, inputPath: string, fonts: readonly MarklessFontFile[], mode: MarklessFonts, at?: MarklessAtSize): { readonly input: FrontEndResult; readonly styles: NativeStyles; readonly compiled: object; readonly devices: { readonly [T in NativeStyleTarget]: ExportDevice } } {
   const map = mode === 'system' ? MARKLESS_SYSTEM_FONT_MAP : FONT_REFERENCE_MAP;
   const input = withFontMapAssets(marklessFrontEnd(parsed, inputText, inputPath, fonts, mode), map);
   const devices = marklessDevices(parsed, at);
-  const config: NativeStylesConfig = { projectId: PROJECT_ID, name: parsed.component, targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 } }, fonts: map, viewport: devices.ios.viewport, support: 'lanes', topLayer: 'host', canvas: 'host', forms: 'host', textEditing: 'host', output: 'program', brotliDecompress: NODE_BROTLI, ...(mode === 'system' ? { systemFonts: 'measured' as const } : {}) };
+  const config: NativeStylesConfig = { projectId: PROJECT_ID, name: parsed.component, targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 } }, fonts: map, viewport: devices.ios.viewport, support: 'lanes', topLayer: 'host', canvas: 'host', forms: 'host', textEditing: 'host', states: process.env['DRAGON_STATE_GROUPS'] === 'always' ? 'factored-always' : 'factored', output: 'program', brotliDecompress: NODE_BROTLI, ...(mode === 'system' ? { systemFonts: 'measured' as const } : {}) };
   const { styles, compiled } = compileNativeStylesWith(config, input);
   const errors = styles.diagnostics.filter((d) => d.severity === 'error');
   if (errors.length > 0) fail(`${parsed.component} does not compile:\n${errors.map((d) => `  ${d.code} [${d.target ?? 'all'}] ${d.message}`).join('\n')}`);
@@ -842,7 +845,7 @@ function withTransformed(plan: MarklessPlan, compiled: object): MarklessPlan {
 const planNamesOf = (a: ExportAssignment, rename: (id: string) => string): (readonly [string, string])[] => a.nodes.map((n) => [n.id, rename(n.id)] as const).filter(([d, m]) => d !== m);
 
 /** Every interaction state's assignment of a target, in level order. */
-const interactionStates = (x: NativeStyleExport['targets'][NativeStyleTarget] & object): readonly ExportAssignment[] => x.interaction?.levels.flatMap((l) => l.states) ?? [];
+const interactionStates = (x: Pick<ExportTarget, 'interaction'>): readonly ExportAssignment[] => x.interaction?.levels.flatMap((l) => l.states) ?? [];
 
 function exportMarkless(parsed: MarklessStyleInput, inputText: string, inputPath: string, fonts: readonly MarklessFontFile[], mode: MarklessFonts, at: MarklessAtSize | undefined, plan: boolean): { readonly input: FrontEndResult; readonly styles: NativeStyles; readonly exported: MarklessStyleExport; readonly decoded: readonly { readonly file: string; readonly bytes: Uint8Array }[] } {
   const { input, styles, compiled, devices } = compileMarkless(parsed, inputText, inputPath, fonts, mode, at);
@@ -866,36 +869,62 @@ function exportMarkless(parsed: MarklessStyleInput, inputText: string, inputPath
     }));
   };
   const renamed = (a: ExportAssignment): ExportAssignment => ({ ...a, nodes: renamedNodes(a.nodes, renameIn(a)) });
+  // Every stage below runs on one table: a target's own, then each of its groups' (factored states), which a phone combines.
+  type Table = Pick<ExportTarget, 'states' | 'initial' | 'assignments' | 'next' | 'interaction' | 'plan' | 'planNames' | 'bands'>;
+  const renamedTable = <X extends Table>(x: X): X => ({
+    ...x,
+    assignments: x.assignments.map(renamed),
+    // An interaction state is laid out under its assignment's values, so it takes that assignment's names.
+    ...(x.interaction === undefined ? {} : { interaction: { levels: x.interaction.levels.map((l, i) => {
+      const rename = renameIn(x.assignments[i] as ExportAssignment);
+      const one = (id: string | null): string | null => (id === null ? null : rename(id));
+      const addresses = l.addresses.map(rename);
+      return {
+        ...l,
+        addresses,
+        // A list row's node is the template a phone copies per row: the state applies to the copy the touch or focus is in.
+        rows: Object.fromEntries(addresses.flatMap((id) => {
+          const row = rowOfNode.get(id);
+          return row === undefined ? [] : [[id, row] as const];
+        })),
+        states: l.states.map((st) => ({ ...st, nodes: renamedNodes(st.nodes, rename) })),
+        matches: l.matches.map((m) => ({ hover: m.hover.map(rename), active: m.active.map(rename), focus: one(m.focus), focusVisible: one(m.focusVisible), force: m.force.map((f) => ({ ...f, address: rename(f.address) })) })),
+      };
+    }) } }),
+    // The plan lays out Dragon's own ids; a host names each assignment's geometry with the input's, by the export's rule.
+    ...(x.plan === undefined ? {} : { plan: withTransformed(x.plan, compiled), planNames: [
+      ...x.assignments.map((a) => planNamesOf(a, renameIn(a))),
+      ...(x.interaction?.levels.flatMap((l, i) => l.states.map((st) => planNamesOf(st, renameIn(x.assignments[i] as ExportAssignment)))) ?? []),
+    ] }),
+  });
+  // A group's owned nodes and boxes, named as each of its assignments names them (a text's id follows what the assignment shows).
+  const groupOwned = (g: ExportGroup): string[] => {
+    const named = new Set<string>();
+    for (const a of g.assignments) {
+      const rename = renameIn(a);
+      const ids = new Set(a.nodes.map((n) => n.id));
+      for (const o of g.owned) {
+        const [kind, id] = [o.slice(0, o.indexOf(':')), o.slice(o.indexOf(':') + 1)];
+        if (kind === 'node' && !ids.has(id)) continue;
+        named.add(`${kind}:${ids.has(id) ? rename(id) : id}`);
+      }
+    }
+    return [...named].sort();
+  };
+  if (Object.values(raw.targets).some((x) => x?.groups !== undefined) && ((parsed.repeats ?? []).length > 0 || (parsed.slots ?? []).length > 0)) fail(`${parsed.component} has states in groups and @for rows or slots, which a phone does not combine yet`);
   const exported: NativeStyleExport = {
     ...raw,
-    targets: Object.fromEntries(Object.entries(raw.targets).map(([t, x]) => [t, {
-      ...x,
-      assignments: x.assignments.map(renamed),
-      // An interaction state is laid out under its assignment's values, so it takes that assignment's names.
-      ...(x.interaction === undefined ? {} : { interaction: { levels: x.interaction.levels.map((l, i) => {
-        const rename = renameIn(x.assignments[i] as ExportAssignment);
-        const one = (id: string | null): string | null => (id === null ? null : rename(id));
-        const addresses = l.addresses.map(rename);
-        return {
-          ...l,
-          addresses,
-          // A list row's node is the template a phone copies per row: the state applies to the copy the touch or focus is in.
-          rows: Object.fromEntries(addresses.flatMap((id) => {
-            const row = rowOfNode.get(id);
-            return row === undefined ? [] : [[id, row] as const];
-          })),
-          states: l.states.map((st) => ({ ...st, nodes: renamedNodes(st.nodes, rename) })),
-          matches: l.matches.map((m) => ({ hover: m.hover.map(rename), active: m.active.map(rename), focus: one(m.focus), focusVisible: one(m.focusVisible), force: m.force.map((f) => ({ ...f, address: rename(f.address) })) })),
-        };
-      }) } }),
-      // The plan lays out Dragon's own ids; a host names each assignment's geometry with the input's, by the export's rule.
-      ...(x.plan === undefined ? {} : { plan: withTransformed(x.plan, compiled), planNames: [
-        ...x.assignments.map((a) => planNamesOf(a, renameIn(a))),
-        ...(x.interaction?.levels.flatMap((l, i) => l.states.map((st) => planNamesOf(st, renameIn(x.assignments[i] as ExportAssignment)))) ?? []),
-      ], planRepeats: planRepeats(parsed, dragonIds) }),
-    }])),
+    targets: Object.fromEntries(Object.entries(raw.targets).map(([t, x]) => {
+      const own = renamedTable(x);
+      return [t, {
+        ...own,
+        ...(x.plan === undefined ? {} : { planRepeats: planRepeats(parsed, dragonIds) }),
+        ...(x.groups === undefined ? {} : { groups: x.groups.map((g) => ({ ...renamedTable(g), owned: groupOwned(g) })) }),
+      }];
+    })),
   };
-  for (const [t, x] of Object.entries(exported.targets)) for (const a of [...x.assignments, ...interactionStates(x)]) {
+  const tablesOf = (x: ExportTarget): Table[] => [x, ...(x.groups ?? [])];
+  for (const [t, x] of Object.entries(exported.targets)) for (const table of tablesOf(x)) for (const a of [...table.assignments, ...interactionStates(table)]) {
     const have = new Set(a.nodes.map((n) => n.id));
     if (have.size !== a.nodes.length) fail(`${t}: the export names ${a.nodes.length - have.size} node(s) by an id another node has`);
   }
@@ -936,13 +965,16 @@ function exportMarkless(parsed: MarklessStyleInput, inputText: string, inputPath
     return { ...a, nodes: [...a.nodes, ...added] };
   };
   for (const x of Object.values(exported.targets)) {
-    const shown = new Set([...x.assignments, ...interactionStates(x)].flatMap((a) => a.nodes.map((n) => n.id)));
-    (x as { assignments: unknown }).assignments = x.assignments.map((a) => boxless(a, shown));
-    if (x.interaction !== undefined) (x as { interaction: unknown }).interaction = { levels: x.interaction.levels.map((l) => ({ ...l, states: l.states.map((st) => boxless(st, shown)) })) };
+    // A node a group shows is shown somewhere, so every table names it while it is hidden.
+    const shown = new Set(tablesOf(x).flatMap((table) => [...table.assignments, ...interactionStates(table)]).flatMap((a) => a.nodes.map((n) => n.id)));
+    for (const table of tablesOf(x)) {
+      (table as { assignments: unknown }).assignments = table.assignments.map((a) => boxless(a, shown));
+      if (table.interaction !== undefined) (table as { interaction: unknown }).interaction = { levels: table.interaction.levels.map((l) => ({ ...l, states: l.states.map((st) => boxless(st, shown)) })) };
+    }
   }
   const byId = new Map(parsed.nodes.map((n) => [n.id, n]));
   const inSelectList = (n: MarklessStyleInput['nodes'][number]): boolean => inSelectOptions(byId, n);
-  for (const [t, x] of Object.entries(exported.targets)) for (const a of [...x.assignments, ...interactionStates(x)]) {
+  for (const [t, x] of Object.entries(exported.targets)) for (const table of tablesOf(x)) for (const a of [...table.assignments, ...interactionStates(table)]) {
     const have = new Set(a.nodes.map((n) => n.id));
     const values = cellValues(a);
     const boxless = (n: MarklessStyleInput['nodes'][number]): boolean => n.kind === 'element' && n.boxless === true;
@@ -959,18 +991,17 @@ function exportMarkless(parsed: MarklessStyleInput, inputText: string, inputPath
     if (missing.length > 0) fail(`${t}: the export has no node ${missing.join(', ')} of the input`);
   }
   if ((parsed.repeats ?? []).length > 0) checkRows(parsed, inputPath, exported, styles, compiled, fonts, mode, at);
-  const targets = Object.fromEntries(Object.entries(exported.targets).map(([t, x]) => {
-    const out = styles.targets[t as NativeStyleTarget];
-    if (out?.kind !== 'emitted' || out.schemes.length !== x.assignments.length) fail(`${t}: the compile gives no colour scheme for each assignment`);
-    const schemes = (out as Extract<typeof out, { kind: 'emitted' }>).schemes;
-    return [t, {
+  // Each assignment's values by cell, colour scheme and root paint (canvas, body background), from the table's schemes.
+  const paintedTable = <X extends Table>(t: string, x: X, schemes: readonly UsedScheme[], what: string): X => {
+    if (schemes.length !== x.assignments.length) fail(`${t}: the compile gives no colour scheme for each assignment${what}`);
+    return {
       ...x,
       states: x.states.map((s) => ({ ...s, key: rekey(s.key) })),
       assignments: x.assignments.map((a, i) => ({
         ...a,
         values: cellValues(a),
         colorScheme: (schemes[i] as UsedScheme).colorScheme,
-        ...rootPaint(a.nodes, `${t} assignment ${i}`, bandScheme(x.bands, a.values[BAND_KEY]), schemes[i] as UsedScheme),
+        ...rootPaint(a.nodes, `${t}${what} assignment ${i}`, bandScheme(x.bands, a.values[BAND_KEY]), schemes[i] as UsedScheme),
       })),
       ...(x.interaction === undefined ? {} : { interaction: { levels: x.interaction.levels.map((l, i) => ({
         ...l,
@@ -980,11 +1011,22 @@ function exportMarkless(parsed: MarklessStyleInput, inputText: string, inputPath
             ...a,
             values: cellValues(a),
             colorScheme: (schemes[i] as UsedScheme).colorScheme,
-            ...rootPaint(a.nodes, `${t} assignment ${i} interaction state ${k}`, bandScheme(x.bands, a.values[BAND_KEY]), schemes[i] as UsedScheme),
+            ...rootPaint(a.nodes, `${t}${what} assignment ${i} interaction state ${k}`, bandScheme(x.bands, a.values[BAND_KEY]), schemes[i] as UsedScheme),
           };
         }),
       })) } }),
-    }];
+    };
+  };
+  const targets = Object.fromEntries(Object.entries(exported.targets).map(([t, x]) => {
+    const out = styles.targets[t as NativeStyleTarget];
+    if (out?.kind !== 'emitted') return fail(`${t}: the compile gives no colour scheme for each assignment`);
+    const own = paintedTable(t, x, out.schemes, '');
+    if (x.groups === undefined) return [t, own];
+    const groups = out.groups ?? fail(`${t}: the export has groups the compile does not`);
+    return [t, { ...own, groups: x.groups.map((g, k) => {
+      const { bands: _bands, ...painted } = paintedTable(t, { ...g, ...(x.bands === undefined ? {} : { bands: x.bands }) }, (groups[k] as { schemes: readonly UsedScheme[] }).schemes, ` group ${k}`);
+      return { ...painted, groupStates: g.groupStates.map(rekey) };
+    }) }];
   }));
   const decoded = [...new Map(fonts.filter((f) => f.sfntFile !== f.file).map((f) => [f.sfntFile, { file: f.sfntFile, bytes: f.sfnt }])).values()];
   return { input, styles, exported: { ...exported, fontMode: mode, targets }, decoded };
@@ -1246,13 +1288,16 @@ const isRgba8 = (v: unknown): v is Rgba8 => isRecord(v) && Object.keys(v).sort()
 export function checkMarklessExport(exported: NativeStyleExport): MarklessStyleExport {
   const o = exported as unknown as Record<string, unknown>;
   if (o['fontMode'] !== 'system' && o['fontMode'] !== 'pinned') throw new Error(`the export's fontMode ${JSON.stringify(o['fontMode'] ?? null)} is neither system nor pinned`);
-  for (const [t, x] of Object.entries(exported.targets)) {
-    const states = (x?.interaction?.levels ?? []).flatMap((l, i) => l.states.map((a, k) => [`${i} interaction state ${k}`, a] as const));
-    for (const [i, a] of [...(x?.assignments ?? []).entries(), ...states]) {
-      const p = a as unknown as Record<string, unknown>;
-      if (!isRgba8(p['canvas'])) throw new Error(`${t} assignment ${i}: canvas ${JSON.stringify(p['canvas'] ?? null)} is not a colour`);
-      if (p['bodyBackground'] !== null && !isRgba8(p['bodyBackground'])) throw new Error(`${t} assignment ${i}: bodyBackground ${JSON.stringify(p['bodyBackground'])} is not a colour or null`);
-      if (p['colorScheme'] !== 'light' && p['colorScheme'] !== 'dark') throw new Error(`${t} assignment ${i}: colorScheme ${JSON.stringify(p['colorScheme'] ?? null)} is neither light nor dark`);
+  for (const [t, target] of Object.entries(exported.targets)) {
+    // A target's own table, then each group's (factored states).
+    for (const [where, x] of [[t, target] as const, ...(target?.groups ?? []).map((g, k) => [`${t} group ${k}`, g] as const)]) {
+      const states = (x?.interaction?.levels ?? []).flatMap((l, i) => l.states.map((a, k) => [`${i} interaction state ${k}`, a] as const));
+      for (const [i, a] of [...(x?.assignments ?? []).entries(), ...states]) {
+        const p = a as unknown as Record<string, unknown>;
+        if (!isRgba8(p['canvas'])) throw new Error(`${where} assignment ${i}: canvas ${JSON.stringify(p['canvas'] ?? null)} is not a colour`);
+        if (p['bodyBackground'] !== null && !isRgba8(p['bodyBackground'])) throw new Error(`${where} assignment ${i}: bodyBackground ${JSON.stringify(p['bodyBackground'])} is not a colour or null`);
+        if (p['colorScheme'] !== 'light' && p['colorScheme'] !== 'dark') throw new Error(`${where} assignment ${i}: colorScheme ${JSON.stringify(p['colorScheme'] ?? null)} is neither light nor dark`);
+      }
     }
   }
   return exported as unknown as MarklessStyleExport;

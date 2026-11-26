@@ -3,21 +3,24 @@
 import { NO_FAULTS } from './faults.ts';
 import type { StateEmit } from './emit/runtime/state.ts';
 import { emitStatePrograms, StateEmitError } from './emit/runtime/state.ts';
-import { animProgramOf, BAND_STATE, compiledCases, ENV_INSTANCE, forcedOnlyStatesIn, interactionLevelInputIn, interactionPartitionIn, nativeBandProgramFor, nativeBands, usedSchemeOf } from './internal.ts';
+import { animProgramOf, BAND_STATE, compiledCases, ENV_INSTANCE, forcedOnlyStatesIn, interactionLevelInputIn, interactionPartitionIn, nativeBandProgramFor, nativeBands, stateGroupsIn, usedSchemeOf } from './internal.ts';
 import type { InteractionProgram } from './lower/interaction-program.ts';
 import type { InteractionValue } from './analysis/interaction.ts';
 import { deriveInteractionProgram } from './lower/interaction-program.ts';
 import type { AnimProgram } from './lower/anim-program.ts';
 import type { rtBand } from '@dragon/layout';
 import { BandProgramError, bandStateProgram } from './lower/band-program.ts';
-import type { NativeBackend } from './lower/native-program.ts';
+import type { NativeBackend, NativeProgram } from './lower/native-program.ts';
 import type { StateProgram } from './lower/state-program.ts';
-import { deriveStateProgram, StateProgramError } from './lower/state-program.ts';
+import { deriveStateProgram, programAt, stateKey, StateProgramError } from './lower/state-program.ts';
+import { BAND_KEY } from './lower/band-program.ts';
+import { canonicalJson } from './digest.ts';
+import type { LayoutBox } from '@dragon/layout';
 import { NATIVE_LANES } from './profiles/native-lanes.ts';
 import { createProjectWith, internalRecord } from './project.ts';
 import type { BrotliDecompress } from './fonts/woff.ts';
 import type { Rgba8 } from './css/color.ts';
-import type { ArtifactState, Compiled, Diagnostic, FontMap, FrontEndResult, GeneratedFile } from './types.ts';
+import type { ArtifactState, Assignment, Compiled, Diagnostic, FontMap, FrontEndResult, GeneratedFile } from './types.ts';
 
 export const NATIVE_STYLES_VERSION = 'dragon.native-styles/1';
 
@@ -60,6 +63,8 @@ export type NativeStylesConfig = {
    * box Dragon lays out, so an editable field is laid out as a readonly one is. Absent: an editable field is refused on native.
    */
   readonly textEditing?: 'host';
+  /** factored: a page whose assignments native cannot hold in one table gets one table per group of states (analysis/link.ts StateGroup). */
+  readonly states?: 'factored' | 'factored-always';
   /**
    * 'program-and-sources' (the default): the state program and the Swift or Kotlin generated from it. 'program': the state program
    * only, for a host that applies the program as data itself; files is empty, and a write only the generated runtime lacks does not
@@ -103,6 +108,22 @@ export type NativeStyleOutput = {
   readonly bands: { readonly table: rtBand.BandTable; readonly conditions: readonly string[]; readonly initial: number } | null;
   /** Per program assignment: the root's used colour scheme there (css-color-adjust-1 §2.1) and Chrome's Canvas colour in it. */
   readonly schemes: readonly { readonly colorScheme: 'light' | 'dark'; readonly canvas: Rgba8 }[];
+  /**
+   * Factored states (config states 'factored', analysis/link.ts StateGroup): program then holds the initial assignment alone (in each
+   * band), and each group its own table over the group's states with every other state initial. A node takes its record from the
+   * table of the group that owns it, or from program when no group does.
+   */
+  readonly groups?: readonly NativeStateGroup[];
+};
+
+/** One group's table: its states' keys, its program over them (every other state initial), and the nodes only it changes. */
+export type NativeStateGroup = {
+  readonly states: readonly string[];
+  readonly program: StateProgram;
+  readonly owned: readonly string[];
+  readonly schemes: NativeStyleOutput['schemes'];
+  readonly interaction?: InteractionProgram;
+  readonly interactionValues?: readonly (readonly InteractionValue[])[];
 };
 
 export type NativeStyleBlocked = { readonly kind: 'blocked'; readonly reason: string };
@@ -147,6 +168,7 @@ export function compileNativeStylesWith(config: NativeStylesConfig, input: Front
       ...(config.forms === 'host' ? { hostForms: true } : {}),
       ...(config.textEditing === 'host' ? { hostTextEditing: true } : {}),
       hostUnforced: true,
+      ...(config.states === 'factored' ? { factorStates: 'over-limits' as const } : config.states === 'factored-always' ? { factorStates: 'always' as const } : {}),
       ...(config.brotliDecompress === undefined ? {} : { brotliDecompress: config.brotliDecompress }),
       ...(config.systemFonts === 'measured' ? { systemFonts: true } : {}),
     },
@@ -155,6 +177,7 @@ export function compileNativeStylesWith(config: NativeStylesConfig, input: Front
   if (config.topLayer !== undefined && config.topLayer !== 'host') throw new Error(`compileNativeStyles: topLayer ${JSON.stringify(config.topLayer)} is not 'host'`);
   if (config.canvas !== undefined && config.canvas !== 'host') throw new Error(`compileNativeStyles: canvas ${JSON.stringify(config.canvas)} is not 'host'`);
   if (config.forms !== undefined && config.forms !== 'host') throw new Error(`compileNativeStyles: forms ${JSON.stringify(config.forms)} is not 'host'`);
+  if (config.states !== undefined && config.states !== 'factored' && config.states !== 'factored-always') throw new Error(`compileNativeStyles: states ${JSON.stringify(config.states)} is neither 'factored' nor 'factored-always'`);
   if (config.textEditing !== undefined && config.textEditing !== 'host') throw new Error(`compileNativeStyles: textEditing ${JSON.stringify(config.textEditing)} is not 'host'`);
   const output = config.output ?? 'program-and-sources';
   if (output !== 'program-and-sources' && output !== 'program') throw new Error(`compileNativeStyles: output ${JSON.stringify(output)} is neither 'program-and-sources' nor 'program'`);
@@ -165,12 +188,12 @@ export function compileNativeStylesWith(config: NativeStylesConfig, input: Front
 }
 
 /** The interaction program over a target's state program: one level per program assignment, from its case in its band. */
-function interactionProgramOf(compiled: Compiled<NativeStyleTarget>, program: StateProgram, backend: NativeBackend): { readonly program: InteractionProgram; readonly values: readonly (readonly InteractionValue[])[] } | string {
+function interactionProgramOf(compiled: Compiled<NativeStyleTarget>, program: StateProgram, backend: NativeBackend, bandless = 0): { readonly program: InteractionProgram; readonly values: readonly (readonly InteractionValue[])[] } | string {
   const isBand = (x: StateProgram['assignments'][number]['assignment'][number]): boolean => x.state.instance === ENV_INSTANCE && x.state.state === BAND_STATE;
   const inputs = [];
   const values: InteractionValue[][] = [];
   for (const { assignment } of program.assignments) {
-    const band = (assignment.find(isBand)?.value ?? 0) as number;
+    const band = (assignment.find(isBand)?.value ?? bandless) as number;
     const input = interactionLevelInputIn(compiled, assignment.filter((x) => !isBand(x)), band, backend);
     if (typeof input === 'string') return input;
     inputs.push(input);
@@ -192,36 +215,58 @@ function targetOutput(compiled: Compiled<NativeStyleTarget>, t: NativeStyleTarge
   const bands = nativeBands(compiled);
   if (animated && bands !== null) return { kind: 'blocked', reason: `the ${t} output has transitions or animations under @media, which a host does not run yet` };
   const count = bands === null ? 1 : bands.table.bands.length;
-  const cases = [];
+  const all = compiledCases(compiled);
+  const groups = stateGroupsIn(compiled);
+  if (groups !== null && animated) return { kind: 'blocked', reason: `the ${t} output has transitions or animations and states in groups, which a host does not run yet` };
   let interactive = false;
-  for (const c of compiledCases(compiled)) {
-    for (let band = 0; band < count; band++) {
-      const partition = interactionPartitionIn(compiled, c.assignment, band);
-      if (partition !== null && partition.states.length > 0) {
-        // A host that runs Dragon's interaction runtime itself (support 'lanes', program only) gets the interaction program.
-        if (!hostAnimates) return { kind: 'blocked', reason: `the ${t} output has interaction states (:hover, :active, :focus), which this entry point does not emit yet` };
-        interactive = true;
+  // One table over the given cases in every band: its program, each assignment's colour scheme, and its interaction program.
+  // oneBand: a group whose elements style alike in every band (analysis bandFree) is laid out in the initial band alone, with no band state.
+  const tableOf = (given: readonly { readonly assignment: Assignment; readonly isInitial: boolean }[], oneBand = false) => {
+    const cases = [];
+    for (const c of given) {
+      for (let band = oneBand && bands !== null ? bands.initial : 0; band < (oneBand && bands !== null ? bands.initial + 1 : count); band++) {
+        const partition = interactionPartitionIn(compiled, c.assignment, band);
+        if (partition !== null && partition.states.length > 0) {
+          // A host that runs Dragon's interaction runtime itself (support 'lanes', program only) gets the interaction program.
+          if (!hostAnimates) return `the ${t} output has interaction states (:hover, :active, :focus), which this entry point does not emit yet`;
+          interactive = true;
+        }
+        const p = nativeBandProgramFor(compiled, c.assignment, band, t);
+        if (p.kind === 'blocked') return p.reason;
+        cases.push({ assignment: c.assignment, isInitial: c.isInitial, band, program: p.program });
       }
-      const p = nativeBandProgramFor(compiled, c.assignment, band, t);
-      if (p.kind === 'blocked') return { kind: 'blocked', reason: p.reason };
-      cases.push({ assignment: c.assignment, isInitial: c.isInitial, band, program: p.program });
     }
-  }
-  try {
-    const program = bands === null ? deriveStateProgram(backend, cases) : bandStateProgram(backend, cases, count, bands.initial);
+    const program = bands === null || oneBand ? deriveStateProgram(backend, cases) : bandStateProgram(backend, cases, count, bands.initial);
     const schemes = program.assignments.map(({ assignment }) => {
       const isBand = (x: (typeof assignment)[number]): boolean => x.state.instance === ENV_INSTANCE && x.state.state === BAND_STATE;
-      const band = assignment.find(isBand)?.value ?? 0;
+      const band = assignment.find(isBand)?.value ?? (oneBand && bands !== null ? bands.initial : 0);
       const s = usedSchemeOf(compiled, assignment.filter((x) => !isBand(x)), band as number);
       if (typeof s === 'string') throw new Error(`compileNativeStyles: ${s}`);
       return s;
     });
+    return { program, schemes };
+  };
+  try {
+    const page = tableOf(groups === null ? all : all.filter((c) => c.isInitial));
+    if (typeof page === 'string') return { kind: 'blocked', reason: page };
+    const { program, schemes } = page;
+    const factored = groups === null ? null : groupTables(groups.map((g) => ({ states: g.states, table: tableOf(g.cases, g.bandFree) })), program);
+    if (typeof factored === 'string') return { kind: 'blocked', reason: factored };
+    if (factored !== null && interactive) {
+      for (const g of factored) {
+        const interaction = interactionProgramOf(compiled, g.program, backend, bands === null ? 0 : bands.initial);
+        if (typeof interaction === 'string') return { kind: 'blocked', reason: interaction };
+        (g as { interaction?: InteractionProgram }).interaction = interaction.program;
+        (g as { interactionValues?: readonly (readonly InteractionValue[])[] }).interactionValues = interaction.values;
+      }
+    }
     const anim = animated ? animProgramOf(compiled, program.assignments.map((a) => a.assignment)) : null;
     // The animator's tables cover the program's assignments only, so a state would run with no tables for it.
     if (interactive && animated) return { kind: 'blocked', reason: `the ${t} output has transitions or animations and interaction states together, which a host does not run yet` };
     const interaction = interactive ? interactionProgramOf(compiled, program, backend) : null;
     if (typeof interaction === 'string') return { kind: 'blocked', reason: interaction };
-    if (!sources) return { kind: 'emitted', backend, program, files: [], readiness: compiled.outputs[t], bands, schemes, ...(anim === null ? {} : { anim }), ...(interaction === null ? {} : { interaction: interaction.program, interactionValues: interaction.values }) };
+    if (!sources) return { kind: 'emitted', backend, program, files: [], readiness: compiled.outputs[t], bands, schemes, ...(anim === null ? {} : { anim }), ...(interaction === null ? {} : { interaction: interaction.program, interactionValues: interaction.values }), ...(factored === null ? {} : { groups: factored }) };
+    if (factored !== null) return { kind: 'blocked', reason: `the ${t} output has states in groups, which the generated sources do not run yet` };
     const emit: StateEmit = { id: name, name, fixture: '', direction: 'ltr', compilerDigest: compiled.digest, viewport, program, scripts: [], ...(bands === null ? {} : { band: bands.table }) };
     const path = backend === 'uikit' ? `Cases/Dragon${name}States.swift` : `kotlin/dev/dragon/cases/Dragon${name}States.kt`;
     const file = emitStatePrograms(backend, [emit]).find((f) => f.path === path);
@@ -232,3 +277,81 @@ function targetOutput(compiled: Compiled<NativeStyleTarget>, t: NativeStyleTarge
     throw e;
   }
 }
+
+/**
+ * The groups' tables, each owning the nodes its assignments change from the initial one. A node two groups change, or a table the
+ * native limit refuses, is the analysis's error (analysis/link.ts groups states that read one element), reported as the reason.
+ */
+function groupTables(tables: readonly { readonly states: readonly number[]; readonly table: string | { readonly program: StateProgram; readonly schemes: NativeStyleOutput['schemes'] } }[], page: StateProgram): NativeStateGroup[] | string {
+  const owner = new Map<string, number>();
+  const out: NativeStateGroup[] = [];
+  const pageInitial = page.assignments[page.initial]?.assignment ?? [];
+  const valueOf = (a: Assignment, key: string): unknown => a.find((x) => stateKey(x.state.instance, x.state.state) === key)?.value;
+  for (const [k, { table }] of tables.entries()) {
+    if (typeof table === 'string') return table;
+    const { program } = table;
+    const states = program.states.filter((v) => v.domain.length > 1 && v.key !== BAND_KEY).map((v) => v.key);
+    // Each assignment against the group's initial one in the same band: the nodes and layout boxes it changes.
+    const initialIn = (a: Assignment): number => program.assignments.findIndex((x) => valueOf(x.assignment, BAND_KEY) === valueOf(a, BAND_KEY) && states.every((s) => valueOf(x.assignment, s) === valueOf(pageInitial, s)));
+    const owned = new Set<string>();
+    program.assignments.forEach(({ assignment }, i) => {
+      const j = initialIn(assignment);
+      if (j < 0) throw new Error(`compileNativeStyles: group ${states.join(', ')} has no initial assignment in a band`);
+      if (i === j) return;
+      for (const id of changedIds(programAt(program, i), programAt(program, j))) owned.add(id);
+    });
+    for (const id of owned) {
+      const other = owner.get(id);
+      if (other !== undefined) return `${id} changes with the states of two groups (${(out[other] as NativeStateGroup).states.join(', ')}; ${states.join(', ')}), so their tables cannot be combined`;
+      owner.set(id, k);
+    }
+    out.push({ states, program, owned: [...owned].sort(), schemes: table.schemes });
+  }
+  // A phone shapes a paragraph's text only as Dragon laid it out, a whole font run at a time: one table must own all of it.
+  const ownerOf = (id: string): number => owner.get(`box:${id}`) ?? -1;
+  const mixed = (root: LayoutBox): string | null => {
+    const inline = root.children.filter((c) => c.kind === 'text' || c.kind === 'inline');
+    const owners = new Set(inline.map((c) => ownerOf((c as { readonly id: string }).id)));
+    if (inline.length > 0 && owners.size > 1) return root.id;
+    for (const c of root.children) {
+      if (c.kind !== 'box') continue;
+      const found = mixed(c);
+      if (found !== null) return found;
+    }
+    return null;
+  };
+  for (const g of out) {
+    for (let i = 0; i < g.program.assignments.length; i++) {
+      const found = mixed(programAt(g.program, i).root);
+      if (found !== null) return `the text of ${found} changes with more than one group of states, and a phone shapes a paragraph only as Dragon laid it out`;
+    }
+  }
+  return out;
+}
+
+/** The node and layout box ids whose record (a box's without its child boxes) differs, or that one program has and the other not. */
+function changedIds(a: NativeProgram, b: NativeProgram): Set<string> {
+  const records = (p: NativeProgram): Map<string, string> => {
+    const out = new Map<string, string>();
+    // A node's analysis facts (its rank in the page's paint order) are not exported; its writes, which a host applies, are.
+    for (const { facts: _facts, ...n } of p.nodes) out.set(`node:${n.id}`, canonicalJson(n));
+    const hasId = (c: LayoutBox['children'][number]): c is LayoutBox['children'][number] & { readonly id: string } => 'id' in c && typeof c.id === 'string';
+    const walk = (box: LayoutBox): void => {
+      const { children, ...own } = box;
+      // A box's child list is its children's presence, which each child's own group decides; children without an id are its own.
+      out.set(`box:${box.id}`, canonicalJson({ own, leaves: children.filter((c) => !hasId(c)) }));
+      for (const c of children) {
+        if (c.kind === 'box') walk(c);
+        else if (hasId(c)) out.set(`box:${c.id}`, canonicalJson(c));
+      }
+    };
+    walk(p.root);
+    return out;
+  };
+  const x = records(a);
+  const y = records(b);
+  const out = new Set<string>();
+  for (const key of new Set([...x.keys(), ...y.keys()])) if (x.get(key) !== y.get(key)) out.add(key);
+  return out;
+}
+

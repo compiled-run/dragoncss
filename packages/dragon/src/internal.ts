@@ -26,7 +26,7 @@ import type { Assignment, Origin, Target } from './types.ts';
 // The public API without createProject, whose committed lanes verdict (create-project.ts) the harness passes itself.
 export * from './api.ts';
 export { createProjectWith, COMPILER_VERSION } from './project.ts';
-export type { NativeStyleBlocked, NativeStyleOutput, NativeStyles, NativeStylesConfig, NativeStyleTarget } from './native-styles.ts';
+export type { NativeStateGroup, NativeStyleBlocked, NativeStyleOutput, NativeStyles, NativeStylesConfig, NativeStyleTarget } from './native-styles.ts';
 export { compileNativeStyles, compileNativeStylesWith, NATIVE_STYLES_VERSION } from './native-styles.ts';
 export type { InternalOptions } from './project.ts';
 export type { CompilerFaults } from './faults.ts';
@@ -142,6 +142,14 @@ export function focusReachableIn(compiled: object): boolean {
 /** SELD-R2: whether a compile outside the parity lanes refuses this document on the native target (interactionLanes). */
 export function laneOnlyNative(compiled: object, target: 'ios' | 'android'): boolean {
   return internalRecord(compiled)?.laneOnlyNative.includes(target) === true;
+}
+
+/** The factored groups (analysis/link.ts StateGroup) with their cases' assignments, the initial first; null when cases are every assignment. */
+export function stateGroupsIn(compiled: object): readonly { readonly states: readonly number[]; readonly bandFree: boolean; readonly cases: readonly { readonly assignment: Assignment; readonly isInitial: boolean }[] }[] | null {
+  const record = internalRecord(compiled);
+  const groups = record?.linked?.groups ?? null;
+  if (record === undefined || groups === null) return null;
+  return groups.map((g, k) => ({ states: g.states, bandFree: record.groupBandFree?.[k] === true, cases: g.cases.map((i) => ({ assignment: (record.cases[i] as InternalCase).assignment, isInitial: (record.cases[i] as InternalCase).isInitial })) }));
 }
 
 /** Dragon's reachable assignments, in its enumeration order, with the initial case marked. */
