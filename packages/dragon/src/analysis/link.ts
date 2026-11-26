@@ -367,6 +367,7 @@ export function linkDocument(valid: ValidInput, options: LinkOptions, diagnostic
           for (const b of n.classes) for (const i of support(b.value.map((a) => a.when), inst, chosen(b.value, inst))) reads.add(i);
           for (const a of n.attributes) for (const i of support(a.value.map((x) => x.when), inst, chosen(a.value, inst))) reads.add(i);
           sites.set(address, { reads, parent, kids: [] });
+          if (n.tag === 'select') selects.add(address);
           if (parent !== null) (sites.get(parent) as Site).kids.push(address);
           walk(n.children, inst, address, []);
         } else if (n.kind === 'text') {
@@ -388,6 +389,7 @@ export function linkDocument(valid: ValidInput, options: LinkOptions, diagnostic
         }
       }
     };
+    const selects = new Set<string>();
     walk(valid.rootComponent.root, instances.get(docId) as Instance, null, []);
     const parentOf = (a: string): string | null => (sites.get(a) as Site).parent;
     const reach = options.reach ?? { siblings: true, descendants: true };
@@ -404,7 +406,8 @@ export function linkDocument(valid: ValidInput, options: LinkOptions, diagnostic
           below(k);
         }
       };
-      if (reach.descendants) below(address);
+      // A select shows one of its options by their selected and disabled attributes (forms/select.ts shownOptionIndex), so it reads them.
+      if (reach.descendants || selects.has(address)) below(address);
       for (let a: string | null = address; a !== null; a = parentOf(a)) {
         take(a);
         const p = parentOf(a);
@@ -422,7 +425,7 @@ export function linkDocument(valid: ValidInput, options: LinkOptions, diagnostic
   for (const v of free) count *= v.domain.length;
   const factor = options.factorAbove !== undefined && (count > options.factorAbove || options.alwaysFactor === true);
   const grouped = factor ? stateGroupsOf() : null;
-  const groups = grouped !== null && (grouped.length > 1 || (grouped.length === 1 && count > MAX_STATE_ASSIGNMENTS)) ? grouped : null;
+  const groups = grouped !== null && grouped.length > 1 ? grouped : null;
   const sizeOf = (states: readonly number[]): number => states.reduce((n, i) => n * (free[i] as StateVar).domain.length, 1);
   const over = groups === null ? (count > MAX_STATE_ASSIGNMENTS ? count : null) : groups.map((g) => sizeOf(g.states)).find((n) => n > MAX_STATE_ASSIGNMENTS) ?? null;
   if (over !== null) {

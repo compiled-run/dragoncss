@@ -2249,6 +2249,21 @@ function bandFree(group: readonly number[], bandCases: readonly { readonly cases
       for (const [address, print] of here) if (initial.get(address) !== print) touched.add(address);
       for (const address of initial.keys()) if (!here.has(address)) touched.add(address);
     }
+    // An element whose styles across its interaction states differ from the initial case's is the group's too (native-styles.ts
+    // interactionChanges).
+    const statePrints = (c: CaseResult): Map<string, Set<string>> => {
+      const out = new Map<string, Set<string>>();
+      for (const st of c.interaction) for (const [address, print] of byAddress(st.resolved, null)) out.set(address, (out.get(address) ?? new Set()).add(print));
+      return out;
+    };
+    const atInitial = statePrints(b.cases[group[0] as number] as CaseResult);
+    for (const i of group.slice(1)) {
+      for (const [address, prints] of statePrints(b.cases[i] as CaseResult)) {
+        const was = atInitial.get(address);
+        if (was === undefined || was.size !== prints.size || [...prints].some((x) => !was.has(x))) touched.add(address);
+      }
+      for (const address of atInitial.keys()) if (!statePrints(b.cases[i] as CaseResult).has(address)) touched.add(address);
+    }
   }
   const treesOf = (c: CaseResult): Map<string, string>[] => [byAddress(c.resolved, touched), ...c.interaction.map((i) => byAddress(i.resolved, touched))];
   const same = (x: Map<string, string>, y: Map<string, string>): boolean => x.size === y.size && [...x].every(([a, p]) => y.get(a) === p);

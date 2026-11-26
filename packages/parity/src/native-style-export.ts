@@ -138,7 +138,7 @@ export type ExportInteractionLevel = {
  * its states with every other state initial; owned names the nodes ("node:<id>") and layout boxes ("box:<id>") only this group
  * changes, which a host takes from this table's current assignment and every other node from the target's.
  */
-export type ExportGroup = Pick<ExportTarget, 'states' | 'initial' | 'assignments' | 'next' | 'interaction'> & {
+export type ExportGroup = Pick<ExportTarget, 'states' | 'initial' | 'assignments' | 'next' | 'interaction' | 'planNames'> & {
   /** The group's state keys, without @env#band, which every table shares. */
   readonly groupStates: readonly string[];
   readonly owned: readonly string[];

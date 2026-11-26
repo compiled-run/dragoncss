@@ -74,7 +74,8 @@ export type MarklessPlan = {
   readonly groups?: readonly PlanGroup[];
 };
 
-export type PlanGroup = { readonly first: number; readonly count: number; readonly owned: readonly string[] };
+/** owned: the layout boxes the group gives the page; nodes: the nodes whose plan facts (dashed borders, scrollers, checkboxes) it gives. */
+export type PlanGroup = { readonly first: number; readonly count: number; readonly owned: readonly string[]; readonly nodes: readonly string[] };
 
 /**
  * One plan of a target's own table and its groups' (factored states): every table's variants and entries in table order, the text
@@ -93,7 +94,9 @@ export function mergedPlan(page: MarklessPlan, groups: readonly { readonly plan:
     variants.push(...p.variants);
     const first = assignments.length;
     assignments.push(...p.assignments.map((a) => ({ ...a, variant: a.variant + at })));
-    if (k > 0) out.push({ first, count: p.assignments.length, owned: (groups[k - 1] as { owned: readonly string[] }).owned.flatMap((o) => (o.startsWith('box:') ? [o.slice('box:'.length)] : [])) });
+    const owned = k === 0 ? [] : (groups[k - 1] as { owned: readonly string[] }).owned;
+    const idsOf = (prefix: string): string[] => owned.flatMap((o) => (o.startsWith(prefix) ? [o.slice(prefix.length)] : []));
+    if (k > 0) out.push({ first, count: p.assignments.length, owned: idsOf('box:'), nodes: idsOf('node:') });
   });
   return { ...page, faces, densities, variants, assignments, groups: out };
 }

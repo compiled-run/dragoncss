@@ -892,11 +892,13 @@ function exportMarkless(parsed: MarklessStyleInput, inputText: string, inputPath
       };
     }) } }),
     // The plan lays out Dragon's own ids; a host names each assignment's geometry with the input's, by the export's rule.
-    ...(x.plan === undefined ? {} : { plan: withTransformed(x.plan, compiled), planNames: [
-      ...x.assignments.map((a) => planNamesOf(a, renameIn(a))),
-      ...(x.interaction?.levels.flatMap((l, i) => l.states.map((st) => planNamesOf(st, renameIn(x.assignments[i] as ExportAssignment)))) ?? []),
-    ] }),
+    ...(x.plan === undefined ? {} : { plan: withTransformed(x.plan, compiled), planNames: planNamesFor(x) }),
   });
+  // Each plan entry of a table, its assignments then its interaction states: each Dragon id with the input's name for it there.
+  const planNamesFor = (x: Table): (readonly (readonly [string, string])[])[] => [
+    ...x.assignments.map((a) => planNamesOf(a, renameIn(a))),
+    ...(x.interaction?.levels.flatMap((l, i) => l.states.map((st) => planNamesOf(st, renameIn(x.assignments[i] as ExportAssignment)))) ?? []),
+  ];
   // A group's owned nodes and boxes, named as each of its assignments names them (a text's id follows what the assignment shows).
   const groupOwned = (g: ExportGroup): string[] => {
     const named = new Set<string>();
@@ -919,7 +921,8 @@ function exportMarkless(parsed: MarklessStyleInput, inputText: string, inputPath
       return [t, {
         ...own,
         ...(x.plan === undefined ? {} : { planRepeats: planRepeats(parsed, dragonIds) }),
-        ...(x.groups === undefined ? {} : { groups: x.groups.map((g) => ({ ...renamedTable(g), owned: groupOwned(g) })) }),
+        // A group's plan entries are named as its own: a host names each box of a combined layout by the table that gave it.
+        ...(x.groups === undefined ? {} : { groups: x.groups.map((g) => ({ ...renamedTable(g), owned: groupOwned(g), ...(x.plan === undefined ? {} : { planNames: planNamesFor(g) }) })) }),
       }];
     })),
   };

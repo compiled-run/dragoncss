@@ -4326,7 +4326,7 @@ function withRows(v: JsonValue, lists: ReadonlyMap<string, RowList>, sink: RowSi
 /** The JSON of a plan variant's root. */
 // ---------------------------------------------------------------- factored states: one variant from several tables (markless-plan.ts mergedPlan)
 
-type PlanGroup = { readonly first: number; readonly count: number; readonly owned: Map<string, boolean> };
+type PlanGroup = { readonly first: number; readonly count: number; readonly owned: Map<string, boolean>; readonly nodes: Map<string, boolean> };
 
 function planGroups(plan: JsonObj): PlanGroup[] {
   if (!plan.values.has('groups')) return [];
@@ -4334,11 +4334,14 @@ function planGroups(plan: JsonObj): PlanGroup[] {
   const given = arr(field(plan, 'groups', '$.plan'), '$.plan.groups');
   for (let gi = 0; gi < given.length; gi++) {
     const at = `$.plan.groups[${gi}]`;
-    const go = obj(given[gi] as JsonValue, ['first', 'count', 'owned'], at);
+    const go = obj(given[gi] as JsonValue, ['first', 'count', 'owned', 'nodes'], at);
     const owned = new Map<string, boolean>();
     const ids = arr(field(go, 'owned', at), `${at}.owned`);
     for (let i = 0; i < ids.length; i++) owned.set(str(ids[i] as JsonValue, `${at}.owned[${i}]`), true);
-    out.push({ first: numField(go, 'first', at), count: numField(go, 'count', at), owned });
+    const nodes = new Map<string, boolean>();
+    const nodeIds = arr(field(go, 'nodes', at), `${at}.nodes`);
+    for (let i = 0; i < nodeIds.length; i++) nodes.set(str(nodeIds[i] as JsonValue, `${at}.nodes[${i}]`), true);
+    out.push({ first: numField(go, 'first', at), count: numField(go, 'count', at), owned, nodes });
   }
   return out;
 }
@@ -4476,7 +4479,7 @@ function groupEntries(plan: JsonObj, given: JsonValue): GroupEntries {
   return { groups, entries };
 }
 
-/** The page entry's parts with each owned node's dashed border and scroller from its group's entry. */
+/** The page entry's parts with each owned node's dashed border, scroller and checkbox from its group's entry. */
 function groupedParts(plan: JsonObj, page: PlanAssignmentParts, given: JsonValue): PlanAssignmentParts {
   const ge: GroupEntries = groupEntries(plan, given);
   const groups = ge.groups;
@@ -4485,7 +4488,7 @@ function groupedParts(plan: JsonObj, page: PlanAssignmentParts, given: JsonValue
   const dashed = new Map<string, PlanDashed>();
   const scrollers = new Map<string, boolean>();
   const owned = (id: string): number => {
-    for (let gi = 0; gi < groups.length; gi++) if ((groups[gi] as PlanGroup).owned.has(id)) return gi;
+    for (let gi = 0; gi < groups.length; gi++) if ((groups[gi] as PlanGroup).nodes.has(id)) return gi;
     return -1;
   };
   for (const [id, d] of page.dashed) if (owned(id) < 0) dashed.set(id, d);
