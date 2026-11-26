@@ -1247,6 +1247,8 @@
     "outline-layers-rtl": "stacking context on neg, z1: hit testing through z-index layers and stacking contexts in the normal flow is not modelled yet (rt-hit.ts orders z-index 0 contexts and positioned boxes as z-index auto)",
     "outline-transform": "transform on turn: hit testing through a rotated transform is SELD-R2b (T146)",
     "outline-transform-rtl": "transform on turn: hit testing through a rotated transform is SELD-R2b (T146)",
+    "outline-clip-layer": "transform on turn: hit testing through a rotated transform is SELD-R2b (T146)",
+    "outline-clip-layer-rtl": "transform on turn: hit testing through a rotated transform is SELD-R2b (T146)",
     "resize-values": "sp is an inline box, which the hit table does not model yet (INL1a; no Chrome hit capture)",
     "resize-values-rtl": "sp is an inline box, which the hit table does not model yet (INL1a; no Chrome hit capture)",
     "containment-layout": "ib-l is an atomic inline that containment makes a stacking context, which no Chrome hit capture orders against its line yet (INL2c)",

@@ -26,9 +26,9 @@ import { NO_OUTLINE_FAULTS, outlineModelAt, outlineOrder, outlines, ringsOver } 
 import { outlineWrite } from '../src/paint-samples/outline.ts';
 
 // outline-layers paints outlines in their paint layers, under and inside positioned boxes: pnt1-effects proves it with the Appendix E
-// model. outline-transform draws them inside transformed layers: the describe block below proves it. This model (boxes in tree
-// order and untransformed, every outline last) leaves both out.
-const OUTSIDE_THE_MODEL = ['outline-layers', 'outline-transform'];
+// model. outline-transform draws them inside transformed layers, and outline-clip-layer a clipping layer's own outline outside its
+// clip: the describe blocks below prove them. This model (boxes in tree order and untransformed, every outline last) leaves them out.
+const OUTSIDE_THE_MODEL = ['outline-layers', 'outline-transform', 'outline-clip-layer'];
 const OUTLINE_FIXTURES = (FIXTURE_GROUPS.find((g) => g.id === 'outline')?.fixtures ?? []).filter((f) => f.kind === 'layout' && !OUTSIDE_THE_MODEL.includes(f.id));
 
 /** Each outline plant's host twin: a shift in device px and the model's faults. */
@@ -191,6 +191,41 @@ describe('PNT1 outline: a ring inside a transformed layer is where Chrome draws 
         // Every transformed outline is compared at every DPR, the double ring and the transform-origin case included.
         expect([...owners].sort(), `transformed outlines with points @${dpr}`).toEqual(['grow', 'kid', 'press', 'turn']);
         expect(missed, `points the untransformed rings miss @${dpr}`).toBeGreaterThan(0);
+      }
+      expect(problems).toEqual([]);
+    });
+  }
+});
+
+// A clipping layer's own outline (scaled with a rounded clip, rotated, and positioned with a double ring) is drawn beside its clip
+// view, so it moves with the layer and nothing it clips covers it. Every colour point of each ring, mapped through the layer's
+// matrices, must be the outline's colour in Chrome's pixels at every DPR.
+describe("PNT1 outline: a clipping layer's own outline is drawn outside its clip, where Chrome draws it", () => {
+  const spec = (FIXTURE_GROUPS.find((g) => g.id === 'outline')?.fixtures ?? []).find((f) => f.id === 'outline-clip-layer');
+  if (spec === undefined) throw new Error('no outline-clip-layer fixture');
+  for (const c of casesOf(spec, fixtureInput(spec))) {
+    it(`${c.id} at ${DPRS.join(', ')}`, () => {
+      const programs = nativePrograms(nativeCompile(spec, c.environment.direction), c.assignment);
+      if (programs.kind !== 'ready') throw new Error(programs.reason);
+      const p = programs.programs.uikit;
+      const problems: string[] = [];
+      for (const dpr of DPRS) {
+        const chrome = committedPixels(c.id, dpr);
+        if (chrome === null) throw new Error(`${c.id}@${dpr}: no committed Chrome PNG`);
+        const owners = new Set<string>();
+        for (const pt of casePoints(p, c.environment.viewport, dpr)) {
+          const m = /^border:(.+):outline-\d+-(top|right|bottom|left)$/.exec(pt.rule);
+          if (m === null) continue;
+          const id = m[1] as string;
+          const w = outlineWrite({ program: p } as never, id);
+          if (w === null) throw new Error(`${id}: an outline point with no outline write`);
+          owners.add(id);
+          const i = (pt.y * chrome.width + pt.x) * 4;
+          const got = [chrome.data[i], chrome.data[i + 1], chrome.data[i + 2], chrome.data[i + 3]];
+          const want = [w.color.r, w.color.g, w.color.b, 255];
+          if (got.some((v, k) => v !== want[k])) problems.push(`${pt.rule} at ${pt.x},${pt.y} @${dpr}: Chrome ${JSON.stringify(got)}, outline ${JSON.stringify(want)}`);
+        }
+        expect([...owners].sort(), `clipping layers with outline points @${dpr}`).toEqual(['press', 'rel', 'turn']);
       }
       expect(problems).toEqual([]);
     });
