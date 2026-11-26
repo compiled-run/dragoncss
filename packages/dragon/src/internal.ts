@@ -128,6 +128,14 @@ export function interactionPartitionOf(compiled: object, assignment: Assignment)
   return typeof c === 'string' ? null : c.partition;
 }
 
+/** Per interaction state of a case in a band, whether only forcing reaches it and a host that never forces skips it (forcedOnlyFocus). */
+export function forcedOnlyStatesIn(compiled: object, assignment: Assignment, band: number): readonly boolean[] {
+  const record = internalRecord(compiled);
+  if (record === undefined) return [];
+  const c = record.bands === null ? (band === 0 ? caseByAssignment(record, assignment) : undefined) : record.bands.cases[band]?.find((x) => x.key === keyOfAssignment(assignment));
+  return c?.interaction.map((i) => i.forcedOnly) ?? [];
+}
+
 /** SELD-R2 PR 5: whether an input can focus some element of the document; false means :focus and :focus-visible are forced-only. */
 export function focusReachableIn(compiled: object): boolean {
   return internalRecord(compiled)?.focusReachable !== false;

@@ -10,9 +10,13 @@ export type FontsXmlFont = {
   /** Each variation axis the font is set to, by tag, as fonts.xml lists them (stylevalue). */
   readonly axes: Readonly<Record<string, number>>;
   readonly postScriptName: string | null;
+  /** fallbackFor: the one named family this font of a fallback family serves (a serif-only fallback); null for any. */
+  readonly fallbackFor: string | null;
 };
 export type FontsXmlFamily = { readonly name: string; readonly fonts: readonly FontsXmlFont[] };
-export type FontsXml = { readonly families: ReadonlyMap<string, FontsXmlFamily>; readonly aliases: ReadonlyMap<string, { readonly to: string; readonly weight: number | null }> };
+/** An unnamed family: the fallback chain, in file order, each with the languages and variant it serves. */
+export type FontsXmlFallback = { readonly lang: readonly string[]; readonly variant: string | null; readonly fonts: readonly FontsXmlFont[] };
+export type FontsXml = { readonly families: ReadonlyMap<string, FontsXmlFamily>; readonly fallbacks: readonly FontsXmlFallback[]; readonly aliases: ReadonlyMap<string, { readonly to: string; readonly weight: number | null }> };
 
 type XmlElement = { readonly name: string; readonly attributes: ReadonlyMap<string, string>; readonly children: readonly (XmlElement | string)[] };
 
@@ -146,6 +150,7 @@ export function parseFontsXml(text: string): FontsXml {
   if (root.name !== 'familyset') fail(`the root element is <${root.name}>, not <familyset>`);
   const families = new Map<string, FontsXmlFamily>();
   const aliases = new Map<string, { to: string; weight: number | null }>();
+  const fallbacks: FontsXmlFallback[] = [];
   for (const child of root.children) {
     if (typeof child === 'string') {
       if (child.trim() !== '') fail(`text ${JSON.stringify(child.trim())} directly in <familyset>`);
@@ -160,28 +165,33 @@ export function parseFontsXml(text: string): FontsXml {
     }
     if (child.name !== 'family') fail(`<${child.name}> in <familyset>`);
     const name = child.attributes.get('name');
-    // Unnamed families are fallback families (by lang or variant); generics resolve only to named ones.
-    if (name === undefined) continue;
+    const label = name ?? `#${fallbacks.length}`;
     const fonts = child.children.flatMap((f): FontsXmlFont[] => {
       if (typeof f === 'string') return [];
-      if (f.name !== 'font') fail(`<${f.name}> in family ${name}`);
+      if (f.name !== 'font') fail(`<${f.name}> in family ${label}`);
       const file = f.children.filter((c): c is string => typeof c === 'string').join('').trim();
-      if (file === '' || file.includes('/')) fail(`family ${name}: a font names the file ${JSON.stringify(file)}, not a file name in /system/fonts`);
+      if (file === '' || file.includes('/')) fail(`family ${label}: a font names the file ${JSON.stringify(file)}, not a file name in /system/fonts`);
       const style = f.attributes.get('style') ?? 'normal';
-      if (style !== 'normal' && style !== 'italic') fail(`family ${name}: style="${style}"`);
+      if (style !== 'normal' && style !== 'italic') fail(`family ${label}: style="${style}"`);
       const axes: Record<string, number> = {};
       for (const a of f.children) {
         if (typeof a === 'string') continue;
-        if (a.name !== 'axis') fail(`<${a.name}> in a <font> of ${name}`);
+        if (a.name !== 'axis') fail(`<${a.name}> in a <font> of ${label}`);
         const tag = a.attributes.get('tag');
         const value = Number(a.attributes.get('stylevalue'));
-        if (tag === undefined || tag.length !== 4 || !Number.isFinite(value)) fail(`family ${name}: a bad <axis>`);
+        if (tag === undefined || tag.length !== 4 || !Number.isFinite(value)) fail(`family ${label}: a bad <axis>`);
         axes[tag as string] = value;
       }
-      return [{ file, weight: intAttr(f, 'weight', 400), style: style as 'normal' | 'italic', index: intAttr(f, 'index', 0), axes, postScriptName: f.attributes.get('postScriptName') ?? null }];
+      return [{ file, weight: intAttr(f, 'weight', 400), style: style as 'normal' | 'italic', index: intAttr(f, 'index', 0), axes, postScriptName: f.attributes.get('postScriptName') ?? null, fallbackFor: f.attributes.get('fallbackFor') ?? null }];
     });
+    // Unnamed families are the fallback chain (by lang or variant); generics resolve only to named ones.
+    if (name === undefined) {
+      const lang = child.attributes.get('lang');
+      fallbacks.push({ lang: lang === undefined ? [] : lang.split(/[ ,]+/).filter((l) => l !== ''), variant: child.attributes.get('variant') ?? null, fonts });
+      continue;
+    }
     if (families.has(name as string)) fail(`family ${name} is listed twice`);
     families.set(name as string, { name: name as string, fonts });
   }
-  return { families, aliases };
+  return { families, fallbacks, aliases };
 }

@@ -5,7 +5,7 @@ import type { CompilerFaults } from './faults.ts';
 import { NO_FAULTS } from './faults.ts';
 import type { StateEmit } from './emit/runtime/state.ts';
 import { emitStatePrograms, StateEmitError } from './emit/runtime/state.ts';
-import { animProgramOf, BAND_STATE, compiledCases, ENV_INSTANCE, interactionLevelInputIn, interactionPartitionIn, nativeBandProgramFor, nativeBands, usedSchemeOf } from './internal.ts';
+import { animProgramOf, BAND_STATE, compiledCases, ENV_INSTANCE, forcedOnlyStatesIn, interactionLevelInputIn, interactionPartitionIn, nativeBandProgramFor, nativeBands, usedSchemeOf } from './internal.ts';
 import type { InteractionProgram } from './lower/interaction-program.ts';
 import type { InteractionValue } from './analysis/interaction.ts';
 import { deriveInteractionProgram } from './lower/interaction-program.ts';
@@ -119,6 +119,8 @@ export type NativeStyleOutput = {
    * vector of every atom; the program's env#band state selects one, so a band change is a setter like any other.
    */
   readonly bands: { readonly table: rtBand.BandTable; readonly conditions: readonly string[]; readonly initial: number } | null;
+  /** With system fonts, each bundled face's system fallback by face id ('' where two family lists go on to different ones). */
+  readonly fontFallbacks?: Readonly<Record<string, string>>;
   /** Per program assignment: the root's used colour scheme there (css-color-adjust-1 §2.1) and Chrome's Canvas colour in it. */
   readonly schemes: readonly { readonly colorScheme: 'light' | 'dark'; readonly canvas: Rgba8 }[];
 };
@@ -164,6 +166,7 @@ export function compileNativeStylesWith(config: NativeStylesConfig, input: Front
       ...(config.canvas === 'host' ? { hostCanvas: true } : {}),
       ...(config.forms === 'host' ? { hostForms: true } : {}),
       ...(config.textEditing === 'host' ? { hostTextEditing: true } : {}),
+      hostUnforced: true,
       ...(config.imagePaint === 'host' ? { hostImages: true } : {}),
       ...(config.brotliDecompress === undefined ? {} : { brotliDecompress: config.brotliDecompress }),
       ...(config.systemFonts === 'measured' ? { systemFonts: true } : {}),
@@ -187,13 +190,17 @@ export function compileNativeStylesWith(config: NativeStylesConfig, input: Front
 function interactionProgramOf(compiled: Compiled<NativeStyleTarget>, program: StateProgram, backend: NativeBackend): { readonly program: InteractionProgram; readonly values: readonly (readonly InteractionValue[])[] } | string {
   const isBand = (x: StateProgram['assignments'][number]['assignment'][number]): boolean => x.state.instance === ENV_INSTANCE && x.state.state === BAND_STATE;
   const inputs = [];
+  const values: InteractionValue[][] = [];
   for (const { assignment } of program.assignments) {
     const band = (assignment.find(isBand)?.value ?? 0) as number;
     const input = interactionLevelInputIn(compiled, assignment.filter((x) => !isBand(x)), band, backend);
     if (typeof input === 'string') return input;
     inputs.push(input);
+    const skipped = forcedOnlyStatesIn(compiled, assignment.filter((x) => !isBand(x)), band);
+    // A skipped state keeps its matches but is the assignment's own styles, so it forces nothing.
+    values.push(input.partition.states.map((v, k) => (skipped[k] === true ? { ...v, force: [] } : v)));
   }
-  return { program: deriveInteractionProgram(program, inputs), values: inputs.map((i) => i.partition.states) };
+  return { program: deriveInteractionProgram(program, inputs), values };
 }
 
 function targetOutput(compiled: Compiled<NativeStyleTarget>, t: NativeStyleTarget, name: string, viewport: NativeStylesConfig['viewport'], sources: boolean, hostAnimates: boolean): NativeStyleOutput | NativeStyleBlocked {
@@ -236,7 +243,8 @@ function targetOutput(compiled: Compiled<NativeStyleTarget>, t: NativeStyleTarge
     if (interactive && animated) return { kind: 'blocked', reason: `the ${t} output has transitions or animations and interaction states together, which a host does not run yet` };
     const interaction = interactive ? interactionProgramOf(compiled, program, backend) : null;
     if (typeof interaction === 'string') return { kind: 'blocked', reason: interaction };
-    if (!sources) return { kind: 'emitted', backend, program, files: [], readiness: compiled.outputs[t], bands, schemes, ...(anim === null ? {} : { anim }), ...(interaction === null ? {} : { interaction: interaction.program, interactionValues: interaction.values }) };
+    const fallbacks = record.fontFallbacks.size === 0 ? {} : { fontFallbacks: Object.fromEntries(record.fontFallbacks) };
+    if (!sources) return { kind: 'emitted', backend, program, files: [], readiness: compiled.outputs[t], bands, schemes, ...fallbacks, ...(anim === null ? {} : { anim }), ...(interaction === null ? {} : { interaction: interaction.program, interactionValues: interaction.values }) };
     const emit: StateEmit = { id: name, name, fixture: '', direction: 'ltr', compilerDigest: compiled.digest, viewport, program, scripts: [], ...(bands === null ? {} : { band: bands.table }) };
     const path = backend === 'uikit' ? `Cases/Dragon${name}States.swift` : `kotlin/dev/dragon/cases/Dragon${name}States.kt`;
     const file = emitStatePrograms(backend, [emit]).find((f) => f.path === path);
