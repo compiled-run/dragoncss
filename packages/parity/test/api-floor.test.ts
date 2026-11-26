@@ -77,6 +77,14 @@ describe('the Android API floor check', () => {
     expect(r.violations).toEqual([]);
     expect(r.checked).toBe(4);
   });
+  it('keeps each reference once per method: a repeated call adds no ref and leaves the floor result as it was', () => {
+    const repeated = `${DEX}00020c: 6e10 0100 0100                         |000c: invoke-virtual {v2}, Landroid/view/View;.layout:(IIII)V // method@0002
+`;
+    const once = parseDexdump(DEX);
+    const twice = parseDexdump(repeated);
+    expect(twice.refs).toEqual(once.refs);
+    expect(checkFloor(parseApiVersions(API), twice, 29)).toEqual(checkFloor(parseApiVersions(API), once, 29));
+  });
   it('an API 30 member reached through the app activity is named; an API 33 class is named; minSdk 30 accepts the member', () => {
     const api = parseApiVersions(API);
     const planted = `${DEX}000210: 6e10 0200 0100                         |000c: invoke-virtual {v1}, Ldev/dragon/host/DragonActivity;.getDisplay:()Landroid/view/Display; // method@0003

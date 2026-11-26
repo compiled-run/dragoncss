@@ -1,6 +1,8 @@
 // Stage 1 of docs/api.md §4.1: cascade, inheritance and browser defaults per element. No native properties here. This file walks
 // the tree; the tag table is elements.ts, selector matching match.ts, the cascade cascade.ts and value computation computed.ts,
 // all re-exported here so existing imports keep working.
+import type { VariantNumeric } from '@dragon/layout';
+import { variantNumericOf } from '../css/properties/font-variant.ts';
 import { perturbColor } from '../css/color.ts';
 import { envAsZero } from '../css/env.ts';
 import { ENV_VALUE_TYPE } from '../css/values.ts';
@@ -76,6 +78,8 @@ export type ResolvedText = {
   readonly transformRefusal?: string;
   /** Whether its owner synthesizes small caps over a face without smcp (computed.ts synthesizesSmallCaps). */
   readonly smallCaps: boolean;
+  /** Its owner's font-variant-numeric, which the engine shapes with (css/properties/font-variant.ts variantNumericOf). */
+  readonly variantNumeric: VariantNumeric;
 };
 
 const WHITE_SPACE = /[ \t\n\r\f]/;
@@ -656,7 +660,7 @@ function resolveTreeWith(root: LinkedElement, rules: readonly Rule[], faults: Co
         if (text === undefined) throw new Error(`${kid.address}: text outside any inline formatting context`);
         if (text.length === 0 && !keptEmptyTexts.has(kid)) continue;
         const refusal = refusals.get(kid);
-        const resolvedText: ResolvedText = { kind: 'text', node: kid, text, props: textProps(ownerProps, faults, environment.ua), smallCaps: !faults.smallCapsUnsynthesized && synthesizesSmallCaps(ownerProps) };
+        const resolvedText: ResolvedText = { kind: 'text', node: kid, text, props: textProps(ownerProps, faults, environment.ua), smallCaps: !faults.smallCapsUnsynthesized && synthesizesSmallCaps(ownerProps), variantNumeric: variantNumericOf((ownerProps.get('font-variant-numeric') as ResolvedValue).value) };
         owner.children.push(refusal === undefined ? resolvedText : { ...resolvedText, transformRefusal: refusal });
       }
     };

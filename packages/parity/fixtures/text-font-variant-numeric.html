@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; font-family: Lato; font-size: 16px; }
+.sans { font-family: sans-serif; }
+.w { width: 90px; }
+.pn { font-variant-numeric: proportional-nums; }
+.on { font-variant-numeric: oldstyle-nums; }
+.df { font-variant-numeric: diagonal-fractions; }
+.ord { font-variant-numeric: ordinal; }
+.tn { font-variant-numeric: tabular-nums; }
+.tz { font-variant-numeric: tabular-nums slashed-zero; }
+.all { font-variant-numeric: oldstyle-nums proportional-nums diagonal-fractions ordinal; }
+.sh { font-variant: lining-nums proportional-nums; }
+.row { display: flex; width: 120px; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="pn" class="pn w">1111 2020 1/2 0123456789</div>
+<div data-dragon-id="on" class="on">Since 1984, 2025 and 3/4</div>
+<div data-dragon-id="df" class="df">1/2 3/4 5/8 cups</div>
+<div data-dragon-id="ord" class="ord">1st 2nd 3rd 4th</div>
+<div data-dragon-id="all" class="all w">1st of 1/2 2020 11</div>
+<div data-dragon-id="sh" class="sh">1111 10:01</div>
+<div data-dragon-id="tn" class="sans tn w">1111 2222 1010 11:11</div>
+<div data-dragon-id="tz" class="sans tz">0101 1/2 1st 10.01</div>
+<div data-dragon-id="mixed" class="sans w">Paid 111 <span data-dragon-id="mixed1" class="tn">111.11</span> of 1,111</div>
+<div data-dragon-id="row" class="row sans"><div data-dragon-id="r1" class="tn">11 11</div><div data-dragon-id="r2">11 11</div></div>
+<div data-dragon-id="plain" class="sans">1111 0101 1/2</div>
+</body>
+</html>

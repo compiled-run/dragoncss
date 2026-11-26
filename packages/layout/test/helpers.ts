@@ -1,3 +1,4 @@
+import { NORMAL_NUMERIC } from '../src/index.ts';
 import type { ControlBox, ControlKind, FontSpec, InlineBox, InlineChild, LayoutBox, LayoutStyle, LineBreak, LineStrut, ReplacedLeaf, SafeAreaInsets, TextLeaf, Viewport, ViewportUnitSizes } from '../src/index.ts';
 
 /** Test-only: the CSS initial values for a block div, spelled out so each test states what it overrides. */
@@ -96,7 +97,7 @@ export function br(id: string, over: Partial<Omit<LineBreak, 'kind' | 'id'>> = {
 
 /** A 10px Ahem text leaf, already collapsed, with the inherited text properties the compiler writes onto it. */
 export function text(id: string, value: string, over: Partial<TextLeaf> = {}): TextLeaf {
-  return { kind: 'text', id, text: value, font: ahemFont(10), lineHeight: { kind: 'normal' }, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap', letterSpacing: { kind: 'px', value: 0 }, wordSpacing: { kind: 'px', value: 0 }, overflowWrap: 'normal', wordBreak: 'normal', smallCaps: false, ...over };
+  return { kind: 'text', id, text: value, font: ahemFont(10), lineHeight: { kind: 'normal' }, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap', letterSpacing: { kind: 'px', value: 0 }, wordSpacing: { kind: 'px', value: 0 }, overflowWrap: 'normal', wordBreak: 'normal', smallCaps: false, variantNumeric: NORMAL_NUMERIC, ...over };
 }
 
 export const px = (value: number) => ({ kind: 'px', value }) as const;

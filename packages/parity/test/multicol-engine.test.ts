@@ -6,7 +6,7 @@
 import type { Browser } from 'playwright';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { InlineChild, LayoutBox, LU, LayoutInput, LayoutRect, LayoutStyle, LineHeightValue, PlacedLine } from '@dragon/layout';
-import { absoluteRects, inlineLeaves, layout, LU_PER_PX, measurerFor, NO_ENGINE_FAULTS, NO_GRID_FAULTS, placeLines, REFERENCE_PLATFORM, zoomInput } from '@dragon/layout';
+import { absoluteRects, inlineLeaves, layout, LU_PER_PX, measurerFor, NO_ENGINE_FAULTS, NO_GRID_FAULTS, NORMAL_NUMERIC, placeLines, REFERENCE_PLATFORM, zoomInput } from '@dragon/layout';
 import { CHROME_VERSION, launchChrome, openPage } from '../src/chrome.ts';
 import { hostPlatform, requireReferencePlatform } from '../src/platform.ts';
 
@@ -121,7 +121,7 @@ function leaves(c: Case): InlineChild[] {
   const out: InlineChild[] = [];
   c.text.split('\n').forEach((t, i) => {
     if (i > 0) out.push({ kind: 'br', id: `${c.id}:br${i}`, font: font(c.size), lineHeight: c.lineHeight });
-    out.push({ kind: 'text', id: `${c.id}:text${i}`, text: t, font: font(c.size), lineHeight: c.lineHeight, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap', letterSpacing: { kind: 'px', value: 0 }, wordSpacing: { kind: 'px', value: 0 }, overflowWrap: 'normal', wordBreak: 'normal', smallCaps: false });
+    out.push({ kind: 'text', id: `${c.id}:text${i}`, text: t, font: font(c.size), lineHeight: c.lineHeight, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap', letterSpacing: { kind: 'px', value: 0 }, wordSpacing: { kind: 'px', value: 0 }, overflowWrap: 'normal', wordBreak: 'normal', smallCaps: false, variantNumeric: NORMAL_NUMERIC });
   });
   return out;
 }

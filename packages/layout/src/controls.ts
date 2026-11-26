@@ -23,6 +23,7 @@
 import type { CancelButton, ControlBox, ControlKind, Direction, LayoutBox } from './input.ts';
 import type { SvgPathShape, SvgSegment } from './svg-path-types.ts';
 import type { TextMeasurer } from './text.ts';
+import { NORMAL_NUMERIC } from './text.ts';
 import type { LU } from './units.ts';
 import { add, ceilFloatToWholePx, clampNegativeToZero, divInt, doubleMul, float32, floatAdd, floatDiv, floatMax, floatMin, floatMul, fromCssPx, fromDouble, intDiv, roundfPx, sub, toPx, truncPxToInt, ZERO } from './units.ts';
 
@@ -94,7 +95,7 @@ export function buttonContentShift(contentBoxBlockSize: LU, contentsBlockSize: L
  * the compiler refuses a field in another face natively), so 10.5px Ahem is 11px a character.
  */
 export function textFieldInlineSize(measurer: TextMeasurer, c: Extract<ControlKind, { kind: 'text-field' }>): LU {
-  const avg = float32(measurer.lengths({ family: c.font.family, size: c.font.size, letterSpacing: 0, wordSpacing: 0, smallCaps: false }).zeroWidth);
+  const avg = float32(measurer.lengths({ family: c.font.family, size: c.font.size, letterSpacing: 0, wordSpacing: 0, smallCaps: false, variantNumeric: NORMAL_NUMERIC }).zeroWidth);
   const rounded = roundfPx(avg);
   return ceilFloatToWholePx(floatMul(rounded > avg ? rounded : avg, float32(c.size)));
 }
@@ -115,7 +116,7 @@ export function searchDecorationInlineSize(c: Extract<ControlKind, { kind: 'text
 
 /** FORM-b: a textarea's default content inline size, cols x the float advance of 0, rounded up to a whole px, plus its scrollbar. */
 export function textAreaInlineSize(measurer: TextMeasurer, c: Extract<ControlKind, { kind: 'text-area' }>): LU {
-  const zero = measurer.lengths({ family: c.font.family, size: c.font.size, letterSpacing: 0, wordSpacing: 0, smallCaps: false }).zeroWidth;
+  const zero = measurer.lengths({ family: c.font.family, size: c.font.size, letterSpacing: 0, wordSpacing: 0, smallCaps: false, variantNumeric: NORMAL_NUMERIC }).zeroWidth;
   return add(ceilFloatToWholePx(floatMul(zero, float32(c.cols))), fromCssPx(c.scrollbarInline));
 }
 
