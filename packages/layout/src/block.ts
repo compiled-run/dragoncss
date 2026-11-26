@@ -221,10 +221,13 @@ export type EngineFaults = {
   readonly searchCancelIgnored: boolean;
   /** REPL-r2a: an img that follows its image gives its natural size to every read, not only a used size with a definite width. */
   readonly runtimeFollowsReadUnguarded: boolean;
+  /** REPL-r2a ruling 1(c): the device does not compare a layout that follows an image with its 0 by 0 layout (harness runMarklessLayout). */
+  readonly runtimeFollowsDeviceCheckSkipped: boolean;
 };
 
 export const NO_ENGINE_FAULTS: EngineFaults = {
   runtimeFollowsReadUnguarded: false,
+  runtimeFollowsDeviceCheckSkipped: false,
   breakOffByOne: false,
   rtlAsLtr: false,
   ignoreOrder: false,

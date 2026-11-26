@@ -3,7 +3,7 @@
 // natural size (the engine's runtime-image-size, at every case, band, interaction state and export viewport, and each band's
 // edge widths), an alt text a missing src would show, and a selector that tests the src. A load error, an empty src or a src
 // removed at run time is a named divergence: Chrome draws fallback content, which the build names per img.
-import type { LayoutBox, LayoutInput, LayoutRect } from '@dragon/layout';
+import type { AnchorOption, LayoutBox, LayoutInput, LayoutRect } from '@dragon/layout';
 import type { ResolvedElement } from '../analysis/resolve.ts';
 import { runtimeSrcSelectors } from '../analysis/match.ts';
 import type { Rule } from '../css/stylesheet.ts';
@@ -91,6 +91,19 @@ function runtimeLeaves(n: Node, out: string[]): string[] {
   return out;
 }
 
+/** The first box under n sized by anchor-size(), whose anchor's size the image could change, or null. */
+function anchorSized(n: Node): string | null {
+  if (n.kind !== 'box' && n.kind !== 'control' && n.kind !== 'replaced') return null;
+  const sized = (o: AnchorOption): boolean => o.widthAnchor !== null || o.heightAnchor !== null || o.minWidthAnchor !== null || o.minHeightAnchor !== null || o.maxWidthAnchor !== null || o.maxHeightAnchor !== null;
+  if ((n.style.anchor?.options ?? []).some(sized)) return n.id;
+  if (n.kind === 'replaced') return null;
+  for (const c of n.children) {
+    const a = anchorSized(c);
+    if (a !== null) return a;
+  }
+  return null;
+}
+
 /**
  * The widths the band's own edges give (Q3): the smallest and largest whole CSS px of each width interval, the largest export
  * viewport standing in for a band with no maximum.
@@ -155,7 +168,7 @@ function exactFit(tree: LayoutBox, id: string, rect: LayoutRect | undefined): re
  * replaced.ts followsRead): that img follows its image when, at every device and sample, the page lays out and no box moves or
  * resizes inline. Without a build-time layout every such img is refused: nothing proves its box. Gives the imgs that follow.
  */
-export function runtimeLayoutRefusals(trees: readonly { readonly tree: LayoutBox; readonly rootFontSize: number; readonly band: Band | null; readonly resolved: ResolvedElement }[], layout: RuntimeImageLayout | null, originOf: OriginOf, diagnostics: Diagnostic[]): Set<string> {
+export function runtimeLayoutRefusals(trees: readonly { readonly tree: LayoutBox; readonly rootFontSize: number; readonly band: Band | null; readonly resolved: ResolvedElement }[], layout: RuntimeImageLayout | null, faults: CompilerFaults, originOf: OriginOf, diagnostics: Diagnostic[]): Set<string> {
   const reported = new Set<string>();
   const refusedIds = new Set<string>();
   const follows = new Set<string>();
@@ -193,6 +206,11 @@ export function runtimeLayoutRefusals(trees: readonly { readonly tree: LayoutBox
         continue;
       }
       if (here.size === 0) continue;
+      const sized = anchorSized(t.tree);
+      if (sized !== null) {
+        for (const id of here) refuse(t.resolved, id, `<img> ${id} has a src set at run time, and ${sized} is sized by anchor-size(), whose anchor's width the image could change: only block sizes may follow the image`);
+        continue;
+      }
       const loading = base.rects;
       for (const id of here) {
         const fit = exactFit(t.tree, id, loading.get(id));
@@ -204,6 +222,7 @@ export function runtimeLayoutRefusals(trees: readonly { readonly tree: LayoutBox
             stopped(r, ` with ${id}'s image ${named}`);
             continue;
           }
+          if (faults.runtimeFollowsWidthUnchecked) continue;
           for (const [box, b] of loading) {
             const now = r.rects.get(box);
             if (now !== undefined && now.x === b.x && now.width === b.width) continue;

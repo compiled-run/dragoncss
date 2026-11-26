@@ -8,6 +8,8 @@ import type { Band } from '../src/media/band.ts';
 import { bandEdgeWidths } from '../src/images/runtime.ts';
 import type { RuntimeImageLayout } from '../src/images/runtime.ts';
 import { createProjectWith, NO_FAULTS, nativeLayoutProjection } from '../src/internal.ts';
+import { nodeLit, StateEmitError } from '../src/emit/runtime/state.ts';
+import type { ProgramNode } from '../src/lower/native-program.ts';
 import type { AttributeBinding, ElementNode, Origin, SourceRef, TreeNode } from '../src/types.ts';
 import { always, div, DOC, inputFor, staticClass, text } from './helpers.ts';
 
@@ -99,6 +101,23 @@ describe('REPL-r2a: an img whose height follows its image', () => {
     expect(got.length).toBeGreaterThan(0);
     expect(got.every((m) => m.startsWith('<img> a has a src set at run time, and its image changes the inline size or position of ab '))).toBe(true);
   });
+  it('refuses it in a grid that sizes its columns again after its rows (Blink is_sizing_dependent_on_block_size)', () => {
+    const css = 'img { display: block; width: 100%; } .g { display: grid; grid-template-columns: 100px auto; height: 200px; } .p { height: 50%; width: 10px; }';
+    // The img's track is fixed, so only the second pass, which re-measures .p against its row, could reach it.
+    const got = refusals(compile(css, (r) => [div(r, 'g', ['g'], [div(r, 'c', [], [img(r, 'a', [], { absent: false })]), div(r, 'p', ['p'], [])])]), 'DRAGON_RUNTIME_IMAGE_SIZE');
+    expect(got).toContain("<img> a has a src set at run time, and grid g sizes its columns again after its rows, which a's image sizes, so its image could change a column's width");
+  });
+  it('refuses it beside a box sized by anchor-size()', () => {
+    const css = 'img { display: block; width: 100%; anchor-name: --i; } .c { position: relative; } .x { position: absolute; position-anchor: --i; top: 0; left: 0; width: anchor-size(width); height: 10px; }';
+    const got = refusals(compile(css, (r) => [div(r, 'c', ['c'], [img(r, 'a', [], { absent: false }), div(r, 'x', ['x'])])]), 'DRAGON_RUNTIME_IMAGE_SIZE');
+    expect(got).toContain("<img> a has a src set at run time, and x is sized by anchor-size(), whose anchor's width the image could change: only block sizes may follow the image");
+  });
+  it('is never laid out by Dragon\'s state or interaction machines: a state program refuses its node, so no hit table holds it at 0 by 0', () => {
+    const write = { kind: 'runtime-image', follows: true, fit: 'cover', position: [{ kind: 'percent', value: 50 }, { kind: 'percent', value: 50 }], layer: false, pixelated: false, absent: null };
+    const n = { id: 'a', kind: 'box', parent: null, writes: [write] } as unknown as ProgramNode;
+    expect(() => nodeLit('swift', n)).toThrow(StateEmitError);
+    expect(() => nodeLit('kotlin', n)).toThrow(/a: a runtime-image write in a state program is not supported yet/);
+  });
 });
 
 describe('REPL-r1 selectors: a selector that tests the src of a runtimeSrc img is refused', () => {
@@ -114,3 +133,4 @@ describe('REPL-r1 selectors: a selector that tests the src of a runtimeSrc img i
     expect(refusals(compile(`${SIZED} .c img, .ph, div[src] { margin-left: 3px; }`, body), 'DRAGON_RUNTIME_IMAGE_SIZE')).toEqual([]);
   });
 });
+

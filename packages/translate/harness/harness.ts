@@ -1296,7 +1296,7 @@ const FAULT_KEYS: readonly string[] = [
   'orderHalfEven', 'orderUnclamped', 'gutterReserved', 'overflowIgnoresPadding', 'ellipsisInTextFont', 'noDotsFallback', 'truncateChangesBlockSize',
   'preservedSpaceCollapsed', 'trailingPreWrapNotHanging', 'breakSpacesHanging', 'indentEveryLine', 'indentAfterBr', 'indentPercentInIntrinsic', 'indentRtlFromLeft',
   'anywhereMinContentIgnored', 'breakWordShrinksMinContent', 'breakAnywhereAlways', 'emergencyBreakBeforeOpportunity', 'wordBreakBreakWordIgnored', 'breakAllIgnored',
-  'clampHeightIncludesHiddenLines', 'clampEllipsisMissingWhenLineFits', 'clampEllipsisOnExactLastLine', 'containedContentSized', 'menuListShownLabelOnly', 'containerJoinsFlow', 'wrapStyleGreedy', 'textBoxTrimIgnored', 'searchCancelIgnored', 'runtimeFollowsReadUnguarded',
+  'clampHeightIncludesHiddenLines', 'clampEllipsisMissingWhenLineFits', 'clampEllipsisOnExactLastLine', 'containedContentSized', 'menuListShownLabelOnly', 'containerJoinsFlow', 'wrapStyleGreedy', 'textBoxTrimIgnored', 'searchCancelIgnored', 'runtimeFollowsReadUnguarded', 'runtimeFollowsDeviceCheckSkipped',
   'inlineBlockFirstBaseline', 'overflowBaselineIgnored', 'inlineFlexLastBaseline', 'atomicMarginExcluded', 'noBreakAroundAtomic', 'atomicShrinkToFitIgnored',
   'inlineGridLastItemBaseline',
 ];
@@ -1394,6 +1394,7 @@ function decodeFaults(v: JsonValue): EngineFaults {
     textBoxTrimIgnored: b('textBoxTrimIgnored'),
     searchCancelIgnored: b('searchCancelIgnored'),
     runtimeFollowsReadUnguarded: b('runtimeFollowsReadUnguarded'),
+    runtimeFollowsDeviceCheckSkipped: b('runtimeFollowsDeviceCheckSkipped'),
   };
 }
 
@@ -4031,6 +4032,7 @@ export function runMarklessLayout(line: string): string {
     if (parsed.kind === 'obj' && parsed.values.has('sticky')) keys.push('sticky');
     if (parsed.kind === 'obj' && parsed.values.has('textAreas')) keys.push('textAreas');
     if (parsed.kind === 'obj' && parsed.values.has('naturals')) keys.push('naturals');
+    if (parsed.kind === 'obj' && parsed.values.has('faults')) keys.push('faults');
     return marklessLayout(obj(parsed, keys, '$'), null);
   } catch (e) {
     if (e instanceof HarnessError) return `["harness-error",${q(e.detail)}]`;
@@ -4396,12 +4398,24 @@ function planNaturals(v: JsonValue, followed: readonly string[]): Map<string, re
  * REPL-r2a ruling 1(c): the device's own proof that an image moved only block sizes. Every box's and line's inline position and
  * size equal those of the layout with each such img at 0 by 0, at the same viewport and ratio; else the layout stops, naming it.
  */
-function followedInlineCheck(loading: LayoutInput, measurer: TextMeasurer, abs: Map<string, LayoutRect>): void {
+function followedInlineCheck(loading: LayoutInput, measurer: TextMeasurer, abs: Map<string, LayoutRect>, lines: readonly PlanText[]): void {
   const base = layoutWithInflow(loading, measurer, NO_ENGINE_FAULTS, NO_GRID_FAULTS).result;
   if (base.kind !== 'ok') fail(`the engine refused the plan while its images load, at ${base.unsupported.nodeId}: ${base.unsupported.code} ${base.unsupported.detail}`);
   for (const [id, b] of absoluteRects(base.boxes)) {
     const now = abs.get(id);
     if (now === undefined || now.x !== b.x || now.width !== b.width) fail(`an image that follows its image changes the inline size or position of ${id} (runtime-image-size)`);
+  }
+  const before = new Map<string, readonly PlanLine[]>();
+  for (const t of planTextLines(loading, measurer, base.boxes)) before.set(t.id, t.lines);
+  for (const t of lines) {
+    const was = before.get(t.id);
+    if (was === undefined || was.length !== t.lines.length) fail(`an image that follows its image changes the lines of ${t.id} (runtime-image-size)`);
+    const old = was as readonly PlanLine[];
+    for (let i = 0; i < t.lines.length; i++) {
+      const l = t.lines[i] as PlanLine;
+      const w = old[i] as PlanLine;
+      if (w.start !== l.start || w.rect.x !== l.rect.x || w.rect.width !== l.rect.width) fail(`an image that follows its image changes the lines of ${t.id} (runtime-image-size)`);
+    }
   }
 }
 
@@ -4446,13 +4460,13 @@ function marklessLayout(o: JsonObj, live: GlyphShaper | null): string {
     const dashed = spliced === null ? parts.dashed : spliced.dashed;
     const scrollers = spliced === null ? parts.scrollers : spliced.scrollers;
 
-    const placed = layoutWithInflow(input, measurer, NO_ENGINE_FAULTS, NO_GRID_FAULTS);
+    const faults = o.values.has('faults') ? decodeFaults(field(o, 'faults', '$')) : NO_ENGINE_FAULTS;
+    const placed = layoutWithInflow(input, measurer, faults, NO_GRID_FAULTS);
     const r = placed.result;
     // REPL-r1: a row's copy is named <template id>@<row key>, so a stop inside a row names the row.
     if (r.kind !== 'ok') return fail(`the engine refused the plan at ${r.unsupported.nodeId}${holds(r.unsupported.nodeId, '@') ? ' (a row: <template id>@<row key>)' : ''}: ${r.unsupported.code} ${r.unsupported.detail}`);
     const boxes = r.boxes;
     const abs = absoluteRects(boxes);
-    if (hasNaturals) followedInlineCheck(loading, measurer, abs);
     const styles = new Map<string, LayoutStyle>();
     planStyles(input.root, styles);
     const texts = new Map<string, string>();
@@ -4461,11 +4475,13 @@ function marklessLayout(o: JsonObj, live: GlyphShaper | null): string {
     const zoomed = resolvedInput(input, measurer, NO_ENGINE_FAULTS);
     planDeviceBorders(zoomed.root, zoomed.devicePixelRatio, deviceBorders);
     const lines = new Map<string, string>();
-    for (const t of planTextLines(input, measurer, boxes)) {
+    const textLines = planTextLines(input, measurer, boxes);
+    for (const t of textLines) {
       const text = texts.get(t.id);
       const at = abs.get(t.id);
       if (text !== undefined && at !== undefined) lines.set(t.id, planLines(t, text, at, measurer));
     }
+    if (hasNaturals && !faults.runtimeFollowsDeviceCheckSkipped) followedInlineCheck(loading, measurer, abs, textLines);
     const ranges = scrollRanges(input, measurer);
     if (ranges.kind === 'refused') return fail(`the engine refused the scroll ranges at ${ranges.nodeId}: ${ranges.detail}`);
     const rangeOf = new Map<string, ScrollRange>();

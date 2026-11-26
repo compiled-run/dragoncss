@@ -1,6 +1,7 @@
 // The entry point a framework build calls for one component's native styles (docs/markless-native-styles.md): the component's CSS
 // and element tree in, per native backend the state program (plain data) and the Swift or Kotlin generated from that same program.
 import type { ImageAssetMap } from './images/manifest.ts';
+import type { CompilerFaults } from './faults.ts';
 import { NO_FAULTS } from './faults.ts';
 import type { StateEmit } from './emit/runtime/state.ts';
 import { emitStatePrograms, StateEmitError } from './emit/runtime/state.ts';
@@ -87,6 +88,8 @@ export type NativeStylesConfig = {
   readonly systemFonts?: 'measured';
   /** REPL-r1: the export devices an img whose src is set at run time is proven at, with their measurers; without it such an img is refused. */
   readonly runtimeImageLayout?: RuntimeImageLayout;
+  /** Planted compiler faults (faults.ts), for the fault proofs only; absent: none. */
+  readonly faults?: CompilerFaults;
 };
 
 /** One backend's output: the program is the data the generated code is written from, so the two cannot disagree. */
@@ -155,8 +158,8 @@ export function compileNativeStylesWith(config: NativeStylesConfig, input: Front
     { projectId: config.projectId, targets: { ...config.targets }, ...(config.fonts === undefined ? {} : { fonts: config.fonts }), ...(config.images === undefined ? {} : { images: config.images }) },
     {
       ...(support === 'enforced'
-        ? { faults: NO_FAULTS, profiles: 'enforce' as const, direction: 'ltr' as const, nativeLanes: NATIVE_LANES }
-        : { faults: NO_FAULTS, profiles: 'derive' as const, direction: 'ltr' as const, foldViewport: { width, height }, nativeRealFaces: true, interactionLanes: true }),
+        ? { faults: config.faults ?? NO_FAULTS, profiles: 'enforce' as const, direction: 'ltr' as const, nativeLanes: NATIVE_LANES }
+        : { faults: config.faults ?? NO_FAULTS, profiles: 'derive' as const, direction: 'ltr' as const, foldViewport: { width, height }, nativeRealFaces: true, interactionLanes: true }),
       ...(config.topLayer === 'host' ? { hostTopLayer: true } : {}),
       ...(config.canvas === 'host' ? { hostCanvas: true } : {}),
       ...(config.forms === 'host' ? { hostForms: true } : {}),

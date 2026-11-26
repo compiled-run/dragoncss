@@ -3,7 +3,7 @@
 // §5.5 and §5.6, not ported: Chrome's layout_replaced.cc is LGPL (docs/ports.json); the REPL-0 quadrant probe pins it to Chrome
 // (replaced.test.ts). It is snapped as ImagePainter::PaintIntoRect does. Every size here is border-box LU in zoomed px unless
 // named otherwise.
-import type { LayoutStyle, ReplacedLeaf, SizeValue } from './input.ts';
+import type { InlineChild, LayoutNode, LayoutStyle, ReplacedLeaf, SizeValue } from './input.ts';
 import type { Ctx, EngineFaults } from './block.ts';
 import type { Frag, HeightBasis, LengthPercent, MinMax } from './box.ts';
 import { borderBoxFromSpecified, constrain, hasPercent, lengthHeight, lengthMaxHeight, lengthMaxWidth, lengthMinHeight, lengthMinWidth, lengthWidth, resolveBorder, resolveLength, resolvePaddingWith, sumEdges } from './box.ts';
@@ -296,6 +296,25 @@ export function naturalSizingOf(leaf: ReplacedLeaf): NaturalSizing | null {
 }
 
 /** REPL-r2a: the natural size the device gave an img that follows its image, which only followsRead lets a size read. */
+/**
+ * REPL-r2a: how far a page's scroll offset moves when an img that follows its image changes height from was to now (Blink
+ * ScrollAnchor, two cases): by the change when the img lay wholly above a non-zero offset, else not at all. All in one unit.
+ */
+export function runtimeImageScrollShift(offset: number, top: number, was: number, now: number): number {
+  return offset > 0 && top + was <= offset ? now - was : 0;
+}
+
+/** The first img in n's subtree whose height follows its image, or null. */
+export function followedImageUnder(n: LayoutNode | InlineChild): string | null {
+  if (n.kind === 'replaced') return n.natural.kind === 'followed' ? n.id : null;
+  if (n.kind !== 'box' && n.kind !== 'control') return null;
+  for (const c of n.children) {
+    const f = followedImageUnder(c);
+    if (f !== null) return f;
+  }
+  return null;
+}
+
 export function followedSizingOf(leaf: ReplacedLeaf): NaturalSizing | null {
   const n = leaf.natural;
   if (n.kind !== 'followed') return null;

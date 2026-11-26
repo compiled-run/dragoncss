@@ -2,6 +2,8 @@
 // marks it (runtime-image follows), and the device function (harness.ts runMarklessLayout) lays the page out again with each
 // decoded image's natural size, moving only block positions.
 import { describe, expect, it } from 'vitest';
+import { NO_ENGINE_FAULTS } from '@dragon/layout';
+import { NO_FAULTS } from 'dragon';
 import { marklessStyleExport } from '../src/markless-style-input.ts';
 
 const { runMarklessLayout } = (await import(new URL('../../translate/harness/harness.ts', import.meta.url).href)) as { runMarklessLayout(line: string): string };
@@ -54,5 +56,39 @@ describe('REPL-r2a: a Markless img that follows its image', () => {
 
   it('refuses a natural size for an id that does not follow its image', () => {
     expect(frames('{"nope":[1,1]}')).toMatch(/not an img of the plan that follows its image/);
+  });
+});
+
+// An abspos box whose width follows its containing block's height, which the img sets: the build sweep refuses it, and with that
+// comparison planted off (runtimeFollowsWidthUnchecked) only the device's check against the 0 by 0 layout stops it.
+const ABSPOS = JSON.stringify({
+  version: 'markless.native-style-input/0',
+  component: 'Detail',
+  css: 'main { display: block; margin: 0; position: relative; } img { display: block; width: 100%; max-height: 320px; } .ab { position: absolute; top: 0; bottom: 0; left: 0; aspect-ratio: 1 / 1; }',
+  states: [],
+  nodes: [
+    { kind: 'element', id: 'h0', element: 'main', parent: null, attributes: {} },
+    { kind: 'element', id: 'h1', element: 'img', parent: 'h0', attributes: { alt: '' }, runtimeSrc: { absent: false } },
+    { kind: 'element', id: 'h2', element: 'div', parent: 'h0', attributes: { class: 'ab' } },
+  ],
+});
+
+describe('REPL-r2a ruling 1(c): the device stops a layout whose image moves a box inline', () => {
+  const AT2 = { ios: AT, android: AT };
+  it('the build refuses the page, naming the box', () => {
+    expect(() => marklessStyleExport(ABSPOS, 'abspos.native-style-input.json', undefined, 'system', AT2, true)).toThrow(/its image changes the inline size or position of h2/);
+  });
+  const t = marklessStyleExport(ABSPOS, 'abspos.native-style-input.json', undefined, 'system', AT2, true, { ...NO_FAULTS, runtimeFollowsWidthUnchecked: true }).exported.targets.ios!;
+  const names = new Map(t.planNames?.[0] ?? []);
+  const imgId = [...names].find(([, v]) => v === 'h1')?.[0] ?? 'h1';
+  const run = (natural: readonly number[], faults = NO_ENGINE_FAULTS): unknown[] =>
+    JSON.parse(runMarklessLayout(`{"assignment":0,"dpr":3,"viewport":{"width":402,"height":778},"safeArea":{"top":0,"right":0,"bottom":0,"left":0},"plan":${JSON.stringify(t.plan)},"naturals":{"${imgId}":${JSON.stringify(natural)}},"faults":${JSON.stringify(faults)}}`)) as unknown[];
+
+  it('under runtimeFollowsWidthUnchecked it compiles, and the device stops at its first image', () => {
+    expect(JSON.stringify(t)).toContain('"follows":true');
+    expect(run([4000, 3000])).toEqual(['harness-error', expect.stringMatching(/^an image that follows its image changes the inline size or position of \S+ \(runtime-image-size\)$/)]);
+  });
+  it('and lays it out, its box widened, under runtimeFollowsDeviceCheckSkipped too', () => {
+    expect(run([4000, 3000], { ...NO_ENGINE_FAULTS, runtimeFollowsDeviceCheckSkipped: true })[0]).toBe('ok');
   });
 });

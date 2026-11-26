@@ -84,7 +84,7 @@ import { intrinsicContentInlineSize } from './intrinsic.ts';
 import { isOutOfFlow, relativeOffsetWith } from './position.ts';
 import { hasAspectRatio } from './ratio.ts';
 import type { ReplacedSpace } from './replaced.ts';
-import { replacedBorderPadding, replacedContributionIn, replacedFrag, replacedMeasureSpace, sizeReplaced } from './replaced.ts';
+import { followedImageUnder, replacedBorderPadding, replacedContributionIn, replacedFrag, replacedMeasureSpace, sizeReplaced } from './replaced.ts';
 import { unsupported } from './unsupported.ts';
 
 /** Blink kIndefiniteSize: LayoutUnit(-1), an indefinite size or an infinite growth limit. */
@@ -2325,6 +2325,12 @@ export function layoutGridContainer(ctx: Ctx, box: LayoutBox, a: GridArgs): Grid
     if (!again && s.alignContent !== 'normal') {
       const first = firstSetGeometry(grid, grid.rows, available.block);
       finalizeGeometry(grid.rows, first.start, first.gutter);
+    }
+  }
+  if (again && grid.columns.props.nonDefinite) {
+    for (const item of grid.items) {
+      const f = followedImageUnder(item.box);
+      if (f !== null) unsupported('runtime-image-size', f, 'css-grid-2 §12.1', `grid ${box.id} sizes its columns again after its rows, which ${f}'s image sizes, so its image could change a column's width`);
     }
   }
   if (again) {

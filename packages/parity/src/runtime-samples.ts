@@ -81,12 +81,14 @@ export const NO_SRC_SAMPLE: RuntimeSample = { id: 'none', kind: 'none', width: 0
 
 /** The fixture whose samples also change the src at run time: the old image stays while the new one is pending. */
 export const SRC_CHANGE_FIXTURE = 'replaced-runtime-src-change';
+/** REPL-r2a: the fixture whose img follows its image; it also changes its src (the swaps). */
+export const FOLLOWS_FIXTURE = 'replaced-runtime-follows';
 const swap = (id: string, from: RuntimeSample, to: RuntimeSample): RuntimeSample => ({ ...to, id, kind: 'swap', from });
 export const SWAP_SAMPLES: readonly RuntimeSample[] = [swap('swap-pending', png(400, 300), RUNTIME_SAMPLES[7] as RuntimeSample), swap('swap-loaded', png(400, 300), png(100, 4000))];
 
 /** The samples of a fixture: every sample, no src when one of its runtime imgs may have none, and the src-change fixture's swaps. */
 export function samplesOf(fixture: string, absent: boolean): readonly RuntimeSample[] {
-  return [...RUNTIME_SAMPLES, ...(absent ? [NO_SRC_SAMPLE] : []), ...(fixture === SRC_CHANGE_FIXTURE ? SWAP_SAMPLES : [])];
+  return [...RUNTIME_SAMPLES, ...(absent ? [NO_SRC_SAMPLE] : []), ...(fixture === SRC_CHANGE_FIXTURE || fixture === FOLLOWS_FIXTURE ? SWAP_SAMPLES : [])];
 }
 
 /** The DPRs a sample is captured and compared at: the parity lanes' (1, and each device DPR). */
