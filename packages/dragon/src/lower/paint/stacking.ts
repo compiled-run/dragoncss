@@ -72,6 +72,8 @@ export type StackingFacts = {
   readonly context: string | null;
   readonly createsContext: boolean;
   readonly layer: StackLayer;
+  /** Its z-index, null for auto: with the layer and tree order what sorts it among its context's items in any case. */
+  readonly z: number | null;
   /** The node whose view hosts this one. */
   readonly host: string | null;
   /** The overflow clips that apply (the clipping ancestors in the containing-block chain), nearest first. */
@@ -328,6 +330,7 @@ export function stackingOf(root: StackNode): Stacking {
       context: contextOf(i)?.node.id ?? null,
       createsContext: i.sc,
       layer: layerOf(i),
+      z: i.node.z,
       host: i.parent === null ? null : (writes.get(i.node.id)?.host ?? i.parent.node.id),
       clipChain,
       underClip: underClip.has(i.node.id),

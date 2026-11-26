@@ -37,7 +37,7 @@ import { emptyPartition, firstInteractionPseudo, stateMembers, hitUnmodelledBox,
 import { isCheckboxType, isTextFieldType } from './analysis/elements/controls.ts';
 import type { Linked, LinkedElement } from './analysis/link.ts';
 import type { InteractionState } from './analysis/match.ts';
-import { assignmentKey, linkDocument } from './analysis/link.ts';
+import { assignmentKey, groupReachOf, linkDocument } from './analysis/link.ts';
 import type { ResolvedElement, ResolvedText, ResolvedValue, RootFont } from './analysis/resolve.ts';
 import type { AnimationAnalysis } from './analysis/animations.ts';
 import { analyzeAnimations, gateAnimationFeatures, refuseAnimatedSafeAreaInsets, refuseBandedAnimations } from './analysis/animations.ts';
@@ -60,7 +60,7 @@ import type { PropertySource, Registrations } from './css/at-rules/property.ts';
 import { NO_REGISTRATIONS } from './css/at-rules/property.ts';
 import { registrationsOf } from './analysis/registered.ts';
 import { rankLayers, revertLayerInAtRules } from './analysis/layers.ts';
-import { environmentOf, resolveTree, SUPPORTED_TAGS, valueToString } from './analysis/resolve.ts';
+import { environmentOf, newResolveMemo, resolveTree, SUPPORTED_TAGS, valueToString } from './analysis/resolve.ts';
 import { usedColorScheme } from './css/properties/color-scheme.ts';
 import type { ContainerBand, ContainerRefusals, ContainerUnitRefusals } from './analysis/container-rules.ts';
 import { containerAtoms, containerBand, containerConditionsOf, resolveWithContainers } from './analysis/container-rules.ts';
@@ -98,7 +98,7 @@ import { undecidedScrollContainers } from './lower/scroll-decidable.ts';
 import { PROGRAM_VERSIONS } from './lower/native-program.ts';
 import type { TextPlants } from './lower/native-program.ts';
 import type { BandAnalysis } from './lower/band-program.ts';
-import { bandTableOf, refuseBandedNativeAnimations, refuseBandedStateSpace, refuseSizeTransitions } from './lower/band-program.ts';
+import { bandTableOf, refuseBandedNativeAnimations, refuseBandedStateSpace, refuseSizeTransitions, tableAssignmentsIn } from './lower/band-program.ts';
 import type { rtBand } from '@dragon/layout';
 import type { Band, BandPartition } from './media/index.ts';
 import { band, bandAt, bandColorScheme, evaluateInBand, featuresOfList, holdsWholePx, parseMediaQueryList } from './media/index.ts';
@@ -244,6 +244,8 @@ export type InternalRecord = {
   readonly hostImages: boolean;
   /** TXT-W: the synthetic bold and oblique plants, which the native lowering reads (native-program.ts textPaint). */
   readonly textPlants: TextPlants;
+  /** Factored states with @media bands: per group, whether no element it changes is styled differently in another band (bandFree). */
+  readonly groupBandFree: readonly boolean[] | null;
 };
 
 /**
@@ -329,6 +331,8 @@ export type InternalOptions = {
    * natural size and paints no image content, so a format REPL-a does not decode is laid out rather than refused.
    */
   readonly hostImages?: boolean;
+  /** Factor the free states into groups (analysis/link.ts StateGroup) when native cannot hold every assignment, or, for tests, always. */
+  readonly factorStates?: 'over-limits' | 'always';
   /** The host's Brotli decoder, which a WOFF2 @font-face src needs; without one a WOFF2 is DRAGON_FONT_UNREADABLE (no-brotli). */
   readonly brotliDecompress?: BrotliDecompress;
   /**
@@ -362,6 +366,7 @@ type Resolved = {
   readonly hostTextEditing: boolean;
   readonly hostUnforced: boolean;
   readonly hostImages: boolean;
+  readonly factorStates: 'never' | 'over-limits' | 'always';
   readonly systemFonts: boolean;
   readonly nativeLanes: NativeLanes | null;
   readonly brotliDecompress: BrotliDecompress | null;
@@ -695,7 +700,7 @@ function engineFaceFor(fonts: ProjectFonts, family: ResolvedValue, text: string,
   if (face.source.font.variable) return { kind: 'refused', reason: 'it resolves to a variable face, which TXT1b proves' };
   const synthetic = syntheticStyle(face, request, font.synthesis);
   if (synthetic !== null) return { kind: 'refused', reason: `Chrome would draw it in ${synthetic} (DRAGON_SYNTHETIC_FONT_STYLE)` };
-  const id = `sha256:${sha256HexBytes(face.source.bytes)}`;
+  const id = faceIdOf(face.source.bytes);
   // A code point no listed bundled face draws goes on down the list to its first platform entry; only text that has one needs it, so
   // a face drawn at two weights (a 700 heading, a 600 icon) has one fallback while only one of them leaves code points to the platform.
   if (!systemFonts || !leavesToPlatform(bundledFaces(fonts), support.resolutions, text, request)) return { kind: 'face', id };
@@ -703,6 +708,17 @@ function engineFaceFor(fonts: ProjectFonts, family: ResolvedValue, text: string,
   const next = systemFonts ? support.resolutions.slice(chosen + 1).find((r) => r.kind === 'platform') : undefined;
   const fallback = next?.kind === 'platform' && isSystemFaceRole(next.key) ? systemFaceFor(next.key, font) : null;
   return fallback?.kind === 'face' ? { kind: 'face', id, fallback: fallback.id } : { kind: 'face', id };
+}
+
+const FACE_IDS = new WeakMap<Uint8Array, string>();
+
+/** A bundled face's id, the sha256 of its bytes, hashed once per face. */
+function faceIdOf(bytes: Uint8Array): string {
+  const known = FACE_IDS.get(bytes);
+  if (known !== undefined) return known;
+  const id = `sha256:${sha256HexBytes(bytes)}`;
+  FACE_IDS.set(bytes, id);
+  return id;
 }
 
 /** The system face of a role at a text font (fonts/system-faces.ts); a weight or style no system face is requested at is refused. */
@@ -992,8 +1008,10 @@ function checkCaseFonts(root: ResolvedElement, fonts: ProjectFonts, faults: Comp
   walk(root, false);
 }
 
-/** One interaction state of a case, resolved and checked like the case (SELD-R2). */
-/** native and nativeUsed: what the phones lower and check, the case itself for a state only forcing reaches (forcedOnlyFocus). */
+/**
+ * One interaction state of a case, resolved and checked like the case (SELD-R2). native and nativeUsed: what the phones lower and
+ * check, the case itself for a state only forcing reaches (forcedOnlyFocus); used and nativeUsed hold only keys earlier ones lack.
+ */
 type InteractionResult = { value: InteractionValue; resolved: ResolvedElement; used: UsedKey[]; native: ResolvedElement; nativeUsed: UsedKey[] };
 type CaseResult = { key: string; assignment: Assignment; isInitial: boolean; resolved: ResolvedElement | null; used: UsedKey[]; partition: InteractionPartition | null; interaction: InteractionResult[] };
 
@@ -1190,9 +1208,11 @@ function checkCases(linked: Linked, rules: readonly Rule[], targets: readonly Kn
     }
   };
   const interactive = rules.some(ruleIsInteractive);
+  const declarationIds = new Map<Declaration, number>();
   // CQ: a band with @container rules resolves each case twice (analysis/container-rules.ts).
+  const memo = newResolveMemo(env);
   const resolve = (root: LinkedElement, ix?: InteractionState): ResolvedElement =>
-    containers === null ? resolveTree(root, rules, options.faults, env, ix) : resolveWithContainers(root, rules, options.faults, env, containers, ix);
+    containers === null ? resolveTree(root, rules, options.faults, env, ix, memo) : resolveWithContainers(root, rules, options.faults, env, containers, ix, memo);
   for (const c of linked.cases) {
     const resolved = resolve(c.root);
     const used = check(resolved);
@@ -1209,19 +1229,36 @@ function checkCases(linked: Linked, rules: readonly Rule[], targets: readonly Kn
       continue;
     }
     const partition = built.partition;
+    // checkValues reads only a used key's declaration, property, context and whether it resolved a keyword.
+    const usedKey = (u: UsedKey): string => {
+      let id = declarationIds.get(u.declaration);
+      if (id === undefined) {
+        id = declarationIds.size;
+        declarationIds.set(u.declaration, id);
+      }
+      return `${id}|${u.property}|${u.context}|${u.resolved !== undefined}`;
+    };
+    const given = new Set(used.map(usedKey));
+    const givenNative = new Set(given);
+    const fresh = (seen: Set<string>, keys: readonly UsedKey[]): UsedKey[] => keys.filter((u) => {
+      const key = usedKey(u);
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
     const interaction = partition.states.map((value, k): InteractionResult => {
       const r = built.resolved[k] as ResolvedElement;
       // The parity lanes force every candidate to prove the forced-only rows, so only a host that never forces skips them.
       if (!options.hostUnforced || !forcedOnlyFocus(value, partition, [resolved, r])) {
         const used = check(r);
-        return { value, resolved: r, used, native: r, nativeUsed: used };
+        return { value, resolved: r, used: fresh(given, used), native: r, nativeUsed: fresh(givenNative, used) };
       }
       scope = targets.filter((t) => t === 'web');
       dedupe = new Set(refused);
       const used = check(r);
       scope = targets;
       dedupe = refused;
-      return { value, resolved: r, used, native: resolved, nativeUsed: [] };
+      return { value, resolved: r, used: fresh(given, used), native: resolved, nativeUsed: [] };
     });
     out.push({ key: c.key, assignment: c.assignment, isInitial: c.isInitial, resolved, used, partition, interaction });
   }
@@ -1552,6 +1589,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
   let images: CompiledImages | null = null;
   // MQ-a: every band's cases, band 0 first (one entry for a sheet without @media), and the band the native output comes from.
   let bandCases: { readonly band: Band | null; readonly cases: CaseResult[] }[] = [];
+  let groupBandFree: readonly boolean[] | null = null;
   let animation: AnimationAnalysis | null = null;
   let laneOnlyNative: ('ios' | 'android')[] = [];
   let focusable = true;
@@ -1669,7 +1707,10 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
     checkFamilies(withStyles, fonts.keys, options.faults, diagnostics, { of: scopeOf, targets });
     const keys = fonts.keys;
     let valuesAt = diagnostics.length;
-    if (preLinked === undefined) linked = linkDocument(valid, { stateCollapse: options.faults.stateCollapse }, diagnostics);
+    // A page Dragon had to link before its bands were known (color-scheme preference, @container) is not factored: its bands read
+    // the layout of every assignment.
+    const factored = options.factorStates === 'never' ? {} : { factorAbove: tableAssignmentsIn(bands === null ? 1 : bands.partition.bands.length), reach: groupReachOf(withStyles), alwaysFactor: options.factorStates === 'always' };
+    if (preLinked === undefined) linked = linkDocument(valid, { stateCollapse: options.faults.stateCollapse, ...factored }, diagnostics);
     else {
       linked = preLinked;
       diagnostics.push(...preLinkDiagnostics);
@@ -1782,7 +1823,13 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
         : bands !== null && bands.partition.bands.length > 1 ? 'media bands' : null;
       refuseStatefulStrokes(stateful, bandCases.flatMap((r) => r.cases.flatMap((c) => [...(c.resolved === null ? [] : [c.resolved]), ...c.interaction.map((i) => i.native)])), nativeTargets, diagnostics, options.faults);
       // MQ-R1: the (assignment, band) pairs of a native state table count against its 64-assignment limit.
-      if (bands !== null) refuseBandedStateSpace(cases.length, bands.partition.bands.length, bands.conditions, nativeTargets, diagnostics);
+      groupBandFree = linked?.groups == null || bands === null ? null : linked.groups.map((g) => bandFree(g.cases, bandCases));
+      if (bands !== null) {
+        const count = bands.partition.bands.length;
+        // A group whose elements style alike in every band holds one row per assignment; the others one per (assignment, band).
+        const rows = linked?.groups == null ? cases.length * count : Math.max(...linked.groups.map((g, k) => g.cases.length * (groupBandFree?.[k] === true ? 1 : count)));
+        refuseBandedStateSpace(rows / count, count, bands.conditions, nativeTargets, diagnostics);
+      }
       // MQ-R1 R8: on native, a transition a size change would start is refused until MQ-Rt; each band's listings are analysed apart.
       // Like the animation support gate, it is a support fact: derive mode (the lanes that find what passes) does not apply it.
       if (nativeTargets.length > 0 && options.profiles === 'enforce') {
@@ -2028,6 +2075,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       images: images === null ? new Map() : images.bytes,
       hostImages: options.hostImages === true,
       textPlants: { ahemSyntheticBoldFrom700: options.faults.ahemSyntheticBoldFrom700, ahemBoldUnstroked: options.faults.ahemBoldUnstroked, ahemObliqueUnsheared: options.faults.ahemObliqueUnsheared, textFillIgnored: options.faults.textFillIgnored, textStrokeAccepted: options.faults.textStrokeAccepted },
+      groupBandFree,
       cases: cases.map((c) => ({
         key: c.key,
         assignment: c.assignment,
@@ -2173,6 +2221,7 @@ export function createProjectWith<const T extends Targets>(config: ProjectConfig
     hostTextEditing: options.hostTextEditing === true,
     hostUnforced: options.hostUnforced === true,
     hostImages: options.hostImages === true,
+    factorStates: options.factorStates ?? 'never',
     systemFonts: options.systemFonts === true,
     nativeLanes: options.nativeLanes === undefined ? null : options.nativeLanes,
     brotliDecompress: options.brotliDecompress ?? null,
@@ -2208,4 +2257,61 @@ export function originOfValue(record: InternalRecord, root: ResolvedElement, add
 export function caseByAssignment(record: InternalRecord, assignment: Assignment): InternalCase | undefined {
   const key = assignmentKey(assignment);
   return record.cases.find((c) => c.key === key);
+}
+
+/**
+ * Whether a group's elements style alike in every @media band: each element one of its cases resolves differently from the initial
+ * case, in that case and the initial one, in every interaction state, has one print in every band. Its table then needs no band.
+ */
+function bandFree(group: readonly number[], bandCases: readonly { readonly cases: readonly CaseResult[] }[]): boolean {
+  const prints = new WeakMap<ReadonlyMap<Longhand, ResolvedValue>, string>();
+  const printOf = (props: ReadonlyMap<Longhand, ResolvedValue>): string => {
+    const known = prints.get(props);
+    if (known !== undefined) return known;
+    const made = [...props].map(([p, v]) => `${p}=${JSON.stringify(v.value)}@${v.origin}`).join('\u0000');
+    prints.set(props, made);
+    return made;
+  };
+  const byAddress = (root: ResolvedElement | null, only: ReadonlySet<string> | null): Map<string, string> => {
+    const out = new Map<string, string>();
+    const walk = (el: ResolvedElement): void => {
+      if (only === null || only.has(el.element.address)) out.set(el.element.address, printOf(el.props));
+      for (const c of el.children) if (c.kind === 'element') walk(c);
+    };
+    if (root !== null) walk(root);
+    return out;
+  };
+  const touched = new Set<string>();
+  for (const b of bandCases) {
+    const initial = byAddress((b.cases[group[0] as number] as CaseResult).resolved, null);
+    for (const i of group.slice(1)) {
+      const here = byAddress((b.cases[i] as CaseResult).resolved, null);
+      for (const [address, print] of here) if (initial.get(address) !== print) touched.add(address);
+      for (const address of initial.keys()) if (!here.has(address)) touched.add(address);
+    }
+    // An element whose styles across its interaction states differ from the initial case's is the group's too (native-styles.ts
+    // interactionChanges).
+    const statePrints = (c: CaseResult): Map<string, Set<string>> => {
+      const out = new Map<string, Set<string>>();
+      for (const st of c.interaction) for (const [address, print] of byAddress(st.resolved, null)) out.set(address, (out.get(address) ?? new Set()).add(print));
+      return out;
+    };
+    const atInitial = statePrints(b.cases[group[0] as number] as CaseResult);
+    for (const i of group.slice(1)) {
+      for (const [address, prints] of statePrints(b.cases[i] as CaseResult)) {
+        const was = atInitial.get(address);
+        if (was === undefined || was.size !== prints.size || [...prints].some((x) => !was.has(x))) touched.add(address);
+      }
+      for (const address of atInitial.keys()) if (!statePrints(b.cases[i] as CaseResult).has(address)) touched.add(address);
+    }
+  }
+  const treesOf = (c: CaseResult): Map<string, string>[] => [byAddress(c.resolved, touched), ...c.interaction.map((i) => byAddress(i.resolved, touched))];
+  const same = (x: Map<string, string>, y: Map<string, string>): boolean => x.size === y.size && [...x].every(([a, p]) => y.get(a) === p);
+  return group.every((i) => {
+    const first = treesOf((bandCases[0] as { cases: readonly CaseResult[] }).cases[i] as CaseResult);
+    return bandCases.slice(1).every((b) => {
+      const trees = treesOf(b.cases[i] as CaseResult);
+      return trees.length === first.length && trees.every((t, k) => same(t, first[k] as Map<string, string>));
+    });
+  });
 }
