@@ -11,8 +11,9 @@ import { NATIVE_STYLE_EXPORT_SCHEMA, NATIVE_STYLE_EXPORT_SCHEMA_GROUPS, parseNat
 import { composedNodes, interactionStateOf, mergedOrder, shownState, tableEntries } from '../src/state-groups.ts';
 import type { GroupProduct, PooledInteraction } from '../src/state-groups.ts';
 import { repoPath } from '../src/paths.ts';
+import { systemFontsFor } from '../src/system-fonts/provider.ts';
 
-const { runMarklessLayout } = (await import(new URL('../../translate/harness/harness.ts', import.meta.url).href)) as { runMarklessLayout(line: string): string };
+const { runMarklessLayout, runMarklessRowsLayout } = (await import(new URL('../../translate/harness/harness.ts', import.meta.url).href)) as { runMarklessLayout(line: string): string; runMarklessRowsLayout(line: string, shaper: never): string };
 
 const PATH = 'examples/markless-styles/input/groups.native-style-input.json';
 const TEXT = readFileSync(repoPath(PATH), 'utf8');
@@ -163,6 +164,12 @@ function expectProduct(text: string): number {
       const combine = (states: readonly number[]): ExportNode[] => composedNodes(g, a.values, (ti) => shownOf(ti, tuple[ti] as number, states[ti] as number));
       const none = tuple.map(() => -1);
       expect(applied(combine(none)), what).toEqual(applied(a.nodes));
+      const paintOf = (states: readonly number[]): unknown => {
+        const shown = shownOf(sk.rootPaint, tuple[sk.rootPaint] as number, states[sk.rootPaint] as number) as unknown as Record<string, unknown>;
+        return [shown['canvas'], shown['bodyBackground'], shown['colorScheme']];
+      };
+      const paintIn = (x: ExportAssignment): unknown => [(x as unknown as Record<string, unknown>)['canvas'], (x as unknown as Record<string, unknown>)['bodyBackground'], (x as unknown as Record<string, unknown>)['colorScheme']];
+      expect(paintOf(none), `${what} root paint`).toEqual(paintIn(a));
       expect(paintOrders(combine(none)), `${what} paint order`).toEqual(paintOrders(a.nodes));
       const lineOf = (states: readonly number[]): object => ({ assignment: planOf(0, tuple[0] as number, states[0] as number), groups: tuple.slice(1).map((e, k) => planOf(k + 1, e, states[k + 1] as number)) });
       expect(layout(g, lineOf(none)), `${what} layout`).toBe(layout(p, { assignment: i }));
@@ -184,6 +191,7 @@ function expectProduct(text: string): number {
         const states = kk < 0 ? none : (sl.states[kk] as readonly number[]);
         const want = k < 0 ? a : (pl.states[k] as ExportAssignment);
         expect(applied(combine(states)), `${what} ${event} ${address}`).toEqual(applied(want.nodes));
+        expect(paintOf(states), `${what} ${event} ${address} root paint`).toEqual(paintIn(want));
         expect(paintOrders(combine(states)), `${what} ${event} ${address} paint order`).toEqual(paintOrders(want.nodes));
         expect(layout(g, lineOf(states)), `${what} ${event} ${address} layout`).toBe(layout(p, { assignment: k < 0 ? i : (pl.planAssignments as number[])[k] as number }));
         compared++;
@@ -347,4 +355,29 @@ describe('factored states', () => {
       expect(expectProduct(readFileSync(repoPath(`examples/markless-styles/input/${name}.native-style-input.json`), 'utf8'))).toBeGreaterThan(0);
     });
   }
+
+  it("lays a page's live texts out in the tree every table gives (a text the app changes, in the page's and a group's box)", () => {
+    const product = exportOf(TEXT, false, true);
+    const grouped = exportOf(TEXT, true, true);
+    for (const t of ['ios', 'android'] as const) {
+      const p = product.targets[t] as ExportTarget;
+      const g = grouped.targets[t] as ExportTarget;
+      const sk = g.product as GroupProduct;
+      const dpr = ((p.plan as NonNullable<ExportTarget['plan']>).densities[0] as { dpr: number }).dpr;
+      const texts = [['h1:text0', 'Alpha, renamed at run time'], ['h3:text0', 'Beta, a longer label than the build laid out']];
+      const live = (x: ExportTarget, extra: object): string => runMarklessRowsLayout(JSON.stringify({ dpr, viewport: p.viewport, safeArea: { top: 0, right: 0, bottom: 0, left: 0 }, plan: x.plan, rows: [], texts, ...extra }), systemFontsFor(t, dpr).shaper as never);
+      const key = (v: Readonly<Record<string, unknown>>): string => JSON.stringify(Object.keys(v).sort().map((k) => [k, v[k]]));
+      sk.assignments.forEach((tuple) => {
+        // Each group gives only its own states' values; the page's entry every other.
+        const values = Object.assign({}, ...tuple.map((e, ti) => {
+          const a = (((ti === 0 ? g : (g.groups as readonly ExportGroup[])[ti - 1]) as ExportTarget).assignments[e] as ExportAssignment).values;
+          return ti === 0 ? a : Object.fromEntries(((g.groups as readonly ExportGroup[])[ti - 1] as ExportGroup).groupStates.map((st) => [st, a[st]]));
+        }));
+        const i = p.assignments.findIndex((a) => key(a.values) === key(values));
+        const want = live(p, { assignment: i });
+        expect(want.startsWith('["ok"'), want.slice(0, 200)).toBe(true);
+        expect(live(g, { assignment: tuple[0], groups: tuple.slice(1) }), `${t} ${key(values)}`).toBe(want);
+      });
+    }
+  });
 });

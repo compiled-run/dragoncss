@@ -407,6 +407,8 @@ export type GroupProduct = {
   readonly assignments: readonly (readonly number[])[];
   readonly next: ExportTarget['next'];
   readonly interaction?: { readonly levels: readonly ProductLevel[] };
+  /** The table that owns html and body, whose entry (or interaction state) gives a combination its canvas and body background. */
+  readonly rootPaint: number;
 };
 
 /** The product of a factored target's tables (GroupProduct); declared orders each state's domain as the input declares it. */
@@ -418,6 +420,9 @@ export function groupProduct(x: ExportTarget, declared: (key: string) => readonl
   groups.forEach((g, k) => {
     for (const o of g.owned) if (o.startsWith('node:')) nodeOwner.set(o.slice('node:'.length), k + 1);
   });
+  const rootOwners = new Set(['html', 'body'].map((id) => nodeOwner.get(id) ?? 0));
+  if (rootOwners.size > 1) throw new Error('html and body take their styles from different groups, so no one table gives the page its canvas and body background');
+  const rootPaint = [...rootOwners][0] as number;
   const keys = x.states.map((s) => s.key);
   // Each table's index of each state (a group whose elements style alike in every band has no band state), -1 where it has none.
   const slot = tables.map((t) => keys.map((key) => t.states.findIndex((s) => s.key === key)));
@@ -462,7 +467,7 @@ export function groupProduct(x: ExportTarget, declared: (key: string) => readonl
   const levelsOf = tables.map((t) => t.interaction?.levels);
   if (levelsOf.some((l) => l === undefined) && levelsOf.some((l) => l !== undefined)) throw new Error('some tables of the page have interaction states and others none, so a combined page has no element tables for every element');
   const interaction = levelsOf[0] === undefined ? undefined : { levels: tuples.map((tuple) => combinedLevel(tuple.map((e, t) => (levelsOf[t] as readonly Level[])[e] as Level), nodeOwner)) };
-  return { states, initial, assignments: tuples, next, ...(interaction === undefined ? {} : { interaction }) };
+  return { states, initial, assignments: tuples, next, ...(interaction === undefined ? {} : { interaction }), rootPaint };
 }
 
 function combinedLevel(levels: readonly ProductLevelSource[], nodeOwner: ReadonlyMap<string, number>): ProductLevel {
