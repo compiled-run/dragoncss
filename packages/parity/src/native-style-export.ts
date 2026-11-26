@@ -23,7 +23,7 @@ import { heightDependence, marklessPlan, PLAN_DENSITIES, planInteractionAssignme
 import type { DensityJob, DensityResult } from './markless-plan-workers.ts';
 import { planWorkers, recordDensitiesInWorkers } from './markless-plan-workers.ts';
 import type { SystemFaceDescriptor, SystemFonts } from './system-fonts/provider.ts';
-import { systemFontsFor, systemRequestOf } from './system-fonts/provider.ts';
+import { isFallbackFace, isSystemFace, systemFontsFor, systemRequestOf } from './system-fonts/provider.ts';
 
 export const NATIVE_STYLE_EXPORT_SCHEMA = 'dragon.native-style-export/1';
 
@@ -146,8 +146,8 @@ export type NativeStyleExport = {
   readonly targets: { readonly [T in NativeStyleTarget]?: ExportTarget };
 };
 
-/** A system face of the export: its id, and per target the platform font a host draws it with. */
-export type SystemFontEntry = { readonly id: string } & { readonly [T in NativeStyleTarget]?: Omit<Extract<SystemFaceDescriptor, { platform: T }>, 'platform'> };
+/** A system face of the export: its id, and per target the platform font a host draws it with; a fallback face is one platform's only. */
+export type SystemFontEntry = { readonly id: string; readonly fallback?: true } & { readonly [T in NativeStyleTarget]?: Omit<Extract<SystemFaceDescriptor, { platform: T }>, 'platform'> };
 
 let vendored: ReadonlyMap<string, string> | null = null;
 
@@ -222,13 +222,14 @@ function scrollOffsets(component: string, program: NativeProgram, viewport: Expo
   return { page, containers };
 }
 
-/** Splits a line's glyphs into runs where the instance size changes (small caps). */
-function runsOf(face: string, glyphs: readonly number[], xs: readonly number[], sizes: readonly number[]): GlyphRun[] {
+/** Splits a line's glyphs into runs where the face (font fallback) or the instance size (small caps) changes. */
+function runsOf(faces: readonly string[], glyphs: readonly number[], xs: readonly number[], sizes: readonly number[]): GlyphRun[] {
   const out: { face: string; size: number; glyphs: number[]; xs: number[] }[] = [];
   for (const [j, g] of glyphs.entries()) {
     const size = sizes[j] as number;
+    const face = faces[j] as string;
     const last = out[out.length - 1];
-    if (last === undefined || last.size !== size) out.push({ face, size, glyphs: [g], xs: [xs[j] as number] });
+    if (last === undefined || last.size !== size || last.face !== face) out.push({ face, size, glyphs: [g], xs: [xs[j] as number] });
     else {
       last.glyphs.push(g);
       last.xs.push(xs[j] as number);
@@ -251,12 +252,12 @@ function textLines(texts: readonly EngineText[], leafText: ReadonlyMap<string, s
       if (!g.ok) throw new Error(`${t.id} line ${k}: the shaped measurer refused its text: ${g.reason}`);
       const x0 = line.rect.x / LU_PER_PX - at.x;
       const xs = g.xs.map((x, j) => x0 + x + (line.shifts.length === 0 ? 0 : (line.shifts[g.chars[j] as number] as number)));
-      const runs = runsOf(t.textFont.family, g.glyphs, xs, g.sizes);
+      const runs = runsOf(g.faces, g.glyphs, xs, g.sizes);
       const e = line.ellipsis;
       if (e !== null) {
         const d = pieceGlyphs(m, String.fromCodePoint(...e.cps), e.font, 0, e.cps.length);
         if (!d.ok) throw new Error(`${t.id} line ${k} ellipsis: the shaped measurer refused its text: ${d.reason}`);
-        runs.push(...runsOf(e.font.family, d.glyphs, d.xs.map((x) => e.x / LU_PER_PX - at.x + x), d.sizes));
+        runs.push(...runsOf(d.faces, d.glyphs, d.xs.map((x) => e.x / LU_PER_PX - at.x + x), d.sizes));
       }
       return { top: snapEdge((line.rect.y - line.halfLeading) as LU) - at.y, baseline: line.snapped.top + ascent - at.y, runs };
     }));
@@ -292,7 +293,7 @@ export function nativeStyleExport(styles: NativeStyles, component: string, sourc
     const authorFiles = inputFonts.map((f) => [registerFace(f.bytes), f.bytes] as const);
     const jobs = (['ios', 'android'] as const).flatMap((t) => {
       const o = styles.targets[t];
-      return o?.kind !== 'emitted' ? [] : PLAN_DENSITIES[t].map((dpr): DensityJob => ({ t, sp: planStateProgram(o.program, o.interaction), bundled: [...inputFaces.keys()], authorFiles, dpr, height: devices[t].viewport.height, checkHeights: checksHeights(o) }));
+      return o?.kind !== 'emitted' ? [] : PLAN_DENSITIES[t].map((dpr): DensityJob => ({ t, sp: planStateProgram(o.program, o.interaction), bundled: [...inputFaces.keys()], authorFiles, dpr, height: devices[t].viewport.height, checkHeights: checksHeights(o), fallbacks: o.fontFallbacks ?? {} }));
     });
     const results = recordDensitiesInWorkers(jobs, workers);
     for (const t of ['ios', 'android'] as const) recorded.set(t, results.filter((_, i) => jobs[i]?.t === t));
@@ -305,8 +306,13 @@ export function nativeStyleExport(styles: NativeStyles, component: string, sourc
     const sp = o.program;
     // A target measures its system faces with its own platform's fonts; the lowered program is shared.
     const system = systemFonts === null ? null : systemFonts(t, d.dpr);
-    const shared = system === null ? null : systemMeasurer(system, sp, [...inputFaces.keys()], d.dpr, new Map(inputFonts.map((f) => [registerFace(f.bytes), f.bytes])));
+    const shared = system === null ? null : systemMeasurer(system, sp, [...inputFaces.keys()], d.dpr, new Map(inputFonts.map((f) => [registerFace(f.bytes), f.bytes])), null, o.fontFallbacks ?? {});
     const measurer = (): TextMeasurer => shared ?? referenceMeasurer([...inputFaces.keys()]);
+    const useSystem = (id: string): void => {
+      if (system === null) throw new Error(`${component}: ${t} draws text in the system face ${id}, and the export was given no system fonts`);
+      const { platform: _platform, ...descriptor } = system.descriptor(id);
+      systemUsed.set(id, { ...(systemUsed.get(id) ?? { id, ...(isFallbackFace(id) ? { fallback: true } : {}) }), [t]: descriptor });
+    };
     const exportAt = (program: NativeProgram, a: StateProgram['assignments'][number]): ExportAssignment => {
       const laid = engineBoxes(program, d.viewport, d.dpr, measurer());
       const boxes = new Map(laid.map((b) => [b.id, b]));
@@ -327,11 +333,7 @@ export function nativeStyleExport(styles: NativeStyles, component: string, sourc
         for (const w of n.writes) {
           if (w.kind !== 'font') continue;
           if (systemRequestOf(w.font.family) === null) faces.add(w.font.family);
-          else if (system === null) throw new Error(`${component}: ${t} node ${n.id} is drawn in the system face ${w.font.family}, and the export was given no system fonts`);
-          else {
-            const { platform: _platform, ...descriptor } = system.descriptor(w.font.family);
-            systemUsed.set(w.font.family, { ...(systemUsed.get(w.font.family) ?? { id: w.font.family }), [t]: descriptor });
-          }
+          else useSystem(w.font.family);
         }
         const scrolls = n.writes.some((w) => w.kind === 'scroll-container');
         const range = scroll.containers.get(n.id);
@@ -348,6 +350,7 @@ export function nativeStyleExport(styles: NativeStyles, component: string, sourc
           ...(own === undefined ? {} : { lines: own }),
         };
       });
+      for (const line of [...lines.values()].flat()) for (const run of line.runs) if (isSystemFace(run.face)) useSystem(run.face);
       if ('undecided' in scroll.page) undecided.add(`${t}: ${scroll.page.undecided}`);
       if ('undecided' in scroll.page) return { values: valuesOf(a.assignment), pageScroll: null, pageScrollUndecided: { nodeId: scroll.page.nodeId, detail: scroll.page.detail }, nodes };
       return { values: valuesOf(a.assignment), pageScroll: scroll.page, nodes };
@@ -373,7 +376,16 @@ export function nativeStyleExport(styles: NativeStyles, component: string, sourc
     if (plan && systemFonts === null) throw new Error(`${component}: a layout plan records the text a target's system fonts shape, and the export was given no system fonts`);
     if (o.anim !== undefined && !plan) throw new Error(`${component}: ${t} has transitions or animations, which a phone runs only with a layout plan`);
     const animated = plan && o.anim !== undefined ? { anim: animTablesOf(o.anim) } : {};
-    const laidOut = plan && systemFonts !== null ? { plan: marklessPlan(t, sp, (dpr) => systemFonts(t, dpr), [...inputFaces.keys()], new Map(inputFonts.map((f) => [registerFace(f.bytes), f.bytes])), d.viewport.height, o.interaction, recorded.get(t), checksHeights(o)) } : {};
+    const laidOut = plan && systemFonts !== null ? { plan: marklessPlan(t, sp, (dpr) => systemFonts(t, dpr), [...inputFaces.keys()], new Map(inputFonts.map((f) => [registerFace(f.bytes), f.bytes])), d.viewport.height, o.interaction, recorded.get(t), checksHeights(o), o.fontFallbacks ?? {}) } : {};
+    // A fallback face the plan's other widths find: the export's own provider finds it again, to describe it.
+    for (const density of 'plan' in laidOut ? laidOut.plan.densities : []) {
+      for (const c of density.fallbacks ?? []) {
+        const [face, text, start, end, script, language, got] = c as [string, string, number, number, string, string, string];
+        if (!isSystemFace(got) || systemUsed.get(got)?.[t] !== undefined) continue;
+        if (system === null || system.shaper.fallback(o.fontFallbacks?.[face] ?? face, text, start, end, script, language) !== got) throw new Error(`${component}: ${t}'s plan falls back from ${face} to ${got}, which the export's fonts do not`);
+        useSystem(got);
+      }
+    }
     targets[t] = { backend: o.backend, viewport: d.viewport, dpr: d.dpr, readiness, states: sp.states.map((s) => ({ key: s.key, domain: s.domain })), initial: sp.initial, assignments, next: sp.next, ...exportBands(o), ...laidOut, ...animated, ...interaction };
   }
   const files = vendoredFaces();
@@ -419,7 +431,13 @@ export function parseNativeStyleExport(text: string): NativeStyleExport {
       const entry = e as Record<string, unknown>;
       const ios = entry['ios'];
       const face = isRecord(ios) ? ios['face'] : undefined;
-      const faceOk = isRecord(face) && ((face['kind'] === 'system' && isNumber(face['weight']) && ['default', 'serif', 'monospaced'].includes(face['design'] as string)) || (face['kind'] === 'name' && typeof face['postScriptName'] === 'string') || (face['kind'] === 'data' && typeof face['sha256'] === 'string'));
+      const isFace = (f: unknown): boolean =>
+        isRecord(f) &&
+        ((f['kind'] === 'system' && isNumber(f['weight']) && ['default', 'serif', 'monospaced'].includes(f['design'] as string)) ||
+          (f['kind'] === 'name' && typeof f['postScriptName'] === 'string') ||
+          (f['kind'] === 'data' && typeof f['sha256'] === 'string') ||
+          (f['kind'] === 'cascade' && isFace(f['base']) && typeof f['text'] === 'string' && typeof f['postScriptName'] === 'string'));
+      const faceOk = isFace(face);
       if (ios !== undefined && !faceOk) fail(`systemFonts ${String(entry['id'])}: ios is not a Core Text face`);
       const android = entry['android'];
       if (android !== undefined && !(isRecord(android) && typeof android['file'] === 'string' && Number.isInteger(android['index']) && typeof android['sha256'] === 'string')) fail(`systemFonts ${String(entry['id'])}: android is not a file, index and sha256`);

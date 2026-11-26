@@ -597,7 +597,8 @@ export type CancelButton = { readonly marginStart: number; readonly marginEnd: n
  *   writes 129, Chrome's measured default track length; the engine zooms it like a px length);
  * - slider-thumb: the thumb, which its block container's layout moves along the inline axis by ratio x (content width - thumb
  *   width), ratio being the input's (value - min) / (max - min) in [0, 1] (AdjustSliderThumbInlineOffset);
- * - button-block: a block button, whose in-flow contents are centred safely in the block axis (AlignBlockContent);
+ * - button-block: a button laid out as a block container, whose in-flow contents are centred safely in the block axis
+ *   (AlignBlockContent): block-level (display block), or inline-block, an atomic inline among inline content (RF-INL);
  * - text-field (FORM-b): a single-line text field, a block container of its placeholder (if any) and its inner editor. Its intrinsic
  *   content inline size is size x the advance of 0 in its font, rounded up to a whole px, read only when avgChar is ahem; its auto
  *   content height is the editor's, which it centres unsafely in the block axis, and the placeholder's baseline is put on the
