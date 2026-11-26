@@ -8,7 +8,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import type { LayoutRect } from '@dragon/layout';
 import { layoutWithFaults, NO_ENGINE_FAULTS, validateLayoutInput } from '@dragon/layout';
-import { nativeLayoutProjection } from 'dragon';
+import { engineLayoutProjection, nativeLayoutProjection } from 'dragon';
 import { GATE_CHANNEL_DELTA, GATE_DEVICE_PX } from './compare.ts';
 import { atDpr, committedDprCapture, DPRS, EXTRA_DPRS, layoutCases, SHARED_DPRS } from './dpr.ts';
 import { spawnChild } from './device-exec.ts';
@@ -150,10 +150,24 @@ function vectorSuites(lane: LaneConfig): (ReturnType<typeof declaredSuites>[numb
     'vectors-m2': top.filter((id) => !m1.has(id)).length,
     'vectors-dpr': lane.sets.filter((s) => s.role !== 'top-level').flatMap((s) => s.ids).filter((id) => pending.has(id)).length,
     'engine-dpr': vectorCaseIds().filter((id) => pending.has(id)).length * extendedManifest().dprSets.length,
-    // A pending shaped case keeps its DPR 1 vector (layout:vectors writes it) and has none at the DPR sets (layout:dpr-vectors).
-    'text-latin': [...shapedCaseIds()].filter((id) => pending.has(id)).length * extendedManifest().dprSets.length,
+    // A pending shaped case has no vector at the DPR sets (layout:dpr-vectors), nor at DPR 1 when its enforced compile has no engine lowering.
+    'text-latin': pendingShapedVectors(pending),
   };
   return declaredSuites(lane).map((s) => ({ ...s, cases: s.cases - (out[s.suite] ?? 0), pending: out[s.suite] ?? 0 }));
+}
+
+/** The text-latin vectors the pending shaped cases lack this round: layout:vectors writes the DPR 1 one only from an enforced engine lowering. */
+function pendingShapedVectors(pending: ReadonlySet<string>): number {
+  const shaped = shapedCaseIds();
+  const dprSets = extendedManifest().dprSets.length;
+  let n = 0;
+  for (const f of layoutCases()) {
+    for (const c of f.cases) {
+      if (!shaped.has(c.id) || !pending.has(c.id)) continue;
+      n += engineLayoutProjection(enforcedCompile(f.spec, c.environment.direction), c.environment, c.assignment).kind === 'ready' ? dprSets : 1 + dprSets;
+    }
+  }
+  return n;
 }
 
 /** Lane, case-list, tolerance, sample-rule, dump-fault and projection parity, and the literal scan. Empty when every target agrees. */
