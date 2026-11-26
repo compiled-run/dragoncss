@@ -201,6 +201,9 @@ jobs:
           echo "$RUNNER_TEMP/kotlinc/bin" >> "$GITHUB_PATH"
           "$RUNNER_TEMP/kotlinc/bin/kotlinc" -version 2>&1 | grep -q 'kotlinc-jvm 2.4.20' || { echo "::error::not kotlinc 2.4.20"; exit 1; }
           echo "ANDROID_HOME=${ANDROID_HOME:-unset}"; find "${ANDROID_HOME:-/nonexistent}/platforms" -maxdepth 1 2>&1 | tail -3
+      # The Markless exports measure Android's system fonts out of the SDK's emulator system image, which macOS runners lack.
+      - name: The Android system image the system fonts are read from
+        run: bash scripts/android-system-image.sh
       - name: vitest run (every other file, shard ${{ matrix.shard }}/4)
         run: |
           set -o pipefail
