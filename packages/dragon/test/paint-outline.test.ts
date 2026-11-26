@@ -233,13 +233,16 @@ describe('outline: the native targets draw every style but auto, the side painte
     const both = tree('.b { height: 5px; outline: 2px solid red; } .q { transform: scale(0.97); opacity: 0.85; }', (r) => [div(r, 'q', ['q'], [div(r, 'b', ['b'])])]);
     expect(errors(both).filter((d) => d.message.startsWith('b has an outline')).map((d) => d.message.split(',')[0])).toEqual(['b has an outline inside q']);
   });
-  it("a layer item's own outline is refused when it clips its overflow (its view clips the views it hosts)", () => {
-    const c = tree('.q { position: relative; height: 5px; overflow: hidden; outline: 2px solid red; }', (r) => [div(r, 'q', ['q'])]);
+  it("a clipping layer item's own outline compiles beside its clip view, and is refused with a negative offset (it would paint over what the clip holds)", () => {
+    for (const layer of ['position: relative', 'transform: scale(0.97)']) {
+      expect(errors(tree(`.q { ${layer}; height: 5px; overflow: hidden; outline: 2px solid red; outline-offset: 2px; }`, (r) => [div(r, 'q', ['q'])])), layer).toEqual([]);
+    }
+    const c = tree('.q { position: relative; height: 5px; overflow: hidden; outline: 2px solid red; outline-offset: -1px; }', (r) => [div(r, 'q', ['q'])]);
     const got = errors(c).filter((d) => d.message.includes('outline'));
-    expect(got.map((d) => [d.target, d.message])).toEqual([['ios', `q has an outline and position: relative, and clips its overflow; Dragon draws a layer's own outline in its view, inside that clip${SUFFIX}`]]);
+    expect(got.map((d) => [d.target, d.message])).toEqual([['ios', `q has an outline with a negative outline-offset and position: relative, and clips its overflow; Dragon draws a layer's own outline above what its clip holds${SUFFIX}`]]);
     expectCatalogued(got);
     // A flow box clipping itself keeps its outline: its paint layer is the root's view.
-    expect(errors(tree('.q { height: 5px; overflow: hidden; outline: 2px solid red; }', (r) => [div(r, 'q', ['q'])]))).toEqual([]);
+    expect(errors(tree('.q { height: 5px; overflow: hidden; outline: 2px solid red; outline-offset: -1px; }', (r) => [div(r, 'q', ['q'])]))).toEqual([]);
   });
   it('an outline on or inside a box whose clip: rect() hides it is refused on ios (the native targets hide that view, outline included)', () => {
     const own = tree('.q { position: absolute; width: 5px; height: 5px; clip: rect(0 0 0 0); outline: 2px solid red; }', (r) => [div(r, 'q', ['q'])]);
