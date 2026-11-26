@@ -863,7 +863,7 @@ function checkControl(value: Record<string, unknown>, path: string, errors: Vali
     errors.push({ path: `${path}.${key}`, code: 'bad-value', message });
   };
   if (control['kind'] === 'range' && style['display'] !== 'flex') bad('style.display', 'a range control is a flex container');
-  if (control['kind'] === 'button-block' && style['display'] !== 'block') bad('style.display', 'a block button control is a block container');
+  if (control['kind'] === 'button-block' && style['display'] !== 'block' && style['display'] !== 'inline-block') bad('style.display', 'a block button control is a block container, block-level or inline-block');
   if (control['kind'] === 'text-field' && style['display'] !== 'block' && style['display'] !== 'inline-block') bad('style.display', 'a text field is a block container, block-level or inline-block');
   if ((control['kind'] === 'text-editor' || control['kind'] === 'text-placeholder') && style['display'] !== 'block') bad('style.display', 'the parts of a text field are block containers');
   if (control['kind'] === 'text-area' && style['display'] !== 'block') bad('style.display', 'a textarea is a block container');
@@ -897,13 +897,13 @@ function childrenOf(value: Record<string, unknown>, path: string, errors: Valida
 
 /**
  * An atomic inline (CSS2 §9.2.4): a box with display inline-block, inline-flex or inline-grid, a replaced leaf with display
- * inline, inline-block or inline-flex (RF-INL; css-display-3 §2.4), or an inline-block text field control.
+ * inline, inline-block or inline-flex (RF-INL; css-display-3 §2.4), or an inline-block text field or button control.
  */
 const isAtomic = (c: unknown): boolean => {
   if (!isRecord(c) || !isRecord(c['style'])) return false;
   const d = c['style']['display'];
   if (c['kind'] === 'replaced') return d === 'inline' || d === 'inline-block' || d === 'inline-flex';
-  if (c['kind'] === 'control') return isRecord(c['control']) && c['control']['kind'] === 'text-field' && d === 'inline-block';
+  if (c['kind'] === 'control') return isRecord(c['control']) && (c['control']['kind'] === 'text-field' || c['control']['kind'] === 'button-block') && d === 'inline-block';
   return c['kind'] === 'box' && (d === 'inline-block' || d === 'inline-flex' || d === 'inline-grid');
 };
 
