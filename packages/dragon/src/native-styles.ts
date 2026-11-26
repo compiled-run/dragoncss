@@ -381,10 +381,24 @@ function interactionChanges(ip: InteractionProgram, i: number, j: number): Set<s
 
 /** The node and layout box ids whose record (a box's without its child boxes) differs, or that one program has and the other not. */
 function changedIds(a: NativeProgram, b: NativeProgram): Set<string> {
+  // A paint-order write's rank and index count the layer items shown beside it: they change with another group's items, while the
+  // order among the items both programs show is the node's own. Where that order is the same, the numbers are left out.
+  const stacked = (p: NativeProgram): Map<string, { readonly host: string; readonly bucket: number; readonly rank: number }> => new Map(p.nodes.flatMap((n) => n.writes.flatMap((w) => (w.kind === 'paint-order' ? [[n.id, w as unknown as { readonly host: string; readonly bucket: number; readonly rank: number }] as const] : []))));
+  const [sa, sb] = [stacked(a), stacked(b)];
+  const reordered = new Set<string>();
+  for (const host of new Set([...sa.values()].map((w) => w.host))) {
+    const common = (s: typeof sa, t: typeof sa): string[] => [...s].filter(([id, w]) => w.host === host && t.get(id)?.host === host).sort(([, x], [, y]) => x.bucket - y.bucket || x.rank - y.rank).map(([id]) => id);
+    if (common(sa, sb).join('\u0000') !== common(sb, sa).join('\u0000')) reordered.add(host);
+  }
+  const relative = (n: NativeProgram['nodes'][number]): NativeProgram['nodes'][number]['writes'] => n.writes.map((w) => {
+    if (w.kind !== 'paint-order') return w;
+    const { rank: _rank, index: _index, ...rest } = w as unknown as { readonly host: string; readonly rank: number; readonly index: number };
+    return (reordered.has(rest.host) ? w : rest) as unknown as typeof w;
+  });
   const records = (p: NativeProgram): Map<string, string> => {
     const out = new Map<string, string>();
     // A node's analysis facts (its rank in the page's paint order) are not exported; its writes, which a host applies, are.
-    for (const { facts: _facts, ...n } of p.nodes) out.set(`node:${n.id}`, canonicalJson(n));
+    for (const { facts: _facts, ...n } of p.nodes) out.set(`node:${n.id}`, canonicalJson({ ...n, writes: relative(n as NativeProgram['nodes'][number]) }));
     const hasId = (c: LayoutBox['children'][number]): c is LayoutBox['children'][number] & { readonly id: string } => 'id' in c && typeof c.id === 'string';
     // A box's child list is its children's presence, which each child's own group decides; children without an id are its own. Its
     // parent is part of it: a leaf an anonymous box wraps moves.

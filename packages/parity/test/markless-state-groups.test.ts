@@ -8,7 +8,7 @@ import type { InteractionTables } from '@dragon/layout';
 import { marklessStyleExport } from '../src/markless-style-input.ts';
 import type { ExportAssignment, ExportNode, ExportTarget } from '../src/native-style-export.ts';
 import { NATIVE_STYLE_EXPORT_SCHEMA, NATIVE_STYLE_EXPORT_SCHEMA_GROUPS, parseNativeStyleExport } from '../src/native-style-export.ts';
-import { composedNodes, mergedOrder, tableEntries } from '../src/state-groups.ts';
+import { composedNodes, mergedOrder, shownState, tableEntries } from '../src/state-groups.ts';
 import { repoPath } from '../src/paths.ts';
 
 const { runMarklessLayout } = (await import(new URL('../../translate/harness/harness.ts', import.meta.url).href)) as { runMarklessLayout(line: string): string };
@@ -41,7 +41,13 @@ const byAB = (value: (a: boolean, b: boolean) => string | null) => [false, true]
 
 /** A node as a host applies it: everything but what the plan layout gives the phone at its own size. */
 const applied = (nodes: readonly ExportNode[]): Map<string, string> =>
-  new Map(nodes.map(({ frame: _frame, lines: _lines, scrollRange: _scroll, borderOps: _ops, ...n }) => [n.id, JSON.stringify(n)]));
+  new Map(nodes.map(({ frame: _frame, lines: _lines, scrollRange: _scroll, borderOps: _ops, ...n }) => [n.id, JSON.stringify({ ...n, writes: n.writes.map((w) => (w['kind'] === 'paint-order' ? { kind: w['kind'], host: w['host'], bucket: w['bucket'] } : w)) })]));
+/** Each host's layer items in the order it sorts them (bucket, then rank), which applied leaves out. */
+const paintOrders = (nodes: readonly ExportNode[]): Record<string, string[]> => {
+  const out: Record<string, [number, number, string][]> = {};
+  for (const n of nodes) for (const w of n.writes) if (w['kind'] === 'paint-order') (out[w['host'] as string] ??= []).push([w['bucket'] as number, w['rank'] as number, n.id]);
+  return Object.fromEntries(Object.entries(out).map(([h, l]) => [h, l.sort((a, b) => a[0] - b[0] || a[1] - b[1]).map((x) => x[2])]));
+};
 
 type Event = 'hover' | 'touch' | 'focus';
 /** The interaction state a table's runtime is in after one event on its element at index e; null when focus cannot reach it. */
@@ -73,7 +79,9 @@ function expectCombines(text: string, plan: boolean): number {
     const layout = (x: ExportTarget, extra: object): string => runMarklessLayout(JSON.stringify({ dpr, viewport: p.viewport, safeArea: { top: 0, right: 0, bottom: 0, left: 0 }, plan: planOf(x), ...extra }));
     for (const [i, a] of p.assignments.entries()) {
       const at = tableEntries(g, a.values);
-      expect(applied(composedNodes(g, a.values)), `${t} ${JSON.stringify(a.values)}`).toEqual(applied(a.nodes));
+      const combined = composedNodes(g, a.values);
+      expect(applied(combined), `${t} ${JSON.stringify(a.values)}`).toEqual(applied(a.nodes));
+      expect(paintOrders(combined), `${t} ${JSON.stringify(a.values)} paint order`).toEqual(paintOrders(a.nodes));
       if (plan) {
         const want = layout(p, { assignment: i });
         expect(want.startsWith('["ok"'), want.slice(0, 200)).toBe(true);
@@ -94,10 +102,13 @@ function expectCombines(text: string, plan: boolean): number {
           const shownIn = (ti: number, entry: number): ExportAssignment => {
             const table = tables[ti] as ExportTarget;
             const kk = stateIn(ti);
-            return kk < 0 ? (table.assignments[entry] as ExportAssignment) : (table.interaction?.levels[entry]?.states[kk] as ExportAssignment);
+            const base = table.assignments[entry] as ExportAssignment;
+            return kk < 0 ? base : shownState(base, table.interaction?.levels[entry]?.states[kk] as ExportAssignment);
           };
           const want = k < 0 ? a.nodes : (level.states[k] as ExportAssignment).nodes;
-          expect(applied(composedNodes(g, a.values, shownIn)), `${t} ${JSON.stringify(a.values)} ${event} ${address}`).toEqual(applied(want));
+          const combinedState = composedNodes(g, a.values, shownIn);
+          expect(applied(combinedState), `${t} ${JSON.stringify(a.values)} ${event} ${address}`).toEqual(applied(want));
+          expect(paintOrders(combinedState), `${t} ${JSON.stringify(a.values)} ${event} ${address} paint order`).toEqual(paintOrders(want));
           if (plan) {
             const entries = tables.map((x, ti) => {
               const kk = stateIn(ti);
@@ -233,5 +244,29 @@ describe('factored states', () => {
       v.css += '\n.bold.mk-g { font-weight: 700; }\n';
     });
     expect(() => exportOf(text, true, false)).toThrow('changes with more than one group of states, and a phone shapes a paragraph only as Dragon laid it out');
+  });
+
+  it('orders layer items of two groups no table shows together by layer, z-index and tree order', () => {
+    // The panel (z-index 2, state a) and the other arm's note (z-index 3, branch-site:0) are never in one table; the bar is in all.
+    const text = variant((v) => {
+      v.css = v.css.split('\n').filter((l) => !l.includes(':hover') && !l.includes(':active') && !l.includes(':focus')).join('\n');
+      v.nodes.push({ kind: 'element', id: 'h6', element: 'div', parent: 'h0', attributes: { class: 'bar mk-g' } }, { kind: 'text', id: 'h6:text0', parent: 'h6', text: 'Bar' });
+      v.css += '\n.panel.mk-g { position: relative; z-index: 2; }\n.note.mk-g { position: relative; }\n.other.mk-g { z-index: 3; }\n.bar.mk-g { position: relative; z-index: 1; }\n.t.mk-g[aria-pressed="true"] { position: relative; z-index: 4; }\n';
+    });
+    const g = exportOf(text, true, false).targets.ios as ExportTarget;
+    const order = paintOrders(composedNodes(g, { ...(g.assignments[0] as ExportAssignment).values, 'state:a': true, 'branch-site:0': '1' }));
+    expect(order['html']?.indexOf('h2')).toBeLessThan(order['html']?.indexOf('h5') as number);
+    expect(expectCombines(text, true)).toBeGreaterThan(0);
+  });
+
+  it("writes a group's tables slim: its owned nodes, and what each interaction state changes", () => {
+    const g = exportOf(TEXT, true, false).targets.ios as ExportTarget;
+    const nodes = (g.assignments[0] as ExportAssignment).nodes.length;
+    for (const x of g.groups ?? []) {
+      const owned = new Set(x.owned.filter((o) => o.startsWith('node:')).map((o) => o.slice('node:'.length)));
+      for (const a of x.assignments) expect(a.nodes.every((n) => owned.has(n.id))).toBe(true);
+      for (const l of x.interaction?.levels ?? []) for (const st of l.states) expect(st.nodes.length).toBeLessThan(nodes);
+    }
+    for (const l of g.interaction?.levels ?? []) for (const st of l.states) expect(st.nodes.length).toBeLessThan(nodes);
   });
 });

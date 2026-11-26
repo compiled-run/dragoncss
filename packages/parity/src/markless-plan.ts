@@ -93,9 +93,17 @@ export function mergedPlan(page: MarklessPlan, groups: readonly { readonly plan:
     const at = variants.length;
     variants.push(...p.variants);
     const first = assignments.length;
-    assignments.push(...p.assignments.map((a) => ({ ...a, variant: a.variant + at })));
     const owned = k === 0 ? [] : (groups[k - 1] as { owned: readonly string[] }).owned;
     const idsOf = (prefix: string): string[] => owned.flatMap((o) => (o.startsWith(prefix) ? [o.slice(prefix.length)] : []));
+    // A group's entry gives the phone only the dashed borders, scrollers and checkboxes of the nodes it owns (harness.ts groupedParts).
+    const facts = new Set(idsOf('node:'));
+    const own = (a: PlanAssignment): PlanAssignment => {
+      if (k === 0) return a;
+      const checkboxes = (a.checkboxes ?? []).filter((id) => facts.has(id));
+      const { checkboxes: _c, ...rest } = a;
+      return { ...rest, dashed: a.dashed.filter((d) => facts.has(d[0] as string)), scroll: a.scroll.filter((id) => facts.has(id)), ...(checkboxes.length === 0 ? {} : { checkboxes }) };
+    };
+    assignments.push(...p.assignments.map((a) => ({ ...own(a), variant: a.variant + at })));
     if (k > 0) out.push({ first, count: p.assignments.length, owned: idsOf('box:'), nodes: idsOf('node:') });
   });
   return { ...page, faces, densities, variants, assignments, groups: out };

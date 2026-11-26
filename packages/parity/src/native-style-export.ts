@@ -18,8 +18,8 @@ import { viewportDirectionOf } from './scroll-metrics.ts';
 import { registerFace } from './text-shaper-host.ts';
 import { repoPath } from './paths.ts';
 import { systemMeasurer } from './system-fonts/measurer.ts';
-import type { MarklessPlan } from './markless-plan.ts';
-import { heightDependence, marklessPlan, mergedPlan, PLAN_DENSITIES, planInteractionAssignments, planStateProgram } from './markless-plan.ts';
+import type { MarklessPlan, PlanDensity } from './markless-plan.ts';
+import { heightDependence, marklessPlan, mergedPlan, PLAN_DENSITIES, planInteractionAssignments, planStateProgram, recordDensity } from './markless-plan.ts';
 import type { DensityJob, DensityResult } from './markless-plan-workers.ts';
 import { planWorkers, recordDensitiesInWorkers } from './markless-plan-workers.ts';
 import type { SystemFaceDescriptor, SystemFonts } from './system-fonts/provider.ts';
@@ -75,6 +75,13 @@ export type ExportAssignment = {
   /** Only when pageScroll is null: the node the engine stopped at and why, for a build error that names the element. */
   readonly pageScrollUndecided?: { readonly nodeId: string; readonly detail: string };
   readonly nodes: readonly ExportNode[];
+  /**
+   * Factored states (schema /2), slim: in a group's assignment, the laid-out children of each parent of a node the group owns, in
+   * order (its nodes are only those it owns); in an interaction state, of each parent of a node the state adds.
+   */
+  readonly order?: Readonly<Record<string, readonly string[]>>;
+  /** Factored states, slim: an interaction state's nodes are those it changes; these are the ids it has no node for. */
+  readonly removed?: readonly string[];
 };
 export type ExportTarget = {
   readonly backend: string;
@@ -282,6 +289,13 @@ function textLines(texts: readonly EngineText[], leafText: ReadonlyMap<string, s
 const offsetsOf = ({ minX, maxX, minY, maxY }: ScrollRange): ScrollOffsets => ({ minX, maxX, minY, maxY });
 
 /** An assignment's values keyed "<instance>#<state>", as the export writes them. */
+/** A layer item's paint layer and z-index (null: auto), which with tree order sort it among its stacking context's items. */
+const paintKeyOf = (n: NativeProgram['nodes'][number]): { readonly layer: string; readonly z: number | null } => {
+  const facts = (n.facts as Readonly<Record<string, unknown>> | undefined)?.['stacking'] as { readonly layer: string; readonly z: number | null } | undefined;
+  if (facts === undefined) throw new Error(`${n.id} has a paint-order write and no stacking facts`);
+  return { layer: facts.layer, z: facts.z };
+};
+
 export const valuesOf = (a: Assignment): Record<string, Scalar> => Object.fromEntries(a.map((x) => [`${x.state.instance}#${x.state.state}`, x.value]));
 
 /** A target's bands as the export writes them; absent for a sheet without @media. */
@@ -303,14 +317,40 @@ export function nativeStyleExport(styles: NativeStyles, component: string, sourc
   // or its error thrown, where the target's plan is made.
   const recorded = new Map<NativeStyleTarget, readonly DensityResult[]>();
   const workers = planWorkers();
+  // Factored states: one recording per ratio lays out every table's distinct variants once (most are shared), split into chunks.
+  type Emitted = Extract<NativeStyles['targets'][NativeStyleTarget], { readonly kind: 'emitted' }>;
+  const recordedProgram = (o: Emitted): StateProgram => {
+    const own = planStateProgram(o.program, o.interaction);
+    if (o.groups === undefined) return own;
+    const variants = new Map(own.variants.map((v) => [JSON.stringify(v), v]));
+    for (const g of o.groups) for (const v of planStateProgram(g.program, g.interaction).variants) variants.set(JSON.stringify(v), v);
+    return { ...own, variants: [...variants.values()] };
+  };
+  const recordedHeights = (o: Emitted): boolean => (o.groups === undefined ? checksHeights(o) : process.env['DRAGON_PLAN_HEIGHT_CHECK'] === 'always' || heightDependence(recordedProgram(o), (o.bands?.table.atoms ?? []).map((a) => a.feature)) !== null);
+  const chunksOf = (o: Emitted, sp: StateProgram): StateProgram[] => {
+    if (o.groups === undefined) return [sp];
+    const size = Math.max(1, Math.ceil(sp.variants.length / Math.max(1, Math.floor(workers / 7))));
+    const out: StateProgram[] = [];
+    for (let k = 0; k < sp.variants.length; k += size) out.push({ ...sp, variants: sp.variants.slice(k, k + size) });
+    return out;
+  };
+  const joined = (parts: readonly DensityResult[], dpr: number): DensityResult => {
+    if (parts.length === 1) return parts[0] as DensityResult;
+    const failed = parts.find((r) => 'error' in r);
+    if (failed !== undefined) return failed;
+    const union = (pick: (d: PlanDensity) => readonly (readonly unknown[])[]): (readonly unknown[])[] => [...new Map(parts.flatMap((r) => pick((r as { density: PlanDensity }).density)).map((x) => [JSON.stringify(x), x])).values()];
+    return { density: { dpr, calls: union((d) => d.calls), metrics: union((d) => d.metrics), lengths: union((d) => d.lengths) } };
+  };
   if (plan && systemFonts === systemFontsFor && workers > 1) {
     const authorFiles = inputFonts.map((f) => [registerFace(f.bytes), f.bytes] as const);
     const jobs = (['ios', 'android'] as const).flatMap((t) => {
       const o = styles.targets[t];
-      return o?.kind !== 'emitted' ? [] : PLAN_DENSITIES[t].map((dpr): DensityJob => ({ t, sp: planStateProgram(o.program, o.interaction), bundled: [...inputFaces.keys()], authorFiles, dpr, height: devices[t].viewport.height, checkHeights: checksHeights(o) }));
+      if (o?.kind !== 'emitted') return [];
+      const sp = recordedProgram(o);
+      return PLAN_DENSITIES[t].flatMap((dpr) => chunksOf(o, sp).map((chunk): DensityJob => ({ t, sp: chunk, bundled: [...inputFaces.keys()], authorFiles, dpr, height: devices[t].viewport.height, checkHeights: recordedHeights(o) })));
     });
     const results = recordDensitiesInWorkers(jobs, workers);
-    for (const t of ['ios', 'android'] as const) recorded.set(t, results.filter((_, i) => jobs[i]?.t === t));
+    for (const t of ['ios', 'android'] as const) recorded.set(t, PLAN_DENSITIES[t].map((dpr) => joined(results.filter((_, i) => jobs[i]?.t === t && jobs[i]?.dpr === dpr), dpr)));
   }
   for (const t of ['ios', 'android'] as const) {
     const o = styles.targets[t];
@@ -322,6 +362,8 @@ export function nativeStyleExport(styles: NativeStyles, component: string, sourc
     const system = systemFonts === null ? null : systemFonts(t, d.dpr);
     const shared = system === null ? null : systemMeasurer(system, sp, [...inputFaces.keys()], d.dpr, new Map(inputFonts.map((f) => [registerFace(f.bytes), f.bytes])));
     const measurer = (): TextMeasurer => shared ?? referenceMeasurer([...inputFaces.keys()]);
+    // Factored states: a layer item's rank counts only the items of its own table, so its write also says what sorts it in any.
+    const factored = o.groups !== undefined;
     const exportAt = (program: NativeProgram, a: StateProgram['assignments'][number]): ExportAssignment => {
       const laid = engineBoxes(program, d.viewport, d.dpr, measurer());
       const boxes = new Map(laid.map((b) => [b.id, b]));
@@ -355,7 +397,7 @@ export function nativeStyleExport(styles: NativeStyles, component: string, sourc
           id: n.id, parent: n.parent, kind: n.kind, native: n.native, text: n.text,
           frame: box === undefined ? null : { x: px(box.x), y: px(box.y), width: px(box.width), height: px(box.height) },
           borderWidths: s === undefined ? null : Object.fromEntries(Object.entries(resolveBorder(s, d.dpr)).map(([k, v]) => [k, px(v) * d.dpr])),
-          writes: n.writes.map(({ css: _css, detail: _detail, technique: _technique, ...w }) => w),
+          writes: n.writes.map(({ css: _css, detail: _detail, technique: _technique, ...w }) => (factored && w.kind === 'paint-order' ? { ...w, ...paintKeyOf(n) } : w)),
           ...dashedBorder(n.id, n.writes, absolute.get(n.id), deviceBorders.get(n.id)),
           ...(scrolls && range !== undefined ? { scrollRange: range } : {}),
           ...(own === undefined ? {} : { lines: own }),
@@ -391,10 +433,21 @@ export function nativeStyleExport(styles: NativeStyles, component: string, sourc
     const animated = plan && o.anim !== undefined ? { anim: animTablesOf(o.anim) } : {};
     const planOf = (program: StateProgram, ip: InteractionProgram | undefined, densities: readonly DensityResult[] | undefined): MarklessPlan | null =>
       plan && systemFonts !== null ? marklessPlan(t, program, (dpr) => systemFonts(t, dpr), [...inputFaces.keys()], new Map(inputFonts.map((f) => [registerFace(f.bytes), f.bytes])), d.viewport.height, ip, densities, checksHeights(o)) : null;
+    // Factored states without workers: the one recording of every table's variants, here.
+    if (plan && systemFonts !== null && o.groups !== undefined && !recorded.has(t)) {
+      const all = recordedProgram(o);
+      recorded.set(t, PLAN_DENSITIES[t].map((dpr): DensityResult => {
+        try {
+          return { density: recordDensity(t, all, systemFonts(t, dpr), [...inputFaces.keys()], new Map(inputFonts.map((f) => [registerFace(f.bytes), f.bytes])), dpr, d.viewport.height, recordedHeights(o)) };
+        } catch (e) {
+          return { error: (e as Error).message };
+        }
+      }));
+    }
     const pagePlan = planOf(sp, o.interaction, recorded.get(t));
     // Factored states: each group's table beside the page's, which holds the initial assignment; a node shows its owner's record.
     // One plan lays every table out; a group's entries follow the page's, so a phone combines its tables' variants.
-    const groupPlans = o.groups?.map((g) => ({ plan: planOf(g.program, g.interaction, undefined), owned: g.owned })) ?? [];
+    const groupPlans = o.groups?.map((g) => ({ plan: planOf(g.program, g.interaction, recorded.get(t)), owned: g.owned })) ?? [];
     const merged = pagePlan === null || groupPlans.length === 0 ? pagePlan : mergedPlan(pagePlan, groupPlans.map((g) => ({ plan: g.plan as MarklessPlan, owned: g.owned })));
     const laidOut = merged === null ? {} : { plan: merged };
     const groups = o.groups === undefined ? {} : {
@@ -478,7 +531,7 @@ export function parseNativeStyleExport(text: string): NativeStyleExport {
       if (b.bands.length === 0 || !b.bands.every((r) => Array.isArray(r) && r.length === b.atoms.length && r.every((x) => typeof x === 'boolean'))) fail(`${t}: a band is not one truth value per atom`);
       if (b.conditions.length !== b.bands.length || !b.conditions.every((c) => typeof c === 'string')) fail(`${t}: conditions are not one string per band`);
     }
-    const tableAssignments = (table: Record<string, unknown>, t: string): void => {
+    const tableAssignments = (table: Record<string, unknown>, t: string, slim = false): void => {
     if (!Array.isArray(table['assignments'])) fail(`${t}: assignments is not a list`);
     (table['assignments'] as unknown[]).forEach((a, i) => {
       if (!isRecord(a) || !isRecord(a['values']) || !Array.isArray(a['nodes'])) fail(`${t}: assignment ${i} is not values and nodes`);
@@ -493,7 +546,14 @@ export function parseNativeStyleExport(text: string): NativeStyleExport {
         if (ids.has(node['id'] as string)) fail(`${t}: assignment ${i} lists node ${String(node['id'])} twice`);
         ids.add(node['id'] as string);
       }
-      for (const n of nodes as { id: string; parent: string | null }[]) if (n.parent !== null && !ids.has(n.parent)) fail(`${t}: assignment ${i} node ${n.id} has parent ${n.parent}, which is not one of its nodes`);
+      if (!slim) {
+        for (const n of nodes as { id: string; parent: string | null }[]) if (n.parent !== null && !ids.has(n.parent)) fail(`${t}: assignment ${i} node ${n.id} has parent ${n.parent}, which is not one of its nodes`);
+        return;
+      }
+      // A slim group's node hangs from a parent the page may give: its parent's children are listed in order.
+      const order = (a as Record<string, unknown>)['order'];
+      if (!isRecord(order) || !Object.values(order).every((l) => Array.isArray(l) && l.every((x) => typeof x === 'string'))) fail(`${t}: assignment ${i} has no order of its nodes' siblings`);
+      for (const n of nodes as { id: string; parent: string | null; frame: unknown }[]) if (n.parent !== null && n.frame !== null && !((order as Record<string, string[]>)[n.parent] ?? []).includes(n.id)) fail(`${t}: assignment ${i} node ${n.id} is not in the order of its parent ${n.parent}`);
     });
     };
     tableAssignments(target, t);
@@ -506,7 +566,7 @@ export function parseNativeStyleExport(text: string): NativeStyleExport {
         const at = `${t} group ${k}`;
         if (!isRecord(g)) return fail(`${at} is not an object`);
         tableStates(g, at);
-        tableAssignments(g, at);
+        tableAssignments(g, at, true);
         const keys = new Set((g['states'] as { key: string }[]).map((s) => s.key));
         if (!Array.isArray(g['groupStates']) || g['groupStates'].length === 0 || !g['groupStates'].every((s) => typeof s === 'string' && keys.has(s))) fail(`${at}: groupStates is not a list of its states' keys`);
         if (!Array.isArray(g['owned']) || !g['owned'].every((x) => typeof x === 'string' && (x.startsWith('node:') || x.startsWith('box:')))) fail(`${at}: owned is not a list of node: and box: ids`);

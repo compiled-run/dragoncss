@@ -16,6 +16,7 @@ import { withFontMapAssets } from './fixture-groups/fonts.ts';
 import { DOCUMENT_ID, PROJECT_ID } from './fixture-reader.ts';
 import type { ExportAssignment, ExportDevice, ExportGroup, ExportInteractionMatch, ExportNode, ExportTarget, NativeStyleExport } from './native-style-export.ts';
 import { EXPORT_DEVICES, exportBands, nativeStyleExport, valuesOf } from './native-style-export.ts';
+import { slimTarget } from './state-groups.ts';
 import { programAt } from 'dragon';
 import { isWhitespaceText, rehostAddress, textAddresser } from './node-ids.ts';
 import type { MarklessSlot, SlotSample, StyleTemplate } from './markless-slots.ts';
@@ -1032,7 +1033,9 @@ function exportMarkless(parsed: MarklessStyleInput, inputText: string, inputPath
     }) }];
   }));
   const decoded = [...new Map(fonts.filter((f) => f.sfntFile !== f.file).map((f) => [f.sfntFile, { file: f.sfntFile, bytes: f.sfnt }])).values()];
-  return { input, styles, exported: { ...exported, fontMode: mode, targets }, decoded };
+  // A host combines a group's few owned nodes with the page's: the tables are written slim.
+  const slim = Object.fromEntries(Object.entries(targets).map(([t, x]) => [t, slimTarget(x as ExportTarget)]));
+  return { input, styles, exported: { ...exported, fontMode: mode, targets: slim }, decoded };
 }
 
 /**
