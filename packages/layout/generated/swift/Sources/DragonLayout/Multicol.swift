@@ -170,11 +170,11 @@ public func multicol_balanceColumns(_ heights: JsArray<Double>, _ count: Double)
   var tallest: Double = units_ZERO
   // ts: packages/layout/src/multicol.ts:142
   do {
-    let _a188 = heights
-    var _i188 = 0
-    while _i188 < _a188.items.count {
-      let h: Double = _a188.items[_i188]
-      _i188 += 1
+    let _a189 = heights
+    var _i189 = 0
+    while _i189 < _a189.items.count {
+      let h: Double = _a189.items[_i189]
+      _i189 += 1
       try content = units_add(content, h)
       try tallest = units_max(tallest, h)
     }

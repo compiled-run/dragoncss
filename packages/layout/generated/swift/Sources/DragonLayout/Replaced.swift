@@ -127,11 +127,11 @@ public final class PixelRect {
 
 // ts: packages/layout/src/replaced.ts:60
 public func replaced_runtimeNaturalRead(_ nodeId: JsString, _ s: LayoutStyle, _ what: JsString, _ reader: JsString) throws -> Never {
-  let by: JsString = ((reader == S.s_used_size) ? S.s900 : ((reader == S.s_min_content) ? S.s899 : ((reader == S.s_max_content) ? S.s898 : S.s897)))
-  let axis: JsString = ((reader != S.s_used_size) ? S.s0 : ((s.height.kind == S.s_auto) ? S.s235 : ((s.width.kind == S.s_auto) ? S.s236 : S.s0)))
-  let before: JsString = (((what == S.s_ratio) && (s.aspectRatio.kind == S.s_auto_ratio)) ? S.s238 : S.s0)
-  let fix: JsString = ((reader == S.s_flex_content) ? S.s836 : ((what == S.s_ratio) ? S.s835 : S.s837))
-  try unsupported_unsupported(S.s_runtime_image_size, nodeId, S.s737, jsConcat(by, S.s184, what, axis, before, S.s278, fix))
+  let by: JsString = ((reader == S.s_used_size) ? S.s904 : ((reader == S.s_min_content) ? S.s903 : ((reader == S.s_max_content) ? S.s902 : S.s901)))
+  let axis: JsString = ((reader != S.s_used_size) ? S.s0 : ((s.height.kind == S.s_auto) ? S.s238 : ((s.width.kind == S.s_auto) ? S.s239 : S.s0)))
+  let before: JsString = (((what == S.s_ratio) && (s.aspectRatio.kind == S.s_auto_ratio)) ? S.s241 : S.s0)
+  let fix: JsString = ((reader == S.s_flex_content) ? S.s840 : ((what == S.s_ratio) ? S.s839 : S.s841))
+  try unsupported_unsupported(S.s_runtime_image_size, nodeId, S.s741, jsConcat(by, S.s185, what, axis, before, S.s281, fix))
 }
 
 // ts: packages/layout/src/replaced.ts:69
@@ -438,11 +438,11 @@ public func replaced_followedImageUnder(_ n: any U_ControlBox_InlineBox_LayoutBo
   }
   // ts: packages/layout/src/replaced.ts:311
   do {
-    let _a248 = (n as! any U_ControlBox_LayoutBox).children
-    var _i248 = 0
-    while _i248 < _a248.items.count {
-      let c: any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a248.items[_i248]
-      _i248 += 1
+    let _a249 = (n as! any U_ControlBox_LayoutBox).children
+    var _i249 = 0
+    while _i249 < _a249.items.count {
+      let c: any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a249.items[_i249]
+      _i249 += 1
       let f: JsString? = try replaced_followedImageUnder(c)
       // ts: packages/layout/src/replaced.ts:313
       if (f != nil) {
@@ -511,7 +511,7 @@ public func replaced_replacedBlockBasis(_ leaf: ReplacedLeaf, _ basis: any U_Hei
   }
   // ts: packages/layout/src/replaced.ts:358
   if try (((basis as! any U_HeightBasis_flexDependent_HeightBasis_indefinite).kind == S.s_flex_dependent) && replaced_blockLengthsHavePercent(leaf.style)) {
-    try unsupported_unsupported(S.s_percent_height_flex, leaf.id, S.s720, S.s1064)
+    try unsupported_unsupported(S.s_percent_height_flex, leaf.id, S.s723, S.s1068)
   }
   return nil
 }

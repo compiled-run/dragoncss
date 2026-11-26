@@ -386,11 +386,11 @@ fun replaced_followedImageUnder(n: U_ControlBox_InlineBox_LayoutBox_LineBreak_Re
   }
   // ts: packages/layout/src/replaced.ts:311
   run {
-    val _a248 = (n as U_ControlBox_LayoutBox).children
-    var _i248 = 0
-    while (_i248 < _a248.size) {
-      val c: U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a248[_i248]
-      _i248++
+    val _a249 = (n as U_ControlBox_LayoutBox).children
+    var _i249 = 0
+    while (_i249 < _a249.size) {
+      val c: U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf = _a249[_i249]
+      _i249++
       val f: String? = replaced_followedImageUnder(c)
       // ts: packages/layout/src/replaced.ts:313
       if ((f != null)) {
