@@ -123,8 +123,8 @@ describe('the page background a Markless export gives the hosts', () => {
     for (const t of ['ios', 'android'] as const) {
       const level = marklessStyleExport(text, 'focus-ring.json').exported.targets[t]!.interaction!.levels[0]!;
       const outlined = level.states.map((s, k) => [level.matches[k]!.focusVisible, s.nodes.filter((n) => n.writes.some((w) => w['kind'] === 'outline')).map((n) => n.id)]);
-      // Every element the rule reaches has a state; only html's and body's lose their ring, and a plain div keeps its own.
-      expect(outlined, t).toEqual([['h1', ['h1']], ['html', []], ['body', []], ['h0', ['h0']]]);
+      // Every element the rule reaches has a state; only the link, which a key focuses, draws its ring (T064 R9a: no phone forces a state).
+      expect(outlined, t).toEqual([['h1', ['h1']], ['html', []], ['body', []], ['h0', []]]);
     }
   });
 

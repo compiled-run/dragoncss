@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+/* Absolutely positioned children beside text in grid containers, as a tab bar's cart badge: each tab is a grid of an icon, its
+   label (an anonymous grid item) and a badge, in a bar of 1fr tracks at the bottom and of fixed centred tracks at the top; then
+   badges at their static positions (the sole item of the padding box, css-grid-2 §9.2) under each justify-items, before and
+   after the text, and a fixed one. */
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.tabs { position: fixed; right: 0; left: 0; display: grid; border-top: 1px solid #ccc; background-color: #fff; }
+.narrow { bottom: 0; grid-template-columns: repeat(4, 1fr); }
+.wide { top: 0; grid-template-columns: repeat(4, 90px); justify-content: center; border-top: 0; border-bottom: 1px solid #ccc; }
+.tab { position: relative; display: grid; justify-items: center; gap: 2px; padding: 10px 4px 14px; color: #666; font-size: 13px; }
+.current { color: #36c; }
+.icon { font-size: 22px; line-height: 1; }
+.badge { position: absolute; top: 3px; left: calc(50% + 6px); min-width: 20px; padding: 1px 6px; border-radius: 999px; background-color: #c33; color: #fff; font-size: 12px; }
+.g { position: relative; display: grid; grid-template-columns: 30px 50px; width: 120px; height: 30px; padding: 3px 5px; margin-top: 70px; background-color: #eee; }
+.g + .g { margin-top: 4px; }
+.ji-end { justify-items: end; align-items: end; }
+.ji-center { justify-items: center; align-items: center; }
+.a { position: absolute; width: 8px; height: 6px; background-color: #36c; }
+.top { top: 2px; }
+.f { position: fixed; width: 6px; height: 4px; background-color: #3a3; }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="g1" class="g">AB<div data-dragon-id="a1" class="a"></div></div>
+<div data-dragon-id="g2" class="g ji-center"><div data-dragon-id="a2" class="a"></div>AB CD</div>
+<div data-dragon-id="g3" class="g ji-end">AB<div data-dragon-id="a3" class="a top"></div><div data-dragon-id="f1" class="f"></div></div>
+<nav data-dragon-id="bar1" class="tabs narrow">
+<div data-dragon-id="t1" class="tab current"><span data-dragon-id="i1" class="icon">X</span>Shop</div>
+<div data-dragon-id="t2" class="tab"><span data-dragon-id="i2" class="icon">X</span>Cats</div>
+<div data-dragon-id="t3" class="tab"><span data-dragon-id="i3" class="icon">X</span>Cart<span data-dragon-id="b3" class="badge">N</span></div>
+<div data-dragon-id="t4" class="tab"><span data-dragon-id="i4" class="icon">X</span>Me</div>
+</nav>
+<nav data-dragon-id="bar2" class="tabs wide">
+<div data-dragon-id="t5" class="tab"><span data-dragon-id="i5" class="icon">X</span>Shop</div>
+<div data-dragon-id="t6" class="tab"><span data-dragon-id="i6" class="icon">X</span>Cart<span data-dragon-id="b6" class="badge" hidden="">Z</span></div>
+<div data-dragon-id="t7" class="tab current"><span data-dragon-id="i7" class="icon">X</span>Cart<span data-dragon-id="b7" class="badge">NN</span></div>
+<div data-dragon-id="t8" class="tab"><span data-dragon-id="i8" class="icon">X</span>Me</div>
+</nav>
+</body>
+</html>

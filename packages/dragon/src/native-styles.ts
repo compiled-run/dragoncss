@@ -3,7 +3,7 @@
 import { NO_FAULTS } from './faults.ts';
 import type { StateEmit } from './emit/runtime/state.ts';
 import { emitStatePrograms, StateEmitError } from './emit/runtime/state.ts';
-import { animProgramOf, BAND_STATE, compiledCases, ENV_INSTANCE, interactionLevelInputIn, interactionPartitionIn, nativeBandProgramFor, nativeBands, usedSchemeOf } from './internal.ts';
+import { animProgramOf, BAND_STATE, compiledCases, ENV_INSTANCE, forcedOnlyStatesIn, interactionLevelInputIn, interactionPartitionIn, nativeBandProgramFor, nativeBands, usedSchemeOf } from './internal.ts';
 import type { InteractionProgram } from './lower/interaction-program.ts';
 import type { InteractionValue } from './analysis/interaction.ts';
 import { deriveInteractionProgram } from './lower/interaction-program.ts';
@@ -146,6 +146,7 @@ export function compileNativeStylesWith(config: NativeStylesConfig, input: Front
       ...(config.canvas === 'host' ? { hostCanvas: true } : {}),
       ...(config.forms === 'host' ? { hostForms: true } : {}),
       ...(config.textEditing === 'host' ? { hostTextEditing: true } : {}),
+      hostUnforced: true,
       ...(config.brotliDecompress === undefined ? {} : { brotliDecompress: config.brotliDecompress }),
       ...(config.systemFonts === 'measured' ? { systemFonts: true } : {}),
     },
@@ -167,13 +168,17 @@ export function compileNativeStylesWith(config: NativeStylesConfig, input: Front
 function interactionProgramOf(compiled: Compiled<NativeStyleTarget>, program: StateProgram, backend: NativeBackend): { readonly program: InteractionProgram; readonly values: readonly (readonly InteractionValue[])[] } | string {
   const isBand = (x: StateProgram['assignments'][number]['assignment'][number]): boolean => x.state.instance === ENV_INSTANCE && x.state.state === BAND_STATE;
   const inputs = [];
+  const values: InteractionValue[][] = [];
   for (const { assignment } of program.assignments) {
     const band = (assignment.find(isBand)?.value ?? 0) as number;
     const input = interactionLevelInputIn(compiled, assignment.filter((x) => !isBand(x)), band, backend);
     if (typeof input === 'string') return input;
     inputs.push(input);
+    const skipped = forcedOnlyStatesIn(compiled, assignment.filter((x) => !isBand(x)), band);
+    // A skipped state keeps its matches but is the assignment's own styles, so it forces nothing.
+    values.push(input.partition.states.map((v, k) => (skipped[k] === true ? { ...v, force: [] } : v)));
   }
-  return { program: deriveInteractionProgram(program, inputs), values: inputs.map((i) => i.partition.states) };
+  return { program: deriveInteractionProgram(program, inputs), values };
 }
 
 function targetOutput(compiled: Compiled<NativeStyleTarget>, t: NativeStyleTarget, name: string, viewport: NativeStylesConfig['viewport'], sources: boolean, hostAnimates: boolean): NativeStyleOutput | NativeStyleBlocked {

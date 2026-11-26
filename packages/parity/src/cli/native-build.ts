@@ -4,8 +4,9 @@
 // android.* reference of classes.dex at or below minSdk 31 (api-versions.xml). A planted floor fault must fail and name the API. The
 // raster plants glyph-offset-1 (P5), glyph-offset-y-1 (T093) and image-offset-1 (REPL-a: every image drawn 1 device px right)
 // must build on both targets, into their own directories; the device-pixels lane must then catch them.
-import { readFileSync } from 'node:fs';
-import { checkFloor, parseApiVersions, parseDexdump } from '../api-floor.ts';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { checkFloor, fileLines, parseApiVersions, parseDexdump } from '../api-floor.ts';
 import { deviceCheckCaseIds } from '../targets.ts';
 import type { BuildPlant } from '../native-host.ts';
 import { BUILD_PLANTS, buildAndroid, buildIos, NATIVE_CONFIG, run } from '../native-host.ts';
@@ -81,12 +82,19 @@ if (target === 'ios') {
   console.log(`native:build android: ${r.cases} cases (deviceCheckCaseIds() ${declared}); source sha256 ${r.sourceSha256}`);
   console.log(`native:build android: ${r.artifact}`);
   const api = parseApiVersions(readFileSync(r.tools.apiVersions, 'utf8'));
-  const dumps = r.dexes.map((d) => {
-    const x = run(bt('dexdump'), ['-d', d]);
-    if (x.status !== 0) throw new Error(`dexdump ${d} failed`);
-    return x.out;
-  });
-  const dex = parseDexdump(dumps.join('\n'));
+  const dumpDir = mkdtempSync(join(tmpdir(), 'dragon-dexdump-'));
+  let dex: ReturnType<typeof parseDexdump>;
+  try {
+    const dumps = r.dexes.map((d, i) => {
+      const out = join(dumpDir, `${i}.txt`);
+      const x = run(bt('dexdump'), ['-d', '-o', out, d]);
+      if (x.status !== 0) throw new Error(`dexdump ${d} failed (exit ${x.status}):\n${x.out.slice(-6000)}`);
+      return out;
+    });
+    dex = parseDexdump(fileLines(dumps));
+  } finally {
+    rmSync(dumpDir, { recursive: true, force: true });
+  }
   const floor = checkFloor(api, dex, NATIVE_CONFIG.android.minSdk);
   console.log(`native:build android: API floor: ${floor.checked} android.* references checked in ${r.dexes.length} dex file(s); ${floor.guarded} call(s) into guarded Api<N> classes behind an explicit SDK_INT check; ${floor.violations.length} above API ${NATIVE_CONFIG.android.minSdk}`);
   for (const v of floor.violations) console.error(`native:build android: above the floor: ${v.ref} (${v.reason})`);
