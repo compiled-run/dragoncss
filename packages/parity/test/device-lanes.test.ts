@@ -58,7 +58,8 @@ function movedParts(before: NativeDump, after: NativeDump): { readonly nodes: bo
 
 describe.each([['ios', 3], ['android', 2.625], ['android', 2]] as const)('device checks on %s at DPR %s', (target, dpr) => {
   const all = relabelledReferenceDumps(target, dpr);
-  const sample = cases.filter((n, i) => i % 16 === 0 || n.case.id === 'text-wrap-spaces' || n.case.id === 'color-border-sides');
+  // text-latin-punct: a shaped case whose soft hyphens Chrome captures as rects of their own.
+  const sample = cases.filter((n, i) => i % 16 === 0 || n.case.id === 'text-wrap-spaces' || n.case.id === 'color-border-sides' || n.case.id === 'text-latin-punct');
   const refs = new Map(sample.map((n) => [n.case.id, caseReference(target, n, dpr)]));
   const dumps = new Map(sample.map((n) => [n.case.id, perfectDump(target, dpr, n, refs.get(n.case.id) as CaseReference, all)]));
   it('a dump that carries the references passes every check, with every check compared', () => {
