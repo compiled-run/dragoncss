@@ -6,6 +6,7 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { marklessStyleExport } from '../markless-style-input.ts';
+import { NATIVE_STYLE_EXPORT_SCHEMA_GROUPS } from '../native-style-export.ts';
 
 const given = process.argv.slice(2).filter((a) => a !== '--');
 const plan = given.includes('--plan');
@@ -26,7 +27,8 @@ try {
     mkdirSync(dirname(path), { recursive: true });
     writeFileSync(path, f.bytes);
   }
-  writeFileSync(outputPath, `${JSON.stringify(exported, null, 1)}\n`);
+  // A page with factored states is written without indentation: its export is the largest a phone reads.
+  writeFileSync(outputPath, `${exported.schema === NATIVE_STYLE_EXPORT_SCHEMA_GROUPS ? JSON.stringify(exported) : JSON.stringify(exported, null, 1)}\n`);
   const t = exported.targets.ios ?? exported.targets.android;
   const groups = t?.groups === undefined ? '' : ` and ${t.groups.length} group table(s) of ${t.groups.map((g) => g.assignments.length).join(', ')}`;
   console.log(`${outputPath}: ${exported.schema}, ${t?.assignments.length ?? 0} assignment(s) per target${groups}, readiness ${t?.readiness.kind ?? 'none'}`);

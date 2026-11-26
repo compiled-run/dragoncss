@@ -163,7 +163,7 @@ export function slimTarget(full: ExportTarget): ExportTarget {
     ({ levels: t.interaction.levels.map((l, i) => ({ ...l, states: l.states.map((st) => delta(full[i] as ExportAssignment, st, keeps)) })) });
   const pageKeeps = (id: string): boolean => !groupOwned.has(id);
   const page = { ...x, ...(x.interaction === undefined ? {} : { interaction: slimLevels({ interaction: x.interaction }, x.assignments, pageKeeps) }) };
-  return {
+  return pooled({
     ...page,
     groups: groups.map((g, k) => {
       const owns = ownedBy[k] as Set<string>;
@@ -177,7 +177,7 @@ export function slimTarget(full: ExportTarget): ExportTarget {
       const planNames = g.planNames?.map((names) => names.filter(([d, m]) => pageNames.get(d) !== m));
       return { ...g, assignments, ...(planNames === undefined ? {} : { planNames }), ...(g.interaction === undefined ? {} : { interaction: slimLevels({ interaction: g.interaction }, g.assignments, keeps) }) };
     }),
-  };
+  });
 }
 
 /** One order holding every list's items in that list's order (each list is a subsequence of one document order). */
@@ -309,3 +309,79 @@ function withoutIdleStates(x: ExportTarget): ExportTarget {
 }
 type PlanEntryOf = NonNullable<ExportTarget['plan']>['assignments'][number];
 type PlanGroupOf = NonNullable<NonNullable<ExportTarget['plan']>['groups']>[number];
+
+/** A table's interaction in the slim export: each level's states and matches as indices into the table's lists of distinct ones. */
+export type PooledInteraction = {
+  readonly levels: readonly (Omit<Level, 'states' | 'matches'> & { readonly states: readonly number[]; readonly matches: readonly number[] })[];
+  readonly states: readonly ExportAssignment[];
+  readonly matches: readonly Level['matches'][number][];
+};
+type Level = NonNullable<ExportTarget['interaction']>['levels'][number];
+
+/** The interaction state k of a table's level, in a slim (pooled) export or a full one. */
+export function interactionStateOf(table: Pick<ExportTarget, 'interaction'>, level: number, k: number): ExportAssignment {
+  const i = table.interaction as unknown as PooledInteraction | NonNullable<ExportTarget['interaction']>;
+  const l = i.levels[level] as { readonly states: readonly (number | ExportAssignment)[] };
+  const s = l.states[k] as number | ExportAssignment;
+  return typeof s === 'number' ? ((i as PooledInteraction).states[s] as ExportAssignment) : s;
+}
+
+/**
+ * Every table's interaction states and matches written once (most repeat across a table's levels), and the plan entries of its
+ * interaction states shared where two give the same entry and names, within the table's own entries.
+ */
+function pooled(x: ExportTarget): ExportTarget {
+  const plan = x.plan;
+  const groups = x.groups as readonly ExportGroup[];
+  const pool = <T>(items: readonly T[], into: T[], index: Map<string, number>): number[] => items.map((it) => {
+    const key = JSON.stringify(it);
+    let k = index.get(key);
+    if (k === undefined) {
+      k = into.length;
+      into.push(it);
+      index.set(key, k);
+    }
+    return k;
+  });
+  const entries: PlanEntryOf[] = [];
+  const ranges: { first: number; count: number }[] = [];
+  const pooledTable = <T extends Pick<ExportTarget, 'interaction' | 'planNames' | 'assignments'>>(t: T, first: number, count: number): T => {
+    const at = entries.length;
+    const names: (readonly (readonly [string, string])[])[] = [];
+    const seen = new Map<string, number>();
+    const add = (old: number, share: boolean): number => {
+      const entry = plan?.assignments[old] as PlanEntryOf;
+      const own = t.planNames?.[old - first] ?? [];
+      const key = JSON.stringify([entry, own]);
+      const known = share ? seen.get(key) : undefined;
+      if (known !== undefined) return known;
+      entries.push(entry);
+      names.push(own);
+      seen.set(key, entries.length - 1);
+      return entries.length - 1;
+    };
+    if (plan !== undefined) for (let e = 0; e < t.assignments.length; e++) add(first + e, false);
+    const states: ExportAssignment[] = [];
+    const matches: Level['matches'][number][] = [];
+    const [stateIndex, matchIndex] = [new Map<string, number>(), new Map<string, number>()];
+    const interaction = t.interaction === undefined ? undefined : {
+      levels: t.interaction.levels.map((l) => ({
+        ...l,
+        states: pool(l.states, states, stateIndex),
+        matches: pool(l.matches, matches, matchIndex),
+        ...(l.planAssignments === undefined || plan === undefined ? {} : { planAssignments: l.planAssignments.map((e) => add(e, true)) }),
+      })),
+      states,
+      matches,
+    };
+    void count;
+    ranges.push({ first: at, count: entries.length - at });
+    return { ...t, ...(interaction === undefined ? {} : { interaction: interaction as unknown as T['interaction'] }), ...(plan === undefined ? {} : { planNames: names }) };
+  };
+  const planGroups = plan?.groups ?? [];
+  const pageCount = plan === undefined ? 0 : (planGroups[0]?.first ?? plan.assignments.length);
+  const page = pooledTable(x, 0, pageCount);
+  const pooledGroups = groups.map((g, k) => pooledTable(g, planGroups[k]?.first ?? 0, planGroups[k]?.count ?? 0));
+  if (plan === undefined) return { ...page, groups: pooledGroups };
+  return { ...page, groups: pooledGroups, plan: { ...plan, assignments: entries, groups: planGroups.map((pg, k) => ({ ...pg, ...(ranges[k + 1] as { first: number; count: number }) })) } };
+}

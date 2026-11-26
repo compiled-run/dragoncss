@@ -8,7 +8,8 @@ import type { InteractionTables } from '@dragon/layout';
 import { marklessStyleExport } from '../src/markless-style-input.ts';
 import type { ExportAssignment, ExportNode, ExportTarget } from '../src/native-style-export.ts';
 import { NATIVE_STYLE_EXPORT_SCHEMA, NATIVE_STYLE_EXPORT_SCHEMA_GROUPS, parseNativeStyleExport } from '../src/native-style-export.ts';
-import { composedNodes, mergedOrder, shownState, tableEntries } from '../src/state-groups.ts';
+import { composedNodes, interactionStateOf, mergedOrder, shownState, tableEntries } from '../src/state-groups.ts';
+import type { PooledInteraction } from '../src/state-groups.ts';
 import { repoPath } from '../src/paths.ts';
 
 const { runMarklessLayout } = (await import(new URL('../../translate/harness/harness.ts', import.meta.url).href)) as { runMarklessLayout(line: string): string };
@@ -103,7 +104,7 @@ function expectCombines(text: string, plan: boolean): number {
             const table = tables[ti] as ExportTarget;
             const kk = stateIn(ti);
             const base = table.assignments[entry] as ExportAssignment;
-            return kk < 0 ? base : shownState(base, table.interaction?.levels[entry]?.states[kk] as ExportAssignment);
+            return kk < 0 ? base : shownState(base, interactionStateOf(table, entry, kk));
           };
           const want = k < 0 ? a.nodes : (level.states[k] as ExportAssignment).nodes;
           const combinedState = composedNodes(g, a.values, shownIn);
@@ -265,8 +266,11 @@ describe('factored states', () => {
     for (const x of g.groups ?? []) {
       const owned = new Set(x.owned.filter((o) => o.startsWith('node:')).map((o) => o.slice('node:'.length)));
       for (const a of x.assignments) expect(a.nodes.every((n) => owned.has(n.id))).toBe(true);
-      for (const l of x.interaction?.levels ?? []) for (const st of l.states) expect(st.nodes.length).toBeLessThan(nodes);
+      for (const st of (x.interaction as unknown as PooledInteraction | undefined)?.states ?? []) expect(st.nodes.length).toBeLessThan(nodes);
     }
-    for (const l of g.interaction?.levels ?? []) for (const st of l.states) expect(st.nodes.length).toBeLessThan(nodes);
+    const pooled = g.interaction as unknown as PooledInteraction;
+    for (const st of pooled.states) expect(st.nodes.length).toBeLessThan(nodes);
+    // A state two levels share is written once.
+    expect(pooled.states.length).toBeLessThan(pooled.levels.reduce((n, l) => n + l.states.length, 0));
   });
 });
