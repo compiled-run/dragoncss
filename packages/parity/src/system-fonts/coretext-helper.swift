@@ -35,6 +35,12 @@ func font(_ spec: [String: Any], _ size: Double) throws -> CTFont {
 	case "data":
 		guard let key = spec["sha256"] as? String, let cg = registered[key] else { throw Fail(message: "no registered font \(String(describing: spec["sha256"]))") }
 		return CTFontCreateWithGraphicsFont(cg, CGFloat(size), nil, nil)
+	case "cascade":
+		guard let base = spec["base"] as? [String: Any], let text = spec["text"] as? String, let name = spec["postScriptName"] as? String else { throw Fail(message: "a cascade face needs base, text and postScriptName") }
+		let f = CTFontCreateForString(try font(base, size), text as CFString, CFRange(location: 0, length: text.utf16.count))
+		let got = CTFontCopyPostScriptName(f) as String
+		if got != name { throw Fail(message: "Core Text's cascade draws \(text) in \(got), not \(name)") }
+		return f
 	default:
 		throw Fail(message: "unknown face kind \(String(describing: spec["kind"]))")
 	}
@@ -45,6 +51,14 @@ func register(_ r: [String: Any]) throws {
 	guard let key = r["sha256"] as? String, let b64 = r["bytes"] as? String, let data = Data(base64Encoded: b64),
 		let provider = CGDataProvider(data: data as CFData), let cg = CGFont(provider) else { throw Fail(message: "register needs sha256 and the base64 bytes of a font Core Text reads") }
 	registered[key] = cg
+}
+
+/// One face of a font file (a collection's by PostScript name), kept under key for later data faces: an iOS runtime's own font.
+func registerFile(_ r: [String: Any]) throws {
+	guard let key = r["key"] as? String, let path = r["path"] as? String, let name = r["postScriptName"] as? String else { throw Fail(message: "registerFile needs key, path and postScriptName") }
+	let descriptors = (CTFontManagerCreateFontDescriptorsFromURL(URL(fileURLWithPath: path) as CFURL) as? [CTFontDescriptor]) ?? []
+	guard let d = descriptors.first(where: { (CTFontDescriptorCopyAttribute($0, kCTFontNameAttribute) as? String) == name }) else { throw Fail(message: "\(path) has no face \(name)") }
+	registered[key] = CTFontCopyGraphicsFont(CTFontCreateWithFontDescriptor(d, 12, nil), nil)
 }
 
 func table(_ f: CTFont, _ tag: String) -> Data? {
@@ -109,7 +123,7 @@ func describe(_ spec: [String: Any], _ size: Double) throws -> [String: Any] {
 /// text[start, end) shaped by Core Text with the whole text as context (one typesetter, one line of the range), as HarfBuzz's
 /// output: glyph id, UTF-16 cluster, x and y advance, x and y offset in 16.16, flags 0. A space's advance is the font's own
 /// space advance, dropping kerning Core Text put on the space (docs/system-fonts.md "Spaces" says what Safari evidence backs it). A run
-/// Core Text draws in another font (fallback) is refused, naming the font.
+/// Core Text draws in another font (its cascade) comes back as glyph 0, .notdef, for the engine's font fallback.
 func shape(_ r: [String: Any]) throws -> [String: Any] {
 	guard let spec = r["face"] as? [String: Any], let size = r["size"] as? Double, let text = r["text"] as? String,
 		let start = r["start"] as? Int, let end = r["end"] as? Int else { throw Fail(message: "a shape request is { face, size, text, start, end, features }") }
@@ -138,8 +152,15 @@ func shape(_ r: [String: Any]) throws -> [String: Any] {
 		let runAttributes = CTRunGetAttributes(run) as! [String: Any]
 		let used = runAttributes[kCTFontAttributeName as String] as! CTFont
 		let name = CTFontCopyPostScriptName(used) as String
-		if name != want { throw Fail(message: "Core Text draws part of \(String(utf16CodeUnits: Array(units[start..<end]), count: end - start)) in \(name), not \(want) (font fallback)") }
 		if CTRunGetStatus(run).contains(.rightToLeft) { throw Fail(message: "a right-to-left run, which the helper does not shape") }
+		if name != want {
+			// A run in another font is the face's .notdef to the engine, as HarfBuzz gives it; the engine asks for its fallback.
+			var indices = [CFIndex](repeating: 0, count: n)
+			CTRunGetStringIndices(run, CFRange(), &indices)
+			for k in 0..<n { out += [0, indices[k], 0, 0, 0, 0, 0] }
+			pen += CTRunGetTypographicBounds(run, CFRange(), nil, nil, nil)
+			continue
+		}
 		var glyphs = [CGGlyph](repeating: 0, count: n)
 		var positions = [CGPoint](repeating: .zero, count: n)
 		var advances = [CGSize](repeating: .zero, count: n)
@@ -159,6 +180,31 @@ func shape(_ r: [String: Any]) throws -> [String: Any] {
 	return ["glyphs": out, "width": CTLineGetTypographicBounds(line, nil, nil, nil)]
 }
 
+/// The one font Core Text draws all of text[start, end) in, when that is not the face's own (its cascade), with the font file's path;
+/// none when the face draws some of it or Core Text splits it between fonts.
+func fallback(_ r: [String: Any]) throws -> [String: Any] {
+	guard let spec = r["face"] as? [String: Any], let size = r["size"] as? Double, let text = r["text"] as? String,
+		let start = r["start"] as? Int, let end = r["end"] as? Int else { throw Fail(message: "a fallback request is { face, size, text, start, end }") }
+	let f = try font(spec, size)
+	var attributes: [NSAttributedString.Key: Any] = [.init(kCTFontAttributeName as String): f]
+	if let language = r["language"] as? String { attributes[.init(kCTLanguageAttributeName as String)] = language }
+	let units = text.utf16.count
+	if start < 0 || end > units || start >= end { throw Fail(message: "range \(start)..<\(end) is outside the text") }
+	let typesetter = CTTypesetterCreateWithAttributedString(NSAttributedString(string: text, attributes: attributes))
+	let line = CTTypesetterCreateLine(typesetter, CFRange(location: start, length: end - start))
+	let want = CTFontCopyPostScriptName(f) as String
+	var used: CTFont? = nil
+	for run in CTLineGetGlyphRuns(line) as! [CTRun] {
+		let g = (CTRunGetAttributes(run) as! [String: Any])[kCTFontAttributeName as String] as! CTFont
+		let name = CTFontCopyPostScriptName(g) as String
+		if name == want { return ["postScriptName": "", "path": ""] }
+		if let u = used, (CTFontCopyPostScriptName(u) as String) != name { return ["postScriptName": "", "path": ""] }
+		used = g
+	}
+	guard let u = used, let url = CTFontCopyAttribute(u, kCTFontURLAttribute) as? URL else { return ["postScriptName": "", "path": ""] }
+	return ["postScriptName": CTFontCopyPostScriptName(u) as String, "path": url.path]
+}
+
 setvbuf(stdout, nil, _IOLBF, 0)
 while let line = readLine(strippingNewline: true) {
 	var reply: [String: Any]
@@ -171,6 +217,11 @@ while let line = readLine(strippingNewline: true) {
 		case "register":
 			try register(request)
 			reply = ["ok": true]
+		case "registerFile":
+			try registerFile(request)
+			reply = ["ok": true]
+		case "fallback":
+			reply = ["ok": true] .merging(try fallback(request)) { a, _ in a }
 		case "shape":
 			reply = ["ok": true] .merging(try shape(request)) { a, _ in a }
 		default:

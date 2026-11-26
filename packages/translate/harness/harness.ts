@@ -1422,6 +1422,14 @@ type ReplayCall = {
   readonly glyphs: readonly number[];
 };
 
+/** A recorded fallback call and the face it gave ('' for none). */
+type ReplayFallback = { readonly face: string; readonly text: string; readonly start: number; readonly end: number; readonly script: string; readonly language: string; readonly got: string };
+
+function recordedFallback(fallbacks: readonly ReplayFallback[], face: string, text: string, start: number, end: number, script: string, language: string): ReplayFallback | null {
+  for (const c of fallbacks) if (c.face === face && c.text === text && c.start === start && c.end === end && c.script === script && c.language === language) return c;
+  return null;
+}
+
 /** A face of a transcript: its FontData and HanKerning data, as the host read them from the bundled bytes. */
 type ReplayFace = { readonly data: FontData; readonly hanKerning: HanKerningFontData };
 
@@ -1490,8 +1498,12 @@ function sameNumbers(a: readonly number[], b: readonly number[]): boolean {
 }
 
 /** A GlyphShaper that answers a call the build recorded as recorded, and any other (a row's text) with the device's own shaper. */
-function recordedOrLive(calls: readonly ReplayCall[], live: GlyphShaper): GlyphShaper {
+function recordedOrLive(calls: readonly ReplayCall[], fallbacks: readonly ReplayFallback[], live: GlyphShaper): GlyphShaper {
   return {
+    fallback(face: string, text: string, start: number, end: number, script: string, language: string): string {
+      const c = recordedFallback(fallbacks, face, text, start, end, script, language);
+      return c === null ? live.fallback(face, text, start, end, script, language) : c.got;
+    },
     shape(face: string, size: number, text: string, start: number, end: number, script: string, rtl: boolean, language: string, features: readonly number[]): readonly number[] {
       for (const c of calls) {
         if (c.face === face && c.size === size && c.text === text && c.start === start && c.end === end && c.script === script && c.rtl === rtl && c.language === language && sameNumbers(c.features, features)) return c.glyphs;
@@ -1502,13 +1514,31 @@ function recordedOrLive(calls: readonly ReplayCall[], live: GlyphShaper): GlyphS
 }
 
 /** R3: a GlyphShaper that replays a transcript; a call the transcript does not hold is a harness error. */
-function replayShaper(calls: readonly ReplayCall[]): GlyphShaper {
+function replayShaper(calls: readonly ReplayCall[], fallbacks: readonly ReplayFallback[]): GlyphShaper {
   return {
+    fallback(face: string, text: string, start: number, end: number, script: string, language: string): string {
+      const c = recordedFallback(fallbacks, face, text, start, end, script, language);
+      if (c === null) return fail(`the shape transcript holds no fallback from ${face} [${start}, ${end}) of ${text}`);
+      return c.got;
+    },
     shape(face: string, size: number, text: string, start: number, end: number, script: string, rtl: boolean, language: string, features: readonly number[]): readonly number[] {
       for (const c of calls) {
         if (c.face === face && c.size === size && c.text === text && c.start === start && c.end === end && c.script === script && c.rtl === rtl && c.language === language && sameNumbers(c.features, features)) return c.glyphs;
       }
       return fail(`the shape transcript holds no call ${face} ${size} [${start}, ${end}) of ${text}`);
+    },
+  };
+}
+
+/** R3's replay: a transcript records no fallback calls, as the host's recordingShaper answers them with no face. */
+function transcriptShaper(calls: readonly ReplayCall[]): GlyphShaper {
+  const replay = replayShaper(calls, []);
+  return {
+    fallback(face: string, text: string, start: number, end: number, script: string, language: string): string {
+      return '';
+    },
+    shape(face: string, size: number, text: string, start: number, end: number, script: string, rtl: boolean, language: string, features: readonly number[]): readonly number[] {
+      return replay.shape(face, size, text, start, end, script, rtl, language, features);
     },
   };
 }
@@ -1520,7 +1550,7 @@ function replayShaper(calls: readonly ReplayCall[]): GlyphShaper {
  * proves its layouts equal the Node host's.
  */
 function replayMeasurer(s: Shaping, faults: EngineFaults): TextMeasurer {
-  const shaper = replayShaper(s.calls);
+  const shaper = transcriptShaper(s.calls);
   const sf: ShapingFaults = {
     advanceNot16_16: faults.advanceNot16_16, doubleAccumulation: faults.doubleAccumulation, noReshapeAtBreak: faults.noReshapeAtBreak, kerningDropped: faults.kerningDropped,
     wholePixelPositions: faults.wholePixelPositions, softHyphenWidthMissing: faults.softHyphenWidthMissing, metricRoundingSwapped: faults.metricRoundingSwapped,
@@ -3303,7 +3333,7 @@ function rtPointerResult(a: readonly JsonValue[]): string {
  * export computes it at build time (native-style-export.ts): every box's frame relative to its parent and border widths, every
  * text node's lines with its glyphs, every dashed border's operations, every scroll container's range and the page's.
  */
-type PlanDensity = { readonly dpr: number; readonly calls: readonly ReplayCall[]; readonly metrics: Map<string, FontMetrics>; readonly ownMetrics: Map<string, boolean>; readonly lengths: Map<string, FontLengths> };
+type PlanDensity = { readonly dpr: number; readonly calls: readonly ReplayCall[]; readonly fallbacks: readonly ReplayFallback[]; readonly metrics: Map<string, FontMetrics>; readonly ownMetrics: Map<string, boolean>; readonly lengths: Map<string, FontLengths> };
 const PLAN_DASH_FAULTS: DashFaults = { phase1: false, gapUnfitted: false };
 type PlanDashed = { readonly id: string; readonly styles: readonly string[]; readonly colors: readonly number[] };
 
@@ -3311,8 +3341,26 @@ function planFontKey(family: string, size: number): string {
   return `${family}@${bitsHex(size)}`;
 }
 
+/** A density's keys: fallbacks only when its text falls back. */
+function planDensityKeys(v: JsonValue): readonly string[] {
+  return v.kind === 'obj' && v.values.has('fallbacks') ? ['dpr', 'calls', 'fallbacks', 'metrics', 'lengths'] : ['dpr', 'calls', 'metrics', 'lengths'];
+}
+
 function planDensity(v: JsonValue, path: string): PlanDensity {
-  const o = obj(v, ['dpr', 'calls', 'metrics', 'lengths'], path);
+  const o = obj(v, planDensityKeys(v), path);
+  const fallbacks: ReplayFallback[] = [];
+  const recorded = o.values.get('fallbacks');
+  if (recorded !== undefined) {
+    arr(recorded, `${path}.fallbacks`).forEach((c, i) => {
+      const at = `${path}.fallbacks[${i}]`;
+      const a = arr(c, at);
+      if (a.length !== 7) fail(`${at}: expected 7 fields, got ${a.length}`);
+      fallbacks.push({
+        face: str(a[0] as JsonValue, `${at}[0]`), text: str(a[1] as JsonValue, `${at}[1]`), start: num(a[2] as JsonValue, `${at}[2]`), end: num(a[3] as JsonValue, `${at}[3]`),
+        script: str(a[4] as JsonValue, `${at}[4]`), language: str(a[5] as JsonValue, `${at}[5]`), got: str(a[6] as JsonValue, `${at}[6]`),
+      });
+    });
+  }
   const calls: ReplayCall[] = [];
   arr(field(o, 'calls', path), `${path}.calls`).forEach((c, i) => {
     const at = `${path}.calls[${i}]`;
@@ -3347,12 +3395,12 @@ function planDensity(v: JsonValue, path: string): PlanDensity {
     if (a.length !== 5) fail(`${at}: expected 5 fields, got ${a.length}`);
     lengths.set(planFontKey(str(a[0] as JsonValue, `${at}[0]`), num(a[1] as JsonValue, `${at}[1]`)), { xHeight: num(a[2] as JsonValue, `${at}[2]`), capHeight: num(a[3] as JsonValue, `${at}[3]`), zeroWidth: num(a[4] as JsonValue, `${at}[4]`) });
   });
-  return { dpr: num(field(o, 'dpr', path), `${path}.dpr`), calls, metrics, ownMetrics, lengths };
+  return { dpr: num(field(o, 'dpr', path), `${path}.dpr`), calls, fallbacks, metrics, ownMetrics, lengths };
 }
 
 /** The device's measurer: the build's measurer replayed, each face's metrics and lengths as the build read them; anything else fails. */
 function planMeasurer(faces: ReadonlyMap<string, FontData>, d: PlanDensity, live: GlyphShaper | null): TextMeasurer {
-  const m = deviceShapedMeasurer(faces, live === null ? replayShaper(d.calls) : recordedOrLive(d.calls, live));
+  const m = deviceShapedMeasurer(faces, live === null ? replayShaper(d.calls, d.fallbacks) : recordedOrLive(d.calls, d.fallbacks, live));
   return {
     metrics(font: TextFont): FontMetrics {
       const key = planFontKey(font.family, font.size);
@@ -3585,8 +3633,9 @@ function planTextLines(input: LayoutInput, measurer: TextMeasurer, boxes: readon
 }
 
 /** A run of glyphs in one face at one size (native-style-export.ts runsOf), as [face, size, glyphs, xs]. */
-function planRuns(face: string, glyphs: readonly number[], xs: readonly number[], sizes: readonly number[]): string[] {
+function planRuns(faces: readonly string[], glyphs: readonly number[], xs: readonly number[], sizes: readonly number[]): string[] {
   const out: string[] = [];
+  let face = '';
   let size = -1;
   let gs: number[] = [];
   let ps: number[] = [];
@@ -3595,8 +3644,10 @@ function planRuns(face: string, glyphs: readonly number[], xs: readonly number[]
   };
   glyphs.forEach((g, j) => {
     const s = sizes[j] as number;
-    if (gs.length === 0 || s !== size) {
+    const f = faces[j] as string;
+    if (gs.length === 0 || s !== size || f !== face) {
       flush();
+      face = f;
       size = s;
       gs = [];
       ps = [];
@@ -3623,14 +3674,14 @@ function planLines(t: PlanText, text: string, at: LayoutRect, m: TextMeasurer): 
     g.xs.forEach((x, j) => {
       xs.push(x0 + x + (line.shifts.length === 0 ? 0 : (line.shifts[g.chars[j] as number] as number)));
     });
-    const runs = planRuns(t.textFont.family, g.glyphs, xs, g.sizes);
+    const runs = planRuns(g.faces, g.glyphs, xs, g.sizes);
     const e = line.ellipsis;
     if (e !== null) {
       const d = pieceGlyphs(m, fromCodePoints(e.cps), e.font, 0, e.cps.length);
       if (!d.ok) return fail(`${t.id} line ${k} ellipsis: the shaped measurer refused its text: ${d.reason}`);
       const exs: number[] = [];
       for (const x of d.xs) exs.push(e.x / LU_PER_PX - ax + x);
-      for (const r of planRuns(e.font.family, d.glyphs, exs, d.sizes)) runs.push(r);
+      for (const r of planRuns(d.faces, d.glyphs, exs, d.sizes)) runs.push(r);
     }
     if (k > 0) out += ',';
     let joined = '';
@@ -4098,7 +4149,7 @@ function marklessAnimation(o: JsonObj): string {
   for (let i = 0; i < densities.length; i++) {
     const at = `$.plan.densities[${i}]`;
     const d = densities[i] as JsonValue;
-    if (density === null && numField(obj(d, ['dpr', 'calls', 'metrics', 'lengths'], at), 'dpr', at) === dpr) density = planDensity(d, at);
+    if (density === null && numField(obj(d, planDensityKeys(d), at), 'dpr', at) === dpr) density = planDensity(d, at);
   }
   if (density === null) return fail(`the plan holds no text measured at ratio ${dpr}`);
   const measurer = planMeasurer(faces, density, null);
@@ -4335,7 +4386,7 @@ function marklessLayout(o: JsonObj, live: GlyphShaper | null): string {
     let density: PlanDensity | null = null;
     arr(field(plan, 'densities', '$.plan'), '$.plan.densities').forEach((d, i) => {
       const at = `$.plan.densities[${i}]`;
-      if (density === null && numField(obj(d, ['dpr', 'calls', 'metrics', 'lengths'], at), 'dpr', at) === dpr) density = planDensity(d, at);
+      if (density === null && numField(obj(d, planDensityKeys(d), at), 'dpr', at) === dpr) density = planDensity(d, at);
     });
     if (density === null) return fail(`the plan holds no text measured at ratio ${dpr}`);
     const measurer = planMeasurer(faces, density, live);

@@ -32,6 +32,8 @@ export const PLAN_HEIGHTS = { min: 320, max: 1400 } as const;
 export type PlanDensity = {
   readonly dpr: number;
   readonly calls: readonly (readonly unknown[])[];
+  /** Only when the text falls back: each fallback call [face, text, start, end, script, language] with the face it gave ('' for none). */
+  readonly fallbacks?: readonly (readonly unknown[])[];
   /** [family, size] when the engine's own metrics apply, [family, size, ascent, descent, lineGap, normalGapAbove] otherwise. */
   readonly metrics: readonly (readonly unknown[])[];
   readonly lengths: readonly (readonly unknown[])[];
@@ -178,13 +180,17 @@ export function heightDependence(sp: StateProgram, bandFeatures: Iterable<string
 export const recordingProgress: { onLayout: () => void } = { onLayout: () => {} };
 
 /** One ratio's recording: every variant at every PLAN_WIDTHS root width, then checked at PLAN_HEIGHTS' heights. */
-export function recordDensity(t: NativeStyleTarget, sp: StateProgram, system: SystemFonts, bundled: readonly string[], authorFiles: ReadonlyMap<string, Uint8Array>, dpr: number, height: number, checkHeights = true): PlanDensity {
+export function recordDensity(t: NativeStyleTarget, sp: StateProgram, system: SystemFonts, bundled: readonly string[], authorFiles: ReadonlyMap<string, Uint8Array>, dpr: number, height: number, checkHeights = true, familyFallbacks: Readonly<Record<string, string>> = {}): PlanDensity {
   const calls = new Map<string, readonly unknown[]>();
+  const fallbacks = new Map<string, readonly unknown[]>();
   const metrics = new Map<string, readonly unknown[]>();
   const lengths = new Map<string, readonly unknown[]>();
   const recorder: MeasurerRecorder = {
     shape(call, glyphs) {
       calls.set(JSON.stringify(call), [...call, [...glyphs]]);
+    },
+    fallback(call, face) {
+      fallbacks.set(JSON.stringify(call), [...call, face]);
     },
     metrics(family, size, m: FontMetrics | null) {
       metrics.set(`${family}@${size}`, m === null ? [family, size] : [family, size, m.ascent, m.descent, m.lineGap, m.normalGapAbove]);
@@ -201,16 +207,19 @@ export function recordDensity(t: NativeStyleTarget, sp: StateProgram, system: Sy
     recordingProgress.onLayout();
     if (r.kind !== 'ok') throw new Error(`${t}: the engine refused variant ${vi} at ${width} x ${h} css px and ${dpr}x: ${r.unsupported.code} at ${r.unsupported.nodeId}`);
   };
-  const m = systemMeasurer(system, sp, bundled, dpr, authorFiles, recorder);
+  const m = systemMeasurer(system, sp, bundled, dpr, authorFiles, recorder, familyFallbacks);
   const widths = planWidths(dpr);
   sp.variants.forEach((_, vi) => {
     for (const width of widths) lay(m, vi, width, height);
   });
-  if (!checkHeights) return { dpr, calls: [...calls.values()], metrics: [...metrics.values()], lengths: [...lengths.values()] };
+  if (!checkHeights) return { dpr, calls: [...calls.values()], ...(fallbacks.size === 0 ? {} : { fallbacks: [...fallbacks.values()] }), metrics: [...metrics.values()], lengths: [...lengths.values()] };
   const unrecorded: string[] = [];
   const check: MeasurerRecorder = {
     shape(call) {
       if (!calls.has(JSON.stringify(call))) unrecorded.push(`shapes ${JSON.stringify(call[2])} in ${String(call[0])} at ${String(call[1])} css px`);
+    },
+    fallback(call) {
+      if (!fallbacks.has(JSON.stringify(call))) unrecorded.push(`falls back from ${String(call[0])} for ${JSON.stringify(call[1])}`);
     },
     metrics(family, size) {
       if (!metrics.has(`${family}@${size}`)) unrecorded.push(`reads the metrics of ${family} at ${size} css px`);
@@ -219,14 +228,14 @@ export function recordDensity(t: NativeStyleTarget, sp: StateProgram, system: Sy
       if (!lengths.has(`${family}@${size}`)) unrecorded.push(`reads the lengths of ${family} at ${size} css px`);
     },
   };
-  const strict = systemMeasurer(system, sp, bundled, dpr, authorFiles, check);
+  const strict = systemMeasurer(system, sp, bundled, dpr, authorFiles, check, familyFallbacks);
   sp.variants.forEach((_, vi) => {
     for (const h of [PLAN_HEIGHTS.min, PLAN_HEIGHTS.max]) for (const width of widths) {
       lay(strict, vi, width, h);
       if (unrecorded.length > 0) throw new Error(`${t}: variant ${vi} at ${width} x ${h} css px and ${dpr}x ${unrecorded[0]}, which it does not at height ${height}; the plan records text at one viewport height, so a page whose text depends on the height (a font size in vh, vmin or vmax, a text box sized by the height) has none`);
     }
   });
-  return { dpr, calls: [...calls.values()], metrics: [...metrics.values()], lengths: [...lengths.values()] };
+  return { dpr, calls: [...calls.values()], ...(fallbacks.size === 0 ? {} : { fallbacks: [...fallbacks.values()] }), metrics: [...metrics.values()], lengths: [...lengths.values()] };
 }
 
 /**
@@ -237,12 +246,12 @@ export function recordDensity(t: NativeStyleTarget, sp: StateProgram, system: Sy
 /** The program a target's plan records: its own, or with interaction states every variant one of them lays out too. */
 export const planStateProgram = (sp: StateProgram, interaction?: InteractionProgram): StateProgram => (interaction === undefined ? sp : { ...sp, variants: interaction.variants });
 
-export function marklessPlan(t: NativeStyleTarget, sp: StateProgram, system: (dpr: number) => SystemFonts, bundled: readonly string[], authorFiles: ReadonlyMap<string, Uint8Array>, height: number, interaction?: InteractionProgram, recorded?: readonly DensityResult[], checkHeights = true): MarklessPlan {
+export function marklessPlan(t: NativeStyleTarget, sp: StateProgram, system: (dpr: number) => SystemFonts, bundled: readonly string[], authorFiles: ReadonlyMap<string, Uint8Array>, height: number, interaction?: InteractionProgram, recorded?: readonly DensityResult[], checkHeights = true, fallbacks: Readonly<Record<string, string>> = {}): MarklessPlan {
   // With interaction states each state is one more plan assignment, after the program's, in level then state order.
   const all = planStateProgram(sp, interaction);
   const densities = PLAN_DENSITIES[t].map((dpr, i) => {
     const r = recorded?.[i];
-    if (r === undefined) return recordDensity(t, all, system(dpr), bundled, authorFiles, dpr, height, checkHeights);
+    if (r === undefined) return recordDensity(t, all, system(dpr), bundled, authorFiles, dpr, height, checkHeights, fallbacks);
     if ('error' in r) throw new Error(r.error);
     return r.density;
   });

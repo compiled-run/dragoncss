@@ -225,6 +225,29 @@ export function webFontOutput(usedPinned: readonly DeclaredFace[], declaredFaces
 }
 
 /**
+ * The spaces HarfBuzz draws with the face's U+0020 where the face lacks them (hb_unicode_funcs_t::space_fallback_type). Core Text
+ * cascades some of them instead (U+3000 to PingFang); such a text then records no fallback and is refused by name, never misdrawn.
+ */
+const SPACE_FALLBACK = new Set([0x00a0, 0x2000, 0x2001, 0x2002, 0x2003, 0x2004, 0x2005, 0x2006, 0x2007, 0x2008, 0x2009, 0x200a, 0x202f, 0x205f, 0x3000]);
+
+/** Unicode's Default_Ignorable_Code_Point, which HarfBuzz hides rather than draw (hb_unicode_funcs_t::is_default_ignorable). */
+function defaultIgnorable(cp: number): boolean {
+  return cp === 0x00ad || cp === 0x034f || cp === 0x061c || (cp >= 0x115f && cp <= 0x1160) || (cp >= 0x17b4 && cp <= 0x17b5) || (cp >= 0x180b && cp <= 0x180f) || (cp >= 0x200b && cp <= 0x200f) || (cp >= 0x202a && cp <= 0x202e) || (cp >= 0x2060 && cp <= 0x206f) || cp === 0x3164 || (cp >= 0xfe00 && cp <= 0xfe0f) || cp === 0xfeff || cp === 0xffa0 || (cp >= 0xfff0 && cp <= 0xfff8) || (cp >= 0x1bca0 && cp <= 0x1bca3) || (cp >= 0x1d173 && cp <= 0x1d17a) || (cp >= 0xe0000 && cp <= 0xe0fff);
+}
+
+/** Whether text has a code point no listed bundled face draws, which the family list leaves to the platform (renderedFaces skips it). */
+export function leavesToPlatform(faces: readonly DeclaredFace[], resolutions: readonly EntryResolution[], text: string, request: FontSelectionRequest): boolean {
+  const families = resolutions.flatMap((r) => (r.kind === 'declared' || r.kind === 'pinned' ? [r.family] : []));
+  const draws = (cp: number): boolean => families.some((family) => candidates(faces, family, request, cp).some((f) => f.source !== null && f.source.font.glyphForCodePoint(cp) !== 0));
+  for (const ch of new Set(text)) {
+    const cp = ch.codePointAt(0) as number;
+    if (ch === '\t' || ch === '\n' || ch === '\r' || ch === '\f') continue;
+    if (!draws(cp) && !defaultIgnorable(cp) && !(SPACE_FALLBACK.has(cp) && draws(0x20))) return true;
+  }
+  return false;
+}
+
+/**
  * The faces Chrome draws a text with: the primary font (the first family's first face whose unicode-range holds U+0020) and, per
  * code point, the first face down the list whose unicode-range and cmap hold it. Entries without bundled faces are passed over,
  * so a later family counts whenever an earlier one might not cover the character. Tabs and segment breaks are drawn as spaces or not
