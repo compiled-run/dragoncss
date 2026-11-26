@@ -350,24 +350,27 @@ function interactionChanges(ip: InteractionProgram, i: number, j: number): Set<s
   const li = ip.levels[i] as InteractionLevel;
   const lj = ip.levels[j] as InteractionLevel;
   const addresses = [...new Set([...li.addresses, ...lj.addresses])];
-  // The state of one level for a hovered, pressed and focused address (null: none), focus by key or by pointer; -1 is none.
+  // A combination's state depends on the elements only through their hover chain, active chain and focus values, so each
+  // dimension's distinct (value in i, value in j) pairs are collected over the elements, and only their product is looked up.
   const indexes = new Map([li, lj].map((l) => [l, new Map(l.addresses.map((x, k) => [x, k]))] as const));
-  const stateIn = (level: InteractionLevel, hover: string | null, active: string | null, focus: string | null, byKey: boolean): number => {
-    const t = level.tables;
-    const index = indexes.get(level) as Map<string, number>;
-    const at = (a: string | null): number => (a === null ? -1 : (index.get(a) ?? -1));
-    const h = at(hover) < 0 ? 0 : (t.chainOf[at(hover)] as number);
-    const a = at(active) < 0 ? 0 : (t.activeChainOf[at(active)] as number);
-    const e = at(focus);
-    const f = e < 0 ? 0 : byKey ? (t.focusable[e] === true ? (t.keyboardFocusOf[e] as number) : 0) : (t.pointerFocusOf[e] as number);
-    return t.combos[(h * t.activeValues + a) * t.focusValues + f] as number;
+  const valueIn = (level: InteractionLevel, address: string | null, of: (t: InteractionLevel['tables'], e: number) => number): number => {
+    const e = address === null ? -1 : ((indexes.get(level) as Map<string, number>).get(address) ?? -1);
+    return e < 0 ? 0 : of(level.tables, e);
   };
+  const pairsOf = (of: (t: InteractionLevel['tables'], e: number) => number): [number, number][] => {
+    const seen = new Map<string, [number, number]>();
+    for (const x of [null, ...addresses]) {
+      const pair: [number, number] = [valueIn(li, x, of), valueIn(lj, x, of)];
+      seen.set(pair.join(','), pair);
+    }
+    return [...seen.values()];
+  };
+  const hovers = pairsOf((t, e) => t.chainOf[e] as number);
+  const actives = pairsOf((t, e) => t.activeChainOf[e] as number);
+  const focuses = [...pairsOf((t, e) => t.pointerFocusOf[e] as number), ...pairsOf((t, e) => (t.focusable[e] === true ? (t.keyboardFocusOf[e] as number) : 0))];
+  const comboIn = (t: InteractionLevel['tables'], h: number, a: number, f: number): number => t.combos[(h * t.activeValues + a) * t.focusValues + f] as number;
   const pairs = new Set<string>();
-  const targets = [null, ...addresses];
-  for (const hover of targets) for (const active of targets) for (const focus of targets) for (const byKey of [false, true]) {
-    if (focus === null && byKey) continue;
-    pairs.add(`${stateIn(li, hover, active, focus, byKey)},${stateIn(lj, hover, active, focus, byKey)}`);
-  }
+  for (const [hi, hj] of hovers) for (const [ai, aj] of actives) for (const [fi, fj] of focuses) pairs.add(`${comboIn(li.tables, hi, ai, fi)},${comboIn(lj.tables, hj, aj, fj)}`);
   const shown = (at: number, k: number): NativeProgram => (k < 0 ? programAt(ip.program, at) : interactionProgramAt(ip, at, k));
   for (const pair of pairs) {
     const [ki, kj] = pair.split(',').map(Number) as [number, number];
