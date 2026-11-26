@@ -4,7 +4,7 @@ public final class SelectError: JsError {
   public let detail: JsString
   public init(_ detail: JsString) throws {
     self.detail = detail
-    super.init(message: jsConcat(S.s1105, detail))
+    super.init(message: jsConcat(S.s1106, detail))
   }
 }
 
@@ -228,7 +228,7 @@ public func rtSelect_rectOf(_ s: SelectState, _ id: JsString) throws -> LayoutRe
   let r: LayoutRect? = s.abs.get(id)
   // ts: packages/layout/src/rt-select.ts:155
   if (r == nil) {
-    throw try SelectError(jsConcat(S.s1196, id))
+    throw try SelectError(jsConcat(S.s1197, id))
   }
   return try jsUnwrap(r)
 }
@@ -238,7 +238,7 @@ public func rtSelect_zoomedBox(_ s: SelectState, _ id: JsString) throws -> Layou
   let b: LayoutBox? = s.zoomed.get(id)
   // ts: packages/layout/src/rt-select.ts:161
   if (b == nil) {
-    throw try SelectError(jsConcat(S.s979, id))
+    throw try SelectError(jsConcat(S.s980, id))
   }
   return try jsUnwrap(b)
 }
@@ -305,7 +305,7 @@ public func rtSelect_caretsOf(_ s: SelectState, _ leaf: TextLeaf, _ start: Doubl
       let m: any U_MeasureResult_okFalse_MeasureResult_okTrue = try s.ctx.measurer.measureRange(leaf.text, start, k, font)
       // ts: packages/layout/src/rt-select.ts:190
       if (!m.ok) {
-        throw try SelectError(jsConcat(leaf.id, S.s271, (m as! MeasureResult_okFalse).reason))
+        throw try SelectError(jsConcat(leaf.id, S.s272, (m as! MeasureResult_okFalse).reason))
       }
       _ = try jsPush(out, units_add(x, (m as! MeasureResult_okTrue).measure.width))
       k += 1.0
@@ -358,21 +358,21 @@ public func rtSelect_lineBlock(_ s: SelectState, _ b: LayoutBox, _ parent: Doubl
           let leaf: TextLeaf? = jsAt(zLeaves, p.leaf)
           // ts: packages/layout/src/rt-select.ts:216
           if (leaf == nil) {
-            throw try SelectError(jsConcat(b.id, S.s293, jsNumberToString(p.leaf)))
+            throw try SelectError(jsConcat(b.id, S.s294, jsNumberToString(p.leaf)))
           }
           // ts: packages/layout/src/rt-select.ts:217
           if (p.truncated || (jsLength(p.shifts) > 0.0)) {
-            throw try SelectError(jsConcat(jsUnwrap(leaf).id, S.s281))
+            throw try SelectError(jsConcat(jsUnwrap(leaf).id, S.s282))
           }
           let n: NodeDraft = try jsUnwrap(jsAt(s.nodes, (first + p.leaf)))
           let j: Double = n.pieces
           n.pieces = (j + 1.0)
-          let own: LayoutRect = try rtSelect_rectOf(s, jsConcat(jsUnwrap(leaf).id, S.s301, jsNumberToString(j)))
+          let own: LayoutRect = try rtSelect_rectOf(s, jsConcat(jsUnwrap(leaf).id, S.s302, jsNumberToString(j)))
           let x: Double = try units_add(left, p.x)
           let y: Double = try units_add(top, p.top)
           // ts: packages/layout/src/rt-select.ts:225
           if ((own.x != x) || (own.y != y)) {
-            throw try SelectError(jsConcat(jsUnwrap(leaf).id, S.s301, jsNumberToString(j), S.s105, jsNumberToString(own.x), S.s224, jsNumberToString(own.y), S.s199, jsNumberToString(x), S.s224, jsNumberToString(y)))
+            throw try SelectError(jsConcat(jsUnwrap(leaf).id, S.s302, jsNumberToString(j), S.s105, jsNumberToString(own.x), S.s225, jsNumberToString(own.y), S.s199, jsNumberToString(x), S.s225, jsNumberToString(y)))
           }
           _ = try jsPush(pieces, SelectPiece((first + p.leaf), p.start, p.visibleEnd, rtSelect_caretsOf(s, jsUnwrap(leaf), p.start, p.visibleEnd, x), y, units_add(p.ascent, p.descent)))
           // ts: packages/layout/src/rt-select.ts:227
@@ -462,7 +462,7 @@ public func rtSelect_blockOf(_ s: SelectState, _ b: LayoutBox, _ parent: Double)
   }
   // ts: packages/layout/src/rt-select.ts:262
   if (reach > blk.bottom) {
-    throw try SelectError(jsConcat(b.id, S.s212))
+    throw try SelectError(jsConcat(b.id, S.s213))
   }
   // ts: packages/layout/src/rt-select.ts:263
   if (node >= 0.0) {
@@ -476,11 +476,11 @@ public func rtSelect_boxRefusal(_ b: LayoutBox) throws -> JsString? {
   let st: LayoutStyle = b.style
   // ts: packages/layout/src/rt-select.ts:269
   if (st.display != S.s_block) {
-    return jsConcat(b.id, S.s106, st.display, S.s243)
+    return jsConcat(b.id, S.s106, st.display, S.s244)
   }
   // ts: packages/layout/src/rt-select.ts:270
   if (st.position != S.s_static) {
-    return jsConcat(b.id, S.s143, st.position, S.s243)
+    return jsConcat(b.id, S.s143, st.position, S.s244)
   }
   // ts: packages/layout/src/rt-select.ts:271
   if (st.direction != S.s_ltr) {
@@ -513,7 +513,7 @@ public func rtSelect_boxRefusal(_ b: LayoutBox) throws -> JsString? {
         }
         // ts: packages/layout/src/rt-select.ts:278
         if ((c as! TextLeaf).font.family != text_AHEM_FACE_ID) {
-          return jsConcat((c as! TextLeaf).id, S.s111, (c as! TextLeaf).font.family, S.s311)
+          return jsConcat((c as! TextLeaf).id, S.s111, (c as! TextLeaf).font.family, S.s312)
         }
       }
       // ts: packages/layout/src/rt-select.ts:280
@@ -549,7 +549,7 @@ public func rtSelect_selectionTableOf(_ input: LayoutInput, _ measurer: TextMeas
   let out: any U_LayoutResult_ok_LayoutResult_unsupported = try layout_layout(input, measurer)
   // ts: packages/layout/src/rt-select.ts:300
   if (out.kind != S.s_ok) {
-    throw try SelectError(jsConcat(S.s1197, (out as! LayoutResult_unsupported).unsupported.code, S.s21, (out as! LayoutResult_unsupported).unsupported.nodeId, S.s214))
+    throw try SelectError(jsConcat(S.s1198, (out as! LayoutResult_unsupported).unsupported.code, S.s21, (out as! LayoutResult_unsupported).unsupported.nodeId, S.s215))
   }
   var zoomed: LayoutInput
   // ts: packages/layout/src/rt-select.ts:302
@@ -558,7 +558,7 @@ public func rtSelect_selectionTableOf(_ input: LayoutInput, _ measurer: TextMeas
   } catch let e {
     // ts: packages/layout/src/rt-select.ts:305
     if (e is UnsupportedSignal) {
-      throw try SelectError(jsConcat(S.s1197, (e as! UnsupportedSignal).unsupported.code, S.s21, (e as! UnsupportedSignal).unsupported.nodeId, S.s214))
+      throw try SelectError(jsConcat(S.s1198, (e as! UnsupportedSignal).unsupported.code, S.s21, (e as! UnsupportedSignal).unsupported.nodeId, S.s215))
     }
     throw e
   }
@@ -596,7 +596,7 @@ public func rtSelect_lineStart(_ line: SelectLine) throws -> Caret {
   let p: SelectPiece? = jsAt(line.pieces, 0.0)
   // ts: packages/layout/src/rt-select.ts:324
   if (p == nil) {
-    throw try SelectError(S.s616)
+    throw try SelectError(S.s617)
   }
   return try Caret(jsUnwrap(p).node, jsUnwrap(p).start)
 }
@@ -606,7 +606,7 @@ public func rtSelect_lineEnd(_ line: SelectLine) throws -> Caret {
   let p: SelectPiece? = jsAt(line.pieces, (jsLength(line.pieces) - 1.0))
   // ts: packages/layout/src/rt-select.ts:330
   if (p == nil) {
-    throw try SelectError(S.s616)
+    throw try SelectError(S.s617)
   }
   return try Caret(jsUnwrap(p).node, jsUnwrap(p).end)
 }
@@ -849,7 +849,7 @@ public func rtSelect_caretRect(_ t: SelectTable, _ c: Caret) throws -> CaretRect
       }
     }
   }
-  throw try SelectError(jsConcat(S.s968, jsNumberToString(c.offset), S.s166, jsNumberToString(c.node)))
+  throw try SelectError(jsConcat(S.s969, jsNumberToString(c.offset), S.s166, jsNumberToString(c.node)))
 }
 
 // ts: packages/layout/src/rt-select.ts:456
@@ -983,9 +983,9 @@ public func rtSelect_selectedText(_ t: SelectTable, _ anchor: Caret, _ focus: Ca
 public func rtSelect_caretCode(_ c: Caret?) throws -> JsString {
   // ts: packages/layout/src/rt-select.ts:546
   if (c == nil) {
-    return S.s247
+    return S.s248
   }
-  return try jsConcat(jsToStringRadix16(jsUnwrap(c).node), S.s256, jsToStringRadix16(jsUnwrap(c).offset))
+  return try jsConcat(jsToStringRadix16(jsUnwrap(c).node), S.s257, jsToStringRadix16(jsUnwrap(c).offset))
 }
 
 // ts: packages/layout/src/rt-select.ts:551
@@ -1021,9 +1021,9 @@ public func rtSelect_selectAnswers(_ t: SelectTable, _ points: JsArray<Double>, 
       // ts: packages/layout/src/rt-select.ts:568
       if try ((a != nil) && (jsUnwrap(jsAt(t.nodes, jsUnwrap(a).node)).kind == S.s_text)) {
         let r: CaretRect = try rtSelect_caretRect(t, jsUnwrap(a))
-        try out = jsConcat(out, S.s3, jsToStringRadix16(r.x), S.s224, jsToStringRadix16(r.y), S.s224, jsToStringRadix16(r.height))
+        try out = jsConcat(out, S.s3, jsToStringRadix16(r.x), S.s225, jsToStringRadix16(r.y), S.s225, jsToStringRadix16(r.height))
       }
-      out = jsConcat(out, S.s304)
+      out = jsConcat(out, S.s305)
       i += 2.0
     }
   }
@@ -1034,7 +1034,7 @@ public func rtSelect_selectAnswers(_ t: SelectTable, _ points: JsArray<Double>, 
       let a: Caret? = try rtSelect_anchorAt(t, jsUnwrap(jsAt(drags, i)), jsUnwrap(jsAt(drags, (i + 1.0))))
       let f: Caret? = try rtSelect_focusAt(t, jsUnwrap(jsAt(drags, (i + 2.0))), jsUnwrap(jsAt(drags, (i + 3.0))))
       let text: JsString = try (((a == nil) || (f == nil)) ? S.s0 : rtSelect_selectedText(t, jsUnwrap(a), jsUnwrap(f)))
-      try out = jsConcat(out, jsToStringRadix16(rtSelect_codePointCount(text)), S.s270, text, S.s304)
+      try out = jsConcat(out, jsToStringRadix16(rtSelect_codePointCount(text)), S.s271, text, S.s305)
       i += 4.0
     }
   }

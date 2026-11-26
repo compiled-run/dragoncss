@@ -809,16 +809,16 @@ function lowerInline(c: ResolvedElement | ResolvedText, l: Lowerer): InlineChild
 }
 
 /**
- * A block container's inline-level child: an atomic inline is a box (INL2a), a replaced leaf (RF-INL) or an inline-block text
- * field among its inline content, the rest lowerInline.
+ * A block container's inline-level child: an atomic inline is a box (INL2a), a replaced leaf, an inline-block button (RF-INL) or
+ * an inline-block text field among its inline content, the rest lowerInline.
  */
 function lowerInlineLevel(c: ResolvedElement | ResolvedText, l: Lowerer): LayoutBox | ControlBox | ReplacedLeaf | InlineChild {
   if (!isAtomic(c)) return lowerInline(c, l);
   const el = c as ResolvedElement;
   if (isReplacedTag(el.element.tag)) return lowerReplaced(el, l, null);
   const box = lowerBox(el, l, null);
-  // Of the inline-level controls only an inline-block text field is laid out (analysis/computed-checks.ts refuses the rest).
-  if (box.kind === 'control' && (box.control.kind !== 'text-field' || box.style.display !== 'inline-block')) throw new LoweringError(box.id, 'display', `the inline-level control ${box.id} is not laid out`);
+  // Of the inline-level controls only an inline-block text field or button is laid out (analysis/computed-checks.ts refuses the rest).
+  if (box.kind === 'control' && ((box.control.kind !== 'text-field' && box.control.kind !== 'button-block') || box.style.display !== 'inline-block')) throw new LoweringError(box.id, 'display', `the inline-level control ${box.id} is not laid out`);
   return box;
 }
 
@@ -1042,8 +1042,9 @@ function lowerBox(given: ResolvedElement, l: Lowerer, gridParent: GridContainer 
   const strut = strutOf(el, inlineContent, l.mode, zoom);
   // HTML §15.3.13: a block fieldset lays out its rendered legend, its first in-flow legend child, in its block-start border.
   if (el.element.tag === 'fieldset' && style.display === 'block') return { kind: 'control', id, boxType: 'element', style, control: { kind: 'fieldset' }, strut, children: withRenderedLegend(kids, children) };
-  // FORM-a: a block button centres its contents (Blink AlignBlockContent); a flex button is the plain flex container it is.
-  if (el.element.tag === 'button' && style.display === 'block') return { kind: 'control', id, boxType: 'element', style, control: { kind: 'button-block' }, strut, children };
+  // FORM-a: a block button centres its contents (Blink AlignBlockContent), and so does an inline-block one, which Blink lays out with
+  // the same BlockLayoutAlgorithm (RF-INL); a flex or inline-flex button is the plain flex container it is.
+  if (el.element.tag === 'button' && (style.display === 'block' || style.display === 'inline-block')) return { kind: 'control', id, boxType: 'element', style, control: { kind: 'button-block' }, strut, children };
   if (el.element.tag === 'input' && isCheckboxType(el.element.attributes.get('type'))) {
     // FORM-checkbox: Chrome's theme gives an auto width or height the part size, 13px (LayoutTheme, native_theme_base.cc kCheckboxSize).
     const part = (v: LayoutStyle['width']): LayoutStyle['width'] => (v.kind === 'auto' ? { kind: 'px', value: CHECKBOX_PART_SIZE } : v);
