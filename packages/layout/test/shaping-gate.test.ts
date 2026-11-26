@@ -62,6 +62,9 @@ for (const r of refs) for (const [id, meta] of Object.entries(r.fonts)) files.se
 
 /** The host side of R1: one DragonHB, faces and fonts created on first use. It records how often it was called. */
 class WasmShaper implements GlyphShaper {
+  fallback(): string {
+    return '';
+  }
   calls = 0;
   private readonly faces = new Map<string, number>();
   private readonly fonts = new Map<string, number>();

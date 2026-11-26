@@ -2,12 +2,14 @@
 // and style (web-generics.ts, measured in Safari and the Android WebView), its FontData, and the shaper the engine lays text out
 // with (Core Text for iOS, Dragon's HarfBuzz on the image's font file at the fonts.xml instance for Android).
 import { createHash } from 'node:crypto';
+import { existsSync } from 'node:fs';
+import { basename, join } from 'node:path';
 import type { FontData, FontLengths, FontMetrics, GlyphShaper, LU } from '@dragon/layout';
 import { FEATURE_STRIDE, LU_PER_PX } from '@dragon/layout';
 import type { NativeStyleTarget, SystemFaceRequest, SystemFaceRole } from 'dragon';
 import { SYSTEM_FACES } from 'dragon';
 import { AndroidSystemFiles } from './android.ts';
-import { coreText, iosRuntimeFont } from './coretext.ts';
+import { coreText, iosRuntimeFont, iosRuntimeRoot } from './coretext.ts';
 import type { CoreTextFace } from './coretext.ts';
 import { ANDROID_ROLE_FAMILIES, IOS_ROLE_FACES } from './web-generics.ts';
 
@@ -21,6 +23,13 @@ export class SystemFaceRefused extends Error {}
 const refuse = (what: string): never => {
   throw new SystemFaceRefused(what);
 };
+
+/** The face id of a platform's fallback face (its cascade on iOS, the fonts.xml chain on Android): a system face no role names. */
+export const FALLBACK_FACE_PREFIX = 'system:fallback:';
+export const isFallbackFace = (id: string): boolean => id.startsWith(FALLBACK_FACE_PREFIX);
+
+/** A face a host rebuilds from the platform: a system face's role, or a platform's fallback face. */
+export const isSystemFace = (id: string): boolean => SYSTEM_FACES.has(id) || isFallbackFace(id);
 
 /** The request of a system face id; any other id is not a system face. */
 export const systemRequestOf = (id: string): SystemFaceRequest | null => SYSTEM_FACES.get(id) ?? null;
@@ -60,6 +69,7 @@ export type SystemFonts = {
   metrics(id: string, sizePx: number, dpr: number): FontMetrics | null;
   /** Takes an author face to measure as the target's browser does; false leaves it to the engine's own (Blink's) rules. */
   authorFace(id: string, bytes: Uint8Array): boolean;
+  /** Its fallback gives the face that draws text[start, end): the face itself, or the platform's fallback face (FALLBACK_FACE_PREFIX); '' for none. */
   readonly shaper: GlyphShaper;
 };
 
@@ -80,11 +90,13 @@ export function iosSystemFonts(dpr: number): SystemFonts {
   const ct = coreText();
   const authored = new Map<string, { readonly face: CoreTextFace; readonly lineMetrics?: undefined }>();
   const entryOf = (id: string): (typeof IOS_ROLE_FACES)[SystemFaceRole][number] | { readonly face: CoreTextFace; readonly lineMetrics?: undefined } => {
-    const author = authored.get(id);
+    const author = authored.get(id) ?? fallbacks.get(id);
     if (author !== undefined) return author;
     const r = systemRequestOf(id) ?? refuse(`${id} is not a system face`);
     return pick(id, IOS_ROLE_FACES[(r as SystemFaceRequest).role], r as SystemFaceRequest, 'iOS');
   };
+  const fallbacks = new Map<string, { readonly face: CoreTextFace; readonly lineMetrics?: undefined }>();
+  const fallbackDescriptors = new Map<string, CoreTextFace>();
   let sfui: { readonly upem: number; readonly ascent: number; readonly descent: number; readonly lineGap: number } | null = null;
   const systemMetrics = (): NonNullable<typeof sfui> => {
     if (sfui === null) {
@@ -107,7 +119,7 @@ export function iosSystemFonts(dpr: number): SystemFonts {
   };
   return {
     target: 'ios',
-    descriptor: (id) => ({ platform: 'ios', face: entryOf(id).face }),
+    descriptor: (id) => ({ platform: 'ios', face: fallbackDescriptors.get(id) ?? entryOf(id).face }),
     fontData(id) {
       const face = entryOf(id).face;
       const d = ct.describe(face, 17);
@@ -133,6 +145,19 @@ export function iosSystemFonts(dpr: number): SystemFonts {
       return { ascent: lu(Math.ceil(v.ascent) + extra), descent: lu(Math.ceil(v.descent)), lineGap: lu(Math.ceil(v.leading)), normalGapAbove: lu(Math.ceil(v.leading) / 2) };
     },
     shaper: {
+      fallback(face, text, start, end, _script, language) {
+        const got = ct.fallback(entryOf(face).face, 17, text, start, end, language);
+        if (got === null) return face;
+        const id = FALLBACK_FACE_PREFIX + got.postScriptName;
+        if (!fallbacks.has(id)) {
+          // The build Mac's cascade picks the face, and the iOS runtime's own file of it gives the glyphs (the Mac's can be another
+          // version); the phone draws it only if its own cascade gives the same PostScript name.
+          const file = iosRuntimeFile(got.path) ?? refuse(`${face}: Core Text on the build Mac draws ${JSON.stringify(text.slice(start, end))} in ${got.postScriptName} (${got.path}), which the iOS runtime has no file of`);
+          fallbacks.set(id, { face: ct.registerFile(`ios-runtime:${got.postScriptName}`, file, got.postScriptName) });
+          fallbackDescriptors.set(id, { kind: 'cascade', base: entryOf(face).face, text: text.slice(start, end), postScriptName: got.postScriptName });
+        }
+        return id;
+      },
       shape(face, size, text, start, end, _script, rtl, language, fs) {
         if (rtl) refuse(`${face}: right-to-left text in a system face is not shaped yet`);
         // Safari shapes at the CSS size and scales the page by the device ratio; San Francisco's optical size and tracking follow the size.
@@ -141,6 +166,18 @@ export function iosSystemFonts(dpr: number): SystemFonts {
       },
     },
   };
+}
+
+const IOS_FONT_DIRS = ['Core', 'CoreAddition', 'CoreUI', 'LanguageSupport', 'UnicodeSupport'] as const;
+
+/** The iOS runtime's file of a build Mac font file, by name, in its System/Library/Fonts; null where it has none. */
+function iosRuntimeFile(path: string): string | null {
+  const { root } = iosRuntimeRoot();
+  for (const dir of IOS_FONT_DIRS) {
+    const file = join(root, 'System/Library/Fonts', dir, basename(path));
+    if (existsSync(file)) return file;
+  }
+  return null;
 }
 
 type HB = {
@@ -160,6 +197,7 @@ export function androidSystemFonts(files: AndroidSystemFiles = new AndroidSystem
   const hb = wasm.DragonHB.load(undefined, { fenceDisabled: true });
   const xml = files.fontsXml();
   const resolved = new Map<string, SystemFaceDescriptor & { platform: 'android' }>();
+  // By file and collection index: a .ttc's faces share the file.
   const faces = new Map<string, number>();
   const fonts = new Map<string, number>();
   const descriptorOf = (id: string): SystemFaceDescriptor & { platform: 'android' } => {
@@ -172,8 +210,32 @@ export function androidSystemFonts(files: AndroidSystemFiles = new AndroidSystem
     const file = files.read(`/system/fonts/${f.file}`);
     const d = { platform: 'android' as const, file: f.file, index: f.index, axes: f.axes, sha256: file.sha256 };
     resolved.set(id, d);
-    if (!faces.has(file.sha256)) faces.set(file.sha256, hb.createFace(file.bytes, f.index));
+    if (!faces.has(`${file.sha256}#${f.index}`)) faces.set(`${file.sha256}#${f.index}`, hb.createFace(file.bytes, f.index));
     return d;
+  };
+  /** Skia's Android fallback (SkFontMgr_android onMatchFamilyStyleCharacter): elegant families first, each language from most specific to none, in file order. */
+  const fallbackOf = (face: string, text: string, start: number, language: string): string => {
+    const r = systemRequestOf(face);
+    const cp = text.codePointAt(start);
+    if (r === null || cp === undefined) return '';
+    if (hb.nominalGlyph(fontAt(face, 1000), cp) !== 0) return face;
+    const tags: string[] = [];
+    for (let tag = language; tag !== ''; tag = tag.includes('-') ? tag.slice(0, tag.lastIndexOf('-')) : '') tags.push(tag);
+    tags.push('');
+    for (const elegant of [true, false]) for (const tag of tags) for (const family of xml.fallbacks) {
+      if ((family.variant === 'elegant') !== elegant) continue;
+      if (tag !== '' && !family.lang.some((l) => l.startsWith(tag))) continue;
+      const serves = family.fonts.filter((f) => f.fallbackFor === null || f.fallbackFor === ANDROID_ROLE_FAMILIES[r.role]);
+      const styled = serves.filter((f) => f.style === r.style);
+      const f = matchWeight(styled.length > 0 ? styled : serves, r.weight);
+      if (f === null) continue;
+      const file = files.read(`/system/fonts/${f.file}`);
+      if (!faces.has(`${file.sha256}#${f.index}`)) faces.set(`${file.sha256}#${f.index}`, hb.createFace(file.bytes, f.index));
+      const probe = `${FALLBACK_FACE_PREFIX}${f.file}#${f.index}`;
+      if (!resolved.has(probe)) resolved.set(probe, { platform: 'android', file: f.file, index: f.index, axes: f.axes, sha256: file.sha256 });
+      if (hb.nominalGlyph(fontAt(probe, 1000), cp) !== 0) return probe;
+    }
+    return '';
   };
   const fontAt = (id: string, size: number): number => {
     const key = `${id}@${size}`;
@@ -181,7 +243,7 @@ export function androidSystemFonts(files: AndroidSystemFiles = new AndroidSystem
     if (font === undefined) {
       const d = descriptorOf(id);
       const { wght, wdth, slnt, ...rest } = androidInstance(d.axes, fvarAxes(files.read(`/system/fonts/${d.file}`).bytes, d.index));
-      font = hb.createFont(faces.get(d.sha256) as number, { size, weight: wght ?? 400, width: wdth ?? 100, slope: -(slnt ?? 0), opticalSizingAuto: false, variations: Object.entries(rest).map(([tag, value]) => ({ tag, value })) });
+      font = hb.createFont(faces.get(`${d.sha256}#${d.index}`) as number, { size, weight: wght ?? 400, width: wdth ?? 100, slope: -(slnt ?? 0), opticalSizingAuto: false, variations: Object.entries(rest).map(([tag, value]) => ({ tag, value })) });
       fonts.set(key, font);
     }
     return font;
@@ -192,7 +254,7 @@ export function androidSystemFonts(files: AndroidSystemFiles = new AndroidSystem
     fontData(id) {
       const d = descriptorOf(id);
       const bytes = files.read(`/system/fonts/${d.file}`).bytes;
-      const upem = hb.faceUpem(faces.get(d.sha256) as number);
+      const upem = hb.faceUpem(faces.get(`${d.sha256}#${d.index}`) as number);
       const font = fontAt(id, upem);
       const table = sfntTable(bytes, d.index);
       const hhea = table('hhea');
@@ -215,6 +277,7 @@ export function androidSystemFonts(files: AndroidSystemFiles = new AndroidSystem
       return { xHeight: data.xHeight * k, capHeight: data.capHeight * k, zeroWidth: data.zeroAdvance * k };
     },
     shaper: {
+      fallback: (face, text, start, _end, _script, language) => fallbackOf(face, text, start, language),
       shape(face, size, text, start, end, script, rtl, language, fs) {
         return Array.from(hb.shape(fontAt(face, size), text, start, end - start, { script, direction: rtl ? 'rtl' : 'ltr', language, features: features(fs) }));
       },
