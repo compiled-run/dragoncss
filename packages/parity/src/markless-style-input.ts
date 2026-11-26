@@ -5,7 +5,7 @@
 import { createHash } from 'node:crypto';
 import { posix } from 'node:path';
 import { brotliDecompressSync } from 'node:zlib';
-import type { BrotliDecompress, ClassSymbol, Condition, FontMap, FrontEndResult, NativeStyles, NativeStylesConfig, NativeStyleTarget, Rgba8, RuntimeImageLayout, SourceFile, TreeNode, WriteKind } from 'dragon';
+import type { BrotliDecompress, ClassSymbol, Condition, FontMap, FrontEndResult, NativeStyles, NativeStylesConfig, NativeStyleTarget, Rgba8, RuntimeImageLayout, Scalar, SourceFile, TreeNode, WriteKind } from 'dragon';
 import { BAND_KEY, compiledCases, compileNativeStylesWith, decodeFontFile, isTreeNodeId, LISTED_OPTIONS_ATTRIBUTE, nativeBands, parseStylesheet, renameWriteNodes, resolvedInteractionTextTransforms, resolvedTextTransforms, TREE_SCHEMA_REVISION } from 'dragon';
 import type { LayoutInput, rtBand } from '@dragon/layout';
 import { layout, textDecoration } from '@dragon/layout';
@@ -1099,7 +1099,8 @@ function exportMarkless(parsed: MarklessStyleInput, inputText: string, inputPath
   }));
   const decoded = [...new Map(fonts.filter((f) => f.sfntFile !== f.file).map((f) => [f.sfntFile, { file: f.sfntFile, bytes: f.sfnt }])).values()];
   // A host combines a group's few owned nodes with the page's: the tables are written slim.
-  const slim = Object.fromEntries(Object.entries(targets).map(([t, x]) => [t, slimTarget(x as ExportTarget)]));
+  const declared = new Map<string, readonly Scalar[]>([...parsed.states.map((st) => [st.cell, st.domain] as const), ...(parsed.branches ?? []).map((b) => [b.id, b.domain] as const)]);
+  const slim = Object.fromEntries(Object.entries(targets).map(([t, x]) => [t, slimTarget(x as ExportTarget, (key) => declared.get(key))]));
   return { input, styles, exported: { ...exported, fontMode: mode, targets: slim }, decoded };
 }
 

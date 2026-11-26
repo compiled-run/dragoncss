@@ -4559,16 +4559,19 @@ function groupedParts(plan: JsonObj, page: PlanAssignmentParts, given: JsonValue
   return { variant: page.variant, dashed, scrollers, checkboxes, fields: page.fields, writes: page.writes, refusals: page.refusals };
 }
 
-function groupedVariant(plan: JsonObj, page: PlanAssignmentParts, given: JsonValue): PlanVariant {
+/** The page entry's layout tree with each group's owned boxes from its entry, as JSON (groupedRoot). */
+function groupedRootJson(plan: JsonObj, page: PlanAssignmentParts, given: JsonValue): JsonValue {
   const ge: GroupEntries = groupEntries(plan, given);
-  const groups = ge.groups;
-  const entries = ge.entries;
   const trees: JsonValue[] = [];
-  for (let gi = 0; gi < entries.length; gi++) trees.push(variantRootJson(plan, (entries[gi] as PlanAssignmentParts).variant));
+  for (let gi = 0; gi < ge.entries.length; gi++) trees.push(variantRootJson(plan, (ge.entries[gi] as PlanAssignmentParts).variant));
+  return groupedRoot(variantRootJson(plan, page.variant), trees, ge.groups);
+}
+
+function groupedVariant(plan: JsonObj, page: PlanAssignmentParts, given: JsonValue): PlanVariant {
   const variants = arr(field(plan, 'variants', '$.plan'), '$.plan.variants');
   const at = `$.plan.variants[${page.variant}]`;
   const vo = obj(variants[page.variant] as JsonValue, ['rootFontSize', 'root'], at);
-  const root = groupedRoot(variantRootJson(plan, page.variant), trees, groups);
+  const root = groupedRootJson(plan, page, given);
   if (root.kind !== 'obj') return fail(`${at}.root: expected a box`);
   return { rootFontSize: numField(vo, 'rootFontSize', at), root: decodeBox(root, `${at}.root`) };
 }
@@ -4593,7 +4596,7 @@ function marklessLayout(o: JsonObj, live: GlyphShaper | null): string {
     const measurer = planMeasurer(faces, density, live);
     const pageParts = planAssignment(plan, numField(o, 'assignment', '$'));
     const parts = o.values.has('groups') ? groupedParts(plan, pageParts, field(o, 'groups', '$')) : pageParts;
-    const spliced = live === null ? null : rowsVariant(plan, parts, field(o, 'rows', '$'), values, o.values.has('texts') ? field(o, 'texts', '$') : null);
+    const spliced = live === null ? null : rowsVariant(plan, parts, field(o, 'rows', '$'), values, o.values.has('texts') ? field(o, 'texts', '$') : null, o.values.has('groups') ? groupedRootJson(plan, pageParts, field(o, 'groups', '$')) : null);
     const variant = spliced === null ? (o.values.has('groups') ? groupedVariant(plan, pageParts, field(o, 'groups', '$')) : slottedVariant(plan, parts.variant, parts.fields, parts.refusals, values)) : spliced.variant;
     const viewport = decodeViewport(field(o, 'viewport', '$'), '$.viewport');
     const safe = obj(field(o, 'safeArea', '$'), ['top', 'right', 'bottom', 'left'], '$.safeArea');
@@ -4776,7 +4779,7 @@ function textLeafIds(v: JsonValue, into: Map<string, boolean>): void {
 }
 
 /** The page variant with each list's rows in place of its template ($.rows), with the page's and each row copy's dashed borders and scrolling. */
-function rowsVariant(plan: JsonObj, parts: PlanAssignmentParts, rowsValue: JsonValue, values: readonly number[], textsValue: JsonValue | null): RowsVariant {
+function rowsVariant(plan: JsonObj, parts: PlanAssignmentParts, rowsValue: JsonValue, values: readonly number[], textsValue: JsonValue | null, grouped: JsonValue | null): RowsVariant {
   const slots = planSlots(plan);
   const vi = parts.variant;
   const assignments = arr(field(plan, 'assignments', '$.plan'), '$.plan.assignments');
@@ -4835,7 +4838,8 @@ function rowsVariant(plan: JsonObj, parts: PlanAssignmentParts, rowsValue: JsonV
   const sink: RowSink = { dashed: new Map<string, PlanDashed>(), scrollers: new Map<string, boolean>(), placed: new Map<string, boolean>() };
   for (const [id, d] of parts.dashed) sink.dashed.set(id, d);
   for (const [id, on] of parts.scrollers) if (on) sink.scrollers.set(id, true);
-  const page = slotted(plan) ? slottedRoot(variantRootJson(plan, vi), parts.fields, parts.refusals, values, '$.slots') : variantRootJson(plan, vi);
+  // Factored states: the page's texts are laid out in the tree every table's entry gives (groupedRootJson).
+  const page = grouped !== null ? grouped : slotted(plan) ? slottedRoot(variantRootJson(plan, vi), parts.fields, parts.refusals, values, '$.slots') : variantRootJson(plan, vi);
   const texts = pageTexts(textsValue);
   const transformed = planTransformed(plan);
   for (const [leaf, _text] of texts) if (transformed.has(leaf)) fail(`$.texts: ${leaf} is laid out with a text-transform, which a phone does not apply to the text it is given`);
