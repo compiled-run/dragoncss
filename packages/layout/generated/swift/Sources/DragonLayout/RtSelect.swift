@@ -4,7 +4,7 @@ public final class SelectError: JsError {
   public let detail: JsString
   public init(_ detail: JsString) throws {
     self.detail = detail
-    super.init(message: jsConcat(S.s1105, detail))
+    super.init(message: jsConcat(S.s1109, detail))
   }
 }
 
@@ -228,7 +228,7 @@ public func rtSelect_rectOf(_ s: SelectState, _ id: JsString) throws -> LayoutRe
   let r: LayoutRect? = s.abs.get(id)
   // ts: packages/layout/src/rt-select.ts:155
   if (r == nil) {
-    throw try SelectError(jsConcat(S.s1196, id))
+    throw try SelectError(jsConcat(S.s1202, id))
   }
   return try jsUnwrap(r)
 }
@@ -238,7 +238,7 @@ public func rtSelect_zoomedBox(_ s: SelectState, _ id: JsString) throws -> Layou
   let b: LayoutBox? = s.zoomed.get(id)
   // ts: packages/layout/src/rt-select.ts:161
   if (b == nil) {
-    throw try SelectError(jsConcat(S.s979, id))
+    throw try SelectError(jsConcat(S.s981, id))
   }
   return try jsUnwrap(b)
 }
@@ -549,7 +549,7 @@ public func rtSelect_selectionTableOf(_ input: LayoutInput, _ measurer: TextMeas
   let out: any U_LayoutResult_ok_LayoutResult_unsupported = try layout_layout(input, measurer)
   // ts: packages/layout/src/rt-select.ts:300
   if (out.kind != S.s_ok) {
-    throw try SelectError(jsConcat(S.s1197, (out as! LayoutResult_unsupported).unsupported.code, S.s21, (out as! LayoutResult_unsupported).unsupported.nodeId, S.s214))
+    throw try SelectError(jsConcat(S.s1203, (out as! LayoutResult_unsupported).unsupported.code, S.s21, (out as! LayoutResult_unsupported).unsupported.nodeId, S.s214))
   }
   var zoomed: LayoutInput
   // ts: packages/layout/src/rt-select.ts:302
@@ -558,7 +558,7 @@ public func rtSelect_selectionTableOf(_ input: LayoutInput, _ measurer: TextMeas
   } catch let e {
     // ts: packages/layout/src/rt-select.ts:305
     if (e is UnsupportedSignal) {
-      throw try SelectError(jsConcat(S.s1197, (e as! UnsupportedSignal).unsupported.code, S.s21, (e as! UnsupportedSignal).unsupported.nodeId, S.s214))
+      throw try SelectError(jsConcat(S.s1203, (e as! UnsupportedSignal).unsupported.code, S.s21, (e as! UnsupportedSignal).unsupported.nodeId, S.s214))
     }
     throw e
   }
@@ -849,7 +849,7 @@ public func rtSelect_caretRect(_ t: SelectTable, _ c: Caret) throws -> CaretRect
       }
     }
   }
-  throw try SelectError(jsConcat(S.s968, jsNumberToString(c.offset), S.s166, jsNumberToString(c.node)))
+  throw try SelectError(jsConcat(S.s970, jsNumberToString(c.offset), S.s166, jsNumberToString(c.node)))
 }
 
 // ts: packages/layout/src/rt-select.ts:456
