@@ -212,7 +212,7 @@ So Chrome's layout of these shapes never reads the natural size, except in the r
 - **`tree-replaced-runtime-src-change`:** a state that swaps the src between two samples of different natural sizes. The frames are unchanged, and the native lanes check that the old bitmap stays until the new one is set.
 - **Refusal fixtures:**
   - `reject-runtime-src-auto-height`: checkin's detail photo shape;
-  - `reject-runtime-src-auto-ratio`: shop's product photo shape;
+  - `reject-runtime-src-auto-ratio`: shop's product photo in two `auto` columns, whose growth limits read its max-content contribution (in one stretched `auto` column it is accepted: the grid reads no max-content contribution there);
   - `reject-runtime-src-shrink-to-fit`: a float (measured 66.7 to 374);
   - `reject-runtime-src-absent-alt`;
   - `reject-runtime-src-selector`.

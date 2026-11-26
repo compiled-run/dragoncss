@@ -17,7 +17,7 @@
       "x": 0,
       "y": 0,
       "width": 400,
-      "height": 347.9047546386719,
+      "height": 300,
       "computed": null
     },
     {
@@ -27,7 +27,7 @@
       "x": 0,
       "y": 0,
       "width": 400,
-      "height": 347.9047546386719,
+      "height": 300,
       "computed": null
     },
     {
@@ -37,7 +37,7 @@
       "x": 0,
       "y": 0,
       "width": 374,
-      "height": 347.9047546386719,
+      "height": 300,
       "computed": null
     },
     {
@@ -46,7 +46,7 @@
       "hasBox": true,
       "x": 0,
       "y": 0,
-      "width": 374,
+      "width": 326,
       "height": 300,
       "computed": null
     },
@@ -54,30 +54,30 @@
       "id": "p",
       "kind": "element",
       "hasBox": true,
-      "x": 0,
-      "y": 328,
-      "width": 374,
-      "height": 9.904762268066406,
+      "x": 344,
+      "y": 10,
+      "width": 30,
+      "height": 280,
       "computed": null
     },
     {
       "id": "p:text0",
       "kind": "text",
       "hasBox": true,
-      "x": 0,
-      "y": 328,
+      "x": 344,
+      "y": 10,
       "width": 30,
-      "height": 9.904754638671875,
+      "height": 9.904762268066406,
       "computed": null
     },
     {
       "id": "p:text0:line0",
       "kind": "line",
       "hasBox": true,
-      "x": 0,
-      "y": 328,
+      "x": 344,
+      "y": 10,
       "width": 30,
-      "height": 9.904754638671875,
+      "height": 9.904762268066406,
       "computed": null
     }
   ]
