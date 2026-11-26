@@ -7,7 +7,7 @@ import { readFileSync } from 'node:fs';
 import { deflateSync } from 'node:zlib';
 import type { Page } from 'playwright';
 import type { LayoutInput } from '@dragon/layout';
-import { layoutWithFaults, NO_ENGINE_FAULTS } from '@dragon/layout';
+import { absoluteRects, layoutWithFaults, NO_ENGINE_FAULTS } from '@dragon/layout';
 import type { FrontEndResult, RuntimeImageLayout, TreeNode } from 'dragon';
 import type { WebCapture } from './capture.ts';
 import { repoPath } from './paths.ts';
@@ -132,7 +132,7 @@ export function samplePrepare(sample: RuntimeSample): (page: Page) => Promise<vo
 export function fixtureRuntimeLayout(viewport: { readonly width: number; readonly height: number }, plant: ((input: LayoutInput) => LayoutInput) | null = null): RuntimeImageLayout {
   const layout = (input: LayoutInput) => {
     const r = layoutWithFaults(plant === null ? input : plant(input), referenceShapedMeasurer(), NO_ENGINE_FAULTS);
-    return r.kind === 'ok' ? null : r.unsupported;
+    return r.kind === 'ok' ? { kind: 'ok' as const, rects: absoluteRects(r.boxes) } : { kind: 'refused' as const, ...r.unsupported };
   };
   return { devices: RUNTIME_DPRS.map((dpr) => ({ ...viewport, dpr, layout })) };
 }

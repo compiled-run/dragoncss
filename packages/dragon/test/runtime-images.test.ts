@@ -3,19 +3,19 @@
 // replaced-runtime-* and reject-runtime-src-* prove the accepted and refused shapes against Chrome.
 import { describe, expect, it } from 'vitest';
 import type { LayoutInput } from '@dragon/layout';
-import { layout, measurerFor, REFERENCE_PLATFORM } from '@dragon/layout';
+import { absoluteRects, layout, measurerFor, REFERENCE_PLATFORM } from '@dragon/layout';
 import type { Band } from '../src/media/band.ts';
 import { bandEdgeWidths } from '../src/images/runtime.ts';
 import type { RuntimeImageLayout } from '../src/images/runtime.ts';
-import { createProjectWith, NO_FAULTS } from '../src/internal.ts';
+import { createProjectWith, NO_FAULTS, nativeLayoutProjection } from '../src/internal.ts';
 import type { AttributeBinding, ElementNode, Origin, SourceRef, TreeNode } from '../src/types.ts';
-import { always, div, DOC, inputFor, staticClass } from './helpers.ts';
+import { always, div, DOC, inputFor, staticClass, text } from './helpers.ts';
 
 const m = measurerFor(REFERENCE_PLATFORM);
 if (m.kind !== 'ok') throw new Error(m.detail);
 const engine = (input: LayoutInput) => {
   const r = layout(input, m.measurer);
-  return r.kind === 'ok' ? null : r.unsupported;
+  return r.kind === 'ok' ? { kind: 'ok' as const, rects: absoluteRects(r.boxes) } : { kind: 'refused' as const, ...r.unsupported };
 };
 const DEVICES: RuntimeImageLayout = { devices: [{ width: 400, height: 300, dpr: 1, layout: engine }] };
 
@@ -64,7 +64,7 @@ describe('REPL-r1 layout: the build lays the img out without its image', () => {
   });
 
   it('refuses a read the devices reach, naming the engine\'s fix', () => {
-    expect(refusals(compile('img { display: block; width: 100%; }', (r) => [div(r, 'c', [], [img(r, 'a', [], { absent: false })])]), 'DRAGON_RUNTIME_IMAGE_SIZE')).toEqual(["<img> a has a src set at run time, and its used size reads the image's natural ratio, since its height is auto: give it a CSS aspect-ratio, or a width and a height"]);
+    expect(refusals(compile('img { display: block; max-width: 100%; }', (r) => [div(r, 'c', [], [img(r, 'a', [], { absent: false })])]), 'DRAGON_RUNTIME_IMAGE_SIZE')).toEqual(["<img> a has a src set at run time, and its used size reads the image's natural ratio, since its height is auto: give it a CSS aspect-ratio, or a width and a height"]);
   });
 
   it('also lays each band out at its edge widths, so a read only a band the devices miss reaches is refused (Q3)', () => {
@@ -82,6 +82,22 @@ describe('REPL-r1 layout: the build lays the img out without its image', () => {
     expect(bandEdgeWidths(band(iv(400, false, Infinity, false)), devices)).toEqual([401, 411]);
     expect(bandEdgeWidths(band(iv(700, true, Infinity, false)), devices)).toEqual([700]);
     expect(bandEdgeWidths(band(iv(10.5, true, 10.75, true)), devices)).toEqual([]);
+  });
+});
+
+describe('REPL-r2a: an img whose height follows its image', () => {
+  const ENV = { viewport: { width: 400, height: 300 }, devicePixelRatio: 1, direction: 'ltr', rootFont: 'ua-default' } as const;
+  const lowered = (c: ReturnType<typeof compile>): string => JSON.stringify(nativeLayoutProjection(c, ENV, []));
+  it('accepts a 100% wide img with an auto height, and lowers it as following its image at 0 by 0', () => {
+    const c = compile('img { display: block; width: 100%; max-height: 320px; } p { margin: 0; }', (r) => [div(r, 'c', [], [img(r, 'a', [], { absent: false }), div(r, 'p', [])])]);
+    expect(refusals(c, 'DRAGON_RUNTIME_IMAGE_SIZE')).toEqual([]);
+    expect(lowered(c)).toContain('"natural":{"kind":"followed","width":0,"height":0}');
+  });
+  it('refuses it when its image moves a box inline: an abspos box whose width follows its containing block\'s height', () => {
+    const css = 'img { display: block; width: 100%; } .c { position: relative; } .ab { position: absolute; top: 0; bottom: 0; left: 0; aspect-ratio: 1 / 1; }';
+    const got = refusals(compile(css, (r) => [div(r, 'c', ['c'], [img(r, 'a', [], { absent: false }), div(r, 'ab', ['ab'])])]), 'DRAGON_RUNTIME_IMAGE_SIZE');
+    expect(got.length).toBeGreaterThan(0);
+    expect(got.every((m) => m.startsWith('<img> a has a src set at run time, and its image changes the inline size or position of ab '))).toBe(true);
   });
 });
 

@@ -632,7 +632,7 @@ export const IMAGE_EMITTER: PaintEmitter<'replaced-image' | 'svg-shapes' | 'runt
       return { viewBox: w.viewBox === null ? null : [...w.viewBox], shapes: w.shapes.map((sh) => [rgba(sh.fill), rgba(sh.stroke), sh.width, sh.cap, sh.join, sh.miterLimit, sh.fillRule, [...sh.dashes], sh.dashPhase, sh.strokeFirst, sh.nonScalingStroke]) };
     }
     if (g.replaced === null) throw new Error('an image write on a box that is not replaced');
-    if (w.kind === 'runtime-image') return { fit: w.fit, position: w.position.map(positionText), outline: w.absent === null ? null : [w.absent.color.r, w.absent.color.g, w.absent.color.b, w.absent.color.alpha], dest: backend === 'uikit' ? g.replaced.dest.map((v) => v / dpr) : [...g.replaced.dest] };
+    if (w.kind === 'runtime-image') return { fit: w.fit, position: w.position.map(positionText), outline: w.absent === null ? null : [w.absent.color.r, w.absent.color.g, w.absent.color.b, w.absent.color.alpha], dest: backend === 'uikit' ? g.replaced.dest.map((v) => v / dpr) : [...g.replaced.dest], ...(w.follows ? { follows: true } : {}) };
     return { natural: [w.width, w.height], fit: w.fit, dest: backend === 'uikit' ? g.replaced.dest.map((v) => v / dpr) : [...g.replaced.dest], ...(w.pixelated ? { pixelated: true } : {}) };
   },
   native: {

@@ -8,7 +8,7 @@ import { brotliDecompressSync } from 'node:zlib';
 import type { BrotliDecompress, ClassSymbol, Condition, FontMap, FrontEndResult, NativeStyles, NativeStylesConfig, NativeStyleTarget, Rgba8, RuntimeImageLayout, SourceFile, TreeNode, WriteKind } from 'dragon';
 import { BAND_KEY, compiledCases, compileNativeStylesWith, decodeFontFile, isTreeNodeId, LISTED_OPTIONS_ATTRIBUTE, nativeBands, parseStylesheet, renameWriteNodes, resolvedInteractionTextTransforms, resolvedTextTransforms, TREE_SCHEMA_REVISION } from 'dragon';
 import type { LayoutInput, rtBand } from '@dragon/layout';
-import { layout, textDecoration } from '@dragon/layout';
+import { absoluteRects, layout, textDecoration } from '@dragon/layout';
 import { referenceMeasurer } from './native-host.ts';
 import { systemMeasurer } from './system-fonts/measurer.ts';
 import { registerFace } from './text-shaper-host.ts';
@@ -688,7 +688,7 @@ function marklessRuntimeLayout(devices: { readonly [T in NativeStyleTarget]: Exp
       layout: (input: LayoutInput) => {
         const m = mode === 'system' ? systemMeasurer(systemFontsFor(t, devices[t].dpr), input, [...faces.keys()], devices[t].dpr, faces) : referenceMeasurer([...faces.keys()]);
         const r = layout(input, m);
-        return r.kind === 'ok' ? null : r.unsupported;
+        return r.kind === 'ok' ? { kind: 'ok' as const, rects: absoluteRects(r.boxes) } : { kind: 'refused' as const, ...r.unsupported };
       },
     })),
   };

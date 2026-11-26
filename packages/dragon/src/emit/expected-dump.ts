@@ -156,7 +156,7 @@ const isLine = (r: LayoutRect): boolean => r.parent !== null && r.id.startsWith(
  * borders and its padding against the parent's content width (the viewport's for the root), as the device computes them.
  */
 export function replacedGeometries(engine: ExpectedEngine, input: LayoutInput, boxes: readonly LayoutRect[], measurer: TextMeasurer): Map<string, ReplacedPaint> {
-  return new Map([...replacedContents(engine, input, boxes, measurer)].map(([id, { leaf, content }]) => [id, leaf.natural.kind === 'runtime' ? engine.runtimeImagePaint(leaf, content, 0, 0, input.devicePixelRatio) : engine.replacedPaint(leaf, content)]));
+  return new Map([...replacedContents(engine, input, boxes, measurer)].map(([id, { leaf, content }]) => [id, leaf.natural.kind === 'runtime' || leaf.natural.kind === 'followed' ? engine.runtimeImagePaint(leaf, content, 0, 0, input.devicePixelRatio) : engine.replacedPaint(leaf, content)]));
 }
 
 /** Each replaced leaf of the resolved input with its content box in absolute LU, as the device computes it after layout. */
