@@ -3,7 +3,7 @@
 // measurer adds it after each space glyph; the shaped path adds it after the last glyph of a cluster that starts with a space. The
 // Chrome checks are packages/parity/test/word-spacing.test.ts.
 import { describe, expect, it } from 'vitest';
-import { absoluteRects, ahemMeasurer, layout, NO_ENGINE_FAULTS, NO_SHAPING_FAULTS, textRunLayoutUnit, wordSpacingAfter } from '../src/index.ts';
+import { absoluteRects, ahemMeasurer, layout, NO_ENGINE_FAULTS, NORMAL_NUMERIC, NO_SHAPING_FAULTS, textRunLayoutUnit, wordSpacingAfter } from '../src/index.ts';
 import type { LayoutBox, LayoutRect, ShapingFaults, TextLeaf } from '../src/index.ts';
 import type { GlyphShaper } from '../src/shaping.ts';
 import { GLYPH_STRIDE, NO_HAN_KERNING, shapedMeasurer } from '../src/shaping.ts';
@@ -71,7 +71,7 @@ describe('word-spacing on the shaped path', () => {
   };
   const width = (faults: ShapingFaults, value: string, spacing: number): number => {
     const m = shapedMeasurer(new Map([['Fake', { id: 'Fake', data: AHEM_FONT_DATA, hanKerning: NO_HAN_KERNING }]]), shaper, faults, 'en');
-    const r = m.measure(value, { family: 'Fake', size: 10, letterSpacing: 0, wordSpacing: spacing, smallCaps: false });
+    const r = m.measure(value, { family: 'Fake', size: 10, letterSpacing: 0, wordSpacing: spacing, smallCaps: false, variantNumeric: NORMAL_NUMERIC });
     if (!r.ok) throw new Error(r.reason);
     return r.measure.width / LU;
   };

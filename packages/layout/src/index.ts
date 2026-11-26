@@ -33,7 +33,7 @@ export { groupComposite, groupCompositeLayered, groupFill, groupFilterComposite,
 export type { DprChromeDeviation, DprDeviationControl, DprDeviationFault, DprDeviationNode } from './chrome-deviations-dpr.ts';
 export { dprChromeDeviations } from './chrome-deviations-dpr.ts';
 export type { AhemRuleFaults, FontData } from './text.ts';
-export { AHEM_FONT_DATA, ahemMeasurerWith, coveredCodePoints, coveredIndex, ELLIPSIS, fontDataMeasurer, letterSpacingAfter, smallCapsCodePoint, smallCapsFontSize, wordSpacingAfter } from './text.ts';
+export { AHEM_FONT_DATA, ahemMeasurerWith, coveredCodePoints, coveredIndex, ELLIPSIS, fontDataMeasurer, letterSpacingAfter, NORMAL_NUMERIC, sameNumeric, smallCapsCodePoint, smallCapsFontSize, wordSpacingAfter } from './text.ts';
 export { resolvedInput, zoomInput } from './layout.ts';
 export type { Edges } from './box.ts';
 export { containsAbsolute, resolveBorder } from './box.ts';
@@ -56,7 +56,7 @@ export { IDENTITY_SHADOW_TRANSFORM, insetShadowLayer, insetShadowLayerOver, NO_S
 export { boxBlurMargin, hasNoBlur, NO_BLUR_FAULTS, shadowSigma } from './paint-blur.ts';
 export type { BorderOp, BorderOpKind, DashFaults } from './paint-dash.ts';
 export { borderNeedsSidePainter, borderPaintOps, NO_DASH_FAULTS, outlineNeedsSidePainter, outlinePaintOps, selectBestDashGap } from './paint-dash.ts';
-export type { EnvLength, FontCalc, FontMetricLength, FontPercent, FontSpec, LineHeightCalc, LineHeightLength, RootFontLength, SafeAreaInsets, SafeAreaSide, TextFont, ViewportSize, ViewportUnitSizes } from './input.ts';
+export type { EnvLength, FontCalc, FontMetricLength, FontPercent, FontSpec, LineHeightCalc, LineHeightLength, RootFontLength, SafeAreaInsets, SafeAreaSide, TextFont, VariantNumeric, ViewportSize, ViewportUnitSizes } from './input.ts';
 export type { EnvironmentDependencies } from './environment.ts';
 export { environmentDependencies, resolveEnvironment } from './environment.ts';
 export type { FontLengths } from './text.ts';

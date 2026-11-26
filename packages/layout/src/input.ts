@@ -504,7 +504,17 @@ export type LayoutStyle = {
  * A text item's font as the measurer reads it: the face, the computed size and the used letter-spacing in px (css-text-3 §8.2,
  * 0 for normal), which Blink keeps in the FontDescription and adds after every cluster (ShapeResult::ApplySpacing).
  */
-export type TextFont = { readonly family: string; readonly size: number; readonly letterSpacing: number; readonly wordSpacing: number; readonly smallCaps: boolean };
+export type TextFont = { readonly family: string; readonly size: number; readonly letterSpacing: number; readonly wordSpacing: number; readonly smallCaps: boolean; readonly variantNumeric: VariantNumeric };
+
+/** css-fonts-4 §6.7 font-variant-numeric as Blink's FontVariantNumeric holds it, one field per keyword group; normal is all normal. */
+export type VariantNumeric = {
+  readonly figure: 'normal' | 'lining-nums' | 'oldstyle-nums';
+  readonly spacing: 'normal' | 'proportional-nums' | 'tabular-nums';
+  readonly fraction: 'normal' | 'diagonal-fractions' | 'stacked-fractions';
+  readonly ordinal: boolean;
+  readonly slashedZero: boolean;
+};
+
 
 /**
  * A text run's font (css-fonts-4 §2). specifiedSize is the specified font size (css-fonts-4 §2.5) as an expression in CSS px at
@@ -551,6 +561,8 @@ export type TextLeaf = {
    * run of lowercase letters uppercased at 70% of the font size, rounded (HarfBuzzShaper::ShapeSegment, SmallCapsFontData).
    */
   readonly smallCaps: boolean;
+  /** css-fonts-4 §6.7 font-variant-numeric, which the shaper applies as OpenType features (shaping.ts numericFeatures). */
+  readonly variantNumeric: VariantNumeric;
 };
 
 /**

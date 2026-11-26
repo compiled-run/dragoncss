@@ -3,14 +3,14 @@
 // packages/text-shaper/src/blink.ts: RunSegmenter's script runs (run_segmenter.cc, script_run_iterator.cc), HanKerning
 // (han_kerning.cc), ShapeResult runs (shape_result.cc), ShapeResultView parts (shape_result_view.cc), ShapingLineBreaker's
 // reshaping at line edges (shaping_line_breaker.cc) and LayoutUnit::FromFloatCeil. Unreached until TXT1a-1 wires it in.
-import type { TextFont } from './input.ts';
+import type { TextFont, VariantNumeric } from './input.ts';
 import { isEastAsian } from './linebreak.ts';
 import {
   bracketIndex, BRACKET_OPEN, BRACKET_PAIRS, isClosePunctuation, isExtendedPictographic, isLatinText, isMark, isOpenPunctuation, SCRIPT_TAGS, scriptCode, scriptExtensions,
   USCRIPT_BOPOMOFO, USCRIPT_COMMON, USCRIPT_HAN, USCRIPT_HIRAGANA, USCRIPT_INHERITED, USCRIPT_KATAKANA, USCRIPT_LATIN,
 } from './script-data.ts';
 import type { FontData, FontLengths, FontMetrics, MeasureResult, TextMeasurer } from './text.ts';
-import { AHEM_FACE_ID, fontMetricLengths, letterSpacingAfter, smallCapsCodePoint, smallCapsFontSize, wordSpacingAfter } from './text.ts';
+import { AHEM_FACE_ID, fontMetricLengths, letterSpacingAfter, sameNumeric, smallCapsCodePoint, smallCapsFontSize, wordSpacingAfter } from './text.ts';
 import type { TextRefusalCode } from './unsupported.ts';
 import type { LU } from './units.ts';
 import {
@@ -29,6 +29,36 @@ export const TAG_CHWS = 1667790707;
 export const TAG_LIGA = 1818847073;
 export const TAG_CLIG = 1668049255;
 export const TAG_CALT = 1667329140;
+const TAG_LNUM = 1819178349;
+const TAG_ONUM = 1869509997;
+const TAG_PNUM = 1886287213;
+const TAG_TNUM = 1953396077;
+const TAG_FRAC = 1718772067;
+const TAG_AFRC = 1634103907;
+const TAG_ORDN = 1869767790;
+const TAG_ZERO = 2053468783;
+
+/** FontFeatures::Initialize (font_features.cc), font-variant-numeric: each keyword's feature on, over the whole item, in Blink's order. */
+function numericFeatures(v: VariantNumeric): readonly number[] {
+  const tags: number[] = [];
+  if (v.figure === 'lining-nums') tags.push(TAG_LNUM);
+  else if (v.figure === 'oldstyle-nums') tags.push(TAG_ONUM);
+  if (v.spacing === 'proportional-nums') tags.push(TAG_PNUM);
+  else if (v.spacing === 'tabular-nums') tags.push(TAG_TNUM);
+  if (v.fraction === 'diagonal-fractions') tags.push(TAG_FRAC);
+  else if (v.fraction === 'stacked-fractions') tags.push(TAG_AFRC);
+  if (v.ordinal) tags.push(TAG_ORDN);
+  if (v.slashedZero) tags.push(TAG_ZERO);
+  const out: number[] = [];
+  for (const tag of tags) {
+    out.push(tag);
+    out.push(1);
+    out.push(0);
+    out.push(FEATURE_TO_END);
+  }
+  return out;
+}
+
 
 /**
  * R1, amended by the PM (T082 B2): the host's HarfBuzz. Shapes text[start, end) with the whole text as context, at the font size
@@ -77,12 +107,14 @@ export type ShapingFaults = {
   readonly wordSpacingAtItemStart: boolean;
   /** TXT2-b: no word spacing after a no-break space. */
   readonly wordSpacingSkipsNbsp: boolean;
+  /** TXT-FONTFEAT: font-variant-numeric applies no OpenType feature. */
+  readonly numericFeaturesDropped: boolean;
 };
 
 export const NO_SHAPING_FAULTS: ShapingFaults = {
   advanceNot16_16: false, doubleAccumulation: false, noReshapeAtBreak: false, kerningDropped: false, wholePixelPositions: false, softHyphenWidthMissing: false,
   metricRoundingSwapped: false, trailingSpacingDropped: false, spacingPerCodePoint: false, ligaturesKept: false, wordSpacingAtItemStart: false,
-  wordSpacingSkipsNbsp: false,
+  wordSpacingSkipsNbsp: false, numericFeaturesDropped: false,
 };
 
 // ---------------------------------------------------------------------------------------------------------------------------
@@ -469,6 +501,7 @@ export type ShapeItem = {
   readonly wordSpacing16: number;
   /** Synthesized small caps: the whole-px size lowercase runs are shaped at (smallCapsFontSize), -1 for none. */
   readonly smallCapsSize: number;
+  readonly variantNumeric: VariantNumeric;
   /** The text with every code point small caps uppercases uppercased (the CaseMappingHarfBuzzBufferFiller context), '' for none. */
   readonly upper: string;
   readonly faults: ShapingFaults;
@@ -487,6 +520,7 @@ export type ItemInput = {
   readonly wordSpacing: number;
   /** The synthesized small-caps size (smallCapsFontSize of the computed size), -1 for font-variant-caps normal. */
   readonly smallCapsSize: number;
+  readonly variantNumeric: VariantNumeric;
   readonly faults: ShapingFaults;
 };
 
@@ -526,12 +560,13 @@ export function makeItem(input: ItemInput): ItemResult {
   features.push(1);
   features.push(0);
   features.push(FEATURE_TO_END);
+  if (!input.faults.numericFeaturesDropped) for (const f of numericFeatures(input.variantNumeric)) features.push(f);
   return {
     ok: true,
     item: {
       shaper: input.shaper, face: input.face, size: input.size, text: input.text, units, language: input.language, segments: seg.segments, features,
       hanKerning: input.hanKerning, hanKerningMayApply: hanKerningMayApply(units, 0, units.length), letterSpacing16: textRunLayoutUnit(input.letterSpacing),
-      wordSpacing16: textRunLayoutUnit(input.wordSpacing), smallCapsSize: input.smallCapsSize, upper, faults: input.faults,
+      wordSpacing16: textRunLayoutUnit(input.wordSpacing), smallCapsSize: input.smallCapsSize, variantNumeric: input.variantNumeric, upper, faults: input.faults,
     },
   };
 }
@@ -833,7 +868,7 @@ export function lineWidth(item: ShapeItem, paragraph: ShapeResult, start: number
 /** ComputedStyle::HyphenString: U+2010 if the face has a glyph for it, else U+002D, shaped as its own item. */
 function hyphenWidth(item: ShapeItem): LineResult {
   const own = (text: string): ShapeResult => {
-    const made = makeItem({ shaper: item.shaper, face: item.face, size: item.size, text, language: item.language, hanKerning: NO_HAN_KERNING, letterSpacing: 0, wordSpacing: 0, smallCapsSize: -1, faults: item.faults });
+    const made = makeItem({ shaper: item.shaper, face: item.face, size: item.size, text, language: item.language, hanKerning: NO_HAN_KERNING, letterSpacing: 0, wordSpacing: 0, smallCapsSize: -1, variantNumeric: item.variantNumeric, faults: item.faults });
     if (!made.ok) return shapeRange(item, 0, 0, false, false, false);
     return shapeItem(made.item);
   };
@@ -1712,17 +1747,17 @@ export type ShapedItem = { readonly ok: true; readonly item: ShapeItem; readonly
 export type ShapedText = {
   /** R2's TextMeasurer, over the face TextFont.family names (the face id: Ahem, or a bundled face's sha256). */
   readonly measurer: TextMeasurer;
-  item(text: string, face: string, size: number, letterSpacing: number, wordSpacing: number, smallCapsSize: number): ShapedItem;
+  item(text: string, face: string, size: number, letterSpacing: number, wordSpacing: number, smallCapsSize: number, variantNumeric: VariantNumeric): ShapedItem;
   line(shaped: ShapedItem, start: number, breakOffset: number, available: LU, isBreakable: (offset: number) => boolean): LineResult;
 };
 
-type CachedItem = { readonly size: number; readonly letterSpacing: number; readonly wordSpacing: number; readonly smallCapsSize: number; readonly out: ShapedItem };
+type CachedItem = { readonly size: number; readonly letterSpacing: number; readonly wordSpacing: number; readonly smallCapsSize: number; readonly variantNumeric: VariantNumeric; readonly out: ShapedItem };
 
 /** The shaping core over the host's faces and HarfBuzz, for text in one language. */
 export function shapedText(faces: ReadonlyMap<string, ShapedFace>, shaper: GlyphShaper, faults: ShapingFaults, language: string): ShapedText {
   // By text, then face, then the numbers: a joined string key is built and hashed again on every call of every layout.
   const cache = new Map<string, Map<string, CachedItem[]>>();
-  const item = (text: string, face: string, size: number, letterSpacing: number, wordSpacing: number, smallCapsSize: number): ShapedItem => {
+  const item = (text: string, face: string, size: number, letterSpacing: number, wordSpacing: number, smallCapsSize: number, variantNumeric: VariantNumeric): ShapedItem => {
     let byFace = cache.get(text);
     if (byFace === undefined) {
       byFace = new Map<string, CachedItem[]>();
@@ -1733,7 +1768,7 @@ export function shapedText(faces: ReadonlyMap<string, ShapedFace>, shaper: Glyph
       cached = [];
       byFace.set(face, cached);
     }
-    for (const c of cached) if (c.size === size && c.letterSpacing === letterSpacing && c.wordSpacing === wordSpacing && c.smallCapsSize === smallCapsSize) return c.out;
+    for (const c of cached) if (c.size === size && c.letterSpacing === letterSpacing && c.wordSpacing === wordSpacing && c.smallCapsSize === smallCapsSize && sameNumeric(c.variantNumeric, variantNumeric)) return c.out;
     const f = faces.get(face);
     let out: ShapedItem;
     if (f === undefined) out = { ok: false, code: 'text-glyph', reason: `no bundled face ${face}` };
@@ -1741,21 +1776,21 @@ export function shapedText(faces: ReadonlyMap<string, ShapedFace>, shaper: Glyph
     else if (smallCapsSize >= 0 && face !== AHEM_FACE_ID) out = { ok: false, code: 'text-glyph', reason: `small caps in the face ${face}: Dragon synthesizes small capitals over Ahem only` };
     else if (smallCapsSize >= 0 && (letterSpacing !== 0 || wordSpacing !== 0)) out = { ok: false, code: 'text-glyph', reason: 'small-caps text with letter or word spacing is not shaped yet' };
     else {
-      const made = makeItem({ shaper, face: f.id, size, text, language, hanKerning: f.hanKerning, letterSpacing, wordSpacing, smallCapsSize, faults });
+      const made = makeItem({ shaper, face: f.id, size, text, language, hanKerning: f.hanKerning, letterSpacing, wordSpacing, smallCapsSize, variantNumeric, faults });
       if (!made.ok) out = { ok: false, code: 'text-glyph', reason: made.reason };
       else {
         const result = shapeItem(made.item);
         out = result.missing >= 0 ? { ok: false, code: 'text-glyph', reason: `U+${result.missing.toString(16).toUpperCase()} has no glyph; font fallback is outside the shaping core` } : { ok: true, item: made.item, result };
       }
     }
-    cached.push({ size, letterSpacing, wordSpacing, smallCapsSize, out });
+    cached.push({ size, letterSpacing, wordSpacing, smallCapsSize, variantNumeric, out });
     return out;
   };
   const line = (shaped: ShapedItem, start: number, breakOffset: number, available: LU, isBreakable: (offset: number) => boolean): LineResult => {
     if (!shaped.ok) return { ok: false, reason: shaped.reason };
     return lineWidth(shaped.item, shaped.result, start, breakOffset, available, isBreakable);
   };
-  const itemFor = (text: string, font: TextFont): ShapedItem => item(text, font.family, platformFontSize(font.size), font.letterSpacing, font.wordSpacing, font.smallCaps ? smallCapsFontSize(font.size) : -1);
+  const itemFor = (text: string, font: TextFont): ShapedItem => item(text, font.family, platformFontSize(font.size), font.letterSpacing, font.wordSpacing, font.smallCaps ? smallCapsFontSize(font.size) : -1, font.variantNumeric);
   const measurer: TextMeasurer = {
     // R5: SimpleFontData's rounded ascent and descent of the platform-size font; a zero line gap stays ZERO.
     metrics(font: TextFont): FontMetrics {

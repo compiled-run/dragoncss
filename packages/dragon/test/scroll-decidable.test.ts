@@ -2,7 +2,7 @@
 // (lower/scroll-decidable.ts), so a native scroll view never meets an engine refusal on the device. Checked against the engine.
 import { describe, expect, it } from 'vitest';
 import type { ControlBox, ControlKind, FontSpec, InlineBox, InlineChild, LayoutBox, LayoutInput, LayoutStyle, LineBreak, Overflow, ReplacedLeaf, TextLeaf } from '@dragon/layout';
-import { ahemMeasurer, scrollRanges } from '@dragon/layout';
+import { ahemMeasurer, NORMAL_NUMERIC, scrollRanges } from '@dragon/layout';
 import { undecidedScrollContainers } from '../src/lower/scroll-decidable.ts';
 import { createProjectWith, NO_FAULTS } from '../src/internal.ts';
 import type { Diagnostic, TreeNode } from '../src/index.ts';
@@ -36,7 +36,7 @@ const CLIP: Partial<LayoutStyle> = { overflowX: 'clip', overflowY: 'clip' };
 const AREA: ControlKind = { kind: 'text-area', cols: 20, rows: 2, font: AHEM, lineHeight: { kind: 'normal' }, avgChar: 'ahem', scrollbarInline: 0, scrollbarBlock: 0 };
 const span = (id: string, children: InlineChild[]): InlineBox => ({ kind: 'inline', id, style: { ...DIV, display: 'inline' }, font: AHEM, lineHeight: { kind: 'normal' }, children });
 const br = (id: string): LineBreak => ({ kind: 'br', id, font: AHEM, lineHeight: { kind: 'normal' } });
-const leaf = (id: string, value: string): TextLeaf => ({ kind: 'text', id, text: value, font: AHEM, lineHeight: { kind: 'normal' }, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap', letterSpacing: { kind: 'px', value: 0 }, wordSpacing: { kind: 'px', value: 0 }, overflowWrap: 'normal', wordBreak: 'normal', smallCaps: false });
+const leaf = (id: string, value: string): TextLeaf => ({ kind: 'text', id, text: value, font: AHEM, lineHeight: { kind: 'normal' }, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap', letterSpacing: { kind: 'px', value: 0 }, wordSpacing: { kind: 'px', value: 0 }, overflowWrap: 'normal', wordBreak: 'normal', smallCaps: false, variantNumeric: NORMAL_NUMERIC });
 const VIEW = { width: 400, height: 300 };
 
 const input = (children: LayoutBox[]): LayoutInput => ({

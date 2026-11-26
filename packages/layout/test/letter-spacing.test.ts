@@ -3,7 +3,7 @@
 // none after a zero-width space) and turns liga, clig and calt off (font_features.cc). The fake shaper below forms an "fi"
 // ligature unless liga is off, so each shaping plant changes a width here; the Chrome checks are packages/parity/test/text-spacing.test.ts.
 import { describe, expect, it } from 'vitest';
-import { absoluteRects, ahemMeasurer, layout, letterSpacingAfter, NO_ENGINE_FAULTS, NO_SHAPING_FAULTS, textRunLayoutUnit } from '../src/index.ts';
+import { absoluteRects, ahemMeasurer, layout, letterSpacingAfter, NORMAL_NUMERIC, NO_ENGINE_FAULTS, NO_SHAPING_FAULTS, textRunLayoutUnit } from '../src/index.ts';
 import type { LayoutBox, LayoutRect, ShapingFaults, TextLeaf } from '../src/index.ts';
 import type { GlyphShaper } from '../src/shaping.ts';
 import { FEATURE_STRIDE, GLYPH_STRIDE, NO_HAN_KERNING, shapedMeasurer, TAG_LIGA } from '../src/shaping.ts';
@@ -76,7 +76,7 @@ describe('letter-spacing on the shaped path', () => {
   };
   const width = (faults: ShapingFaults, spacing: number): number => {
     const m = shapedMeasurer(new Map([['Fake', { id: 'Fake', data: AHEM_FONT_DATA, hanKerning: NO_HAN_KERNING }]]), shaper, faults, 'en');
-    const r = m.measure('office', { family: 'Fake', size: 10, letterSpacing: spacing, wordSpacing: 0, smallCaps: false });
+    const r = m.measure('office', { family: 'Fake', size: 10, letterSpacing: spacing, wordSpacing: 0, smallCaps: false, variantNumeric: NORMAL_NUMERIC });
     if (!r.ok) throw new Error(r.reason);
     return r.measure.width / LU;
   };
