@@ -19,7 +19,7 @@
     "profile:rows": "node --conditions=dragon-internal scripts/gen-profile-rows.ts",
     "parity:platform-check": "node --conditions=dragon-internal packages/parity/src/cli/platform-check.ts",
     "parity:dpr-capture": "node --conditions=dragon-internal packages/parity/src/cli/dpr-capture.ts",
-    "layout:dpr-vectors": "node --conditions=dragon-internal packages/parity/src/cli/dpr-vectors.ts",
+    "layout:dpr-vectors": "node --max-old-space-size=4096 --conditions=dragon-internal packages/parity/src/cli/dpr-vectors.ts",
     "layout:paint-vectors": "node --conditions=dragon-internal packages/parity/src/cli/paint-vectors.ts",
     "parity:dpr-report": "node --conditions=dragon-internal packages/parity/src/cli/dpr-report.ts",
     "parity:lanes": "node --conditions=dragon-internal packages/parity/src/cli/lanes.ts",
