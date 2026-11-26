@@ -11,6 +11,7 @@ import { describe, expect, it } from 'vitest';
 import type { TextFont } from '../src/input.ts';
 import type { GlyphShaper, ShapedFace, ShapingFaults } from '../src/shaping.ts';
 import { FEATURE_STRIDE, NO_HAN_KERNING, NO_SHAPING_FAULTS, shapedMeasurer } from '../src/shaping.ts';
+import { NORMAL_NUMERIC } from '../src/text.ts';
 import type { TextFormatFaults } from '../src/rt-text-format.ts';
 import { NO_TEXT_FORMAT_FAULTS, widthMemoKey } from '../src/rt-text-format.ts';
 import type { FontData, TextMeasurer } from '../src/text.ts';
@@ -91,7 +92,7 @@ function fontData(id: string): FontData {
 
 const shaper = new WasmShaper();
 const faces = new Map<string, ShapedFace>(FAMILIES.map((id) => [id, { id, data: fontData(id), hanKerning: NO_HAN_KERNING }]));
-const faceFont = (id: string, size: number): TextFont => ({ family: id, size, letterSpacing: 0, wordSpacing: 0 }) as unknown as TextFont;
+const faceFont = (id: string, size: number): TextFont => ({ family: id, size, letterSpacing: 0, wordSpacing: 0, variantNumeric: NORMAL_NUMERIC }) as unknown as TextFont;
 const sha = (id: string): string => (oracle.faces[id] as { sha256: string }).sha256;
 
 /** DT-2's width memo in front of the measurer, keyed by widthMemoKey. */

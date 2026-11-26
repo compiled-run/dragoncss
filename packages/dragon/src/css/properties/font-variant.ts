@@ -63,6 +63,9 @@ export function variantNumericOf(v: CssValue): VariantNumeric {
   };
 }
 
+/** font-variant-numeric: normal as the engine reads it. */
+export const NORMAL_VARIANT_NUMERIC: VariantNumeric = variantNumericOf({ kind: 'keyword', value: 'normal' });
+
 /** Each feature longhand's keyword groups, in the order Chrome serializes them; a value takes at most one keyword of each group. */
 const GROUPS: { readonly [P in FontVariantLonghand]?: readonly (readonly string[])[] } = {
   'font-variant-ligatures': [['common-ligatures', 'no-common-ligatures'], ['discretionary-ligatures', 'no-discretionary-ligatures'], ['historical-ligatures', 'no-historical-ligatures'], ['contextual', 'no-contextual']],

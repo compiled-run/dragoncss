@@ -54,7 +54,7 @@ import type {
   VerticalAlignValue,
   WhiteSpaceCollapse,
 } from '@dragon/layout';
-import { NORMAL_NUMERIC } from '@dragon/layout';
+import { NORMAL_VARIANT_NUMERIC } from '../css/properties/font-variant.ts';
 import type { Longhand, TextLonghand } from '../css/properties.ts';
 import { INHERITED, LONGHANDS } from '../css/properties.ts';
 import type { CssValue } from '../css/stylesheet.ts';
@@ -786,7 +786,7 @@ function lowerInline(c: ResolvedElement | ResolvedText, l: Lowerer): InlineChild
   const zoom = zoomChain(c, l.zoom);
   const own = lowerFont(id, zoomedGet(id, (p: TextLonghand) => (c.props.get(p) as ResolvedValue).value, zoom), l.mode);
   if (c.element.tag === 'br') {
-    if (l.faults.brAsSpace) return { kind: 'text', id, text: ' ', font: own.font, lineHeight: own.lineHeight, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap', letterSpacing: { kind: 'px', value: 0 }, wordSpacing: { kind: 'px', value: 0 }, overflowWrap: 'normal', wordBreak: 'normal', smallCaps: false, variantNumeric: NORMAL_NUMERIC };
+    if (l.faults.brAsSpace) return { kind: 'text', id, text: ' ', font: own.font, lineHeight: own.lineHeight, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap', letterSpacing: { kind: 'px', value: 0 }, wordSpacing: { kind: 'px', value: 0 }, overflowWrap: 'normal', wordBreak: 'normal', smallCaps: false, variantNumeric: NORMAL_VARIANT_NUMERIC };
     return { kind: 'br', id, font: own.font, lineHeight: own.lineHeight };
   }
   const kids = boxChildren(c);

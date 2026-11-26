@@ -9,7 +9,7 @@ import type { GlyphShaper } from '../src/shaping.ts';
 import { pieceGlyphs } from '../src/shaping.ts';
 import { latinBreakClass, maybeCjkIdeographOrSymbol } from '../src/inline.ts';
 import { coveredIndex } from '../src/text.ts';
-import { AHEM_FONT_DATA } from '../src/text.ts';
+import { AHEM_FONT_DATA, NORMAL_NUMERIC } from '../src/text.ts';
 import { absoluteRects, ahemMeasurer, fromCssPx, layout, NO_ENGINE_FAULTS, NO_GRID_FAULTS, placeLines } from '../src/index.ts';
 import type { LayoutBox, LayoutRect, LayoutResult, TextLeaf } from '../src/index.ts';
 import { box, br, neutralEnvironment, px, span, text } from './helpers.ts';
@@ -150,7 +150,7 @@ describe('text-align: justify on the real-font path', () => {
     for (const cp of [0x20, 0x41, 0xe9, 0x2c6, 0x2013, 0x2014, 0x2018, 0x2019, 0x201c, 0x201d, 0x2026, 0x20ac]) expect(maybeCjkIdeographOrSymbol(cp), cp.toString(16)).toBe(false);
   });
   it('gives each shaped glyph its code point, so a device shifts it by that code point', () => {
-    const g = pieceGlyphs(shapedMeasurer, 'XX XX', { family: SHAPED, size: 10 } as never, 1, 4);
+    const g = pieceGlyphs(shapedMeasurer, 'XX XX', { family: SHAPED, size: 10, variantNumeric: NORMAL_NUMERIC } as never, 1, 4);
     expect(g.ok && g.chars).toEqual([0, 1, 2]);
   });
 });

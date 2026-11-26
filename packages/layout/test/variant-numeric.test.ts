@@ -1,5 +1,5 @@
 // TXT-FONTFEAT: font-variant-numeric on the shaped path. The shaper turns each keyword into its OpenType feature over the whole item,
-// in FontFeatures::Initialize's order (font_features.cc), after chws. The fake shaper below records the features it is given and
+// in Blink's order (shaping.ts numericFeatures), after chws. The fake shaper below records the features it is given and
 // draws a digit 6px wide, or 10px under tnum, so numericFeaturesDropped changes a width here; the Chrome checks are
 // packages/parity/test/text-font-variant-numeric.test.ts.
 import { describe, expect, it } from 'vitest';

@@ -150,7 +150,7 @@ const shaper = new WasmShaper();
 const faceIds = [...files.keys()];
 const facesFor = (language: string): Map<string, ShapedFace> =>
   new Map(faceIds.map((id) => [id, { id, data: id === 'Ahem' ? AHEM_FONT_DATA : fontData(id), hanKerning: language === 'ja' ? hanKerningData(id, 16, language) : NO_HAN_KERNING }]));
-const faceFont = (id: string, size: number): TextFont => ({ family: id, size, letterSpacing: 0, wordSpacing: 0 }) as unknown as TextFont;
+const faceFont = (id: string, size: number): TextFont => ({ family: id, size, letterSpacing: 0, wordSpacing: 0, variantNumeric: NORMAL_NUMERIC }) as unknown as TextFont;
 
 type CaseWidths = { readonly id: string; readonly lines: readonly number[]; readonly nowrap: number; readonly error: string };
 
