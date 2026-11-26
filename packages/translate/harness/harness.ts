@@ -4030,6 +4030,7 @@ export function runMarklessLayout(line: string): string {
     if (parsed.kind === 'obj' && parsed.values.has('slots')) keys.push('slots');
     if (parsed.kind === 'obj' && parsed.values.has('sticky')) keys.push('sticky');
     if (parsed.kind === 'obj' && parsed.values.has('textAreas')) keys.push('textAreas');
+    if (parsed.kind === 'obj' && parsed.values.has('naturals')) keys.push('naturals');
     return marklessLayout(obj(parsed, keys, '$'), null);
   } catch (e) {
     if (e instanceof HarnessError) return `["harness-error",${q(e.detail)}]`;
@@ -4336,6 +4337,74 @@ function variantRootJson(plan: JsonObj, vi: number): JsonValue {
   return field(obj(variants[vi] as JsonValue, ['rootFontSize', 'root'], `$.plan.variants[${vi}]`), 'root', `$.plan.variants[${vi}]`);
 }
 
+/** REPL-r2a on the device: the tree with each img that follows its image given its decoded natural size in CSS px ([width, height]). */
+export function withFollowedNaturals(box: LayoutBox, given: Map<string, readonly number[]>): LayoutBox {
+  return { ...box, children: box.children.map((c) => followedChild(c, given)) };
+}
+
+function followedChild(c: LayoutBox['children'][number], given: Map<string, readonly number[]>): LayoutBox['children'][number] {
+  if (c.kind === 'replaced') {
+    const leaf: ReplacedLeaf = c;
+    const g = given.get(leaf.id);
+    if (g === undefined || leaf.natural.kind !== 'followed' || g.length !== 2) return c;
+    const natural: NaturalSizeValue = { kind: 'followed', width: g[0] as number, height: g[1] as number };
+    const out: ReplacedLeaf = { ...leaf, natural };
+    return out;
+  }
+  if (c.kind === 'box') return withFollowedNaturals(c, given);
+  if (c.kind === 'control') {
+    const control: ControlBox = c;
+    const out: ControlBox = { ...control, children: control.children.map((k) => followedChild(k, given)) };
+    return out;
+  }
+  return c;
+}
+
+/** The ids of the imgs in the tree that follow their image. */
+export function followedImageIds(box: LayoutBox | LayoutBox['children'][number], out: string[]): string[] {
+  if (box.kind === 'replaced' && box.natural.kind === 'followed') out.push(box.id);
+  if (box.kind === 'box' || box.kind === 'control') for (const c of box.children) followedImageIds(c, out);
+  return out;
+}
+
+/**
+ * REPL-r2a: naturals, {img id: [width, height] in CSS px, or null while it loads or has no src (0 by 0)}, one per img of the
+ * variant that follows its image and no other.
+ */
+function planNaturals(v: JsonValue, followed: readonly string[]): Map<string, readonly number[]> {
+  const out = new Map<string, readonly number[]>();
+  const known = new Map<string, boolean>();
+  for (const id of followed) known.set(id, true);
+  if (v.kind !== 'obj') return fail('$.naturals: expected an object');
+  for (const [id, n] of v.values) {
+    if (!known.has(id)) fail(`$.naturals.${id}: not an img of the plan that follows its image`);
+    if (n.kind === 'null') {
+      out.set(id, [0, 0]);
+      continue;
+    }
+    const a = arr(n, `$.naturals.${id}`);
+    if (a.length !== 2) fail(`$.naturals.${id}: expected [width, height] or null`);
+    const w = num(a[0] as JsonValue, `$.naturals.${id}[0]`);
+    const ht = num(a[1] as JsonValue, `$.naturals.${id}[1]`);
+    if (!(w >= 0) || !(ht >= 0)) fail(`$.naturals.${id}: a natural size is not negative`);
+    out.set(id, [w, ht]);
+  }
+  return out;
+}
+
+/**
+ * REPL-r2a ruling 1(c): the device's own proof that an image moved only block sizes. Every box's and line's inline position and
+ * size equal those of the layout with each such img at 0 by 0, at the same viewport and ratio; else the layout stops, naming it.
+ */
+function followedInlineCheck(loading: LayoutInput, measurer: TextMeasurer, abs: Map<string, LayoutRect>): void {
+  const base = layoutWithInflow(loading, measurer, NO_ENGINE_FAULTS, NO_GRID_FAULTS).result;
+  if (base.kind !== 'ok') fail(`the engine refused the plan while its images load, at ${base.unsupported.nodeId}: ${base.unsupported.code} ${base.unsupported.detail}`);
+  for (const [id, b] of absoluteRects(base.boxes)) {
+    const now = abs.get(id);
+    if (now === undefined || now.x !== b.x || now.width !== b.width) fail(`an image that follows its image changes the inline size or position of ${id} (runtime-image-size)`);
+  }
+}
+
 function marklessLayout(o: JsonObj, live: GlyphShaper | null): string {
     const plan = planObj(field(o, 'plan', '$'));
     const values = slotValues(o, planSlots(plan));
@@ -4353,13 +4422,26 @@ function marklessLayout(o: JsonObj, live: GlyphShaper | null): string {
     const variant = spliced === null ? slottedVariant(plan, parts.variant, parts.fields, parts.refusals, values) : spliced.variant;
     const viewport = decodeViewport(field(o, 'viewport', '$'), '$.viewport');
     const safe = obj(field(o, 'safeArea', '$'), ['top', 'right', 'bottom', 'left'], '$.safeArea');
-    const input: LayoutInput = {
+    const followed = followedImageIds(variant.root, []);
+    // REPL-r2a ruling 4: a row's copy of an img that follows its image is not laid out again per row.
+    for (const id of followed) if (holds(id, '@')) fail(`the engine refused the plan at ${id} (a row: <template id>@<row key>): runtime-image-size an img that follows its image is not laid out again inside a row`);
+    const hasNaturals = o.values.has('naturals');
+    const given = hasNaturals ? planNaturals(field(o, 'naturals', '$'), followed) : new Map<string, readonly number[]>();
+    const loading: LayoutInput = {
       viewport,
       devicePixelRatio: dpr,
       viewportUnits: { small: viewport, large: viewport, dynamic: viewport },
       safeArea: { top: numField(safe, 'top', '$.safeArea'), right: numField(safe, 'right', '$.safeArea'), bottom: numField(safe, 'bottom', '$.safeArea'), left: numField(safe, 'left', '$.safeArea') },
       rootFontSize: variant.rootFontSize,
       root: variant.root,
+    };
+    const input: LayoutInput = {
+      viewport,
+      devicePixelRatio: dpr,
+      viewportUnits: { small: viewport, large: viewport, dynamic: viewport },
+      safeArea: { top: numField(safe, 'top', '$.safeArea'), right: numField(safe, 'right', '$.safeArea'), bottom: numField(safe, 'bottom', '$.safeArea'), left: numField(safe, 'left', '$.safeArea') },
+      rootFontSize: variant.rootFontSize,
+      root: hasNaturals ? withFollowedNaturals(variant.root, given) : variant.root,
     };
     const dashed = spliced === null ? parts.dashed : spliced.dashed;
     const scrollers = spliced === null ? parts.scrollers : spliced.scrollers;
@@ -4370,6 +4452,7 @@ function marklessLayout(o: JsonObj, live: GlyphShaper | null): string {
     if (r.kind !== 'ok') return fail(`the engine refused the plan at ${r.unsupported.nodeId}${holds(r.unsupported.nodeId, '@') ? ' (a row: <template id>@<row key>)' : ''}: ${r.unsupported.code} ${r.unsupported.detail}`);
     const boxes = r.boxes;
     const abs = absoluteRects(boxes);
+    if (hasNaturals) followedInlineCheck(loading, measurer, abs);
     const styles = new Map<string, LayoutStyle>();
     planStyles(input.root, styles);
     const texts = new Map<string, string>();
