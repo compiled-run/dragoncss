@@ -564,8 +564,12 @@ export type BoxType = 'element' | 'anonymous' | 'block-in-inline';
 export type ObjectFit = 'fill' | 'contain' | 'cover' | 'none' | 'scale-down';
 /** One object-position axis as an offset from the left or top edge of the content box; the compiler refuses calculations. */
 export type ObjectPositionValue = Px | Percent;
-/** The natural dimensions of a replaced element in CSS px: an image's size (its ratio is the size's), or none (an iframe). */
-export type NaturalSizeValue = { readonly kind: 'image'; readonly width: number; readonly height: number } | { readonly kind: 'none' };
+/**
+ * The natural dimensions of a replaced element in CSS px: an image's size (its ratio is the size's), none (an iframe), or runtime:
+ * an img whose src the app sets while it runs, whose size the build does not know, so a layout that reads it is refused
+ * (runtime-image-size) and paint takes the decoded image's size on the device (paint.ts runtimeImagePaint).
+ */
+export type NaturalSizeValue = { readonly kind: 'image'; readonly width: number; readonly height: number } | { readonly kind: 'none' } | { readonly kind: 'runtime' };
 
 /**
  * A block-level replaced element (CSS 2.2 §10.3.4, §10.6.2; css-sizing-4 §5): a leaf box whose content is an image or a

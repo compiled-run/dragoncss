@@ -904,7 +904,9 @@ function lowerReplaced(given: ResolvedElement, l: Lowerer, gridParent: GridConta
   // css-inline-3 §5.1: a replaced element holds no inline content, so text-box-trim has nothing to trim.
   const style: LayoutStyle = { ...own, textBoxTrim: null, gridItem: gridItem === null ? own.gridItem : gridItem };
   let natural: ReplacedLeaf['natural'] = { kind: 'none' };
-  if (el.element.tag === 'img') {
+  if (el.element.tag === 'img' && el.element.node.runtimeSrc !== undefined) {
+    natural = { kind: 'runtime' };
+  } else if (el.element.tag === 'img') {
     const src = el.element.attributes.get('src');
     const size = src === undefined ? undefined : images.get(src);
     if (size === undefined) throw new LoweringError(id, 'src', `<img> ${id} has no image the build read`);

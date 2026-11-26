@@ -39,6 +39,7 @@ packages/parity/expected-media/** merge=dragon-generated
 packages/parity/expected-pixels/** merge=dragon-generated
 packages/parity/expected-quads/** merge=dragon-generated
 packages/parity/expected-resize/** merge=dragon-generated
+packages/parity/expected-runtime/** merge=dragon-generated
 packages/parity/expected-scroll/** merge=dragon-generated
 packages/parity/expected-sticky-scroll/** merge=dragon-generated
 packages/parity/expected-text-latin/** merge=dragon-generated

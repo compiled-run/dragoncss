@@ -88,6 +88,11 @@ export type ElementNode = {
   readonly attributes: readonly AttributeBinding[];
   readonly children: readonly TreeNode[];
   readonly origin: Origin;
+  /**
+   * Only on an img with no src binding: the app sets its src while it runs, so Dragon lays it out without the image (REPL-r1) and
+   * the host draws what it loads. absent: the src may also be missing (the img shows no image).
+   */
+  readonly runtimeSrc?: { readonly absent: boolean };
 };
 
 export type TextNode = { readonly kind: 'text'; readonly id: string; readonly text: string; readonly origin: Origin };

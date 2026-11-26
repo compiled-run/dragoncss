@@ -1076,6 +1076,10 @@ function naturalSizeValue(v: JsonValue, path: string): NaturalSizeValue {
     const o = obj(v, ['kind', 'width', 'height'], path);
     return { kind: 'image', width: numField(o, 'width', path), height: numField(o, 'height', path) };
   }
+  if (k === 'runtime') {
+    obj(v, ['kind'], path);
+    return { kind: 'runtime' };
+  }
   return fail(`${path}: unknown kind ${k}`);
 }
 
@@ -4408,7 +4412,8 @@ function marklessLayout(o: JsonObj, live: GlyphShaper | null): string {
 
     const placed = layoutWithInflow(input, measurer, NO_ENGINE_FAULTS, NO_GRID_FAULTS);
     const r = placed.result;
-    if (r.kind !== 'ok') return fail(`the engine refused the plan at ${r.unsupported.nodeId}: ${r.unsupported.code} ${r.unsupported.detail}`);
+    // REPL-r1: a row's copy is named <template id>@<row key>, so a stop inside a row names the row.
+    if (r.kind !== 'ok') return fail(`the engine refused the plan at ${r.unsupported.nodeId}${holds(r.unsupported.nodeId, '@') ? ' (a row: <template id>@<row key>)' : ''}: ${r.unsupported.code} ${r.unsupported.detail}`);
     const boxes = r.boxes;
     const abs = absoluteRects(boxes);
     const styles = new Map<string, LayoutStyle>();

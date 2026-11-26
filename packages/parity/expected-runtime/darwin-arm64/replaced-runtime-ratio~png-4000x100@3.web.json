@@ -1,0 +1,74 @@
+{
+  "fixture": "replaced-runtime-ratio",
+  "chrome": "145.0.7632.6",
+  "browser": "chromium-headless-shell",
+  "platform": "darwin-arm64",
+  "viewport": {
+    "width": 400,
+    "height": 300
+  },
+  "devicePixelRatio": 3,
+  "direction": "ltr",
+  "nodes": [
+    {
+      "id": "html",
+      "kind": "element",
+      "hasBox": true,
+      "x": 0,
+      "y": 0,
+      "width": 400,
+      "height": 213.25,
+      "computed": null
+    },
+    {
+      "id": "body",
+      "kind": "element",
+      "hasBox": true,
+      "x": 0,
+      "y": 0,
+      "width": 400,
+      "height": 213.25,
+      "computed": null
+    },
+    {
+      "id": "c",
+      "kind": "element",
+      "hasBox": true,
+      "x": 0,
+      "y": 0,
+      "width": 400,
+      "height": 213.25,
+      "computed": null
+    },
+    {
+      "id": "a",
+      "kind": "element",
+      "hasBox": true,
+      "x": 0,
+      "y": 0,
+      "width": 100,
+      "height": 50,
+      "computed": null
+    },
+    {
+      "id": "b",
+      "kind": "element",
+      "hasBox": true,
+      "x": 0,
+      "y": 50,
+      "width": 120,
+      "height": 80,
+      "computed": null
+    },
+    {
+      "id": "c3",
+      "kind": "element",
+      "hasBox": true,
+      "x": 0,
+      "y": 130,
+      "width": 148,
+      "height": 83.25,
+      "computed": null
+    }
+  ]
+}

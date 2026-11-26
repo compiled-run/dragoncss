@@ -1,0 +1,74 @@
+{
+  "fixture": "replaced-runtime-flex-rtl",
+  "chrome": "145.0.7632.6",
+  "browser": "chromium-headless-shell",
+  "platform": "darwin-arm64",
+  "viewport": {
+    "width": 400,
+    "height": 300
+  },
+  "devicePixelRatio": 2.625,
+  "direction": "rtl",
+  "nodes": [
+    {
+      "id": "html",
+      "kind": "element",
+      "hasBox": true,
+      "x": 0,
+      "y": 0,
+      "width": 400,
+      "height": 164,
+      "computed": null
+    },
+    {
+      "id": "body",
+      "kind": "element",
+      "hasBox": true,
+      "x": 0,
+      "y": 0,
+      "width": 400,
+      "height": 164,
+      "computed": null
+    },
+    {
+      "id": "row",
+      "kind": "element",
+      "hasBox": true,
+      "x": 250,
+      "y": 0,
+      "width": 150,
+      "height": 100,
+      "computed": null
+    },
+    {
+      "id": "a",
+      "kind": "element",
+      "hasBox": true,
+      "x": 250,
+      "y": 0,
+      "width": 150,
+      "height": 100,
+      "computed": null
+    },
+    {
+      "id": "column",
+      "kind": "element",
+      "hasBox": true,
+      "x": 180,
+      "y": 104,
+      "width": 220,
+      "height": 60,
+      "computed": null
+    },
+    {
+      "id": "b",
+      "kind": "element",
+      "hasBox": true,
+      "x": 200,
+      "y": 104,
+      "width": 200,
+      "height": 60,
+      "computed": null
+    }
+  ]
+}

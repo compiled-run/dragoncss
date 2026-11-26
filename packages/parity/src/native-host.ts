@@ -9,7 +9,7 @@ import { dirname, join } from 'node:path';
 import { availableParallelism } from 'node:os';
 import type { LayoutBox, LayoutInput, LayoutRect, TextMeasurer } from '@dragon/layout';
 import type { LU } from '@dragon/layout';
-import { AHEM_FACE_ID, deviceShapedMeasurer, layout, LU_PER_PX, menuListArrows, NO_ENGINE_FAULTS, opacityAlpha8, outlineOffsetPx, outlineRings, outlineWidthPx, platformFontSize, replacedPaint, resolveBorder, resolvePadding, resolvedInput, roundedShape, scrollRanges, snapEdges, zoomFontSize, zoomInput } from '@dragon/layout';
+import { AHEM_FACE_ID, deviceShapedMeasurer, layout, LU_PER_PX, menuListArrows, NO_ENGINE_FAULTS, opacityAlpha8, outlineOffsetPx, outlineRings, outlineWidthPx, platformFontSize, replacedPaint, resolveBorder, resolvePadding, resolvedInput, roundedShape, runtimeImagePaint, scrollRanges, snapEdges, zoomFontSize, zoomInput } from '@dragon/layout';
 import type { Compiled, EmitCase, ExpectedEngine, GeneratedFile, NativeBackend, NativeProgram, SupportPlant } from 'dragon';
 import { emitAndroidViewsCases, emitNativeSupport, emitUikitCases, engineLayoutProjection, expectedDigest, expectedDump, nativePrograms, programInput, SUPPORT_PLANTS } from 'dragon';
 import { emitStatePrograms } from 'dragon';
@@ -184,7 +184,7 @@ export function glyphMeasurer(): TextMeasurer {
 
 /** The TS engine the expected dumps are projected with: the helpers the device runs translated, and the float a platform stores. */
 export function expectedEngine(): ExpectedEngine {
-  return { layout, measurer: referenceMeasurer(), snapEdges, zoomInput, resolvedInput, noFaults: NO_ENGINE_FAULTS, resolveBorder, resolvePadding: (st, cb) => resolvePadding(st, cb as LU), replacedPaint, opacityAlpha8, luPerPx: LU_PER_PX, platformFontSize, zoomFontSize, float32: Math.fround, scrollRanges, menuListArrows, paint: { roundedShape, outlineRings, outlineWidthPx, outlineOffsetPx } };
+  return { layout, measurer: referenceMeasurer(), snapEdges, zoomInput, resolvedInput, noFaults: NO_ENGINE_FAULTS, resolveBorder, resolvePadding: (st, cb) => resolvePadding(st, cb as LU), replacedPaint, runtimeImagePaint, opacityAlpha8, luPerPx: LU_PER_PX, platformFontSize, zoomFontSize, float32: Math.fround, scrollRanges, menuListArrows, paint: { roundedShape, outlineRings, outlineWidthPx, outlineOffsetPx } };
 }
 
 const emitted = new Map<NativeTarget, EmitCase[]>();
@@ -391,6 +391,8 @@ func dragonCase(_ k: Int, run: DragonRun, out: String, stage: UIView, scale: Dou
     t0 = CACurrentMediaTime()
     do {
       try tree.apply(c.input(scale), measurer: bridge.measurer, scale: scale, bridge: bridge)
+      // REPL-r1: a fixture's runtimeSrc imgs have no src in its base capture, so the host tells the tree there is none.
+      for rid in tree.runtimeImageIds { try tree.setRuntimeImage(rid, nil) }
     } catch {
       fatalError("dragon host: \(id): \(error)")
     }
@@ -825,6 +827,8 @@ class DragonActivity : Activity() {
       t0 = SystemClock.elapsedRealtimeNanos()
       tree.safeArea = dragonSafeArea(frame, scale)
       tree.apply(c.input(scale), bridge.measurer, scale, bridge)
+      // REPL-r1: a fixture's runtimeSrc imgs have no src in its base capture, so the host tells the tree there is none.
+      for (rid in tree.runtimeImageIds) tree.setRuntimeImage(rid, null)
       frame.addView(tree.root, FrameLayout.LayoutParams(tree.root.dragonFrame[2], tree.root.dragonFrame[3]))
     }
     // The tree redrawn, then the block once that frame is committed to the display. Only the commit shows the frame holds the

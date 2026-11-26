@@ -1,0 +1,54 @@
+{
+  "fixture": "reject-runtime-src-selector",
+  "chrome": "145.0.7632.6",
+  "browser": "chromium-headless-shell",
+  "platform": "darwin-arm64",
+  "viewport": {
+    "width": 400,
+    "height": 300
+  },
+  "devicePixelRatio": 2,
+  "direction": "ltr",
+  "nodes": [
+    {
+      "id": "html",
+      "kind": "element",
+      "hasBox": true,
+      "x": 0,
+      "y": 0,
+      "width": 400,
+      "height": 60,
+      "computed": null
+    },
+    {
+      "id": "body",
+      "kind": "element",
+      "hasBox": true,
+      "x": 0,
+      "y": 0,
+      "width": 400,
+      "height": 60,
+      "computed": null
+    },
+    {
+      "id": "c",
+      "kind": "element",
+      "hasBox": true,
+      "x": 0,
+      "y": 0,
+      "width": 400,
+      "height": 60,
+      "computed": null
+    },
+    {
+      "id": "a",
+      "kind": "element",
+      "hasBox": true,
+      "x": 0,
+      "y": 0,
+      "width": 120,
+      "height": 60,
+      "computed": null
+    }
+  ]
+}

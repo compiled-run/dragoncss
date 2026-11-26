@@ -455,7 +455,7 @@ export function validateInput(input: FrontEndResult, projectId: string, diagnost
         diagnostics.push(diagnostic('DRAGON_TREE_NODE_KIND', { origin: where, message: `${c.id}/${id} has unknown node kind "${String(kind)}"` }));
         return;
       }
-      if (!exactKeys(n, shape) || !isString(n['id']) || !isTreeNodeId(id)) {
+      if (!exactKeys(n, shape, kind === 'element' ? ['runtimeSrc'] : []) || !isString(n['id']) || !isTreeNodeId(id)) {
         invalid(`${c.id}/${id}: a ${String(kind)} node needs exactly ${shape.join(', ')}, and an id without "/" or ":"`, where);
         ok = false;
         return;
@@ -494,6 +494,18 @@ export function validateInput(input: FrontEndResult, projectId: string, diagnost
         invalid(`${c.id}/${el.id}: malformed element`, where);
         ok = false;
         return;
+      }
+      // REPL-r1: runtimeSrc marks an img whose src the app sets at run time, so the tree gives it no src of its own.
+      const runtime: unknown = el.runtimeSrc;
+      if (runtime !== undefined) {
+        const problem = !exactKeys(runtime, ['absent']) || typeof runtime['absent'] !== 'boolean' ? 'must be exactly { absent: boolean }'
+          : el.tag !== 'img' ? `is only for an img, not a ${el.tag}`
+          : el.attributes.some((b) => isRecord(b) && b['name'] === 'src') ? 'cannot be given with a src binding'
+          : null;
+        if (problem !== null) {
+          ok = false;
+          diagnostics.push(diagnostic('DRAGON_CONFIG_INVALID', { origin: where, message: `${c.id}/${el.id}: runtimeSrc ${problem}`, manual: 'Give runtimeSrc only on an img whose src the app sets at run time, with no src binding.' }));
+        }
       }
       for (const b of el.classes) {
         if (!exactKeys(b, ['value', 'origin'])) {
