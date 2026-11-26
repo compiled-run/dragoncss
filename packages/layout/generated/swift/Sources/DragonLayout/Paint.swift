@@ -16,7 +16,7 @@ public func paint_replacedPaint(_ leaf: ReplacedLeaf, _ content: ObjectRect) thr
   let natural: NaturalSizing? = try replaced_naturalSizingOf(leaf)
   // ts: packages/layout/src/paint.ts:28
   if (natural == nil) {
-    throw JsError(message: jsConcat(leaf.id, S.s289))
+    throw JsError(message: jsConcat(leaf.id, S.s292))
   }
   return try paint_paintOf(leaf, jsUnwrap(natural), content)
 }
