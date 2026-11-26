@@ -19,6 +19,7 @@ import { registerFace } from './text-shaper-host.ts';
 import { repoPath } from './paths.ts';
 import { systemMeasurer } from './system-fonts/measurer.ts';
 import type { MarklessPlan, PlanDensity } from './markless-plan.ts';
+import type { GroupProduct } from './state-groups.ts';
 import { heightDependence, marklessPlan, mergedPlan, PLAN_DENSITIES, planInteractionAssignments, planStateProgram, recordDensity } from './markless-plan.ts';
 import type { DensityJob, DensityResult } from './markless-plan-workers.ts';
 import { planWorkers, recordDensitiesInWorkers } from './markless-plan-workers.ts';
@@ -117,6 +118,8 @@ export type ExportTarget = {
   readonly interaction?: { readonly levels: readonly ExportInteractionLevel[] };
   /** Factored states (schema /2): the groups' tables; the target's own table then holds only the initial assignment of every group. */
   readonly groups?: readonly ExportGroup[];
+  /** Factored states, from a Markless input: every combination of the tables' entries as one state machine (state-groups.ts GroupProduct). */
+  readonly product?: GroupProduct;
   /** With a plan: each list's parent box and the ids of a row's top boxes, which a phone copies once per row. */
   readonly planRepeats?: readonly { readonly id: string; readonly parent: string; readonly template: readonly string[] }[];
 };

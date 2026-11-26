@@ -6,10 +6,10 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { NO_INTERACTION_FAULTS, interactionStart, interactionState, keyboardFocused, pointerMoved, touchPressed } from '../../layout/src/rt-interaction.ts';
 import type { InteractionTables } from '@dragon/layout';
 import { marklessStyleExport } from '../src/markless-style-input.ts';
-import type { ExportAssignment, ExportNode, ExportTarget } from '../src/native-style-export.ts';
+import type { ExportAssignment, ExportGroup, ExportNode, ExportTarget } from '../src/native-style-export.ts';
 import { NATIVE_STYLE_EXPORT_SCHEMA, NATIVE_STYLE_EXPORT_SCHEMA_GROUPS, parseNativeStyleExport } from '../src/native-style-export.ts';
 import { composedNodes, interactionStateOf, mergedOrder, shownState, tableEntries } from '../src/state-groups.ts';
-import type { PooledInteraction } from '../src/state-groups.ts';
+import type { GroupProduct, PooledInteraction } from '../src/state-groups.ts';
 import { repoPath } from '../src/paths.ts';
 
 const { runMarklessLayout } = (await import(new URL('../../translate/harness/harness.ts', import.meta.url).href)) as { runMarklessLayout(line: string): string };
@@ -120,6 +120,74 @@ function expectCombines(text: string, plan: boolean): number {
           compared++;
         }
       });
+    }
+  }
+  return compared;
+}
+
+/**
+ * The product skeleton (GroupProduct) driven as a host drives it, against the product's export: each combination's nodes, paint
+ * order, transitions and layout, and every interaction event through the combined level's runtime, by values.
+ */
+function expectProduct(text: string): number {
+  const product = exportOf(text, false, true);
+  const grouped = exportOf(text, true, true);
+  let compared = 0;
+  for (const t of ['ios', 'android'] as const) {
+    const p = product.targets[t] as ExportTarget;
+    const g = grouped.targets[t] as ExportTarget;
+    const sk = g.product as GroupProduct;
+    const tables = [g, ...(g.groups ?? [])];
+    const plan = g.plan as NonNullable<ExportTarget['plan']>;
+    const firsts = [0, ...(plan.groups ?? []).map((x) => x.first)];
+    const key = (v: Readonly<Record<string, unknown>>): string => JSON.stringify(Object.keys(v).sort().map((k) => [k, v[k]]));
+    const valuesOf = (tuple: readonly number[]): Record<string, unknown> => Object.assign({}, ...tuple.map((e, ti) => {
+      const a = (tables[ti] as ExportTarget).assignments[e] as ExportAssignment;
+      return ti === 0 ? a.values : Object.fromEntries(((tables[ti] as ExportGroup).groupStates).map((st) => [st, a.values[st]]));
+    }));
+    const at = new Map(sk.assignments.map((tuple, j) => [key(valuesOf(tuple)), j]));
+    expect(sk.assignments.length).toBe(p.assignments.length);
+    expect(sk.states.map((st) => [st.key, st.domain])).toEqual(p.states.map((st) => [st.key, st.domain]));
+    const dpr = (plan.densities[0] as { dpr: number }).dpr;
+    const layout = (x: ExportTarget, extra: object): string => runMarklessLayout(JSON.stringify({ dpr, viewport: p.viewport, safeArea: { top: 0, right: 0, bottom: 0, left: 0 }, plan: x.plan, ...extra }));
+    // What table ti shows for entry e and its level's state s (-1: the entry), and that table's plan entry for it.
+    const shownOf = (ti: number, e: number, s: number): ExportAssignment => {
+      const base = (tables[ti] as ExportTarget).assignments[e] as ExportAssignment;
+      return s < 0 ? base : shownState(base, interactionStateOf(tables[ti] as ExportTarget, e, s));
+    };
+    const planOf = (ti: number, e: number, s: number): number => (s < 0 ? (firsts[ti] as number) + e : (((tables[ti] as ExportTarget).interaction?.levels[e]?.planAssignments as number[])[s] as number)) - (firsts[ti] as number);
+    for (const [i, a] of p.assignments.entries()) {
+      const j = at.get(key(a.values)) as number;
+      const tuple = sk.assignments[j] as readonly number[];
+      const what = `${t} ${key(a.values)}`;
+      const combine = (states: readonly number[]): ExportNode[] => composedNodes(g, a.values, (ti) => shownOf(ti, tuple[ti] as number, states[ti] as number));
+      const none = tuple.map(() => -1);
+      expect(applied(combine(none)), what).toEqual(applied(a.nodes));
+      expect(paintOrders(combine(none)), `${what} paint order`).toEqual(paintOrders(a.nodes));
+      const lineOf = (states: readonly number[]): object => ({ assignment: planOf(0, tuple[0] as number, states[0] as number), groups: tuple.slice(1).map((e, k) => planOf(k + 1, e, states[k + 1] as number)) });
+      expect(layout(g, lineOf(none)), `${what} layout`).toBe(layout(p, { assignment: i }));
+      p.states.forEach((st, si) => st.domain.forEach((v, vi) => {
+        const want = p.next[i]?.[si]?.[vi] as number;
+        const got = sk.next[j]?.[si]?.[vi] as number;
+        expect(got < 0 ? null : key(valuesOf(sk.assignments[got] as readonly number[])), `${what} set ${st.key}=${String(v)}`).toBe(want < 0 ? null : key((p.assignments[want] as ExportAssignment).values));
+      }));
+      compared++;
+      const pl = p.interaction?.levels[i];
+      const sl = sk.interaction?.levels[j];
+      expect(sl === undefined, `${what} interaction`).toBe(pl === undefined);
+      if (pl === undefined || sl === undefined) continue;
+      for (const address of pl.addresses) for (const event of ['hover', 'touch', 'focus'] as const) {
+        const k = stateAfter(pl.tables, pl.addresses.indexOf(address), event);
+        const kk = stateAfter(sl.tables, sl.addresses.indexOf(address), event);
+        expect(kk === null, `${what} ${event} ${address} reachable`).toBe(k === null);
+        if (k === null || kk === null) continue;
+        const states = kk < 0 ? none : (sl.states[kk] as readonly number[]);
+        const want = k < 0 ? a : (pl.states[k] as ExportAssignment);
+        expect(applied(combine(states)), `${what} ${event} ${address}`).toEqual(applied(want.nodes));
+        expect(paintOrders(combine(states)), `${what} ${event} ${address} paint order`).toEqual(paintOrders(want.nodes));
+        expect(layout(g, lineOf(states)), `${what} ${event} ${address} layout`).toBe(layout(p, { assignment: k < 0 ? i : (pl.planAssignments as number[])[k] as number }));
+        compared++;
+      }
     }
   }
   return compared;
@@ -273,4 +341,10 @@ describe('factored states', () => {
     // A state two levels share is written once.
     expect(pooled.states.length).toBeLessThan(pooled.levels.reduce((n, l) => n + l.states.length, 0));
   });
+
+  for (const name of ['groups', 'arms', 'tabs']) {
+    it(`steps ${name}'s product skeleton as a host does: every combination, transition and interaction event`, () => {
+      expect(expectProduct(readFileSync(repoPath(`examples/markless-styles/input/${name}.native-style-input.json`), 'utf8'))).toBeGreaterThan(0);
+    });
+  }
 });

@@ -136,9 +136,10 @@ function indexOf(a: ExportAssignment): Indexed {
  * children; every interaction state keeps the nodes it changes from its assignment (a group's: the ones it owns), the ids it has
  * no node for, and the order of a parent it adds a child to. composedNodes, with shownState, combines them as the full tables.
  */
-export function slimTarget(full: ExportTarget): ExportTarget {
+export function slimTarget(full: ExportTarget, declared: (key: string) => readonly Scalar[] | undefined = () => undefined): ExportTarget {
   if (full.groups === undefined) return full;
   const x = withoutIdleStates(full);
+  const product = groupProduct(x, declared);
   const groups = x.groups as readonly ExportGroup[];
   const ownedBy = groups.map((g) => new Set(g.owned.flatMap((o) => (o.startsWith('node:') ? [o.slice('node:'.length)] : []))));
   const groupOwned = new Set(ownedBy.flatMap((s) => [...s]));
@@ -165,6 +166,7 @@ export function slimTarget(full: ExportTarget): ExportTarget {
   const page = { ...x, ...(x.interaction === undefined ? {} : { interaction: slimLevels({ interaction: x.interaction }, x.assignments, pageKeeps) }) };
   return pooled({
     ...page,
+    product,
     groups: groups.map((g, k) => {
       const owns = ownedBy[k] as Set<string>;
       const keeps = (id: string): boolean => owns.has(id);
@@ -384,4 +386,193 @@ function pooled(x: ExportTarget): ExportTarget {
   const pooledGroups = groups.map((g, k) => pooledTable(g, planGroups[k]?.first ?? 0, planGroups[k]?.count ?? 0));
   if (plan === undefined) return { ...page, groups: pooledGroups };
   return { ...page, groups: pooledGroups, plan: { ...plan, assignments: entries, groups: planGroups.map((pg, k) => ({ ...pg, ...(ranges[k + 1] as { first: number; count: number }) })) } };
+}
+
+type ProductLevelSource = Pick<Level, 'tables' | 'addresses' | 'rows'>;
+type Tables = Level['tables'];
+
+/** One combined interaction level of a factored page: its runtime tables, and each state as the state each table shows (-1: its entry). */
+export type ProductLevel = { readonly tables: Tables; readonly addresses: readonly string[]; readonly rows?: Readonly<Record<string, string>>; readonly states: readonly (readonly number[])[] };
+
+/**
+ * A factored page as one state machine over every combination of its tables' entries, without their nodes: what a host that
+ * combines the tables steps through. Each assignment is the entry each table shows (the groups' agreeing with the page's on the
+ * band); next is the product's; each interaction level runs one runtime over every table's elements, and each of its states is the
+ * state each table's own runtime would be in (-1: none, the table shows its entry). A host composes a combination's nodes
+ * (composedNodes, shownState) and lays it out from the page's plan entry with each group's (harness.ts groupedVariant).
+ */
+export type GroupProduct = {
+  readonly states: ExportTarget['states'];
+  readonly initial: number;
+  readonly assignments: readonly (readonly number[])[];
+  readonly next: ExportTarget['next'];
+  readonly interaction?: { readonly levels: readonly ProductLevel[] };
+};
+
+/** The product of a factored target's tables (GroupProduct); declared orders each state's domain as the input declares it. */
+export function groupProduct(x: ExportTarget, declared: (key: string) => readonly Scalar[] | undefined = () => undefined): GroupProduct {
+  const groups = x.groups ?? [];
+  type T = Pick<ExportTarget, 'states' | 'initial' | 'assignments' | 'next' | 'interaction'>;
+  const tables: readonly T[] = [x, ...groups];
+  const nodeOwner = new Map<string, number>();
+  groups.forEach((g, k) => {
+    for (const o of g.owned) if (o.startsWith('node:')) nodeOwner.set(o.slice('node:'.length), k + 1);
+  });
+  const keys = x.states.map((s) => s.key);
+  // Each table's index of each state (a group whose elements style alike in every band has no band state), -1 where it has none.
+  const slot = tables.map((t) => keys.map((key) => t.states.findIndex((s) => s.key === key)));
+  for (const [k, t] of tables.entries()) if (t.states.some((s) => !keys.includes(s.key)) || keys.some((key, i) => key !== BAND_KEY && slot[k]?.[i] === -1)) throw new Error(`table ${k} lists other states than the target's`);
+  const ownerOfState = new Map(groups.flatMap((g, k) => g.groupStates.map((s) => [s, k + 1] as const)));
+  // A state's domain in the order the input declares it, as a page that is not factored lists it.
+  const states = x.states.map((s, i) => {
+    const owner = ownerOfState.get(s.key) ?? 0;
+    const own = (tables[owner] as T).states[slot[owner]?.[i] as number]?.domain ?? s.domain;
+    const order = declared(s.key) ?? [];
+    return { ...s, domain: [...order.filter((v) => own.includes(v)), ...own.filter((v) => !order.includes(v))] };
+  });
+  const banded = slot.map((t) => (t[keys.indexOf(BAND_KEY)] ?? -1) !== -1);
+  const tuples: number[][] = [];
+  const index = new Map<string, number>();
+  const extend = (prefix: number[]): void => {
+    if (prefix.length === tables.length) {
+      index.set(prefix.join(), tuples.length);
+      tuples.push(prefix);
+      return;
+    }
+    const t = tables[prefix.length] as T;
+    const band = (x.assignments[prefix[0] as number] as ExportAssignment).values[BAND_KEY];
+    t.assignments.forEach((a, e) => {
+      if (prefix.length > 0 && banded[prefix.length] === true && a.values[BAND_KEY] !== band) return;
+      extend([...prefix, e]);
+    });
+  };
+  x.assignments.forEach((_, e) => extend([e]));
+  const initial = index.get(tables.map((t) => t.initial).join());
+  if (initial === undefined) throw new Error("the tables' initial entries disagree on the band");
+  const next = tuples.map((tuple) => keys.map((key, s) => (states[s] as ExportTarget['states'][number]).domain.map((value) => {
+    const moved = tuple.map((e, t) => {
+      const owner = key === BAND_KEY ? (banded[t] === true ? t : -2) : (ownerOfState.get(key) ?? 0);
+      if (owner !== t) return e;
+      const at = slot[t]?.[s] as number;
+      const table = tables[t] as T;
+      return table.next[e]?.[at]?.[table.states[at]?.domain.indexOf(value) ?? -1] ?? -1;
+    });
+    return moved.includes(-1) ? -1 : (index.get(moved.join()) ?? -1);
+  })));
+  const levelsOf = tables.map((t) => t.interaction?.levels);
+  if (levelsOf.some((l) => l === undefined) && levelsOf.some((l) => l !== undefined)) throw new Error('some tables of the page have interaction states and others none, so a combined page has no element tables for every element');
+  const interaction = levelsOf[0] === undefined ? undefined : { levels: tuples.map((tuple) => combinedLevel(tuple.map((e, t) => (levelsOf[t] as readonly Level[])[e] as Level), nodeOwner)) };
+  return { states, initial, assignments: tuples, next, ...(interaction === undefined ? {} : { interaction }) };
+}
+
+function combinedLevel(levels: readonly ProductLevelSource[], nodeOwner: ReadonlyMap<string, number>): ProductLevel {
+  const addresses = mergedOrder(levels.map((l) => l.addresses));
+  const at = levels.map((l) => new Map(l.addresses.map((d, i) => [d, i])));
+  // An element's own facts (parent, focusable, taps) from the table that shows it.
+  const factsOf = (d: string): number => {
+    const owner = nodeOwner.get(d) ?? 0;
+    return at[owner]?.has(d) === true ? owner : at.findIndex((m) => m.has(d));
+  };
+  const parentOf = addresses.map((d) => {
+    const t = factsOf(d);
+    const p = (levels[t] as ProductLevelSource).tables.parent[at[t]?.get(d) as number] as number;
+    return p < 0 ? null : ((levels[t] as ProductLevelSource).addresses[p] as string);
+  });
+  const indexOf = new Map(addresses.map((d, i) => [d, i]));
+  // In a table that does not show the element, its nearest ancestor that table shows stands in for its hover and press chains.
+  const standIn = (t: number, i: number): number => {
+    let k: number | null = i;
+    while (k !== null && !(at[t] as Map<string, number>).has(addresses[k] as string)) k = parentOf[k] === null ? null : (indexOf.get(parentOf[k] as string) as number);
+    return k === null ? -1 : ((at[t] as Map<string, number>).get(addresses[k] as string) as number);
+  };
+  const dimension = (value: (tb: Tables, e: number) => number, chain: boolean): { readonly of: number[]; readonly tuples: number[][] } => {
+    const none = levels.map(() => 0);
+    const tuples: number[][] = [none];
+    const ids = new Map([[none.join(), 0]]);
+    const of = addresses.map((d, i) => {
+      const tuple = levels.map((l, t) => {
+        const e = chain ? standIn(t, i) : ((at[t] as Map<string, number>).get(d) ?? -1);
+        return e < 0 ? 0 : value(l.tables, e);
+      });
+      if (tuple.some((v) => v < 0)) return -1;
+      const key = tuple.join();
+      let id = ids.get(key);
+      if (id === undefined) {
+        id = tuples.length;
+        tuples.push(tuple);
+        ids.set(key, id);
+      }
+      return id;
+    });
+    return { of, tuples };
+  };
+  const hover = dimension((tb, e) => tb.chainOf[e] as number, true);
+  const active = dimension((tb, e) => tb.activeChainOf[e] as number, true);
+  const pointerFocus = dimension((tb, e) => tb.pointerFocusOf[e] as number, false);
+  const focusable = addresses.map((d) => (levels[factsOf(d)] as ProductLevelSource).tables.focusable[at[factsOf(d)]?.get(d) as number] === true);
+  // Keyboard focus shares the focus dimension: its tuples join pointer focus's.
+  const focusTuples = pointerFocus.tuples;
+  const focusIds = new Map(focusTuples.map((tp, i) => [tp.join(), i]));
+  const focusId = (tuple: number[]): number => {
+    const key = tuple.join();
+    let id = focusIds.get(key);
+    if (id === undefined) {
+      id = focusTuples.length;
+      focusTuples.push(tuple);
+      focusIds.set(key, id);
+    }
+    return id;
+  };
+  const keyboardFocusOf = addresses.map((d, i) => (focusable[i] !== true ? -1 : focusId(levels.map((l, t) => {
+    const e = (at[t] as Map<string, number>).get(d);
+    return e === undefined ? 0 : Math.max(0, l.tables.keyboardFocusOf[e] as number);
+  }))));
+  const pointerFocusOf = pointerFocus.of;
+
+  const stateTuples: number[][] = [];
+  const stateIds = new Map<string, number>();
+  const stateIdOf = (tuple: number[]): number => {
+    if (tuple.every((s) => s < 0)) return -1;
+    const key = tuple.join();
+    let id = stateIds.get(key);
+    if (id === undefined) {
+      id = stateTuples.length;
+      stateTuples.push(tuple);
+      stateIds.set(key, id);
+    }
+    return id;
+  };
+  const combos: number[] = [];
+  for (const h of hover.tuples) for (const a of active.tuples) for (const f of focusTuples) {
+    combos.push(stateIdOf(levels.map((l, t) => l.tables.combos[((h[t] as number) * l.tables.activeValues + (a[t] as number)) * l.tables.focusValues + (f[t] as number)] as number)));
+  }
+  const forced = (of: (tb: Tables) => readonly number[]): number[] => addresses.map((d) => stateIdOf(levels.map((l, t) => {
+    const e = (at[t] as Map<string, number>).get(d);
+    return e === undefined ? -1 : (of(l.tables)[e] as number);
+  })));
+  const forcedHoverOf = forced((tb) => tb.forcedHoverOf);
+  const forcedActiveOf = forced((tb) => tb.forcedActiveOf);
+  const forcedFocusOf = forced((tb) => tb.forcedFocusOf);
+  const forcedFocusVisibleOf = forced((tb) => tb.forcedFocusVisibleOf);
+  const elementFact = <T>(of: (tb: Tables) => readonly T[]): T[] => addresses.map((d) => of((levels[factsOf(d)] as ProductLevelSource).tables)[at[factsOf(d)]?.get(d) as number] as T);
+  const tables: Tables = {
+    parent: parentOf.map((p) => (p === null ? -1 : (indexOf.get(p) as number))),
+    focusable,
+    touchConsumesTap: elementFact((tb) => tb.touchConsumesTap),
+    keyboardInput: elementFact((tb) => tb.keyboardInput),
+    chainOf: hover.of,
+    activeChainOf: active.of,
+    pointerFocusOf,
+    keyboardFocusOf,
+    forcedHoverOf,
+    forcedActiveOf,
+    forcedFocusOf,
+    forcedFocusVisibleOf,
+    hoverValues: hover.tuples.length,
+    activeValues: active.tuples.length,
+    focusValues: focusTuples.length,
+    combos,
+  };
+  const rows = Object.assign({}, ...levels.map((l) => l.rows ?? {})) as Record<string, string>;
+  return { tables, addresses, ...(levels.some((l) => l.rows !== undefined) ? { rows } : {}), states: stateTuples };
 }
