@@ -51,6 +51,8 @@ These depend on the Markless hosts, not on Dragon. I'll measure each before the 
 - **State tables:** a state change must not reuse a frame from the layout before the photo loaded.
 - **Scroll position:** when the photo loads above the current scroll offset, Chrome's scroll anchoring (`overflow-anchor: auto`) keeps the visible content in place. The host must apply Dragon's anchoring answer, or the slice refuses an img above the initial scroll position. On `/checkins/[id]` the photo is above every other box, and the page opens at offset 0, where anchoring changes nothing.
 
+**Measured on Markless main `1b78daa73` (2026-11-26):** both hosts already lay the page out again when the size, a slot or a page text changes. On iOS this is MarklessViewController.layOutAtScreenSize, which feeds `tree.relayout`. On Android it is MarklessHost.layOutAt, keyed on `laidOutFor`. Taps go through the views' current frames: on iOS, the UIKit hit test in PageScroll.topmost. So the host change is to add the natural sizes to that key. Inside Dragon, the interaction machine's hit table is a separate risk; see the Judge's amendment 4.
+
 ## Proof
 
 - **Parity fixtures (chrome-dual and linux-dragon-layout),** each ltr and rtl, at every DPR lane:
@@ -74,3 +76,69 @@ These depend on the Markless hosts, not on Dragon. I'll measure each before the 
 ## Not in this slice
 
 Any read of the natural size into an inline size; flex automatic minimums; grid track contributions (shop `/products/[id]`'s photo keeps REPL-r1's refusal and its CSS fix); `srcset` densities.
+
+## Judge verdict (2026-11-26)
+
+**Approved with amendments.** The route and the product behaviour are right. Four parts of the spec are wrong or missing, and each must be fixed before code:
+- Rule 1 describes the read wrongly.
+- The sweep alone does not prove rule 2.
+- The hit-test risk is inside Dragon, not only in the host.
+- The scroll-anchoring refusal can never fire.
+
+Where the rulings and amendments below differ from the sections above, they win.
+
+### Rulings
+
+1. **Sweep or structural proof for rule 2: both, plus a check on the device.** A sample sweep is evidence, not proof. Several engine paths turn a block size into an inline size only past a threshold, and a fixed sample list can step over one (amendment 2). Three layers are required:
+   - (a) A structural guard at the img itself (amendment 1). It shows the img's own inline size never reads its natural size.
+   - (b) Build-time refusals of the known paths from a block size to an inline size (amendment 2), with the sweep kept as a backstop.
+   - (c) A check on the device. After each layout that follows a natural size, the engine compares every box's inline size and every line's width with its own 0 by 0 layout at the same viewport and scale. The device already computes that layout while the photo loads, so the check costs only the comparison. Any difference stops, naming the box. The device stop then covers every natural size, not only the sampled ones. Taint-tracking every LU value is not required.
+2. **Scroll anchoring: the proposed refusal is rejected.** "Above the initial scroll position" is a build-time fact. The risk is a run-time one: the user scrolls down while the photo loads, and the photo then grows above the viewport. On `/checkins/[id]` the refusal would never fire, yet the page would still jump. A full port of Blink's ScrollAnchor is not required. Port only these two cases, and pin each with a Chrome capture made after scrolling and before the load:
+   - **Img wholly above the scroll offset:** add the change in its height to the offset.
+   - **Img crossing the top of the viewport:** no change.
+
+   Anything else, such as a nested scroller or an img inside a sticky box, is a named divergence note. The claim that "at offset 0, anchoring changes nothing" is unverified. While loading, the img is 0 high and may not be an anchor candidate, in which case the `<h1>` or `<dl>` below it would be the anchor. The fixture must capture Chrome at offset 0 too.
+3. **Loading state: approved, 0 by 0 as Chrome does.** One addition: when the image is already decoded at the first layout, the host passes its natural size on that first call rather than laying out 0 by 0 and then again. Examples are a cached image, or `/new`'s `.shot` right after capture. This matches Chrome, which lays out a memory-cached image at its size on first layout. The `-follows-change` fixture adds a case where the image is ready at mount.
+4. **Rows: approved, refused.** runMarklessRowsLayout keeps REPL-r1's stop, naming the row. No follows img sits in a row on either page. The index page's `.thumb` sits inside `@for` (index.tsrx:72-75), and must keep compiling exactly as it does today; the entry gate shows this.
+
+### Amendments
+
+1. **Rule 1 is false as written.** There is no single "auto height from the ratio" read site. All reads go through one closure, `read` (replaced.ts:132-135), and it is reached from:
+   - the ratio read at replaced.ts:141;
+   - the natural-size read at replaced.ts:150;
+   - the callers at :165, :166 (a recursive pass that ignores block lengths), :186 (the block axis, computed before the inline axis) and :254.
+
+   The loading state is not a ratio read. A 0 by 0 natural size has no ratio (replaced.ts:294), so the box's height comes from the natural size through :165/:254. Rule 1 should instead be a predicate checked before the first read. The read is allowed only when all of these hold:
+   - `reader === 'used-size'`;
+   - `space.fixedInline !== null`, or `s.width.kind !== 'auto'` and the width resolves against a non-null `percentInline` (replaced.ts:230);
+   - the height is auto, or a fixed block size is given.
+
+   Under this predicate the function returns at :241 or :255 with an inline size the natural size never touched, so the guard is the structural proof for the img itself. Every other read, including `max-content`, `min-content` and `flex-content`, keeps `runtimeNaturalRead`.
+2. **Rule 2 must name and refuse the paths from a block size to an inline size,** each with a reject fixture:
+   - **Abspos boxes:** an absolutely positioned box with an aspect-ratio, an auto width and both block insets takes its width from its containing block's height (position.ts:236). Refuse it when the img lies inside that containing block.
+   - **Grid second column pass:** a grid whose rows the img's block size feeds, and which has an item flagged `sizingDependsOnBlockSize` (grid.ts:1914), sizes its columns again after its rows (grid.ts:2203, :2633). Refuse it.
+   - **Floats:** a float in the img's block formatting context that ends below the img's top. Lines after the img change width as it grows.
+   - **anchor-size():** any `anchor-size()` that refers to the img, to an ancestor of it, or to a box after it (anchor.ts:195). Rule 3's "a box after it" misses ancestors; widen it to the img, its ancestors and every box after it in its containing-block chain.
+
+   Already closed, with no new work:
+   - Classic scrollbars: the engine reserves no gutter. The 15px gutter exists only as the planted fault at overflow.ts:60 and :283.
+   - Multi-line column flex with an indefinite height is refused (flex.ts:169).
+   - A float with an aspect-ratio and an auto width is refused (float.ts:76).
+
+   Orthogonal writing modes need a rule-2 refusal unless the engine already refuses `writing-mode` (block.ts, flex.ts and inline.ts reference it).
+3. **"This refusal is the last one on `/checkins/[id]`" is unproven.** REPL-r1 stops at the first read, which is the used-size read, so later reads were never reached. One example: the article is an item in `.content`'s single auto column (Shell.tsrx:41-47). Commit 6e6707e2c2 says master reads no max-content contribution there, but that holds only for one auto track. Before the Dragon PR, compile both pages at every band with the used-size read allowed, and list what is still refused. `/new` also places `.shot` inside `.form` (also a grid) inside `.content`.
+4. **The hit-test risk is inside Dragon, and the spec must say so.** The emitted interaction machine builds its own hit table by laying out `variants[laidOut](scale)` again (interaction.ts:359 Swift, :705 Kotlin; rt-hit.ts:1414 `layout(input, measurer)`). It caches the table under `"\(laidOut)|\(f)"`, a key that leaves out the natural size. Two consequences:
+   - (a) Without `naturals`, that layout reaches the run-time read and throws, which becomes a HitError.
+   - (b) With them, a table built before the load is reused after it, so a tap below the photo answers at its old place.
+
+   `naturals` must reach every caller of `layout()`: runMarklessLayout, rt-hit `hitTableOf`, rt-select `selectionTableOf` (rt-select.ts:299), and the state machine (state.ts `runtime-image`). Each cache key must include a counter that changes whenever the natural sizes change. Plant a fault, `runtimeFollowsHitCacheStale`, that keeps the old table. The Markless rung must fail under it.
+5. **Planted faults to add:**
+   - `runtimeFollowsReadUnguarded`: the amendment-1 predicate is skipped. A width-auto follows img must then compile, and its layout lane must fail.
+   - `runtimeFollowsDeviceCheckSkipped`: the ruling-1(c) comparison is skipped. A device-lane case with a natural size the sweep never sampled, crossing a float edge, must fail.
+
+   `runtimeFollowsWidthUnchecked` stays, but its fixture must use a path that amendment 2 does not already refuse at build time. Otherwise the fault proves nothing.
+6. **Sweep samples:** keep the list. Add both extremes of the ratio clamp, for example 1:1000 and 1000:1, and an exact-fit sample where the height computed from the ratio equals `max-height` to the LU. The clamp at replaced.ts:187 is where a rounding error in `constrain` would show. Since the width is definite, the size in camera pixels changes nothing except through the ratio. The 0 by 0 sample and one non-zero size per ratio are enough.
+7. **Paint:** REPL-r1's rule stands. The destination rect of a follows img is never computed at build time. The paint lane computes it per sample in its test host.
+8. **Export:** `follows: true` is set only on an img that passes amendments 1-2. Byte-identical output is checked over the whole entry-gate corpus, not stated.
+
+Line numbers refer to the REPL-r1 tree (cw/img-dynamic-src-paint, #651).
