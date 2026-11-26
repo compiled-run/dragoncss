@@ -296,6 +296,27 @@ const paintKeyOf = (n: NativeProgram['nodes'][number]): { readonly layer: string
   return { layer: facts.layer, z: facts.z };
 };
 
+/** The records of the nodes ("node:<id>") and layout boxes ("box:<id>") of owned in a program, paint order by layer and z-index. */
+function ownedRecords(program: NativeProgram, owned: readonly string[]): string {
+  const want = new Set(owned);
+  const out: [string, unknown][] = [];
+  for (const node of program.nodes) {
+    const { facts: _facts, ...n } = node;
+    if (!want.has(`node:${n.id}`)) continue;
+    out.push([`node:${n.id}`, { ...n, writes: n.writes.map((w) => (w.kind === 'paint-order' ? { kind: w.kind, host: (w as { host: string }).host, bucket: (w as { bucket: number }).bucket, ...paintKeyOf(node) } : w)) }]);
+  }
+  const walk = (box: LayoutBox, parent: string): void => {
+    const { children, ...own } = box;
+    if (want.has(`box:${box.id}`)) out.push([`box:${box.id}`, { own, parent, children: children.map((c) => ('id' in c && typeof c.id === 'string' ? c.id : c)) }]);
+    for (const c of children) {
+      if (c.kind === 'box') walk(c, box.id);
+      else if ('id' in c && typeof c.id === 'string' && want.has(`box:${c.id}`)) out.push([`box:${c.id}`, { leaf: c, parent: box.id }]);
+    }
+  };
+  walk(program.root, '');
+  return JSON.stringify(out);
+}
+
 export const valuesOf = (a: Assignment): Record<string, Scalar> => Object.fromEntries(a.map((x) => [`${x.state.instance}#${x.state.state}`, x.value]));
 
 /** A target's bands as the export writes them; absent for a sheet without @media. */
@@ -317,7 +338,7 @@ export function nativeStyleExport(styles: NativeStyles, component: string, sourc
   // or its error thrown, where the target's plan is made.
   const recorded = new Map<NativeStyleTarget, readonly DensityResult[]>();
   const workers = planWorkers();
-  // Factored states: one recording per ratio lays out every table's distinct variants once (most are shared), split into chunks.
+  // Factored states: one recording per ratio lays out every table's distinct variants once (most are shared), a job per variant.
   type Emitted = Extract<NativeStyles['targets'][NativeStyleTarget], { readonly kind: 'emitted' }>;
   const recordedProgram = (o: Emitted): StateProgram => {
     const own = planStateProgram(o.program, o.interaction);
@@ -329,10 +350,7 @@ export function nativeStyleExport(styles: NativeStyles, component: string, sourc
   const recordedHeights = (o: Emitted): boolean => (o.groups === undefined ? checksHeights(o) : process.env['DRAGON_PLAN_HEIGHT_CHECK'] === 'always' || heightDependence(recordedProgram(o), (o.bands?.table.atoms ?? []).map((a) => a.feature)) !== null);
   const chunksOf = (o: Emitted, sp: StateProgram): StateProgram[] => {
     if (o.groups === undefined) return [sp];
-    const size = Math.max(1, Math.ceil(sp.variants.length / Math.max(1, Math.floor(workers / 7))));
-    const out: StateProgram[] = [];
-    for (let k = 0; k < sp.variants.length; k += size) out.push({ ...sp, variants: sp.variants.slice(k, k + size) });
-    return out;
+    return sp.variants.map((v) => ({ ...sp, variants: [v] }));
   };
   const joined = (parts: readonly DensityResult[], dpr: number): DensityResult => {
     if (parts.length === 1) return parts[0] as DensityResult;
@@ -408,15 +426,24 @@ export function nativeStyleExport(styles: NativeStyles, component: string, sourc
       return { values: valuesOf(a.assignment), pageScroll: scroll.page, nodes };
     };
     // One table's assignments and interaction levels, laid out at the device; the host selects one with Dragon's interaction runtime.
-    const tableOf = (sp: StateProgram, ip: InteractionProgram | undefined, values: NativeStyleOutput['interactionValues']) => {
+    const tableOf = (sp: StateProgram, ip: InteractionProgram | undefined, values: NativeStyleOutput['interactionValues'], owned?: readonly string[]) => {
       const assignments = sp.assignments.map((a, i) => exportAt(programAt(sp, i), a));
+      // A group's interaction state that leaves every node and box it owns as its assignment has them is not laid out: it shows
+      // the assignment (and the slim export leaves it out).
+      const ownedOf = (program: NativeProgram): string => ownedRecords(program, owned as readonly string[]);
+      const bases = owned === undefined ? [] : sp.assignments.map((_, i) => ownedOf(programAt(sp, i)));
+      const stateAt = (i: number, k: number): ExportAssignment => {
+        const program = interactionProgramAt(ip as InteractionProgram, i, k);
+        if (owned !== undefined && ownedOf(program) === bases[i]) return assignments[i] as ExportAssignment;
+        return exportAt(program, sp.assignments[i] as StateProgram['assignments'][number]);
+      };
       const planStates = ip === undefined ? null : planInteractionAssignments(sp, ip);
       const interaction = ip === undefined ? {} : {
         interaction: {
           levels: ip.levels.map((l, i): ExportInteractionLevel => ({
             tables: l.tables,
             addresses: l.addresses,
-            states: l.deltas.map((_, k) => exportAt(interactionProgramAt(ip, i, k), sp.assignments[i] as StateProgram['assignments'][number])),
+            states: l.deltas.map((_, k) => stateAt(i, k)),
             matches: (values?.[i] ?? []).map((v): ExportInteractionMatch => ({ hover: v.hover, active: v.active, focus: v.focus, focusVisible: v.focusVisible, force: v.force })),
             ...(plan ? { planAssignments: (planStates as number[][])[i] as number[] } : {}),
           })),
@@ -452,7 +479,7 @@ export function nativeStyleExport(styles: NativeStyles, component: string, sourc
     const laidOut = merged === null ? {} : { plan: merged };
     const groups = o.groups === undefined ? {} : {
       groups: o.groups.map((g, k): ExportGroup => {
-        const table = tableOf(g.program, g.interaction, g.interactionValues);
+        const table = tableOf(g.program, g.interaction, g.interactionValues, g.owned);
         // A group's interaction states lay out as plan assignments after its own entries, which follow the tables before it.
         const first = merged?.groups?.[k]?.first ?? 0;
         const interaction = table.interaction === undefined ? {} : { interaction: { levels: table.interaction.levels.map((l) => (l.planAssignments === undefined ? l : { ...l, planAssignments: l.planAssignments.map((x) => x + first) })) } };
