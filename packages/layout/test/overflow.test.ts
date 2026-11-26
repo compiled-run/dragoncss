@@ -162,6 +162,21 @@ describe('scrollable overflow (Blink ScrollableOverflowCalculator)', () => {
     const scrolling = control('button', { kind: 'button-block' }, { ...sc('auto') });
     expect(scrollMetrics(input([scrolling]), ahemMeasurer, 'ltr')).toEqual({ kind: 'refused', nodeId: 'button', detail: 'a form control that is a scroll container: its scrollable overflow is not decided here' });
   });
+
+  it('a textarea that clips on both axes, as the native lowering makes it, adds its border box and none of its text', () => {
+    // Chrome's textarea is a scroll container (html.css overflow: auto), so its ancestors take only its border box.
+    const area = (style: Partial<LayoutStyle>): ControlBox =>
+      control('t', { kind: 'text-area', cols: 20, rows: 2, font: ahemFont(10), lineHeight: { kind: 'normal' }, avgChar: 'ahem', scrollbarInline: 0, scrollbarBlock: 0 }, { width: px(300), height: px(300), ...style }, [control('t::editor', { kind: 'text-editor' }, {}, [text('t::editor:text0', 'XX XX XX')])]);
+    const clip: Partial<LayoutStyle> = { overflowX: 'clip', overflowY: 'clip' };
+    expect(scrollRanges(input([box('s', sc('auto'), [area(clip)])]), ahemMeasurer)).toEqual({ kind: 'ok', ranges: [{ id: 's', minX: 0, maxX: 200, minY: 0, maxY: 200 }], refused: [] });
+    // The page: a 500 px textarea in a 300 px viewport scrolls the page by 200 px.
+    expect(metrics(input([area({ ...clip, height: px(500) })])).viewport.scrollRect.height).toBe(lu(500));
+    // A menulist select clips its contents (Chrome's control clip) whatever its overflow, so a 12 px select's long label adds nothing.
+    const select = control('m', { kind: 'select-menulist', font: ahemFont(10), lineHeight: { kind: 'normal' }, arrowWidth: 0, options: [text('m:o', 'XXXXXXXXXXXXXXXXXXXX')] }, { display: 'flex', width: px(12), height: px(300) }, [control('m::inner', { kind: 'select-inner' }, {}, [text('m::inner:text0', 'XXXXXXXXXXXXXXXXXXXX')])]);
+    expect(scrollRanges(input([box('s', sc('auto'), [select])]), ahemMeasurer)).toEqual({ kind: 'ok', ranges: [{ id: 's', minX: 0, maxX: 0, minY: 0, maxY: 200 }], refused: [] });
+    const visible = scrollRanges(input([box('s', sc('auto'), [area({})])]), ahemMeasurer);
+    expect(visible).toEqual({ kind: 'ok', ranges: [], refused: [{ id: 's', nodeId: 't', detail: 'a text-area form control: its scrollable overflow is not decided here' }] });
+  });
 });
 
 describe('line items (R16: a new PlacedLine item kind is never skipped)', () => {

@@ -7,7 +7,7 @@ import { dimensionRefusal, iframeSrcRefusal } from './analysis/elements/replaced
 import { isSvgShapeTag, svgAttributeRefusal } from './analysis/elements/svg.ts';
 import { compileImages, imageMapProblem } from './images/compile.ts';
 import type { RuntimeImageLayout } from './images/runtime.ts';
-import { runtimeImageNativeRefusals, runtimeImageNotes, runtimeLayoutRefusals, runtimeSrcSelectorRefusals } from './images/runtime.ts';
+import { runtimeImageNotes, runtimeLayoutRefusals, runtimeSrcSelectorRefusals } from './images/runtime.ts';
 import type { CompiledImages } from './images/compile.ts';
 import { compileVideos } from './videos/compile.ts';
 import type { ImageAssetMap } from './images/manifest.ts';
@@ -237,6 +237,8 @@ export type InternalRecord = {
   readonly focusReachable: boolean;
   /** REPL-a: the bytes of every drawable image src, for the native image paint. */
   readonly images: ReadonlyMap<string, Uint8Array>;
+  /** The host draws each <img>'s picture (InternalOptions.hostImages): the native paint writes no image content for an <img>. */
+  readonly hostImages: boolean;
   /** TXT-W: the synthetic bold and oblique plants, which the native lowering reads (native-program.ts textPaint). */
   readonly textPlants: TextPlants;
 };
@@ -317,6 +319,11 @@ export type InternalOptions = {
   readonly hostForms?: boolean;
   /** The host draws and edits every single-line text field natively (a Markless host), so an editable one is laid out; else native refuses it. */
   readonly hostTextEditing?: boolean;
+  /**
+   * The host draws each <img>'s picture itself from the file's bytes (a Markless host): Dragon sizes the element from the file's
+   * natural size and paints no image content, so a format REPL-a does not decode is laid out rather than refused.
+   */
+  readonly hostImages?: boolean;
   /** The host's Brotli decoder, which a WOFF2 @font-face src needs; without one a WOFF2 is DRAGON_FONT_UNREADABLE (no-brotli). */
   readonly brotliDecompress?: BrotliDecompress;
   /**
@@ -348,6 +355,7 @@ type Resolved = {
   readonly hostCanvas: boolean;
   readonly hostForms: boolean;
   readonly hostTextEditing: boolean;
+  readonly hostImages: boolean;
   readonly systemFonts: boolean;
   readonly nativeLanes: NativeLanes | null;
   readonly brotliDecompress: BrotliDecompress | null;
@@ -1679,7 +1687,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       const assetBytes = new Map(input.snapshot.assets.map((a) => [a.id, a.bytes] as const));
       const sourceText = new Map(input.snapshot.sources.map((s) => [s.ref.uri, s.text] as const));
       const roots = bandCases.flatMap((b) => b.cases.flatMap((c) => (c.resolved === null ? [] : [c.resolved])));
-      const read = compileImages(bandCases.flatMap((b) => b.cases.flatMap((c) => (c.resolved === null ? [] : [c.resolved, ...c.interaction.map((i) => i.resolved)]))), config.images, assetBytes, diagnostics, (uri) => sourceText.get(uri));
+      const read = compileImages(bandCases.flatMap((b) => b.cases.flatMap((c) => (c.resolved === null ? [] : [c.resolved, ...c.interaction.map((i) => i.resolved)]))), config.images, assetBytes, diagnostics, (uri) => sourceText.get(uri), options.hostImages);
       // REPL-r1: an img whose src is set at run time: its alt text, its fallback note and the selectors that test its src.
       runtimeImageNotes(bandCases.flatMap((b) => b.cases.flatMap((c) => (c.resolved === null ? [] : [c.resolved, ...c.interaction.map((i) => i.resolved)]))), originOfAddress, diagnostics);
       runtimeSrcSelectorRefusals(bandCases.map((b, k) => ({ rules: [...(bandRules[k] as Set<Rule>)], roots: b.cases.flatMap((c) => (c.resolved === null ? [] : [c.resolved])) })), options.faults, originOfAddress, diagnostics);
@@ -1819,10 +1827,6 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       diagnostics.splice(valuesAt, 0, ...values);
     }
   }
-  // REPL-r1: native draws no img whose src is set at run time yet; the parity lanes lower it lane-only, so the layout lane proves it.
-  const runtimeNative = runtimeImageNativeRefusals(bandCases.flatMap((b) => b.cases.flatMap((c) => (c.resolved === null ? [] : [c.resolved, ...c.interaction.map((i) => i.resolved)]))), NATIVE_TARGETS.filter((t) => targets.includes(t)), originOfAddress);
-  if (options.interactionLanes) laneOnlyNative = NATIVE_TARGETS.filter((t) => laneOnlyNative.includes(t) || runtimeNative.some((d) => d.target === t));
-  else diagnostics.push(...runtimeNative);
   // SVG-a2: a native row of the svg family is derived from the parity run (chrome-dual computed values, capped at caveat as every
   // native paint row is; device-pixels judges the drawing). In an enforced parity-lanes compile a value with no row yet is lane-only,
   // so the lanes still lower the shapes; a compile outside the lanes refuses it until its row exists.
@@ -1988,6 +1992,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       laneOnlyNative,
       focusReachable: focusable,
       images: images === null ? new Map() : images.bytes,
+      hostImages: options.hostImages === true,
       textPlants: { ahemSyntheticBoldFrom700: options.faults.ahemSyntheticBoldFrom700, ahemBoldUnstroked: options.faults.ahemBoldUnstroked, ahemObliqueUnsheared: options.faults.ahemObliqueUnsheared, textFillIgnored: options.faults.textFillIgnored, textStrokeAccepted: options.faults.textStrokeAccepted },
       cases: cases.map((c) => ({
         key: c.key,
@@ -2132,6 +2137,7 @@ export function createProjectWith<const T extends Targets>(config: ProjectConfig
     hostCanvas: options.hostCanvas === true,
     hostForms: options.hostForms === true,
     hostTextEditing: options.hostTextEditing === true,
+    hostImages: options.hostImages === true,
     systemFonts: options.systemFonts === true,
     nativeLanes: options.nativeLanes === undefined ? null : options.nativeLanes,
     brotliDecompress: options.brotliDecompress ?? null,

@@ -99,6 +99,8 @@ type Index = {
    * control, or a control that is a scroll container, is refused.
    */
   readonly controls: Map<string, ControlKind>;
+  /** The parts inside a control that clips (a textarea's editor, a select's inner element): no range reads them, nor is theirs read. */
+  readonly parts: Map<string, boolean>;
 };
 
 /** scrollMetrics with planted engine faults; only the parity harness's planted tests pass anything but NO_ENGINE_FAULTS. */
@@ -115,7 +117,7 @@ export function scrollMetricsWithFaults(given: LayoutInput, measurer: TextMeasur
     controlRefusal(ix);
     const containers: ScrollMetrics[] = [];
     for (const b of ix.order) {
-      if (!isScrollContainer(b.style)) continue;
+      if (!isScrollContainer(b.style) || ix.parts.has(b.id)) continue;
       const n = nodeOf(ix, b.id);
       const client = clientOf(ix, n);
       containers.push(metricsOf(b.id, overflowOf(ix, n), client));
@@ -174,7 +176,7 @@ export function scrollRangesWithFaults(given: LayoutInput, measurer: TextMeasure
   const ranges: ScrollRange[] = [];
   const refused: ScrollRangeRefusal[] = [];
   for (const b of ix.order) {
-    if (!isScrollContainer(b.style)) continue;
+    if (!isScrollContainer(b.style) || ix.parts.has(b.id)) continue;
     const one = rangeOf(ix, b);
     if (one.kind === 'ok') ranges.push(one.range);
     else refused.push(one.refusal);
@@ -212,16 +214,17 @@ function nodeOf(ix: Index, id: string): Node {
 }
 
 function indexOf(ctx: Ctx, input: LayoutInput, abs: Map<string, LayoutRect>, inflow: readonly InflowBounds[]): Index {
-  const ix: Index = { ctx, nodes: new Map(), order: [], oofByCb: new Map(), flows: new Map(), gridInflow: new Map(), controls: new Map() };
+  const ix: Index = { ctx, nodes: new Map(), order: [], oofByCb: new Map(), flows: new Map(), gridInflow: new Map(), controls: new Map(), parts: new Map() };
   for (const f of inflow) ix.gridInflow.set(f.id, { x: f.x, y: f.y, width: f.width, height: f.height });
   const icbWidth = fromCssPx(input.viewport.width);
-  const walk = (b: OverflowNode, parent: LayoutBox | null, cbInline: LU, positioned: OverflowNode | null, basisKnown: boolean): void => {
+  const walk = (b: OverflowNode, parent: LayoutBox | null, cbInline: LU, positioned: OverflowNode | null, basisKnown: boolean, hidden: boolean): void => {
     const rect = abs.get(b.id);
     if (rect === undefined) throw new Error(`no laid-out box ${b.id}`);
     const border = resolveBorder(b.style, ctx.devicePixelRatio);
     const padding = resolvePaddingWith(b.style, cbInline, ctx.faults);
     const paddingKnown = basisKnown || !hasPercentPadding(b);
     ix.nodes.set(b.id, { box: b, parent, rect, border, padding, cbInline, paddingKnown });
+    if (hidden) ix.parts.set(b.id, true);
     ix.order.push(b);
     const content = clampNegativeToZero(sub(rect.width, sumEdges(border.left, border.right, padding.left, padding.right)));
     const paddingBoxWidth = clampNegativeToZero(sub(rect.width, add(border.left, border.right)));
@@ -230,15 +233,21 @@ function indexOf(ctx: Ctx, input: LayoutInput, abs: Map<string, LayoutRect>, inf
     if (b.kind === 'replaced') return;
     for (const k of b.children) {
       if (k.kind === 'control') {
-        ix.controls.set(k.id, k.control);
-        walk(plainBox(k), b, content, nextPositioned, paddingKnown && !isGridContainer(b));
+        // A clipping textarea's or menulist select's parts are in no box's scrollable overflow (propagated stops at it), so they are not checked.
+        if (!hidden) ix.controls.set(k.id, k.control);
+        const clips = k.style.overflowX === 'clip' && k.style.overflowY === 'clip';
+        // Chrome clips a menulist select's contents (its control clip), so it adds its border box as a box that clips does.
+        const menuList = k.control.kind === 'select-menulist';
+        const plain = plainBox(k);
+        const walked: LayoutBox = menuList ? { ...plain, style: { ...plain.style, overflowX: 'clip', overflowY: 'clip' } } : plain;
+        walk(walked, b, content, nextPositioned, paddingKnown && !isGridContainer(b), hidden || menuList || (k.control.kind === 'text-area' && clips));
         continue;
       }
       if (k.kind !== 'box' && k.kind !== 'replaced') continue;
       if (isOutOfFlow(ctx, k) && k.style.position === 'fixed') {
         // POSX-f: a fixed box's containing block is the viewport, and it is in no box's scrollable overflow, the viewport's
         // included: scrolling never moves it (css-overflow-3 §2.2; Blink skips fixed-position descendants of the LayoutView).
-        walk(k, b, icbWidth, nextPositioned, true);
+        walk(k, b, icbWidth, nextPositioned, true, hidden);
       } else if (isOutOfFlow(ctx, k)) {
         // CSS2 §10.1: the containing block is the padding box of the nearest positioned ancestor, or the initial one.
         const cb = nextPositioned;
@@ -247,14 +256,14 @@ function indexOf(ctx: Ctx, input: LayoutInput, abs: Map<string, LayoutRect>, inf
         if (list === undefined) ix.oofByCb.set(key, [k]);
         else list.push(k);
         // css-grid-2 §9.1: a positioned grid parent resolves the child's percentages against its grid area.
-        walk(k, b, cb === null ? icbWidth : cb === b ? paddingBoxWidth : paddingBoxWidthOf(ix, cb), nextPositioned, cb === null || cb.id !== b.id || !isGridContainer(b));
+        walk(k, b, cb === null ? icbWidth : cb === b ? paddingBoxWidth : paddingBoxWidthOf(ix, cb), nextPositioned, cb === null || cb.id !== b.id || !isGridContainer(b), hidden);
       } else {
         // A grid item's percentages resolve against its grid area (grid.ts layoutItem).
-        walk(k, b, content, nextPositioned, paddingKnown && !isGridContainer(b));
+        walk(k, b, content, nextPositioned, paddingKnown && !isGridContainer(b), hidden);
       }
     }
   };
-  walk(input.root, null, icbWidth, null, true);
+  walk(input.root, null, icbWidth, null, true, false);
   return ix;
 }
 
@@ -448,7 +457,7 @@ function gridInflowOf(ix: Index, id: string): OverflowRect {
 function controlChecked(n: Node, kind: ControlKind): void {
   if (kind.kind === 'text-placeholder') return;
   const s = n.box.style;
-  if ((kind.kind === 'text-field' || kind.kind === 'text-editor') && s.overflowX === 'clip' && s.overflowY === 'clip') return;
+  if ((kind.kind === 'text-field' || kind.kind === 'text-area' || kind.kind === 'text-editor' || kind.kind === 'select-menulist') && s.overflowX === 'clip' && s.overflowY === 'clip') return;
   if (kind.kind !== 'button-block' && kind.kind !== 'fieldset' && kind.kind !== 'legend') throw new OverflowRefusal(n.box.id, `a ${kind.kind} form control: its scrollable overflow is not decided here`);
   if (isScrollContainer(n.box.style)) throw new OverflowRefusal(n.box.id, 'a form control that is a scroll container: its scrollable overflow is not decided here');
 }

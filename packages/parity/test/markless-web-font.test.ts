@@ -168,6 +168,6 @@ describe('an author web font in a Markless style input', () => {
     expect(() => parseMarklessStyleInput(input(FACES, [{ url: './a.ttf', file: '/abs/a.ttf' }]))).toThrow('fonts: /abs/a.ttf is not a path relative to the input file');
     expect(() => parseMarklessStyleInput(input(FACES, [FONTS[0]!, { ...FONTS[0]!, file: 'other.ttf' }]))).toThrow('fonts: ./fonts/Lato-Regular.ttf is listed twice');
     expect(() => parseMarklessStyleInput(input(FACES, [{ url: './a.ttf' } as never]))).toThrow('bad fonts entry');
-    expect(() => marklessStyleExport(input(FACES + PAGE, FONTS), 'no-reader.json')).toThrow('the input names font files, and no reader for them was given');
+    expect(() => marklessStyleExport(input(FACES + PAGE, FONTS), 'no-reader.json')).toThrow('the input names font or image files, and no reader for them was given');
   });
 });

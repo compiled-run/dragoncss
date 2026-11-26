@@ -859,6 +859,8 @@ public final class DragonTree {
   private var inlineLines: [String: [(edges: [Double], baseline: Double)]] = [:]
   private var hosts: [String: String] = [:]
   private var companions: [String: [UIView]] = [:]
+  /// REPL-r1: each runtimeSrc img of the last layout: its zoomed leaf, its content box in absolute LU and its snapped edges.
+  private var runtimeLeaves: [String: (leaf: ReplacedLeaf, content: ObjectRect, edges: [Double])] = [:]
   /// css-env-1 env(safe-area-inset-*): the root view's insets in CSS px, measured from its container (dragonSafeArea) by a host
   /// before apply, which then replace the case input's own; nil keeps the input's (a mount's machine puts its insets there).
   public var safeArea: SafeAreaInsets? = nil
@@ -875,6 +877,27 @@ public final class DragonTree {
   public func node(_ id: String) -> DragonNodeView? { return views[id] }
   /// A laid-out box's parent in the engine's box tree (its DOM parent, display: contents aside), wherever it is hosted.
   public func layoutParent(_ id: String) -> String? { return parents[id] ?? nil }
+  /// REPL-r1: the imgs of the last layout whose src the app sets at run time.
+  public var runtimeImageIds: [String] { return runtimeLeaves.keys.sorted() }
+
+  /// REPL-r1: the image the app loaded for the img id whose src it sets at run time, decoded into 8-bit sRGB with its EXIF orientation
+  /// applied, or nil when the img has no src. It is drawn into the engine's destination rect for its pixel size (paint.ts
+  /// runtimeImagePaint) with no relayout: the layout never read the image. The image stays until the next call.
+  public func setRuntimeImage(_ id: String, _ image: CGImage?) throws {
+    guard let bv = views[id] as? DragonBoxView, let r = runtimeLeaves[id] else { fatalError("dragon: \(id) is not a laid-out img whose src is set at run time") }
+    let n: [Double] = image.map { [Double($0.width), Double($0.height)] } ?? [0, 0]
+    bv.dragonShowRuntimeImage(image, width: n[0], height: n[1], missing: image == nil)
+    try placeRuntimeImage(bv, r.leaf, r.content, r.edges)
+  }
+
+  private func placeRuntimeImage(_ bv: DragonBoxView, _ leaf: ReplacedLeaf, _ content: ObjectRect, _ e: [Double]) throws {
+    let p = try paint_runtimeImagePaint(leaf, content, bv.dragonImageNatural[0], bv.dragonImageNatural[1], bv.dragonScale)
+    func rel(_ q: PixelRect) -> [Double] { return [q.x - e[0], q.y - e[1], q.width, q.height] }
+    bv.dragonReplacedContent = rel(p.content)
+    bv.dragonReplacedDest = rel(p.dest)
+    bv.dragonReplacedDrawn = p.drawn.map(rel)
+    bv.setNeedsDisplay()
+  }
 
   public func boxNode(_ id: String, parent: String?, kind: String) -> DragonBoxView {
     let v = DragonBoxView(dragonId: id, kind: kind, parent: parent)
@@ -1071,13 +1094,18 @@ public final class DragonTree {
     }
     // REPL-a: each replaced box's paint rects from its content box (border box less borders and padding against the parent's
     // content width), through the translated engine; the paint modules read them in their after-layout hooks and stages.
+    runtimeLeaves = [:]
     for (id, leaf) in zLeaves {
-      // REPL-r1: an img whose src is set at run time draws nothing yet (native refuses it outside the parity lanes).
-      if leaf.natural is NaturalSizeValue_runtime { continue }
       guard let bv = views[id] as? DragonBoxView, let e = edges[id], let a = abs.get(leaf.id), let pId = zParent[id] else { fatalError("dragon: replaced \(id) is not placed") }
       let pad = try box_resolvePadding(leaf.style, try contentWidth(pId))
       let bor = try box_resolveBorder(leaf.style, zoomed.devicePixelRatio)
       let content = ObjectRect(a.x + bor.left + pad.left, a.y + bor.top + pad.top, max(0, a.width - bor.left - bor.right - pad.left - pad.right), max(0, a.height - bor.top - bor.bottom - pad.top - pad.bottom))
+      if leaf.natural is NaturalSizeValue_runtime {
+        runtimeLeaves[id] = (leaf, content, e)
+        try placeRuntimeImage(bv, leaf, content, e)
+        dragonAfterLayout(bv, bv.dragonShape, s)
+        continue
+      }
       let p = try paint_replacedPaint(leaf, content)
       func rel(_ r: PixelRect) -> [Double] { return [r.x - e[0], r.y - e[1], r.width, r.height] }
       bv.dragonReplacedContent = rel(p.content)
@@ -2190,6 +2218,7 @@ import dev.dragon.layout.ReplacedLeaf
 import dev.dragon.layout.paintMarker_markerSymbolPaint
 import dev.dragon.layout.paintMenulist_menuListArrows
 import dev.dragon.layout.paint_replacedPaint
+import dev.dragon.layout.paint_runtimeImagePaint
 import dev.dragon.layout.NaturalSizeValue_runtime
 import dev.dragon.layout.TextFont
 import dev.dragon.layout.TextLeaf
@@ -2341,6 +2370,35 @@ class DragonTree(val context: Context) {
   fun node(id: String): DragonNodeView? = views[id]
   /** A laid-out box's parent in the engine's box tree (its DOM parent, display: contents aside), wherever it is hosted. */
   fun layoutParent(id: String): String? = parents[id]
+
+  /** REPL-r1: a runtimeSrc img of the last layout: its zoomed leaf, its content box in absolute LU and its snapped edges. */
+  private class RuntimeLeaf(val leaf: ReplacedLeaf, val content: ObjectRect, val edges: DoubleArray, val scale: Double)
+  private val runtimeLeaves = HashMap<String, RuntimeLeaf>()
+  /** REPL-r1: the imgs of the last layout whose src the app sets at run time. */
+  val runtimeImageIds: List<String> get() = runtimeLeaves.keys.sorted()
+
+  /**
+   * REPL-r1: the image the app loaded for the img id whose src it sets at run time, decoded as ARGB_8888 sRGB with its EXIF orientation
+   * applied, or null when the img has no src. It is drawn into the engine's destination rect for its pixel size (paint.ts
+   * runtimeImagePaint) with no relayout: the layout never read the image. The image stays until the next call.
+   */
+  fun setRuntimeImage(id: String, image: android.graphics.Bitmap?) {
+    val bv = views[id] as? DragonBoxView
+    val r = runtimeLeaves[id]
+    if (bv == null || r == null) throw IllegalStateException("dragon: " + id + " is not a laid-out img whose src is set at run time")
+    val n = if (image == null) doubleArrayOf(0.0, 0.0) else doubleArrayOf(image.width.toDouble(), image.height.toDouble())
+    bv.dragonShowRuntimeImage(image, n[0], n[1], image == null)
+    placeRuntimeImage(bv, r.leaf, r.content, r.edges, r.scale)
+  }
+
+  private fun placeRuntimeImage(bv: DragonBoxView, leaf: ReplacedLeaf, content: ObjectRect, e: DoubleArray, scale: Double) {
+    val p = paint_runtimeImagePaint(leaf, content, bv.dragonImageNatural[0], bv.dragonImageNatural[1], scale)
+    fun rel(q: PixelRect): DoubleArray = doubleArrayOf(q.x - e[0], q.y - e[1], q.width, q.height)
+    bv.dragonReplacedContent = rel(p.content)
+    bv.dragonReplacedDest = rel(p.dest)
+    bv.dragonReplacedDrawn = p.drawn?.let { rel(it) }
+    bv.invalidate()
+  }
 
   /** Each inline box's fragments (INL1a): left, top, right, bottom relative to the box's snapped edges, and the baseline from the top. */
   private val inlineLines = HashMap<String, List<DoubleArray>>()
@@ -2550,9 +2608,8 @@ class DragonTree(val context: Context) {
     }
     // REPL-a: each replaced box's paint rects from its content box (border box less borders and padding against the parent's
     // content width), through the translated engine; the paint modules read them in their after-layout hooks and stages.
+    runtimeLeaves.clear()
     for (leaf in zLeaves) {
-      // REPL-r1: an img whose src is set at run time draws nothing yet (native refuses it outside the parity lanes).
-      if (leaf.natural is NaturalSizeValue_runtime) continue
       val id = leaf.id
       val bv = views[id] as? DragonBoxView ?: throw IllegalStateException("dragon: replaced " + id + " has no box view")
       val e = edges[id] ?: throw IllegalStateException("dragon: replaced " + id + " is not placed")
@@ -2561,6 +2618,12 @@ class DragonTree(val context: Context) {
       val pad = box_resolvePadding(leaf.style, contentWidth(pId))
       val bor = box_resolveBorder(leaf.style, zoomed.devicePixelRatio)
       val content = ObjectRect(a.x + bor.left + pad.left, a.y + bor.top + pad.top, maxOf(0.0, a.width - bor.left - bor.right - pad.left - pad.right), maxOf(0.0, a.height - bor.top - bor.bottom - pad.top - pad.bottom))
+      if (leaf.natural is NaturalSizeValue_runtime) {
+        runtimeLeaves[id] = RuntimeLeaf(leaf, content, e, scale)
+        placeRuntimeImage(bv, leaf, content, e, scale)
+        dragonAfterLayout(bv, bv.dragonShape, scale)
+        continue
+      }
       val p = paint_replacedPaint(leaf, content)
       fun rel(r: PixelRect): DoubleArray = doubleArrayOf(r.x - e[0], r.y - e[1], r.width, r.height)
       bv.dragonReplacedContent = rel(p.content)

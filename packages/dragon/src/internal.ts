@@ -40,6 +40,7 @@ export { nativeOutlinePending, PROFILE_NOTES, profileNoteFor, statusOf } from '.
 export type { ProfileNote } from './profiles/types.ts';
 export { sha256Hex } from './digest.ts';
 export { SYNTHETIC_BOLD_KEYS, SYNTHETIC_BOLD_VALUES, syntheticBoldStroke } from './fonts/synthetic-bold.ts';
+export { sniffImage } from './images/index.ts';
 export { SYSTEM_FACE_ROLES, SYSTEM_FACE_WEIGHTS, SYSTEM_FACES, isSystemFaceRole, systemFaceId } from './fonts/system-faces.ts';
 export type { SystemFaceRequest, SystemFaceRole, SystemFaceWeight } from './fonts/system-faces.ts';
 export { chromeVersion } from './ua/chrome-145.darwin-arm64.generated.ts';
@@ -380,7 +381,7 @@ export function nativePrograms(compiled: object, assignment: Assignment, state: 
   if (c.nativeLowered === null || c.resolved === null) return { kind: 'blocked', reason: 'the case has no native lowering' };
   try {
     const record = internalRecord(compiled) as NonNullable<ReturnType<typeof internalRecord>>;
-    return { kind: 'ready', programs: lowerNativePrograms(c.nativeLowered, c.resolved, record.images, movingOf(record), record.textPlants) };
+    return { kind: 'ready', programs: lowerNativePrograms(c.nativeLowered, c.resolved, record.images, movingOf(record), record.textPlants, record.hostImages) };
   } catch (e) {
     if (e instanceof ProgramError) return { kind: 'blocked', reason: e.message };
     throw e;
@@ -396,7 +397,7 @@ export function nativeProgramFor(compiled: object, assignment: Assignment, targe
   if (c.nativeLowered === null || c.resolved === null) return { kind: 'blocked', reason: 'the case has no native lowering' };
   try {
     const record = internalRecord(compiled) as NonNullable<ReturnType<typeof internalRecord>>;
-    return { kind: 'ready', program: lowerNativeProgram(target === 'ios' ? 'uikit' : 'android-views', c.nativeLowered, c.resolved, record.images, movingOf(record), record.textPlants) };
+    return { kind: 'ready', program: lowerNativeProgram(target === 'ios' ? 'uikit' : 'android-views', c.nativeLowered, c.resolved, record.images, movingOf(record), record.textPlants, record.hostImages) };
   } catch (e) {
     if (e instanceof ProgramError) return { kind: 'blocked', reason: e.message };
     throw e;
@@ -578,7 +579,7 @@ export function nativeBandPrograms(compiled: object, assignment: Assignment, ban
   const c = bandCaseOf(record, assignment, band);
   if (typeof c === 'string') return { kind: 'blocked', reason: c };
   try {
-    return { kind: 'ready', programs: lowerNativePrograms(c.nativeLowered, c.resolved, record.images, movingOf(record), record.textPlants) };
+    return { kind: 'ready', programs: lowerNativePrograms(c.nativeLowered, c.resolved, record.images, movingOf(record), record.textPlants, record.hostImages) };
   } catch (e) {
     if (e instanceof ProgramError) return { kind: 'blocked', reason: e.message };
     throw e;
@@ -609,7 +610,7 @@ export function nativeBandProgramFor(compiled: object, assignment: Assignment, b
   const c = bandCaseOf(record, assignment, band);
   if (typeof c === 'string') return { kind: 'blocked', reason: c };
   try {
-    return { kind: 'ready', program: lowerNativeProgram(target === 'ios' ? 'uikit' : 'android-views', c.nativeLowered, c.resolved, record.images, movingOf(record), record.textPlants) };
+    return { kind: 'ready', program: lowerNativeProgram(target === 'ios' ? 'uikit' : 'android-views', c.nativeLowered, c.resolved, record.images, movingOf(record), record.textPlants, record.hostImages) };
   } catch (e) {
     if (e instanceof ProgramError) return { kind: 'blocked', reason: e.message };
     throw e;
@@ -679,7 +680,7 @@ export function interactionLevelInputIn(compiled: object, assignment: Assignment
     const i = c.interaction.find((x) => x.value.key === state);
     if (i === undefined || i.nativeLowered === null) return { kind: 'blocked', reason: `interaction state ${state} has no native lowering in band ${band}` };
     try {
-      return { kind: 'ready', programs: lowerNativePrograms(i.nativeLowered, i.resolved, record.images, movingOf(record), record.textPlants) };
+      return { kind: 'ready', programs: lowerNativePrograms(i.nativeLowered, i.resolved, record.images, movingOf(record), record.textPlants, record.hostImages) };
     } catch (e) {
       if (e instanceof ProgramError) return { kind: 'blocked', reason: e.message };
       throw e;

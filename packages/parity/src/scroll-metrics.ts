@@ -90,6 +90,8 @@ export async function captureScrollMetrics(browser: Browser, caseId: string, htm
         if (el === propagated) continue;
         const cs = getComputedStyle(el);
         if (cs.display === 'none' || !['hidden', 'auto', 'scroll'].includes(cs.overflowX)) continue;
+        // A textarea's own range is FORM-b2: the native lowering clips it, and only its ancestors' ranges are compared.
+        if (el.tagName === 'TEXTAREA') continue;
         out.push({ id: el.getAttribute('data-dragon-id') as string, scrollWidth: el.scrollWidth, scrollHeight: el.scrollHeight, clientWidth: el.clientWidth, clientHeight: el.clientHeight });
       }
       return out;
