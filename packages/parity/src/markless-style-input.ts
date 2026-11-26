@@ -686,8 +686,8 @@ function marklessRuntimeLayout(devices: { readonly [T in NativeStyleTarget]: Exp
     devices: (['ios', 'android'] as const).map((t) => ({
       ...devices[t].viewport,
       dpr: devices[t].dpr,
-      layout: (input: LayoutInput) => {
-        const m = mode === 'system' ? systemMeasurer(systemFontsFor(t, devices[t].dpr), input, [...faces.keys()], devices[t].dpr, faces) : referenceMeasurer([...faces.keys()]);
+      layout: (input: LayoutInput, fontFallbacks: Readonly<Record<string, string>>) => {
+        const m = mode === 'system' ? systemMeasurer(systemFontsFor(t, devices[t].dpr), input, [...faces.keys()], devices[t].dpr, faces, null, fontFallbacks) : referenceMeasurer([...faces.keys()]);
         const r = layout(input, m);
         return r.kind === 'ok' ? { kind: 'ok' as const, rects: absoluteRects(r.boxes) } : { kind: 'refused' as const, ...r.unsupported };
       },

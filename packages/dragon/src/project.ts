@@ -1990,7 +1990,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       }
     }
     // REPL-r2a: an img that follows its image is laid out, exported and started on the device at 0 by 0, as while it loads.
-    const follows = runtimeLayoutRefusals(runtimeTrees, options.runtimeImageLayout, options.faults, originOfAddress, diagnostics);
+    const follows = runtimeLayoutRefusals(runtimeTrees, options.runtimeImageLayout, options.faults, originOfAddress, diagnostics, Object.fromEntries(fontFallbacks));
     if (follows.size > 0) for (const m of loweredByBand) for (const [key, tree] of m) m.set(key, withFollowedImages(tree, follows));
   }
   const lowered = loweredByBand[nativeBand] ?? new Map<string, LayoutBox>();

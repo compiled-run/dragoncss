@@ -22,7 +22,8 @@ export type LayoutDevice = {
   readonly width: number;
   readonly height: number;
   readonly dpr: number;
-  readonly layout: (input: LayoutInput) => DeviceLayout;
+  /** fontFallbacks: each bundled face's system fallback face (the compile's record.fontFallbacks), as the export's measurers take it. */
+  readonly layout: (input: LayoutInput, fontFallbacks: Readonly<Record<string, string>>) => DeviceLayout;
 };
 
 /** The build-time layout a compile with a runtimeSrc img needs (InternalOptions.runtimeImageLayout): the export devices. */
@@ -168,7 +169,7 @@ function exactFit(tree: LayoutBox, id: string, rect: LayoutRect | undefined): re
  * replaced.ts followsRead): that img follows its image when, at every device and sample, the page lays out and no box moves or
  * resizes inline. Without a build-time layout every such img is refused: nothing proves its box. Gives the imgs that follow.
  */
-export function runtimeLayoutRefusals(trees: readonly { readonly tree: LayoutBox; readonly rootFontSize: number; readonly band: Band | null; readonly resolved: ResolvedElement }[], layout: RuntimeImageLayout | null, faults: CompilerFaults, originOf: OriginOf, diagnostics: Diagnostic[]): Set<string> {
+export function runtimeLayoutRefusals(trees: readonly { readonly tree: LayoutBox; readonly rootFontSize: number; readonly band: Band | null; readonly resolved: ResolvedElement }[], layout: RuntimeImageLayout | null, faults: CompilerFaults, originOf: OriginOf, diagnostics: Diagnostic[], fontFallbacks: Readonly<Record<string, string>>): Set<string> {
   const reported = new Set<string>();
   const refusedIds = new Set<string>();
   const follows = new Set<string>();
@@ -188,7 +189,7 @@ export function runtimeLayoutRefusals(trees: readonly { readonly tree: LayoutBox
     const edges = t.band === null ? [] : layout.devices.flatMap((d) => bandEdgeWidths(t.band as Band, layout.devices).map((width) => ({ ...d, width })));
     for (const d of [...layout.devices, ...edges]) {
       const viewport = { width: d.width, height: d.height };
-      const at = (tree: LayoutBox): DeviceLayout => d.layout({ viewport, devicePixelRatio: d.dpr, viewportUnits: { small: viewport, large: viewport, dynamic: viewport }, safeArea: { top: 0, right: 0, bottom: 0, left: 0 }, rootFontSize: t.rootFontSize, root: tree });
+      const at = (tree: LayoutBox): DeviceLayout => d.layout({ viewport, devicePixelRatio: d.dpr, viewportUnits: { small: viewport, large: viewport, dynamic: viewport }, safeArea: { top: 0, right: 0, bottom: 0, left: 0 }, rootFontSize: t.rootFontSize, root: tree }, fontFallbacks);
       const stopped = (r: Extract<DeviceLayout, { kind: 'refused' }>, where: string): void => {
         if (r.code === 'runtime-image-size') refuse(t.resolved, r.nodeId, `<img> ${r.nodeId} has a src set at run time, and ${r.detail}`);
         // A layout stopped before the img proves nothing about it.
