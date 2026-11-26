@@ -89,7 +89,7 @@ public func units_saturate(_ v: Double) throws -> Double {
 public func units_fromRaw(_ raw: Double) throws -> Double {
   // ts: packages/layout/src/units.ts:25
   if (!jsIsInteger(raw)) {
-    throw JsError(message: jsConcat(S.s428, jsNumberToString(raw)))
+    throw JsError(message: jsConcat(S.s436, jsNumberToString(raw)))
   }
   return try units_saturate(raw)
 }
@@ -170,7 +170,7 @@ public func units_anchorPercentOffset(_ size: Double, _ fraction: Double) throws
 public func units_fromWholePx(_ n: Double) throws -> Double {
   // ts: packages/layout/src/units.ts:113
   if (!jsIsInteger(n)) {
-    throw JsError(message: jsConcat(S.s1244, jsNumberToString(n)))
+    throw JsError(message: jsConcat(S.s1264, jsNumberToString(n)))
   }
   return try units_saturate((n * units_LU_PER_PX))
 }
@@ -215,11 +215,11 @@ public func units_sum(_ values: JsArray<Double>) throws -> Double {
   var total: Double = units_ZERO
   // ts: packages/layout/src/units.ts:155
   do {
-    let _a405 = values
-    var _i405 = 0
-    while _i405 < _a405.items.count {
-      let v: Double = _a405.items[_i405]
-      _i405 += 1
+    let _a406 = values
+    var _i406 = 0
+    while _i406 < _a406.items.count {
+      let v: Double = _a406.items[_i406]
+      _i406 += 1
       try total = units_add(total, v)
     }
   }
@@ -250,7 +250,7 @@ public func units_clampNegativeToZero(_ a: Double) throws -> Double {
 public func units_mulInt(_ a: Double, _ n: Double) throws -> Double {
   // ts: packages/layout/src/units.ts:177
   if (!jsIsInteger(n)) {
-    throw JsError(message: jsConcat(S.s874, jsNumberToString(n)))
+    throw JsError(message: jsConcat(S.s887, jsNumberToString(n)))
   }
   return try units_saturate((a * n))
 }
@@ -259,7 +259,7 @@ public func units_mulInt(_ a: Double, _ n: Double) throws -> Double {
 public func units_divInt(_ a: Double, _ n: Double) throws -> Double {
   // ts: packages/layout/src/units.ts:183
   if ((!jsIsInteger(n)) || (n == 0.0)) {
-    throw JsError(message: jsConcat(S.s984, jsNumberToString(n)))
+    throw JsError(message: jsConcat(S.s1001, jsNumberToString(n)))
   }
   return try units_saturate(jsTrunc((a / n)))
 }
@@ -273,7 +273,7 @@ public func units_floatToInlineRaw(_ px: Double) throws -> Double {
 public func units_inlineDivInt(_ raw: Double, _ n: Double) throws -> Double {
   // ts: packages/layout/src/units.ts:194
   if ((!jsIsInteger(n)) || (n == 0.0)) {
-    throw JsError(message: jsConcat(S.s984, jsNumberToString(n)))
+    throw JsError(message: jsConcat(S.s1001, jsNumberToString(n)))
   }
   return jsTrunc((raw / n))
 }
@@ -282,7 +282,7 @@ public func units_inlineDivInt(_ raw: Double, _ n: Double) throws -> Double {
 public func units_divLu(_ a: Double, _ b: Double) throws -> Double {
   // ts: packages/layout/src/units.ts:200
   if (b == 0.0) {
-    throw JsError(message: S.s427)
+    throw JsError(message: S.s435)
   }
   return try units_saturate(jsTrunc(((a * units_LU_PER_PX) / b)))
 }
@@ -429,7 +429,7 @@ public func units_isFiniteFactorSum(_ total: Double) throws -> Bool {
 public func units_cumulativeShareRounded(_ total: Double, _ k: Double, _ parts: Double) throws -> Double {
   // ts: packages/layout/src/units.ts:351
   if ((total < 0.0) || (parts <= 0.0)) {
-    throw JsError(message: S.s745)
+    throw JsError(message: S.s754)
   }
   return try units_saturate(jsFloor(((((2.0 * total) * k) + parts) / (2.0 * parts))))
 }
@@ -438,7 +438,7 @@ public func units_cumulativeShareRounded(_ total: Double, _ k: Double, _ parts: 
 public func units_cumulativeShareTruncated(_ total: Double, _ numerator: Double, _ denominator: Double) throws -> Double {
   // ts: packages/layout/src/units.ts:357
   if ((total < 0.0) || (denominator <= 0.0)) {
-    throw JsError(message: S.s746)
+    throw JsError(message: S.s755)
   }
   return try units_saturate(jsTrunc(((total * numerator) / denominator)))
 }
@@ -460,7 +460,7 @@ public func units_distributedOffset(_ mode: JsString, _ free: Double, _ n: Doubl
 public func units_intDiv(_ a: Double, _ b: Double) throws -> Double {
   // ts: packages/layout/src/units.ts:375
   if (((!jsIsInteger(a)) || (!jsIsInteger(b))) || (b == 0.0)) {
-    throw JsError(message: jsConcat(S.s873, jsNumberToString(a), S.s12, jsNumberToString(b)))
+    throw JsError(message: jsConcat(S.s886, jsNumberToString(a), S.s12, jsNumberToString(b)))
   }
   return jsTrunc((a / b))
 }
@@ -580,7 +580,7 @@ public func units_mod32(_ x: Double) throws -> Double {
 public func units_equalShare(_ extra: Double, _ setTrackCount: Double, _ growableTrackCount: Double) throws -> Double {
   // ts: packages/layout/src/units.ts:490
   if (((!jsIsInteger(setTrackCount)) || (!jsIsInteger(growableTrackCount))) || (growableTrackCount <= 0.0)) {
-    throw JsError(message: jsConcat(S.s780, jsNumberToString(setTrackCount), S.s12, jsNumberToString(growableTrackCount)))
+    throw JsError(message: jsConcat(S.s789, jsNumberToString(setTrackCount), S.s12, jsNumberToString(growableTrackCount)))
   }
   let a: Double = try units_mod32(extra)
   let high: Double = jsFloor((a / units_TWO_16))
@@ -804,11 +804,11 @@ public func units_effectiveZoom(_ deviceZoom: Double, _ zooms: JsArray<Double>) 
   var z: Double = deviceZoom
   // ts: packages/layout/src/units.ts:710
   do {
-    let _a406 = zooms
-    var _i406 = 0
-    while _i406 < _a406.items.count {
-      let own: Double = _a406.items[_i406]
-      _i406 += 1
+    let _a407 = zooms
+    var _i407 = 0
+    while _i407 < _a407.items.count {
+      let own: Double = _a407.items[_i407]
+      _i407 += 1
       let zoomed: Double = jsFround((z * jsFround(own)))
       z = ((zoomed < 0.000001) ? 0.000001 : ((zoomed > 1000000.0) ? 1000000.0 : zoomed))
     }
@@ -891,7 +891,7 @@ public func units_calcEvaluateFloat(_ value: Double, _ nonNegative: Bool) throws
 public func units_mulDiv(_ v: Double, _ m: Double, _ d: Double) throws -> Double {
   // ts: packages/layout/src/units.ts:786
   if ((((d <= 0.0) || (m < 0.0)) || (!jsIsInteger(m))) || (!jsIsInteger(d))) {
-    throw JsError(message: S.s945)
+    throw JsError(message: S.s962)
   }
   let negative: Bool = (v < 0.0)
   let a: Double = (negative ? (-v) : v)

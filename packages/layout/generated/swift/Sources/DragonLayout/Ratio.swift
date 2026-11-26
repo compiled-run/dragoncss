@@ -35,7 +35,7 @@ public func ratio_layoutRatioOf(_ s: LayoutStyle, _ f: EngineFaults) throws -> L
   let r: LayoutRatio? = try ratio_styleLayoutRatio(s, f)
   // ts: packages/layout/src/ratio.ts:53
   if (r == nil) {
-    throw JsError(message: S.s1192)
+    throw JsError(message: S.s1211)
   }
   return try jsUnwrap(r)
 }
@@ -148,7 +148,7 @@ public func ratio_initialBlockSize(_ ctx: Ctx, _ box: LayoutBox, _ basis: any U_
 public func ratio_noPercentBasis(_ box: LayoutBox) throws -> any U_HeightBasis_definite_HeightBasis_flexDependent_HeightBasis_indefinite {
   // ts: packages/layout/src/ratio.ts:146
   if try ratio_blockLengthsHavePercent(box.style) {
-    throw JsError(message: jsConcat(box.id, S.s46))
+    throw JsError(message: jsConcat(box.id, S.s47))
   }
   return HeightBasis_indefinite(S.s_indefinite)
 }
