@@ -101,11 +101,13 @@ describe('REPL-r2a: an img whose height follows its image', () => {
     expect(got.length).toBeGreaterThan(0);
     expect(got.every((m) => m.startsWith('<img> a has a src set at run time, and its image changes the inline size or position of ab '))).toBe(true);
   });
-  it('refuses it in a grid that sizes its columns again after its rows (Blink is_sizing_dependent_on_block_size)', () => {
-    const css = 'img { display: block; width: 100%; } .g { display: grid; grid-template-columns: 100px auto; height: 200px; } .p { height: 50%; width: 10px; }';
+  it('refuses it in a grid that sizes its columns again after its rows, when a replaced item is measured at its row\'s height', () => {
+    const css = 'img { display: block; width: 100%; } .g { display: grid; grid-template-columns: 100px auto; height: 200px; } .p { height: 50%; border: 0; }';
     // The img's track is fixed, so only the second pass, which re-measures .p against its row, could reach it.
-    const got = refusals(compile(css, (r) => [div(r, 'g', ['g'], [div(r, 'c', [], [img(r, 'a', [], { absent: false })]), div(r, 'p', ['p'], [])])]), 'DRAGON_RUNTIME_IMAGE_SIZE');
-    expect(got).toContain("<img> a has a src set at run time, and grid g sizes its columns again after its rows, which a's image sizes, so its image could change a column's width");
+    const got = refusals(compile(css, (r) => [div(r, 'g', ['g'], [div(r, 'c', [], [img(r, 'a', [], { absent: false })]), img(r, 'p', ['p'], undefined, { src: 'https://example.com/' }, 'iframe')])]), 'DRAGON_RUNTIME_IMAGE_SIZE');
+    expect(got).toContain("<img> a has a src set at run time, and grid g sizes its columns again after its rows, which a's image sizes, and replaced item p is measured at its row's height, so its image could change a column's width");
+    const plain = refusals(compile(css.replace(' height: 50%;', ' height: 50%; width: 10px;'), (r) => [div(r, 'g', ['g'], [div(r, 'c', [], [img(r, 'a', [], { absent: false })]), div(r, 'p', ['p'], [])])]), 'DRAGON_RUNTIME_IMAGE_SIZE');
+    expect(plain).toEqual([]);
   });
   it('refuses it beside a box sized by anchor-size()', () => {
     const css = 'img { display: block; width: 100%; anchor-name: --i; } .c { position: relative; } .x { position: absolute; position-anchor: --i; top: 0; left: 0; width: anchor-size(width); height: 10px; }';

@@ -217,7 +217,7 @@ export function runtimeLayoutRefusals(trees: readonly { readonly tree: LayoutBox
         for (const sample of fit === null ? FOLLOW_SAMPLES : [...FOLLOW_SAMPLES, fit]) {
           const sizes = new Map([...here].map((h) => [h, h === id ? sample : ([0, 0] as const)] as const));
           const r = at(withNaturals(t.tree, sizes) as LayoutBox);
-          const named = `${Math.round(sample[0] * 100) / 100}x${Math.round(sample[1] * 100) / 100}`;
+          const named = `${sample[0]}x${sample[1]}`;
           if (r.kind === 'refused') {
             stopped(r, ` with ${id}'s image ${named}`);
             continue;

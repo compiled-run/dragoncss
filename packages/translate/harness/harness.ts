@@ -4163,6 +4163,8 @@ export function runMarklessRowsLayout(line: string, shaper: GlyphShaper): string
     if (parsed.kind === 'obj' && parsed.values.has('texts')) keys.push('texts');
     if (parsed.kind === 'obj' && parsed.values.has('sticky')) keys.push('sticky');
     if (parsed.kind === 'obj' && parsed.values.has('textAreas')) keys.push('textAreas');
+    if (parsed.kind === 'obj' && parsed.values.has('naturals')) keys.push('naturals');
+    if (parsed.kind === 'obj' && parsed.values.has('faults')) keys.push('faults');
     return marklessLayout(obj(parsed, keys, '$'), shaper);
   } catch (e) {
     if (e instanceof HarnessError) return `["harness-error",${q(e.detail)}]`;

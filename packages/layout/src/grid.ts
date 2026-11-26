@@ -2327,11 +2327,16 @@ export function layoutGridContainer(ctx: Ctx, box: LayoutBox, a: GridArgs): Grid
       finalizeGeometry(grid.rows, first.start, first.gutter);
     }
   }
+  // REPL-r2a: a second column pass reads a row's size only through a replaced item, measured with its row area as its block size.
   if (again && grid.columns.props.nonDefinite) {
-    for (const item of grid.items) {
-      const f = followedImageUnder(item.box);
-      if (f !== null) unsupported('runtime-image-size', f, 'css-grid-2 §12.1', `grid ${box.id} sizes its columns again after its rows, which ${f}'s image sizes, so its image could change a column's width`);
+    let followed: string | null = null;
+    let ratioItem: string | null = null;
+    for (const i of grid.items) {
+      const f = followedImageUnder(i.box);
+      if (f !== null && followed === null) followed = f;
+      if (ratioItem === null && i.sizingDependsOnBlockSize && i.box.kind === 'replaced' && i.box.natural.kind !== 'followed') ratioItem = i.box.id;
     }
+    if (followed !== null && ratioItem !== null) unsupported('runtime-image-size', followed, 'css-grid-2 §12.1', `grid ${box.id} sizes its columns again after its rows, which ${followed}'s image sizes, and replaced item ${ratioItem} is measured at its row's height, so its image could change a column's width`);
   }
   if (again) {
     initializeTrackSizes(ctx, grid, 'columns');

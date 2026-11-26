@@ -30,6 +30,7 @@ import { MOTION_FAULTS } from './faults/motion.ts';
 import { MQ_R0_FAULTS } from './faults/mq-r0.ts';
 import { MULTICOL_FAULTS } from './faults/multicol.ts';
 import { OVFL_FAULTS } from './faults/ovfl.ts';
+import { RUNTIME_IMAGE_FAULTS } from './faults/runtime-image.ts';
 import { SCROLL_CONTAINMENT_FAULTS } from './faults/scroll-containment.ts';
 import { SELD_FAULTS } from './faults/seld.ts';
 import { SELD_R2_FAULTS } from './faults/seld-r2.ts';
@@ -50,7 +51,6 @@ import { TXT2_G_FAULTS } from './faults/txt2-g.ts';
 import { TXT2_I_FAULTS } from './faults/txt2-i.ts';
 import { TXT2_LB_FAULTS } from './faults/txt2-lb.ts';
 import { TXT2_TAL_FAULTS } from './faults/txt2-tal.ts';
-import { RUNTIME_IMAGE_FAULTS } from './faults/runtime-image.ts';
 import { TEXT_BOX_FAULTS } from './faults/text-box.ts';
 import { TXT2B_FAULTS } from './faults/txt2b.ts';
 import { VALUES_FAULTS } from './faults/values.ts';
@@ -85,11 +85,11 @@ export const FAULT_GROUPS = {
   'mq-r0': MQ_R0_FAULTS,
   multicol: MULTICOL_FAULTS,
   ovfl: OVFL_FAULTS,
+  'runtime-image': RUNTIME_IMAGE_FAULTS,
   'scroll-containment': SCROLL_CONTAINMENT_FAULTS,
   seld: SELD_FAULTS,
   'seld-r2': SELD_R2_FAULTS,
   selectors: SELECTORS_FAULTS,
-  'runtime-image': RUNTIME_IMAGE_FAULTS,
   'text-box': TEXT_BOX_FAULTS,
   'transform-extra': TRANSFORM_EXTRA_FAULTS,
   'txt-ff': TXT_FF_FAULTS,
