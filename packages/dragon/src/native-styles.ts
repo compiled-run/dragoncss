@@ -4,9 +4,8 @@ import { NO_FAULTS } from './faults.ts';
 import type { StateEmit } from './emit/runtime/state.ts';
 import { emitStatePrograms, StateEmitError } from './emit/runtime/state.ts';
 import { animProgramOf, BAND_STATE, compiledCases, ENV_INSTANCE, forcedOnlyStatesIn, interactionLevelInputIn, interactionPartitionIn, nativeBandProgramFor, nativeBands, stateGroupsIn, usedSchemeOf } from './internal.ts';
-import type { InteractionProgram } from './lower/interaction-program.ts';
-import type { InteractionValue, StateMatch } from './analysis/interaction.ts';
-import { stateMembers } from './analysis/interaction.ts';
+import type { InteractionLevel, InteractionProgram } from './lower/interaction-program.ts';
+import type { InteractionValue } from './analysis/interaction.ts';
 import { deriveInteractionProgram, interactionProgramAt } from './lower/interaction-program.ts';
 import type { AnimProgram } from './lower/anim-program.ts';
 import type { rtBand } from '@dragon/layout';
@@ -189,22 +188,20 @@ export function compileNativeStylesWith(config: NativeStylesConfig, input: Front
 }
 
 /** The interaction program over a target's state program: one level per program assignment, from its case in its band. */
-function interactionProgramOf(compiled: Compiled<NativeStyleTarget>, program: StateProgram, backend: NativeBackend, bandless = 0): { readonly program: InteractionProgram; readonly values: readonly (readonly InteractionValue[])[]; readonly members: readonly (readonly (readonly StateMatch[])[])[] } | string {
+function interactionProgramOf(compiled: Compiled<NativeStyleTarget>, program: StateProgram, backend: NativeBackend, bandless = 0): { readonly program: InteractionProgram; readonly values: readonly (readonly InteractionValue[])[] } | string {
   const isBand = (x: StateProgram['assignments'][number]['assignment'][number]): boolean => x.state.instance === ENV_INSTANCE && x.state.state === BAND_STATE;
   const inputs = [];
   const values: InteractionValue[][] = [];
-  const members: (readonly StateMatch[])[][] = [];
   for (const { assignment } of program.assignments) {
     const band = (assignment.find(isBand)?.value ?? bandless) as number;
     const input = interactionLevelInputIn(compiled, assignment.filter((x) => !isBand(x)), band, backend);
     if (typeof input === 'string') return input;
     inputs.push(input);
-    members.push(stateMembers(input.partition));
     const skipped = forcedOnlyStatesIn(compiled, assignment.filter((x) => !isBand(x)), band);
     // A skipped state keeps its matches but is the assignment's own styles, so it forces nothing.
     values.push(input.partition.states.map((v, k) => (skipped[k] === true ? { ...v, force: [] } : v)));
   }
-  return { program: deriveInteractionProgram(program, inputs), values, members };
+  return { program: deriveInteractionProgram(program, inputs), values };
 }
 
 function targetOutput(compiled: Compiled<NativeStyleTarget>, t: NativeStyleTarget, name: string, viewport: NativeStylesConfig['viewport'], sources: boolean, hostAnimates: boolean): NativeStyleOutput | NativeStyleBlocked {
@@ -297,7 +294,7 @@ function targetOutput(compiled: Compiled<NativeStyleTarget>, t: NativeStyleTarge
  * initial assignment in the same band. An id two groups change, or a paragraph two groups' texts share, is the analysis's error
  * (analysis/link.ts groups states that read one element), reported as the reason.
  */
-function groupTables(tables: readonly { readonly program: StateProgram; readonly schemes: NativeStyleOutput['schemes']; readonly interaction: { readonly program: InteractionProgram; readonly values: readonly (readonly InteractionValue[])[]; readonly members: readonly (readonly (readonly StateMatch[])[])[] } | null }[], page: StateProgram): NativeStateGroup[] | string {
+function groupTables(tables: readonly { readonly program: StateProgram; readonly schemes: NativeStyleOutput['schemes']; readonly interaction: { readonly program: InteractionProgram; readonly values: readonly (readonly InteractionValue[])[] } | null }[], page: StateProgram): NativeStateGroup[] | string {
   const owner = new Map<string, number>();
   const out: NativeStateGroup[] = [];
   const pageInitial = page.assignments[page.initial]?.assignment ?? [];
@@ -311,8 +308,8 @@ function groupTables(tables: readonly { readonly program: StateProgram; readonly
       if (j < 0) throw new Error(`compileNativeStyles: group ${states.join(', ')} has no initial assignment in a band`);
       if (i === j) return;
       for (const id of changedIds(programAt(program, i), programAt(program, j))) owned.add(id);
-      // Every combination of hovered, pressed and focused elements an interaction state stands for, in the assignment and the initial one.
-      if (interaction !== null) for (const id of interactionChanges(interaction.program, interaction.members, i, j)) owned.add(id);
+      // Every hovered, pressed and focused element a host's runtime can reach, in the assignment and in the initial one.
+      if (interaction !== null) for (const id of interactionChanges(interaction.program, i, j)) owned.add(id);
     });
     for (const id of owned) {
       const other = owner.get(id);
@@ -344,23 +341,38 @@ function groupTables(tables: readonly { readonly program: StateProgram; readonly
 }
 
 /**
- * The ids whose records differ between assignments i and j of a table in some interaction state: each combination of hovered,
- * pressed and focused elements a state of either stands for (analysis/interaction.ts stateMembers), shown as that state or, where
- * the other has no state for it, as its own assignment.
+ * The ids whose records differ between assignments i and j of a table in some interaction state a host reaches: every hovered,
+ * pressed and focused (by pointer or key) element, each entry's state for it as the interaction runtime picks it from the level's
+ * tables (layout/src/rt-interaction.ts interactionCombo). A host never forces a state, so forced ones are not compared.
  */
-function interactionChanges(ip: InteractionProgram, members: readonly (readonly (readonly StateMatch[])[])[], i: number, j: number): Set<string> {
+function interactionChanges(ip: InteractionProgram, i: number, j: number): Set<string> {
   const out = new Set<string>();
-  const stateOf = (level: number): Map<string, number> => {
-    const m = new Map<string, number>();
-    (members[level] ?? []).forEach((ms, k) => {
-      for (const x of ms) m.set(JSON.stringify([x.hover, x.active, x.focus, x.focusVisible]), k);
-    });
-    return m;
+  const li = ip.levels[i] as InteractionLevel;
+  const lj = ip.levels[j] as InteractionLevel;
+  const addresses = [...new Set([...li.addresses, ...lj.addresses])];
+  // The state of one level for a hovered, pressed and focused address (null: none), focus by key or by pointer; -1 is none.
+  const indexes = new Map([li, lj].map((l) => [l, new Map(l.addresses.map((x, k) => [x, k]))] as const));
+  const stateIn = (level: InteractionLevel, hover: string | null, active: string | null, focus: string | null, byKey: boolean): number => {
+    const t = level.tables;
+    const index = indexes.get(level) as Map<string, number>;
+    const at = (a: string | null): number => (a === null ? -1 : (index.get(a) ?? -1));
+    const h = at(hover) < 0 ? 0 : (t.chainOf[at(hover)] as number);
+    const a = at(active) < 0 ? 0 : (t.activeChainOf[at(active)] as number);
+    const e = at(focus);
+    const f = e < 0 ? 0 : byKey ? (t.focusable[e] === true ? (t.keyboardFocusOf[e] as number) : 0) : (t.pointerFocusOf[e] as number);
+    return t.combos[(h * t.activeValues + a) * t.focusValues + f] as number;
   };
-  const si = stateOf(i);
-  const sj = stateOf(j);
-  const shown = (at: number, k: number | undefined): NativeProgram => (k === undefined ? programAt(ip.program, at) : interactionProgramAt(ip, at, k));
-  for (const key of new Set([...si.keys(), ...sj.keys()])) for (const id of changedIds(shown(i, si.get(key)), shown(j, sj.get(key)))) out.add(id);
+  const pairs = new Set<string>();
+  const targets = [null, ...addresses];
+  for (const hover of targets) for (const active of targets) for (const focus of targets) for (const byKey of [false, true]) {
+    if (focus === null && byKey) continue;
+    pairs.add(`${stateIn(li, hover, active, focus, byKey)},${stateIn(lj, hover, active, focus, byKey)}`);
+  }
+  const shown = (at: number, k: number): NativeProgram => (k < 0 ? programAt(ip.program, at) : interactionProgramAt(ip, at, k));
+  for (const pair of pairs) {
+    const [ki, kj] = pair.split(',').map(Number) as [number, number];
+    for (const id of changedIds(shown(i, ki), shown(j, kj))) out.add(id);
+  }
   return out;
 }
 

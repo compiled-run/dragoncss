@@ -137,6 +137,19 @@ describe('factored states', () => {
     expect(expectCombines(text, true)).toBeGreaterThan(200);
   });
 
+  it('pairs interaction states by the element a touch or pointer is on, not by what they match', () => {
+    // A hovered .x child matches one more element than a hovered plain child, so its states' match sets differ with state a.
+    const text = variant((v) => {
+      v.nodes.push(
+        { kind: 'element', id: 'h6', element: 'div', parent: 'h0', attributes: { class: 'p mk-g' } },
+        { kind: 'element', id: 'h7', element: 'div', parent: 'h6', attributes: {}, classByState: byAB((a) => (a ? 'c x mk-g' : 'c mk-g')) },
+        { kind: 'text', id: 'h7:text0', parent: 'h7', text: 'Child' },
+      );
+      v.css += '\n.c.mk-g { color: #000000; }\n.p.mk-g:hover > .c.mk-g { color: #ff0000; }\n.p.mk-g:hover > .c.x.mk-g:hover { color: #000000; }\n';
+    });
+    expect(expectCombines(text, true)).toBeGreaterThan(200);
+  });
+
   it("gives a select's shown option the states of every option", () => {
     const text = variant((v) => {
       v.nodes.push(
