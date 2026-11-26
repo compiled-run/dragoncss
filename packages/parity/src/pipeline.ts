@@ -4,7 +4,7 @@
 import type { Browser, Page } from 'playwright';
 import type { EngineFaults, LayoutInput, LayoutRect, LayoutUnsupported } from '@dragon/layout';
 import { absoluteRects, layoutWithFaults, validateLayoutInput } from '@dragon/layout';
-import type { Assignment, CompilerFaults, Compiled, Diagnostic, Environment, FrontEndResult, LayoutProjection, Origin, Scalar, TextTopologyEntry } from 'dragon';
+import type { Assignment, CompilerFaults, Compiled, Diagnostic, Environment, FrontEndResult, LayoutProjection, Origin, RuntimeImageLayout, Scalar, TextTopologyEntry } from 'dragon';
 import { compiledCases, compiledFeatures, createProjectWith, engineLayoutProjection, interactionPartitionOf, iosLayoutProjection, laneOnlyNative, nativeLayoutProjection, NO_FAULTS, resolvedColors, resolvedTextColors, svgScenes, textTopology, WEB_CSS_PATH, webClassMap } from 'dragon';
 import type { WebCapture } from './capture.ts';
 import { captureFixture } from './capture.ts';
@@ -21,6 +21,7 @@ import { compareDual } from './dual.ts';
 import { PROJECT_ID } from './fixture-reader.ts';
 import type { FixtureSpec } from './fixtures.ts';
 import { ENVIRONMENT, environmentsOf } from './fixtures.ts';
+import { fixtureRuntimeLayout } from './runtime-samples.ts';
 import { fontMapOf, withFontMapAssets } from './fixture-groups/fonts.ts';
 import { fontDataUrl } from './font-reference.ts';
 import { REFERENCE_PLATFORM } from './platform.ts';
@@ -131,12 +132,13 @@ export function enforcedCompile(spec: FixtureSpec, direction: Direction): Compil
   return c;
 }
 
-export function compileFixture(spec: FixtureSpec, faults: CompilerFaults = NO_FAULTS, profiles: 'enforce' | 'derive' = 'enforce', direction: Direction = 'ltr', transformInput: (input: FrontEndResult) => FrontEndResult = (i) => i): { input: FrontEndResult; compiled: Compiled<'ios' | 'web'> } {
+/** runtimeLayout: the build-time layout a runtimeSrc img is proven with (REPL-r1), the lanes' own unless a plant replaces it. */
+export function compileFixture(spec: FixtureSpec, faults: CompilerFaults = NO_FAULTS, profiles: 'enforce' | 'derive' = 'enforce', direction: Direction = 'ltr', transformInput: (input: FrontEndResult) => FrontEndResult = (i) => i, runtimeLayout: RuntimeImageLayout = fixtureRuntimeLayout(ENVIRONMENT.viewport)): { input: FrontEndResult; compiled: Compiled<'ios' | 'web'> } {
   const fonts = fontMapOf(spec.id);
   const input = transformInput(fixtureCompileInput(spec));
   const rootFont = spec.kind === 'layout' ? spec.rootFont : 'ahem';
   // MQ-a: the native output is the @media band holding the fixed parity viewport, which is exact for every case here.
-  const project = createProjectWith({ projectId: PROJECT_ID, targets: { ios: { minimum: '15.0' }, web: {} }, ...(fonts === undefined ? {} : { fonts }) }, { faults, profiles, direction, platform: REFERENCE_PLATFORM, rootFont, foldViewport: ENVIRONMENT.viewport, interactionLanes: true });
+  const project = createProjectWith({ projectId: PROJECT_ID, targets: { ios: { minimum: '15.0' }, web: {} }, ...(fonts === undefined ? {} : { fonts }) }, { faults, profiles, direction, platform: REFERENCE_PLATFORM, rootFont, foldViewport: ENVIRONMENT.viewport, interactionLanes: true, runtimeImageLayout: runtimeLayout });
   return { input, compiled: project.compile(input) };
 }
 

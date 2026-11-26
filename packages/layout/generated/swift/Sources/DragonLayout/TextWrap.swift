@@ -70,12 +70,12 @@ public func textWrap_scoreBreakPoints(_ candidates: JsArray<WrapCandidate>, _ av
       // ts: packages/layout/src/text-wrap.ts:62
       do {
         var start: Double = active
-        loop54: while (start < end) {
-          loop54_body: do {
+        loop56: while (start < end) {
+          loop56_body: do {
             let startScore: Double = try jsUnwrap(jsAt(scores, start))
             // ts: packages/layout/src/text-wrap.ts:64
             if (jsFround((startScore + bestHope)) >= best) {
-              break loop54_body
+              break loop56_body
             }
             let delta: Double = try jsFround((jsFround(jsUnwrap(jsAt(candidates, start)).posNoBreak) - startEdge))
             var widthScore: Double = 0.0

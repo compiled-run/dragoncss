@@ -168,6 +168,7 @@ export function recordingShaper(): { readonly shaper: GlyphShaper; readonly call
   const calls: ShapeCall[] = [];
   const seen = new Set<string>();
   const shaper: GlyphShaper = {
+    fallback: (): string => '',
     shape(face, size, text, start, end, script, rtl, language, features) {
       const glyphs = hostShaper.shape(face, size, text, start, end, script, rtl, language, features);
       const key = JSON.stringify([face, size, text, start, end, script, rtl, language, features]);

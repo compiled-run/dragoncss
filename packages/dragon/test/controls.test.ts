@@ -1,11 +1,13 @@
 // FORM-a: what the compiler refuses around a button or range, and what web writes for them (#496 landing review).
 import { describe, expect, it } from 'vitest';
 import type { Diagnostic, FrontEndResult } from '../src/internal.ts';
-import { createProjectWith, NO_FAULTS } from '../src/internal.ts';
+import { createProjectWith, iosLayoutProjection, NO_FAULTS } from '../src/internal.ts';
+import { ahemMeasurer, layout } from '@dragon/layout';
 import type { SourceRef } from '../src/types.ts';
 import { div, inputFor, text } from './helpers.ts';
 
 type Body = (r: SourceRef) => ReturnType<typeof div>[];
+type Kids = NonNullable<Parameters<typeof div>[3]>;
 
 const BODY = 'body { font-family: Ahem; font-size: 10px; } ';
 const BUTTON = '.b { display: block; appearance: none; font-family: Ahem; font-size: 10px; border: 2px solid #036; padding: 1px 6px; } ';
@@ -62,6 +64,56 @@ describe('FORM-a controls', () => {
     expect(refused('.p { color: red; } .b { color: revert; }')).toContainEqual(expect.stringMatching(/resolves color: revert to .*which Chrome's user-agent button rule resets/));
     expect(refused('.p { color: red; } .b { color: revert-layer; }')).toContainEqual(expect.stringMatching(/resolves color: revert-layer/));
     expect(refused('.p { font-style: normal; font-variant-caps: normal; } .b { color: revert; }')).toEqual([]);
+  });
+
+  it('refuses an inline-flex button with no flex item, looking through display: contents and past display: none (RF-INL)', () => {
+    const flexButton = (kids: (r: SourceRef) => Kids) => (r: SourceRef) => [div(r, 'p', ['p'], [text(r, 'pt', 'XX '), { ...div(r, 'b', ['b', 'f'], kids(r)), tag: 'button' }])];
+    const css = `${BODY}${BUTTON}.f { display: inline-flex; width: 20px; height: 20px; } .c { display: contents; } .n { display: none; } .a { position: absolute; width: 5px; height: 5px; } .w { white-space: pre; } `;
+    const refused = (kids: (r: SourceRef) => Kids): boolean =>
+      errors(compile(css, flexButton(kids), NATIVE).diagnostics).some((e) => e.includes('display: inline-flex on the empty <button>'));
+    expect(refused(() => [])).toBe(true);
+    expect(refused((r) => [{ ...div(r, 's', ['c']), tag: 'span' }])).toBe(true);
+    expect(refused((r) => [{ ...div(r, 's', ['c'], [{ ...div(r, 'n', ['n'], [text(r, 'nt', 'YY')]), tag: 'span' }]), tag: 'span' }])).toBe(true);
+    expect(refused((r) => [{ ...div(r, 's', ['c'], [text(r, 'st', 'YY')]), tag: 'span' }])).toBe(false);
+    expect(refused((r) => [text(r, 'bt', 'YY')])).toBe(false);
+    // An absolutely positioned child is no flex item, and white space alone makes none, whatever its white-space (css-flexbox-1 §4).
+    expect(refused((r) => [{ ...div(r, 'a', ['a']), tag: 'span' }])).toBe(true);
+    expect(refused((r) => [{ ...div(r, 's', ['c', 'w'], [text(r, 'wt', '  ')]), tag: 'span' }])).toBe(true);
+  });
+
+  // Without the refusal each refused shape compiles and the engine returns flex-baseline, so the phone would stop at run time.
+  it('refuses an inline-block button exactly where the engine would take its last baseline from a flex or grid container (RF-INL)', () => {
+    const css = `${BODY}${BUTTON}.ib { display: inline-block; } .f { display: flex; } .g { display: grid; } .h { overflow: hidden; } `;
+    const kid = (r: SourceRef, id: string, cls: string[], kids: Kids = [text(r, `${id}t`, 'YY')]) => div(r, id, cls, kids);
+    const shapes: readonly [string, (r: SourceRef) => Kids, string[]][] = [
+      ['flex child', (r) => [kid(r, 'f', ['f'])], []],
+      ['grid child', (r) => [kid(r, 'g', ['g'])], []],
+      ['flex inside a block child', (r) => [div(r, 'w', [], [kid(r, 'f', ['f'])])], []],
+      ['text then a flex child', (r) => [text(r, 'lead', 'YY'), kid(r, 'f', ['f'])], []],
+      ['a clipped button over a flex child', (r) => [kid(r, 'f', ['f'])], ['h']],
+      ['a flex child then text', (r) => [kid(r, 'f', ['f']), text(r, 'tail', 'YY')], []],
+      ['a flex child then a clipped block', (r) => [kid(r, 'f', ['f']), kid(r, 'k', ['h'])], []],
+      ['text only', (r) => [text(r, 'only', 'YY')], []],
+    ];
+    const outcome = ([, kids, extra]: (typeof shapes)[number]): [boolean, string] => {
+      const body: Body = (r) => [div(r, 'p', ['p'], [text(r, 'pt', 'XX '), { ...div(r, 'b', ['b', 'ib', ...extra], kids(r)), tag: 'button' }])];
+      const c = createProjectWith({ projectId: 'test', targets: NATIVE }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(inputFor(css, body) as FrontEndResult);
+      const refused = errors(c.diagnostics).some((e) => e.includes('whose last baseline would come from a flex or grid container'));
+      const p = iosLayoutProjection(c, { viewport: { width: 400, height: 300 }, devicePixelRatio: 1, direction: 'ltr', rootFont: 'ua-default' }, []);
+      if (p.kind !== 'ready') return [refused, 'blocked'];
+      const r = layout(p.input, ahemMeasurer);
+      return [refused, r.kind === 'unsupported' ? r.unsupported.code : r.kind];
+    };
+    expect(shapes.map((sh) => [sh[0], ...outcome(sh)])).toEqual([
+      ['flex child', true, 'blocked'],
+      ['grid child', true, 'blocked'],
+      ['flex inside a block child', true, 'blocked'],
+      ['text then a flex child', true, 'blocked'],
+      ['a clipped button over a flex child', true, 'blocked'],
+      ['a flex child then text', false, 'ok'],
+      ['a flex child then a clipped block', false, 'ok'],
+      ['text only', false, 'ok'],
+    ]);
   });
 
   it('refuses on native a control that scrolls, or a scrolling box inside one, and keeps them on web', () => {

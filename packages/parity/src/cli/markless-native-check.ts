@@ -4,7 +4,7 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { GATE_DEVICE_PX } from '../compare.ts';
-import { marklessFontFiles, marklessStyleExport, parseMarklessStyleInput } from '../markless-style-input.ts';
+import { marklessFontFiles, marklessImageFiles, marklessStyleExport, parseMarklessStyleInput } from '../markless-style-input.ts';
 import { webColumn } from '../markless-web-column.ts';
 import type { WebColumnDevice } from '../markless-web-column.ts';
 
@@ -38,7 +38,7 @@ const boxes = new Map(dump.nodes.map((n) => {
   return [n[0], { x: n[1], y: n[2], width: n[3], height: n[4] }] as const;
 }));
 const exported = marklessStyleExport(text, inputPath, read, 'system').exported;
-const report = await webColumn(input, exported, device, marklessFontFiles(input, read), undefined, { kind: 'native', layout: { assignment: dump.assignment, viewport: dump.viewport, scale: dump.scale, boxes } });
+const report = await webColumn(input, exported, device, marklessFontFiles(input, read), undefined, { kind: 'native', layout: { assignment: dump.assignment, viewport: dump.viewport, scale: dump.scale, boxes } }, undefined, marklessImageFiles(input, read));
 if (Math.abs(report.size.dpr - dump.scale) > 1e-6) throw new Error(`the browser draws at ${report.size.dpr}x, the phone at ${dump.scale}x`);
 if (Math.abs(report.size.width - dump.viewport.width) > 1e-6) throw new Error(`the browser lays the page out ${report.size.width} CSS px wide, the phone ${dump.viewport.width}`);
 writeFileSync(reportPath, `${JSON.stringify({ gateDevicePx: GATE_DEVICE_PX, target: device.target, browser: report.browser, size: report.size, phone: { viewport: dump.viewport, scale: dump.scale, assignment: dump.assignment }, compared: report.compared, failed: report.failed, rows: report.rows }, null, 1)}\n`);

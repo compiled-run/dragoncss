@@ -1076,6 +1076,10 @@ function naturalSizeValue(v: JsonValue, path: string): NaturalSizeValue {
     const o = obj(v, ['kind', 'width', 'height'], path);
     return { kind: 'image', width: numField(o, 'width', path), height: numField(o, 'height', path) };
   }
+  if (k === 'runtime') {
+    obj(v, ['kind'], path);
+    return { kind: 'runtime' };
+  }
   return fail(`${path}: unknown kind ${k}`);
 }
 
@@ -1422,6 +1426,14 @@ type ReplayCall = {
   readonly glyphs: readonly number[];
 };
 
+/** A recorded fallback call and the face it gave ('' for none). */
+type ReplayFallback = { readonly face: string; readonly text: string; readonly start: number; readonly end: number; readonly script: string; readonly language: string; readonly got: string };
+
+function recordedFallback(fallbacks: readonly ReplayFallback[], face: string, text: string, start: number, end: number, script: string, language: string): ReplayFallback | null {
+  for (const c of fallbacks) if (c.face === face && c.text === text && c.start === start && c.end === end && c.script === script && c.language === language) return c;
+  return null;
+}
+
 /** A face of a transcript: its FontData and HanKerning data, as the host read them from the bundled bytes. */
 type ReplayFace = { readonly data: FontData; readonly hanKerning: HanKerningFontData };
 
@@ -1490,8 +1502,12 @@ function sameNumbers(a: readonly number[], b: readonly number[]): boolean {
 }
 
 /** A GlyphShaper that answers a call the build recorded as recorded, and any other (a row's text) with the device's own shaper. */
-function recordedOrLive(calls: readonly ReplayCall[], live: GlyphShaper): GlyphShaper {
+function recordedOrLive(calls: readonly ReplayCall[], fallbacks: readonly ReplayFallback[], live: GlyphShaper): GlyphShaper {
   return {
+    fallback(face: string, text: string, start: number, end: number, script: string, language: string): string {
+      const c = recordedFallback(fallbacks, face, text, start, end, script, language);
+      return c === null ? live.fallback(face, text, start, end, script, language) : c.got;
+    },
     shape(face: string, size: number, text: string, start: number, end: number, script: string, rtl: boolean, language: string, features: readonly number[]): readonly number[] {
       for (const c of calls) {
         if (c.face === face && c.size === size && c.text === text && c.start === start && c.end === end && c.script === script && c.rtl === rtl && c.language === language && sameNumbers(c.features, features)) return c.glyphs;
@@ -1502,13 +1518,31 @@ function recordedOrLive(calls: readonly ReplayCall[], live: GlyphShaper): GlyphS
 }
 
 /** R3: a GlyphShaper that replays a transcript; a call the transcript does not hold is a harness error. */
-function replayShaper(calls: readonly ReplayCall[]): GlyphShaper {
+function replayShaper(calls: readonly ReplayCall[], fallbacks: readonly ReplayFallback[]): GlyphShaper {
   return {
+    fallback(face: string, text: string, start: number, end: number, script: string, language: string): string {
+      const c = recordedFallback(fallbacks, face, text, start, end, script, language);
+      if (c === null) return fail(`the shape transcript holds no fallback from ${face} [${start}, ${end}) of ${text}`);
+      return c.got;
+    },
     shape(face: string, size: number, text: string, start: number, end: number, script: string, rtl: boolean, language: string, features: readonly number[]): readonly number[] {
       for (const c of calls) {
         if (c.face === face && c.size === size && c.text === text && c.start === start && c.end === end && c.script === script && c.rtl === rtl && c.language === language && sameNumbers(c.features, features)) return c.glyphs;
       }
       return fail(`the shape transcript holds no call ${face} ${size} [${start}, ${end}) of ${text}`);
+    },
+  };
+}
+
+/** R3's replay: a transcript records no fallback calls, as the host's recordingShaper answers them with no face. */
+function transcriptShaper(calls: readonly ReplayCall[]): GlyphShaper {
+  const replay = replayShaper(calls, []);
+  return {
+    fallback(face: string, text: string, start: number, end: number, script: string, language: string): string {
+      return '';
+    },
+    shape(face: string, size: number, text: string, start: number, end: number, script: string, rtl: boolean, language: string, features: readonly number[]): readonly number[] {
+      return replay.shape(face, size, text, start, end, script, rtl, language, features);
     },
   };
 }
@@ -1520,7 +1554,7 @@ function replayShaper(calls: readonly ReplayCall[]): GlyphShaper {
  * proves its layouts equal the Node host's.
  */
 function replayMeasurer(s: Shaping, faults: EngineFaults): TextMeasurer {
-  const shaper = replayShaper(s.calls);
+  const shaper = transcriptShaper(s.calls);
   const sf: ShapingFaults = {
     advanceNot16_16: faults.advanceNot16_16, doubleAccumulation: faults.doubleAccumulation, noReshapeAtBreak: faults.noReshapeAtBreak, kerningDropped: faults.kerningDropped,
     wholePixelPositions: faults.wholePixelPositions, softHyphenWidthMissing: faults.softHyphenWidthMissing, metricRoundingSwapped: faults.metricRoundingSwapped,
@@ -3303,7 +3337,7 @@ function rtPointerResult(a: readonly JsonValue[]): string {
  * export computes it at build time (native-style-export.ts): every box's frame relative to its parent and border widths, every
  * text node's lines with its glyphs, every dashed border's operations, every scroll container's range and the page's.
  */
-type PlanDensity = { readonly dpr: number; readonly calls: readonly ReplayCall[]; readonly metrics: Map<string, FontMetrics>; readonly ownMetrics: Map<string, boolean>; readonly lengths: Map<string, FontLengths> };
+type PlanDensity = { readonly dpr: number; readonly calls: readonly ReplayCall[]; readonly fallbacks: readonly ReplayFallback[]; readonly metrics: Map<string, FontMetrics>; readonly ownMetrics: Map<string, boolean>; readonly lengths: Map<string, FontLengths> };
 const PLAN_DASH_FAULTS: DashFaults = { phase1: false, gapUnfitted: false };
 type PlanDashed = { readonly id: string; readonly styles: readonly string[]; readonly colors: readonly number[] };
 
@@ -3311,8 +3345,26 @@ function planFontKey(family: string, size: number): string {
   return `${family}@${bitsHex(size)}`;
 }
 
+/** A density's keys: fallbacks only when its text falls back. */
+function planDensityKeys(v: JsonValue): readonly string[] {
+  return v.kind === 'obj' && v.values.has('fallbacks') ? ['dpr', 'calls', 'fallbacks', 'metrics', 'lengths'] : ['dpr', 'calls', 'metrics', 'lengths'];
+}
+
 function planDensity(v: JsonValue, path: string): PlanDensity {
-  const o = obj(v, ['dpr', 'calls', 'metrics', 'lengths'], path);
+  const o = obj(v, planDensityKeys(v), path);
+  const fallbacks: ReplayFallback[] = [];
+  const recorded = o.values.get('fallbacks');
+  if (recorded !== undefined) {
+    arr(recorded, `${path}.fallbacks`).forEach((c, i) => {
+      const at = `${path}.fallbacks[${i}]`;
+      const a = arr(c, at);
+      if (a.length !== 7) fail(`${at}: expected 7 fields, got ${a.length}`);
+      fallbacks.push({
+        face: str(a[0] as JsonValue, `${at}[0]`), text: str(a[1] as JsonValue, `${at}[1]`), start: num(a[2] as JsonValue, `${at}[2]`), end: num(a[3] as JsonValue, `${at}[3]`),
+        script: str(a[4] as JsonValue, `${at}[4]`), language: str(a[5] as JsonValue, `${at}[5]`), got: str(a[6] as JsonValue, `${at}[6]`),
+      });
+    });
+  }
   const calls: ReplayCall[] = [];
   arr(field(o, 'calls', path), `${path}.calls`).forEach((c, i) => {
     const at = `${path}.calls[${i}]`;
@@ -3347,12 +3399,12 @@ function planDensity(v: JsonValue, path: string): PlanDensity {
     if (a.length !== 5) fail(`${at}: expected 5 fields, got ${a.length}`);
     lengths.set(planFontKey(str(a[0] as JsonValue, `${at}[0]`), num(a[1] as JsonValue, `${at}[1]`)), { xHeight: num(a[2] as JsonValue, `${at}[2]`), capHeight: num(a[3] as JsonValue, `${at}[3]`), zeroWidth: num(a[4] as JsonValue, `${at}[4]`) });
   });
-  return { dpr: num(field(o, 'dpr', path), `${path}.dpr`), calls, metrics, ownMetrics, lengths };
+  return { dpr: num(field(o, 'dpr', path), `${path}.dpr`), calls, fallbacks, metrics, ownMetrics, lengths };
 }
 
 /** The device's measurer: the build's measurer replayed, each face's metrics and lengths as the build read them; anything else fails. */
 function planMeasurer(faces: ReadonlyMap<string, FontData>, d: PlanDensity, live: GlyphShaper | null): TextMeasurer {
-  const m = deviceShapedMeasurer(faces, live === null ? replayShaper(d.calls) : recordedOrLive(d.calls, live));
+  const m = deviceShapedMeasurer(faces, live === null ? replayShaper(d.calls, d.fallbacks) : recordedOrLive(d.calls, d.fallbacks, live));
   return {
     metrics(font: TextFont): FontMetrics {
       const key = planFontKey(font.family, font.size);
@@ -3585,8 +3637,9 @@ function planTextLines(input: LayoutInput, measurer: TextMeasurer, boxes: readon
 }
 
 /** A run of glyphs in one face at one size (native-style-export.ts runsOf), as [face, size, glyphs, xs]. */
-function planRuns(face: string, glyphs: readonly number[], xs: readonly number[], sizes: readonly number[]): string[] {
+function planRuns(faces: readonly string[], glyphs: readonly number[], xs: readonly number[], sizes: readonly number[]): string[] {
   const out: string[] = [];
+  let face = '';
   let size = -1;
   let gs: number[] = [];
   let ps: number[] = [];
@@ -3595,8 +3648,10 @@ function planRuns(face: string, glyphs: readonly number[], xs: readonly number[]
   };
   glyphs.forEach((g, j) => {
     const s = sizes[j] as number;
-    if (gs.length === 0 || s !== size) {
+    const f = faces[j] as string;
+    if (gs.length === 0 || s !== size || f !== face) {
       flush();
+      face = f;
       size = s;
       gs = [];
       ps = [];
@@ -3623,14 +3678,14 @@ function planLines(t: PlanText, text: string, at: LayoutRect, m: TextMeasurer): 
     g.xs.forEach((x, j) => {
       xs.push(x0 + x + (line.shifts.length === 0 ? 0 : (line.shifts[g.chars[j] as number] as number)));
     });
-    const runs = planRuns(t.textFont.family, g.glyphs, xs, g.sizes);
+    const runs = planRuns(g.faces, g.glyphs, xs, g.sizes);
     const e = line.ellipsis;
     if (e !== null) {
       const d = pieceGlyphs(m, fromCodePoints(e.cps), e.font, 0, e.cps.length);
       if (!d.ok) return fail(`${t.id} line ${k} ellipsis: the shaped measurer refused its text: ${d.reason}`);
       const exs: number[] = [];
       for (const x of d.xs) exs.push(e.x / LU_PER_PX - ax + x);
-      for (const r of planRuns(e.font.family, d.glyphs, exs, d.sizes)) runs.push(r);
+      for (const r of planRuns(d.faces, d.glyphs, exs, d.sizes)) runs.push(r);
     }
     if (k > 0) out += ',';
     let joined = '';
@@ -3905,6 +3960,7 @@ function planObj(v: JsonValue): JsonObj {
   const keys: string[] = ['version', 'faces', 'densities', 'variants', 'assignments'];
   if (v.kind === 'obj' && v.values.has('slots')) keys.push('slots');
   if (v.kind === 'obj' && v.values.has('transformed')) keys.push('transformed');
+  if (v.kind === 'obj' && v.values.has('groups')) keys.push('groups');
   const plan = obj(v, keys, '$.plan');
   if (str(field(plan, 'version', '$.plan'), '$.plan.version') !== 'dragon.markless-plan/1') fail('$.plan.version: not dragon.markless-plan/1');
   planTransformed(plan);
@@ -4021,6 +4077,7 @@ export function runMarklessLayout(line: string): string {
     if (parsed.kind === 'obj' && parsed.values.has('slots')) keys.push('slots');
     if (parsed.kind === 'obj' && parsed.values.has('sticky')) keys.push('sticky');
     if (parsed.kind === 'obj' && parsed.values.has('textAreas')) keys.push('textAreas');
+    if (parsed.kind === 'obj' && parsed.values.has('groups')) keys.push('groups');
     return marklessLayout(obj(parsed, keys, '$'), null);
   } catch (e) {
     if (e instanceof HarnessError) return `["harness-error",${q(e.detail)}]`;
@@ -4098,7 +4155,7 @@ function marklessAnimation(o: JsonObj): string {
   for (let i = 0; i < densities.length; i++) {
     const at = `$.plan.densities[${i}]`;
     const d = densities[i] as JsonValue;
-    if (density === null && numField(obj(d, ['dpr', 'calls', 'metrics', 'lengths'], at), 'dpr', at) === dpr) density = planDensity(d, at);
+    if (density === null && numField(obj(d, planDensityKeys(d), at), 'dpr', at) === dpr) density = planDensity(d, at);
   }
   if (density === null) return fail(`the plan holds no text measured at ratio ${dpr}`);
   const measurer = planMeasurer(faces, density, null);
@@ -4151,6 +4208,7 @@ export function runMarklessRowsLayout(line: string, shaper: GlyphShaper): string
     if (parsed.kind === 'obj' && parsed.values.has('texts')) keys.push('texts');
     if (parsed.kind === 'obj' && parsed.values.has('sticky')) keys.push('sticky');
     if (parsed.kind === 'obj' && parsed.values.has('textAreas')) keys.push('textAreas');
+    if (parsed.kind === 'obj' && parsed.values.has('groups')) keys.push('groups');
     return marklessLayout(obj(parsed, keys, '$'), shaper);
   } catch (e) {
     if (e instanceof HarnessError) return `["harness-error",${q(e.detail)}]`;
@@ -4321,6 +4379,203 @@ function withRows(v: JsonValue, lists: ReadonlyMap<string, RowList>, sink: RowSi
 }
 
 /** The JSON of a plan variant's root. */
+// ---------------------------------------------------------------- factored states: one variant from several tables (markless-plan.ts mergedPlan)
+
+type PlanGroup = { readonly first: number; readonly count: number; readonly owned: Map<string, boolean>; readonly nodes: Map<string, boolean> };
+
+function planGroups(plan: JsonObj): PlanGroup[] {
+  if (!plan.values.has('groups')) return [];
+  const out: PlanGroup[] = [];
+  const given = arr(field(plan, 'groups', '$.plan'), '$.plan.groups');
+  for (let gi = 0; gi < given.length; gi++) {
+    const at = `$.plan.groups[${gi}]`;
+    const go = obj(given[gi] as JsonValue, ['first', 'count', 'owned', 'nodes'], at);
+    const owned = new Map<string, boolean>();
+    const ids = arr(field(go, 'owned', at), `${at}.owned`);
+    for (let i = 0; i < ids.length; i++) owned.set(str(ids[i] as JsonValue, `${at}.owned[${i}]`), true);
+    const nodes = new Map<string, boolean>();
+    const nodeIds = arr(field(go, 'nodes', at), `${at}.nodes`);
+    for (let i = 0; i < nodeIds.length; i++) nodes.set(str(nodeIds[i] as JsonValue, `${at}.nodes[${i}]`), true);
+    out.push({ first: numField(go, 'first', at), count: numField(go, 'count', at), owned, nodes });
+  }
+  return out;
+}
+
+/** One table's layout tree, by box id: each box and its parent box's id ('' at the root). */
+type BoxIndex = { readonly boxes: Map<string, JsonObj>; readonly parents: Map<string, string> };
+
+function indexBoxes(root: JsonValue, at: string): BoxIndex {
+  const boxes = new Map<string, JsonObj>();
+  const parents = new Map<string, string>();
+  // Every child with an id (a box, a control, a replaced leaf); only boxes hold children.
+  const visit = (v: JsonValue, parent: string, path: string): void => {
+    if (v.kind !== 'obj' || !v.values.has('id')) return;
+    const id = str(field(v, 'id', path), `${path}.id`);
+    if (boxes.has(id)) fail(`${path}: box ${id} is listed twice`);
+    boxes.set(id, v);
+    parents.set(id, parent);
+    if (kindOf(v, path) !== 'box') return;
+    const kids = arr(field(v, 'children', path), `${path}.children`);
+    for (let i = 0; i < kids.length; i++) visit(kids[i] as JsonValue, id, `${path}.children[${i}]`);
+  };
+  visit(root, '', at);
+  return { boxes, parents };
+}
+
+/** One order holding every list's ids in that list's order; ids two lists order both ways fail. */
+function mergedIds(lists: readonly (readonly string[])[], at: string): string[] {
+  const before = new Map<string, string[]>();
+  const all: string[] = [];
+  for (const list of lists) {
+    for (let i = 0; i < list.length; i++) {
+      const id = list[i] as string;
+      if (!before.has(id)) {
+        before.set(id, []);
+        all.push(id);
+      }
+      if (i > 0) (before.get(id) as string[]).push(list[i - 1] as string);
+    }
+  }
+  const out: string[] = [];
+  const placed = new Map<string, boolean>();
+  const visiting = new Map<string, boolean>();
+  const place = (id: string): void => {
+    if (placed.has(id)) return;
+    if (visiting.has(id)) fail(`${at}: the tables order ${id} both before and after another box`);
+    visiting.set(id, true);
+    const firsts = before.get(id) as string[];
+    for (let i = 0; i < firsts.length; i++) place(firsts[i] as string);
+    placed.set(id, true);
+    out.push(id);
+  };
+  for (let i = 0; i < all.length; i++) place(all[i] as string);
+  return out;
+}
+
+const LEAF_KEY = '\u0000leaf';
+
+/**
+ * The page entry's layout tree with each group's owned boxes taken from the group's entry: a box's record and leaves come from its
+ * owner's tree, and a box shows where its owner's tree has it under that parent, in the order every tree gives its siblings.
+ */
+function groupedRoot(page: JsonValue, trees: readonly JsonValue[], groups: readonly PlanGroup[]): JsonValue {
+  const indexes: BoxIndex[] = [indexBoxes(page, '$.plan.variants[page]')];
+  for (let gi = 0; gi < trees.length; gi++) indexes.push(indexBoxes(trees[gi] as JsonValue, `$.plan.variants[group ${gi}]`));
+  const ownerOf = (id: string): number => {
+    for (let gi = 0; gi < groups.length; gi++) if ((groups[gi] as PlanGroup).owned.has(id)) return gi + 1;
+    return 0;
+  };
+  const compose = (id: string): JsonValue => {
+    const own = indexes[ownerOf(id)] as BoxIndex;
+    const rec = own.boxes.get(id) as JsonObj;
+    const at = `box ${id}`;
+    const kids = arr(field(rec, 'children', at), `${at}.children`);
+    const recKeys: string[] = [];
+    const leaves = new Map<string, JsonValue>();
+    for (let i = 0; i < kids.length; i++) {
+      const k = kids[i] as JsonValue;
+      if (k.kind === 'obj' && k.values.has('id')) recKeys.push(str(field(k, 'id', at), `${at}.children[${i}].id`));
+      else {
+        const key = `${LEAF_KEY}${i}`;
+        recKeys.push(key);
+        leaves.set(key, k);
+      }
+    }
+    const lists: string[][] = [recKeys];
+    for (let ti = 0; ti < indexes.length; ti++) {
+      const t = indexes[ti] as BoxIndex;
+      const box = t.boxes.get(id);
+      if (box === undefined || t === own) continue;
+      const others: string[] = [];
+      const ks = arr(field(box, 'children', at), `${at}.children`);
+      for (let i = 0; i < ks.length; i++) {
+        const k = ks[i] as JsonValue;
+        if (k.kind === 'obj' && k.values.has('id')) others.push(str(field(k, 'id', at), `${at}.children[${i}].id`));
+      }
+      lists.push(others);
+    }
+    const items: JsonValue[] = [];
+    const order = mergedIds(lists, at);
+    for (let i = 0; i < order.length; i++) {
+      const key = order[i] as string;
+      const leaf = leaves.get(key);
+      if (leaf !== undefined) {
+        items.push(leaf);
+        continue;
+      }
+      const childOwner = indexes[ownerOf(key)] as BoxIndex;
+      const child = childOwner.boxes.get(key);
+      const under = childOwner.parents.get(key);
+      if (child === undefined || under === undefined || under !== id) continue;
+      items.push(kindOf(child, at) === 'box' ? compose(key) : child);
+    }
+    const values = new Map<string, JsonValue>();
+    for (const k of rec.keys) values.set(k, k === 'children' ? { kind: 'arr', items } : (rec.values.get(k) as JsonValue));
+    return { kind: 'obj', keys: rec.keys, values };
+  };
+  if (page.kind !== 'obj') return fail('$.plan.variants[page]: expected a box');
+  return compose(str(field(page, 'id', '$.plan.variants[page]'), '$.plan.variants[page].id'));
+}
+
+/** Each group's current entry, given as the group's own assignment index, as its plan assignment. */
+type GroupEntries = { readonly groups: readonly PlanGroup[]; readonly entries: readonly PlanAssignmentParts[] };
+
+function groupEntries(plan: JsonObj, given: JsonValue): GroupEntries {
+  const groups = planGroups(plan);
+  const ks = arr(given, '$.groups');
+  if (ks.length !== groups.length) fail(`$.groups: the plan has ${groups.length} groups, and the line gives ${ks.length} entries`);
+  const entries: PlanAssignmentParts[] = [];
+  for (let gi = 0; gi < groups.length; gi++) {
+    const g = groups[gi] as PlanGroup;
+    const k = num(ks[gi] as JsonValue, `$.groups[${gi}]`);
+    if (!Number.isInteger(k) || k < 0 || k >= g.count) fail(`$.groups[${gi}]: ${k} is not an entry of group ${gi}`);
+    entries.push(planAssignment(plan, g.first + k));
+  }
+  return { groups, entries };
+}
+
+/** The page entry's parts with each owned node's dashed border, scroller and checkbox from its group's entry. */
+function groupedParts(plan: JsonObj, page: PlanAssignmentParts, given: JsonValue): PlanAssignmentParts {
+  const ge: GroupEntries = groupEntries(plan, given);
+  const groups = ge.groups;
+  const entries = ge.entries;
+  if (page.fields.length > 0) fail('$.groups: a plan with slots has no groups');
+  const dashed = new Map<string, PlanDashed>();
+  const scrollers = new Map<string, boolean>();
+  const owned = (id: string): number => {
+    for (let gi = 0; gi < groups.length; gi++) if ((groups[gi] as PlanGroup).nodes.has(id)) return gi;
+    return -1;
+  };
+  for (const [id, d] of page.dashed) if (owned(id) < 0) dashed.set(id, d);
+  for (const [id, on] of page.scrollers) if (owned(id) < 0 && on) scrollers.set(id, true);
+  for (let gi = 0; gi < entries.length; gi++) {
+    const e = entries[gi] as PlanAssignmentParts;
+    for (const [id, d] of e.dashed) if (owned(id) === gi) dashed.set(id, d);
+    for (const [id, on] of e.scrollers) if (owned(id) === gi && on) scrollers.set(id, true);
+  }
+  const checkboxes: string[] = [];
+  for (const id of page.checkboxes) if (owned(id) < 0) checkboxes.push(id);
+  for (let gi = 0; gi < entries.length; gi++) for (const id of (entries[gi] as PlanAssignmentParts).checkboxes) if (owned(id) === gi) checkboxes.push(id);
+  return { variant: page.variant, dashed, scrollers, checkboxes, fields: page.fields, writes: page.writes, refusals: page.refusals };
+}
+
+/** The page entry's layout tree with each group's owned boxes from its entry, as JSON (groupedRoot). */
+function groupedRootJson(plan: JsonObj, page: PlanAssignmentParts, given: JsonValue): JsonValue {
+  const ge: GroupEntries = groupEntries(plan, given);
+  const trees: JsonValue[] = [];
+  for (let gi = 0; gi < ge.entries.length; gi++) trees.push(variantRootJson(plan, (ge.entries[gi] as PlanAssignmentParts).variant));
+  return groupedRoot(variantRootJson(plan, page.variant), trees, ge.groups);
+}
+
+function groupedVariant(plan: JsonObj, page: PlanAssignmentParts, given: JsonValue): PlanVariant {
+  const variants = arr(field(plan, 'variants', '$.plan'), '$.plan.variants');
+  const at = `$.plan.variants[${page.variant}]`;
+  const vo = obj(variants[page.variant] as JsonValue, ['rootFontSize', 'root'], at);
+  const root = groupedRootJson(plan, page, given);
+  if (root.kind !== 'obj') return fail(`${at}.root: expected a box`);
+  return { rootFontSize: numField(vo, 'rootFontSize', at), root: decodeBox(root, `${at}.root`) };
+}
+
 function variantRootJson(plan: JsonObj, vi: number): JsonValue {
   const variants = arr(field(plan, 'variants', '$.plan'), '$.plan.variants');
   if (!Number.isInteger(vi) || vi < 0 || vi >= variants.length) fail(`$.plan.variants: ${vi} is not a variant`);
@@ -4335,13 +4590,14 @@ function marklessLayout(o: JsonObj, live: GlyphShaper | null): string {
     let density: PlanDensity | null = null;
     arr(field(plan, 'densities', '$.plan'), '$.plan.densities').forEach((d, i) => {
       const at = `$.plan.densities[${i}]`;
-      if (density === null && numField(obj(d, ['dpr', 'calls', 'metrics', 'lengths'], at), 'dpr', at) === dpr) density = planDensity(d, at);
+      if (density === null && numField(obj(d, planDensityKeys(d), at), 'dpr', at) === dpr) density = planDensity(d, at);
     });
     if (density === null) return fail(`the plan holds no text measured at ratio ${dpr}`);
     const measurer = planMeasurer(faces, density, live);
-    const parts = planAssignment(plan, numField(o, 'assignment', '$'));
-    const spliced = live === null ? null : rowsVariant(plan, parts, field(o, 'rows', '$'), values, o.values.has('texts') ? field(o, 'texts', '$') : null);
-    const variant = spliced === null ? slottedVariant(plan, parts.variant, parts.fields, parts.refusals, values) : spliced.variant;
+    const pageParts = planAssignment(plan, numField(o, 'assignment', '$'));
+    const parts = o.values.has('groups') ? groupedParts(plan, pageParts, field(o, 'groups', '$')) : pageParts;
+    const spliced = live === null ? null : rowsVariant(plan, parts, field(o, 'rows', '$'), values, o.values.has('texts') ? field(o, 'texts', '$') : null, o.values.has('groups') ? groupedRootJson(plan, pageParts, field(o, 'groups', '$')) : null);
+    const variant = spliced === null ? (o.values.has('groups') ? groupedVariant(plan, pageParts, field(o, 'groups', '$')) : slottedVariant(plan, parts.variant, parts.fields, parts.refusals, values)) : spliced.variant;
     const viewport = decodeViewport(field(o, 'viewport', '$'), '$.viewport');
     const safe = obj(field(o, 'safeArea', '$'), ['top', 'right', 'bottom', 'left'], '$.safeArea');
     const input: LayoutInput = {
@@ -4357,7 +4613,8 @@ function marklessLayout(o: JsonObj, live: GlyphShaper | null): string {
 
     const placed = layoutWithInflow(input, measurer, NO_ENGINE_FAULTS, NO_GRID_FAULTS);
     const r = placed.result;
-    if (r.kind !== 'ok') return fail(`the engine refused the plan at ${r.unsupported.nodeId}: ${r.unsupported.code} ${r.unsupported.detail}`);
+    // REPL-r1: a row's copy is named <template id>@<row key>, so a stop inside a row names the row.
+    if (r.kind !== 'ok') return fail(`the engine refused the plan at ${r.unsupported.nodeId}${holds(r.unsupported.nodeId, '@') ? ' (a row: <template id>@<row key>)' : ''}: ${r.unsupported.code} ${r.unsupported.detail}`);
     const boxes = r.boxes;
     const abs = absoluteRects(boxes);
     const styles = new Map<string, LayoutStyle>();
@@ -4522,7 +4779,7 @@ function textLeafIds(v: JsonValue, into: Map<string, boolean>): void {
 }
 
 /** The page variant with each list's rows in place of its template ($.rows), with the page's and each row copy's dashed borders and scrolling. */
-function rowsVariant(plan: JsonObj, parts: PlanAssignmentParts, rowsValue: JsonValue, values: readonly number[], textsValue: JsonValue | null): RowsVariant {
+function rowsVariant(plan: JsonObj, parts: PlanAssignmentParts, rowsValue: JsonValue, values: readonly number[], textsValue: JsonValue | null, grouped: JsonValue | null): RowsVariant {
   const slots = planSlots(plan);
   const vi = parts.variant;
   const assignments = arr(field(plan, 'assignments', '$.plan'), '$.plan.assignments');
@@ -4581,7 +4838,8 @@ function rowsVariant(plan: JsonObj, parts: PlanAssignmentParts, rowsValue: JsonV
   const sink: RowSink = { dashed: new Map<string, PlanDashed>(), scrollers: new Map<string, boolean>(), placed: new Map<string, boolean>() };
   for (const [id, d] of parts.dashed) sink.dashed.set(id, d);
   for (const [id, on] of parts.scrollers) if (on) sink.scrollers.set(id, true);
-  const page = slotted(plan) ? slottedRoot(variantRootJson(plan, vi), parts.fields, parts.refusals, values, '$.slots') : variantRootJson(plan, vi);
+  // Factored states: the page's texts are laid out in the tree every table's entry gives (groupedRootJson).
+  const page = grouped !== null ? grouped : slotted(plan) ? slottedRoot(variantRootJson(plan, vi), parts.fields, parts.refusals, values, '$.slots') : variantRootJson(plan, vi);
   const texts = pageTexts(textsValue);
   const transformed = planTransformed(plan);
   for (const [leaf, _text] of texts) if (transformed.has(leaf)) fail(`$.texts: ${leaf} is laid out with a text-transform, which a phone does not apply to the text it is given`);

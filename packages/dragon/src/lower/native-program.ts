@@ -111,7 +111,7 @@ export function renameWriteNodes<W extends WriteKind>(w: W, rename: (id: string)
     case 'background-image': case 'background-layers': case 'border-colors': case 'border-radius': case 'border-styles': case 'border-widths':
     case 'box-shadow': case 'checkbox': case 'clip-path-inset': case 'clip-path-shape': case 'clip-rect-empty': case 'clip-rect-label': case 'clip-text':
     case 'font': case 'foreign-view': case 'list-marker': case 'mask-layer': case 'opacity': case 'opacity-nested': case 'padding-box-clip':
-    case 'replaced-image': case 'scroll-bounce': case 'scroll-container': case 'scroll-indicators-hidden': case 'select-arrow': case 'svg-shapes':
+    case 'replaced-image': case 'runtime-image': case 'scroll-bounce': case 'scroll-container': case 'scroll-indicators-hidden': case 'select-arrow': case 'svg-shapes':
     case 'synthetic-bold': case 'synthetic-oblique': case 'text-color': case 'text-stroke': case 'transform': case 'video-view':
     case 'visibility':
       return w;
@@ -198,7 +198,7 @@ type NodePaint = {
   readonly facts: Readonly<Record<string, unknown>>;
 };
 
-function sharedPaint(root: LayoutBox, resolved: ResolvedElement, images: ReadonlyMap<string, Uint8Array>, movingTransforms: ReadonlySet<string>, plants: TextPlants): NodePaint[] {
+function sharedPaint(root: LayoutBox, resolved: ResolvedElement, images: ReadonlyMap<string, Uint8Array>, movingTransforms: ReadonlySet<string>, plants: TextPlants, hostImages: boolean): NodePaint[] {
   const elements = new Map<string, ResolvedElement>();
   const texts = new Map<string, OwnedText>();
   const walk = (el: ResolvedElement): void => {
@@ -231,7 +231,7 @@ function sharedPaint(root: LayoutBox, resolved: ResolvedElement, images: Readonl
     const own = el === null ? enclosingColor : usedColors(el).color;
     const facts: Record<string, unknown> = {};
     const transformMoves = ancestorMoves || (el !== null && movingTransforms.has(el.element.address));
-    const writes: WriteKind[] = lowerBoxPaint({ box: b, el, parentColor: enclosingColor, facts, images, transformMoves, foldBackdrops, decorations, textShadows, textUnders });
+    const writes: WriteKind[] = lowerBoxPaint({ box: b, el, parentColor: enclosingColor, facts, images, hostImages, transformMoves, foldBackdrops, decorations, textShadows, textUnders });
     // The host draws the text a user types into an editor it edits, so the editor box carries that text's font and colour.
     if (hostEdits && el !== null && b.kind === 'control' && b.control.kind === 'text-editor') {
       // An empty textarea's editor has no line, so no strut: its text is in the textarea's own font.
@@ -386,13 +386,13 @@ export function movingTransforms(cases: readonly (ResolvedElement | null)[], ani
 }
 
 /** Both backends' programs of one case, from one shared layout tree and one paint lowering. */
-export function lowerNativePrograms(root: LayoutBox, resolved: ResolvedElement, images: ReadonlyMap<string, Uint8Array>, moving: ReadonlySet<string> = new Set(), plants: TextPlants = NO_TEXT_PLANTS): { readonly [B in NativeBackend]: NativeProgram } {
-  const paint = sharedPaint(root, resolved, images, moving, plants);
+export function lowerNativePrograms(root: LayoutBox, resolved: ResolvedElement, images: ReadonlyMap<string, Uint8Array>, moving: ReadonlySet<string> = new Set(), plants: TextPlants = NO_TEXT_PLANTS, hostImages = false): { readonly [B in NativeBackend]: NativeProgram } {
+  const paint = sharedPaint(root, resolved, images, moving, plants, hostImages);
   const rootFontSize = rootFontSizeOf(resolved);
   return { uikit: toBackend('uikit', root, rootFontSize, paint), 'android-views': toBackend('android-views', root, rootFontSize, paint) };
 }
 
 /** One backend's lowered program, for a compile that configures only that backend's target. */
-export function lowerNativeProgram(backend: NativeBackend, root: LayoutBox, resolved: ResolvedElement, images: ReadonlyMap<string, Uint8Array>, moving: ReadonlySet<string> = new Set(), plants: TextPlants = NO_TEXT_PLANTS): NativeProgram {
-  return toBackend(backend, root, rootFontSizeOf(resolved), sharedPaint(root, resolved, images, moving, plants));
+export function lowerNativeProgram(backend: NativeBackend, root: LayoutBox, resolved: ResolvedElement, images: ReadonlyMap<string, Uint8Array>, moving: ReadonlySet<string> = new Set(), plants: TextPlants = NO_TEXT_PLANTS, hostImages = false): NativeProgram {
+  return toBackend(backend, root, rootFontSizeOf(resolved), sharedPaint(root, resolved, images, moving, plants, hostImages));
 }

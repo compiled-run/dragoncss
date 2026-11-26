@@ -8,6 +8,7 @@ import { PROJECT_ID } from './fixture-reader.ts';
 import type { FixtureSpec } from './fixtures.ts';
 import { ENVIRONMENT } from './fixtures.ts';
 import { REFERENCE_PLATFORM } from './platform.ts';
+import { fixtureRuntimeLayout } from './runtime-samples.ts';
 
 export const NATIVE_CONFIG = { ios: { minimum: '15.0' }, android: { minSdk: 31 } } as const;
 
@@ -19,7 +20,7 @@ export function nativeCompile(spec: FixtureSpec, direction: Environment['directi
   // MQ-a: every native case runs in the parity environment's viewport, so its @media band is the one holding it.
   // TXT1a-2: a real-font fixture compiles with its font map and the map's vendored faces as assets, as pipeline.ts compileFixture does.
   const fonts = fontMapOf(spec.id);
-  const project = createProjectWith({ projectId: PROJECT_ID, targets: { ...NATIVE_CONFIG }, ...(fonts === undefined ? {} : { fonts }) }, { faults, profiles: 'derive', direction, platform: REFERENCE_PLATFORM, rootFont: spec.rootFont, foldViewport: ENVIRONMENT.viewport, nativeRealFaces, interactionLanes: true });
+  const project = createProjectWith({ projectId: PROJECT_ID, targets: { ...NATIVE_CONFIG }, ...(fonts === undefined ? {} : { fonts }) }, { faults, profiles: 'derive', direction, platform: REFERENCE_PLATFORM, rootFont: spec.rootFont, foldViewport: ENVIRONMENT.viewport, nativeRealFaces, interactionLanes: true, runtimeImageLayout: fixtureRuntimeLayout(ENVIRONMENT.viewport) });
   return project.compile(fonts === undefined ? fixtureInput(spec) : withFontMapAssets(fixtureInput(spec), fonts));
 }
 

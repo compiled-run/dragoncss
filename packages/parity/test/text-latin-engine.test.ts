@@ -175,6 +175,7 @@ type Call = readonly [string, number, string, number, number, string, boolean, s
 function hostRun(input: LayoutInput, faults: EngineFaults): { readonly result: LayoutResult; readonly shaping: unknown } {
   const calls: Call[] = [];
   const recording: GlyphShaper = {
+    fallback: (): string => '',
     shape(face, size, text, start, end, script, rtl, language, features) {
       const glyphs = hostShaper.shape(face, size, text, start, end, script, rtl, language, features);
       calls.push([face, size, text, start, end, script, rtl, language, [...features], [...glyphs]]);

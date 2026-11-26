@@ -72,6 +72,7 @@ function fontAt(id: string, size: number): number {
 
 /** The host side of R1: shapes with the registered face at the size, with the engine's integer feature records. */
 export const hostShaper: GlyphShaper = {
+  fallback: (): string => '',
   shape(face: string, size: number, text: string, start: number, end: number, script: string, rtl: boolean, language: string, features: readonly number[]): readonly number[] {
     if (features.length % FEATURE_STRIDE !== 0) throw new Error(`a feature list of ${features.length} integers is not whole records of ${FEATURE_STRIDE}`);
     const fs: Feature[] = [];

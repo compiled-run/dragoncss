@@ -722,3 +722,27 @@ describe('atomic inlines in a block button', () => {
     }
   }
 });
+
+// RF-INL: an inline-block button on a line moves its lines down with its centred contents in the hit table too.
+describe('hitTableOf places a tall inline-block button\'s lines where the engine does', () => {
+  it('builds the table for a 40px button holding text and an inline-block, and names the inner box at its centred place', async () => {
+    const { hitTableOf, hitTest } = await import('../src/rt-hit.ts');
+    const { absoluteRects, ahemMeasurer, layout } = await import('../src/index.ts');
+    const { box, control, neutralEnvironment, px, text } = await import('./helpers.ts');
+    const inner = box('s', { display: 'inline-block', width: px(10), height: px(10) });
+    const button = control('b', { kind: 'button-block' }, { display: 'inline-block', height: px(40) }, [text('b:t', 'YY '), inner]);
+    const strut = { font: { family: 'Ahem', size: 10, specifiedSize: { kind: 'px', value: 10 }, absoluteSize: true }, lineHeight: { kind: 'normal' } } as const;
+    const p = { ...box('p', { width: px(300) }, [text('p:t', 'XX '), { ...button, strut }]), strut };
+    const root = { ...box('html', { width: px(300) }), children: [p] } as unknown as Parameters<typeof hitTableOf>[0]['root'];
+    const input = { viewport: { width: 400, height: 300 }, devicePixelRatio: 1, ...neutralEnvironment({ width: 400, height: 300 }), root };
+    const fact = { pointerEvents: 'auto', inherited: true, activation: false, ...FLAT };
+    const facts = new Map(['html', 'p', 'b', 's'].map((id) => [id, fact])) as unknown as Parameters<typeof hitTableOf>[2];
+    const t = hitTableOf(input, ahemMeasurer, facts, NO_HIT_TABLE_FAULTS);
+    const s = t.nodes[t.ids.indexOf('s')] as HitNode;
+    const laid = layout(input, ahemMeasurer);
+    if (laid.kind !== 'ok') throw new Error(JSON.stringify(laid));
+    // The 12px line is centred in the 40px content box, 14px down, so the box sits there and not at the top.
+    expect([s.y, s.y / PX]).toEqual([(absoluteRects(laid.boxes).get('s') as { y: number }).y, 14]);
+    expect(t.ids[hitTest(t.nodes, s.x + 5 * PX, s.y + 5 * PX, NO_HIT_FAULTS)]).toBe('s');
+  });
+});
