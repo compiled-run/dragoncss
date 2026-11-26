@@ -411,6 +411,34 @@ function holdsInlineContent(el: ResolvedElement): boolean {
   return inlineContexts(el, () => {}).some((run) => run.some((it) => it.kind === 'atomic' || (it.kind === 'text' && (!/^[ \t\n\r\f]*$/.test(it.text.text) || keywordOf(it.text.props.get('white-space-collapse') as ResolvedValue) !== 'collapse'))));
 }
 
+/**
+ * What gives a block container its last baseline, as the engine's block flow takes it (block_layout_algorithm.cc:3622-3647): a line
+ * of its own, a block-level flex or grid container (whose last baseline the engine does not model), or nothing. The last in-flow
+ * child that decides one wins, and a scroll container child decides with its margin box.
+ */
+function lastBaselineSource(el: ResolvedElement): 'line' | 'flex' | null {
+  const d = displayKeyword(el);
+  if (d === 'flex' || d === 'grid' || el.element.tag === 'select' || rangePartOf(el)?.part === null) return 'flex';
+  const inked = (n: ResolvedElement | ResolvedText): boolean => (n.kind === 'text' ? !/^[ \t\n\r\f]*$/.test(n.text) : displayKeyword(n) !== 'none' && boxKids(n).some(inked));
+  let source: 'line' | 'flex' | null = null;
+  for (const c of boxKids(el)) {
+    if (c.kind === 'text') {
+      if (inked(c)) source = 'line';
+      continue;
+    }
+    if (displayKeyword(c) === 'none' || ['absolute', 'fixed'].includes(keywordOf(c.props.get('position') as ResolvedValue)) || keywordOf(c.props.get('float') as ResolvedValue) !== 'none') continue;
+    if (isAtomic(c)) source = 'line';
+    else if (isInlineBox(c)) {
+      if (inked(c)) source = 'line';
+    } else {
+      const scroll = (['overflow-x', 'overflow-y'] as const).some((p) => ['hidden', 'auto', 'scroll'].includes(keywordOf(c.props.get(p) as ResolvedValue)));
+      const own = scroll ? 'line' : lastBaselineSource(c);
+      if (own !== null) source = own;
+    }
+  }
+  return source;
+}
+
 // UAX #9 and css-writing-modes-4 §2.4: the text of an rtl inline formatting context may hold only strong-L letters, spaces and
 // U+200B, and U+200B may not be in the white space that ends a paragraph (at a <br>, bidi class B, or at the end, L1); anything else
 // would be reordered, and it is refused for every target. The text of an inline box belongs to its block container's context.
@@ -1728,8 +1756,10 @@ const BUTTON_RESETS: readonly (readonly [Longhand, (v: CssValue, buttonText: Rgb
 
 /**
  * FORM-a A3: a button is laid out as a block container that centres its contents, or as the flex container its display says,
- * and painted as CSS boxes. Refused: a button the platform theme paints (R11, FORM-b); an inline-level one (RF-INL); any other
- * display; an absolutely positioned one (the engine's control-out-of-flow); and one whose font is Chrome's UA control font (R13).
+ * and painted as CSS boxes. RF-INL: an inline-block or inline-flex button is the same box as an atomic inline (Chrome's UA
+ * display for a button is inline-block). Refused: a button the platform theme paints (R11, FORM-b); an inline or inline-grid one;
+ * an empty inline-flex one; any other display; an absolutely positioned one (the engine's control-out-of-flow); and one whose font
+ * is Chrome's UA control font (R13).
  */
 function checkButton(el: ResolvedElement, parentDisplay: string | null, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, ua: UaDataset): void {
   const tag = el.element.tag;
@@ -1742,10 +1772,15 @@ function checkButton(el: ResolvedElement, parentDisplay: string | null, targets:
   }
   const display = el.props.get('display') as ResolvedValue;
   const d = valueToString(display.value);
-  if (d === 'inline-block' || d === 'inline-flex' || d === 'inline-grid' || d === 'inline') {
-    refuse(display, 'inline', `display: ${d} on <${tag}> ${address} makes it an inline-level control, which waits for the RF-INL package (atomic inlines)`, `Set display: block (or flex) on <${tag}> ${address}, or make it a flex item.`);
-  } else if (d !== 'block' && d !== 'flex') {
-    refuse(display, 'display', `display: ${d} on <${tag}> ${address} is not supported on a button; only block and flex buttons are laid out`, `Set display: block (or flex) on <${tag}> ${address}.`);
+  if (d === 'inline-grid' || d === 'inline') {
+    refuse(display, 'inline', `display: ${d} on <${tag}> ${address} makes it an inline-level control that RF-INL does not lay out yet (only inline-block and inline-flex buttons are)`, `Set display: inline-block (or block or flex) on <${tag}> ${address}.`);
+  } else if (d === 'inline-flex' && !boxKids(el).some((c) => (c.kind === 'element' ? displayKeyword(c) !== 'none' && !['absolute', 'fixed'].includes(keywordOf(c.props.get('position') as ResolvedValue)) : !/^[ \t\n\r\f]*$/.test(c.text)))) {
+    // An itemless flex button (css-flexbox-1 §4: no in-flow child, white space only) has Chrome's content-box baseline (html_button_element.cc:76-80), not the engine's margin box.
+    refuse(display, 'inline', `display: inline-flex on the empty <${tag}> ${address} synthesizes its baseline at its content box, which Dragon does not lay out for a flex button`, `Use display: inline-block on <${tag}> ${address}, or give it content.`);
+  } else if (d === 'inline-block' && lastBaselineSource(el) === 'flex') {
+    refuse(display, 'inline', `<${tag}> ${address} is an inline-block button whose last baseline would come from a flex or grid container inside it, which Dragon does not lay out (CSS2 §10.8.1)`, `Use display: inline-flex (or block or flex) on <${tag}> ${address}, or end it with text.`);
+  } else if (d !== 'block' && d !== 'flex' && d !== 'inline-block' && d !== 'inline-flex') {
+    refuse(display, 'display', `display: ${d} on <${tag}> ${address} is not supported on a button; only block, flex, inline-block and inline-flex buttons are laid out`, `Set display: block (or flex) on <${tag}> ${address}.`);
   }
   const position = el.props.get('position') as ResolvedValue;
   const pos = keywordOf(position);

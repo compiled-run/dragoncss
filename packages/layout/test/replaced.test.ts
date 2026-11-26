@@ -80,7 +80,7 @@ function sizeMisses(spaceFor: (cbBlock: LU | null) => ReturnType<typeof blockFlo
       const bor = (v: LayoutStyle['borderTopWidth']): number => (v.kind === 'px' ? v.value : 0);
       const bp = { inline: lu(pad(s.paddingLeft) + pad(s.paddingRight) + bor(s.borderLeftWidth) + bor(s.borderRightWidth)), block: lu(pad(s.paddingTop) + pad(s.paddingBottom) + bor(s.borderTopWidth) + bor(s.borderBottomWidth)) };
       const space = spaceFor(height === 'auto' ? null : lu(120));
-      const r = replacedSize('r', s, NATURAL[kind] as NaturalSizing, DEFAULT_OBJECT, bp, space, 'normal', NO_ENGINE_FAULTS);
+      const r = replacedSize('r', s, NATURAL[kind] as NaturalSizing, DEFAULT_OBJECT, bp, space, 'normal', NO_ENGINE_FAULTS, 'used-size');
       const want = sizes[i] as readonly [number, number];
       compared++;
       if (r.inline !== lu(want[0]) || r.block !== lu(want[1])) off.push(`${key} ${css || '(none)'}: ${r.inline / 64}x${r.block / 64}, Chrome ${want[0]}x${want[1]}`);
@@ -95,7 +95,7 @@ describe('replaced sizing (Blink ComputeReplacedSize) against Chrome 145 block-l
     const base: Partial<LayoutStyle> = { ...edges(5), ...border(3), boxSizing: 'border-box', width: px(100) };
     const bp = { inline: lu(16), block: lu(16) };
     const size = (over: Partial<LayoutStyle>, faults = NO_ENGINE_FAULTS) => {
-      const r = replacedSize('r', { ...divStyle, ...base, ...over }, NATURAL['wide'] as NaturalSizing, DEFAULT_OBJECT, bp, blockFlowSpace(lu(200), null, lu(0)), 'normal', faults);
+      const r = replacedSize('r', { ...divStyle, ...base, ...over }, NATURAL['wide'] as NaturalSizing, DEFAULT_OBJECT, bp, blockFlowSpace(lu(200), null, lu(0)), 'normal', faults, 'used-size');
       return [r.inline / 64, r.block / 64];
     };
     expect(size({})).toEqual([100, 58]);
@@ -193,7 +193,7 @@ describe('an image with an empty natural size (Blink ComputeObjectFitAndPosition
   // natural ratio, whatever object-fit and object-position say; it never sizes the object 0 wide.
   const content = { x: lu(10), y: lu(20), width: lu(200), height: lu(100) };
   const corner: ObjectPosition = { x: px(0), y: px(0) };
-  const leaf = (w: number, h: number) => naturalSizingOf({ kind: 'replaced', id: 'i', style: divStyle, natural: { kind: 'image', width: w, height: h }, defaultWidth: 300, defaultHeight: 150, objectFit: 'none', objectPositionX: px(0), objectPositionY: px(0) });
+  const leaf = (w: number, h: number) => naturalSizingOf({ kind: 'replaced', id: 'i', style: divStyle, natural: { kind: 'image', width: w, height: h }, defaultWidth: 300, defaultHeight: 150, objectFit: 'none', objectPositionX: px(0), objectPositionY: px(0) }) as NaturalSizing;
 
   it('has no natural ratio when a side is zero, and keeps the ratio otherwise', () => {
     expect(leaf(0, 100).ratio).toBeNull();

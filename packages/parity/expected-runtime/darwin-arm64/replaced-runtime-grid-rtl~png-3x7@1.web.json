@@ -1,0 +1,244 @@
+{
+  "fixture": "replaced-runtime-grid-rtl",
+  "chrome": "145.0.7632.6",
+  "browser": "chromium-headless-shell",
+  "platform": "darwin-arm64",
+  "viewport": {
+    "width": 400,
+    "height": 300
+  },
+  "devicePixelRatio": 1,
+  "direction": "rtl",
+  "nodes": [
+    {
+      "id": "html",
+      "kind": "element",
+      "hasBox": true,
+      "x": 0,
+      "y": 0,
+      "width": 400,
+      "height": 462,
+      "computed": null
+    },
+    {
+      "id": "body",
+      "kind": "element",
+      "hasBox": true,
+      "x": 0,
+      "y": 0,
+      "width": 400,
+      "height": 462,
+      "computed": null
+    },
+    {
+      "id": "cards",
+      "kind": "element",
+      "hasBox": true,
+      "x": 26,
+      "y": 0,
+      "width": 374,
+      "height": 332,
+      "computed": null
+    },
+    {
+      "id": "c1",
+      "kind": "element",
+      "hasBox": true,
+      "x": 219,
+      "y": 0,
+      "width": 181,
+      "height": 332,
+      "computed": null
+    },
+    {
+      "id": "i1",
+      "kind": "element",
+      "hasBox": true,
+      "x": 227,
+      "y": 8,
+      "width": 165,
+      "height": 300,
+      "computed": null
+    },
+    {
+      "id": "t1",
+      "kind": "element",
+      "hasBox": true,
+      "x": 227,
+      "y": 314,
+      "width": 165,
+      "height": 10,
+      "computed": null
+    },
+    {
+      "id": "t1:text0",
+      "kind": "text",
+      "hasBox": true,
+      "x": 352,
+      "y": 314,
+      "width": 40,
+      "height": 10,
+      "computed": null
+    },
+    {
+      "id": "t1:text0:line0",
+      "kind": "line",
+      "hasBox": true,
+      "x": 352,
+      "y": 314,
+      "width": 40,
+      "height": 10,
+      "computed": null
+    },
+    {
+      "id": "c2",
+      "kind": "element",
+      "hasBox": true,
+      "x": 26,
+      "y": 0,
+      "width": 181,
+      "height": 332,
+      "computed": null
+    },
+    {
+      "id": "i2",
+      "kind": "element",
+      "hasBox": true,
+      "x": 34,
+      "y": 8,
+      "width": 165,
+      "height": 300,
+      "computed": null
+    },
+    {
+      "id": "t2",
+      "kind": "element",
+      "hasBox": true,
+      "x": 34,
+      "y": 314,
+      "width": 165,
+      "height": 10,
+      "computed": null
+    },
+    {
+      "id": "t2:text0",
+      "kind": "text",
+      "hasBox": true,
+      "x": 149,
+      "y": 314,
+      "width": 50,
+      "height": 10,
+      "computed": null
+    },
+    {
+      "id": "t2:text0:line0",
+      "kind": "line",
+      "hasBox": true,
+      "x": 149,
+      "y": 314,
+      "width": 50,
+      "height": 10,
+      "computed": null
+    },
+    {
+      "id": "row",
+      "kind": "element",
+      "hasBox": true,
+      "x": 26,
+      "y": 340,
+      "width": 374,
+      "height": 64,
+      "computed": null
+    },
+    {
+      "id": "i3",
+      "kind": "element",
+      "hasBox": true,
+      "x": 336,
+      "y": 340,
+      "width": 64,
+      "height": 64,
+      "computed": null
+    },
+    {
+      "id": "t3",
+      "kind": "element",
+      "hasBox": true,
+      "x": 26,
+      "y": 367,
+      "width": 298,
+      "height": 10,
+      "computed": null
+    },
+    {
+      "id": "t3:text0",
+      "kind": "text",
+      "hasBox": true,
+      "x": 254,
+      "y": 367,
+      "width": 70,
+      "height": 10,
+      "computed": null
+    },
+    {
+      "id": "t3:text0:line0",
+      "kind": "line",
+      "hasBox": true,
+      "x": 254,
+      "y": 367,
+      "width": 70,
+      "height": 10,
+      "computed": null
+    },
+    {
+      "id": "halves",
+      "kind": "element",
+      "hasBox": true,
+      "x": 99,
+      "y": 412,
+      "width": 301,
+      "height": 50,
+      "computed": null
+    },
+    {
+      "id": "i4",
+      "kind": "element",
+      "hasBox": true,
+      "x": 249.5,
+      "y": 412,
+      "width": 150.5,
+      "height": 50,
+      "computed": null
+    },
+    {
+      "id": "t4",
+      "kind": "element",
+      "hasBox": true,
+      "x": 99,
+      "y": 412,
+      "width": 150.5,
+      "height": 50,
+      "computed": null
+    },
+    {
+      "id": "t4:text0",
+      "kind": "text",
+      "hasBox": true,
+      "x": 229.5,
+      "y": 412,
+      "width": 20,
+      "height": 10,
+      "computed": null
+    },
+    {
+      "id": "t4:text0:line0",
+      "kind": "line",
+      "hasBox": true,
+      "x": 229.5,
+      "y": 412,
+      "width": 20,
+      "height": 10,
+      "computed": null
+    }
+  ]
+}

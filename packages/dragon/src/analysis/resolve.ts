@@ -300,16 +300,57 @@ export function resolvedCustoms(el: ResolvedElement): CustomProperties {
 // css-cascade-5 §4-§7: the winning declaration, inheritance, then user-agent or initial values, for every longhand. interaction:
 // the hovered and focused elements the selectors match against (SELD-R2a); none by default.
 // Logical ancestry is the linked tree: projected children match under their insertion parent (docs/api.md §3.1).
-export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults: CompilerFaults, environment: ResolveEnvironment, interaction: InteractionState = NO_INTERACTION): ResolvedElement {
-  const tree = resolveTreeWith(root, rules, faults, environment, interaction);
+export function resolveTree(root: LinkedElement, rules: readonly Rule[], faults: CompilerFaults, environment: ResolveEnvironment, interaction: InteractionState = NO_INTERACTION, memo: ResolveMemo | null = null): ResolvedElement {
+  const tree = resolveTreeWith(root, rules, faults, environment, interaction, memo);
   if (environment.hostCanvas !== true || environment.ua.colorScheme === 'dark') return tree;
   if (usedColorScheme((tree.props.get('color-scheme') as ResolvedValue).value, environment.colorScheme ?? null) !== 'dark') return tree;
   // css-color-adjust-1 §2.1: the root's used scheme is dark, so its UA colours are the dark capture's; without one the check refuses it.
   const dark = darkDatasetFor(environment.ua.platform);
-  return dark.kind === 'ok' ? resolveTreeWith(root, rules, faults, { ...environment, ua: dark.dataset }, interaction) : tree;
+  return dark.kind === 'ok' ? resolveTreeWith(root, rules, faults, { ...environment, ua: dark.dataset }, interaction, memo) : tree;
 }
 
-function resolveTreeWith(root: LinkedElement, rules: readonly Rule[], faults: CompilerFaults, environment: ResolveEnvironment, interaction: InteractionState): ResolvedElement {
+/** Longhands shared by the cases and interaction states of one band that leave an element's inputs unchanged; never written. */
+export type ResolveMemo = {
+  readonly elements: Map<string, Map<Longhand, ResolvedValue>>;
+  readonly texts: WeakMap<ReadonlyMap<Longhand, ResolvedValue>, Map<TextLonghand, ResolvedValue>>;
+  /** Any other environment, container and ua aside, resolves without the memo. */
+  readonly environment: ResolveEnvironment;
+};
+
+export const newResolveMemo = (environment: ResolveEnvironment): ResolveMemo => ({ elements: new Map(), texts: new WeakMap(), environment });
+
+const SHARED = new WeakSet<ReadonlyMap<Longhand, ResolvedValue>>();
+
+/** Whether props are held by a ResolveMemo: other elements may hold them, so a pass that edits them copies first. */
+export const isShared = (props: ReadonlyMap<Longhand, ResolvedValue>): boolean => SHARED.has(props);
+
+const sameEnvironment = (a: ResolveEnvironment, b: ResolveEnvironment): boolean => {
+  const keys = new Set([...Object.keys(a), ...Object.keys(b)]);
+  for (const k of keys) if (k !== 'container' && k !== 'ua' && (a as Record<string, unknown>)[k] !== (b as Record<string, unknown>)[k]) return false;
+  return true;
+};
+
+const identities = new WeakMap<object, number>();
+let nextIdentity = 0;
+const identity = (o: object): number => {
+  const known = identities.get(o);
+  if (known !== undefined) return known;
+  nextIdentity += 1;
+  identities.set(o, nextIdentity);
+  return nextIdentity;
+};
+
+function resolveTreeWith(root: LinkedElement, rules: readonly Rule[], faults: CompilerFaults, environment: ResolveEnvironment, interaction: InteractionState, given: ResolveMemo | null): ResolvedElement {
+  const memo = given !== null && sameEnvironment(given.environment, environment) ? given : null;
+  // A shared map is keyed by its UA dataset and faults, so its texts' longhands follow from it alone.
+  const sharedTextProps = (owner: ReadonlyMap<Longhand, ResolvedValue>): Map<TextLonghand, ResolvedValue> => {
+    if (memo === null || !SHARED.has(owner)) return textProps(owner, faults, environment.ua);
+    const known = memo.texts.get(owner);
+    if (known !== undefined) return known;
+    const made = textProps(owner, faults, environment.ua);
+    memo.texts.set(owner, made);
+    return made;
+  };
   // GEN-a: the generated pseudo-elements some rule selects; only these are cascaded on each element.
   const selected = new Set(rules.flatMap((r) => r.selectors.flatMap((sel) => (sel.pseudoElement !== null && sel.pseudoElement.kind === 'generated' ? [sel.pseudoElement.name] : []))));
   // A generated box cascades only the rules with a selector for its pseudo-element (cascade.ts matches no other selector on it).
@@ -342,6 +383,19 @@ function resolveTreeWith(root: LinkedElement, rules: readonly Rule[], faults: Co
     const cascadePseudo = pseudo === null ? null : { name: pseudo, direction: keywordDirection((parent as ResolvedElement).props.get('direction') as ResolvedValue) };
     const cascadePart = part === null ? null : { name: PART_PSEUDO[part], direction: keywordDirection((parent as ResolvedElement).props.get('direction') as ResolvedValue) };
     const { winners, matched, scope } = cascadeElement(applying(pseudo === null ? rules : (rulesOf.get(pseudo) as readonly Rule[]), chain, pseudo === null && part === null ? el : null, selects), here, faults, directionContext(parent, faults, environment), parent === null ? new Map() : (customsOf.get(parent) as CustomProperties), interaction, environment.registered, cascadePseudo, cascadePart, pseudo === null && part === null ? attachedDeclarations(el) : undefined);
+    // Every input of the longhands below; generated boxes and pages with ::-webkit-scrollbar rules are not shared.
+    const partHost = chain[chain.length - 1];
+    const key = memo === null || pseudo !== null || scrollbarRules ? null : [
+      part ?? '', el.address, identity(el.node), el.tag, JSON.stringify([...el.attributes]), JSON.stringify(el.classes),
+      part === null ? String(isDisabled(here)) : `${JSON.stringify(el.children.map((c) => (c.kind === 'text' ? c.text : '')))}|${partHost === undefined ? '' : identity(partHost.node)}|${textAreaParts.has(el)}|${part === 'inner' && partHost !== undefined ? identity(shownOptions.get(partHost)?.props ?? {}) : 0}`,
+      parent === null ? '' : `${identity(parent.props)}|${parent.element.tag}|${JSON.stringify([...parent.element.attributes])}`,
+      resolvedRoot === null ? '' : JSON.stringify((resolvedRoot.props.get('font-size') as ResolvedValue).value),
+      identity(environment.ua), identity(rules), identity(faults),
+      JSON.stringify([...scope.customs]),
+      [...matched].map(([p, ds]) => `${p}:${identity(winners.get(p)?.declaration ?? {})}:${ds.map((d) => identity(d)).join(',')}`).join(';'),
+    ].join('|');
+    const known = key === null || memo === null ? undefined : memo.elements.get(key);
+    let props = known ?? (() => {
     const props = new Map<Longhand, ResolvedValue>();
     const tag = uaTagOf(el.tag, el.attributes.get('type'), pseudo === null && part === null && isDisabled(here));
     const none = { declaration: null, declared: null, losing: [] } as const;
@@ -479,6 +533,12 @@ function resolveTreeWith(root: LinkedElement, rules: readonly Rule[], faults: Co
     computeJustifyItems(props, parent === null ? null : parent.props);
     if (pseudo === null) computeLists(props, faults);
     else if (pseudo !== 'marker' && pseudo !== 'backdrop') computePseudoContent(props, faults);
+    return props;
+    })();
+    if (key !== null && memo !== null && known === undefined) {
+      memo.elements.set(key, props);
+      SHARED.add(props);
+    }
     // R3: a generated box's one text child (none for an empty string); the element is built once its content is computed.
     const content = pseudo === null || pseudo === 'marker' || pseudo === 'backdrop' ? null : generatedText(props.get('content') as ResolvedValue, (props.get('display') as ResolvedValue).value, faults);
     const host = pseudo === null ? null : (chain[chain.length - 1] as LinkedElement);
@@ -576,6 +636,11 @@ function resolveTreeWith(root: LinkedElement, rules: readonly Rule[], faults: Co
     }
     // BII: an inline box that holds only block-level boxes, with no box of its own, lays out as their block box (block-in-inline.ts).
     if (parent !== null && isInlineBox(self) && blockInInlineBlocker(props, kids.map(blockInInlineChild), environment.ua) === null) {
+      // Its children decide this, which the memo key does not cover, so a shared map is copied first.
+      if (SHARED.has(props)) {
+        props = new Map(props);
+        self.props = props;
+      }
       props.set('display', { ...(props.get('display') as ResolvedValue), value: { kind: 'keyword', value: 'block' } });
       markBlockInInline(self);
     }
@@ -656,7 +721,7 @@ function resolveTreeWith(root: LinkedElement, rules: readonly Rule[], faults: Co
         if (text === undefined) throw new Error(`${kid.address}: text outside any inline formatting context`);
         if (text.length === 0 && !keptEmptyTexts.has(kid)) continue;
         const refusal = refusals.get(kid);
-        const resolvedText: ResolvedText = { kind: 'text', node: kid, text, props: textProps(ownerProps, faults, environment.ua), smallCaps: !faults.smallCapsUnsynthesized && synthesizesSmallCaps(ownerProps) };
+        const resolvedText: ResolvedText = { kind: 'text', node: kid, text, props: sharedTextProps(ownerProps), smallCaps: !faults.smallCapsUnsynthesized && synthesizesSmallCaps(ownerProps) };
         owner.children.push(refusal === undefined ? resolvedText : { ...resolvedText, transformRefusal: refusal });
       }
     };

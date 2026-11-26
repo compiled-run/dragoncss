@@ -640,7 +640,10 @@ export function textFontProblem(t: ResolvedText): string | null {
  * TXT1a-1 engine mode: the bundled face an element's or text node's font resolves to (the face id the engine and its hosts key faces
  * by: sha256:<hex> of the bytes), or why the engine cannot lay it out (fallback, synthesis, a variable face).
  */
-export type EngineFace = { readonly kind: 'face'; readonly id: string } | { readonly kind: 'refused'; readonly reason: string };
+export type EngineFace =
+  /** fallback: with system fonts, the system face the family list goes on to for a code point no listed bundled face draws. */
+  | { readonly kind: 'face'; readonly id: string; readonly fallback?: string }
+  | { readonly kind: 'refused'; readonly reason: string };
 
 /**
  * The lowering mode: native targets lay out Ahem and the real bundled faces the compiler resolved (TXT1a-2, faceOf refuses every
@@ -807,16 +810,16 @@ function lowerInline(c: ResolvedElement | ResolvedText, l: Lowerer): InlineChild
 }
 
 /**
- * A block container's inline-level child: an atomic inline is a box (INL2a), a replaced leaf (RF-INL) or an inline-block text
- * field among its inline content, the rest lowerInline.
+ * A block container's inline-level child: an atomic inline is a box (INL2a), a replaced leaf, an inline-block button (RF-INL) or
+ * an inline-block text field among its inline content, the rest lowerInline.
  */
 function lowerInlineLevel(c: ResolvedElement | ResolvedText, l: Lowerer): LayoutBox | ControlBox | ReplacedLeaf | InlineChild {
   if (!isAtomic(c)) return lowerInline(c, l);
   const el = c as ResolvedElement;
   if (isReplacedTag(el.element.tag)) return lowerReplaced(el, l, null);
   const box = lowerBox(el, l, null);
-  // Of the inline-level controls only an inline-block text field is laid out (analysis/computed-checks.ts refuses the rest).
-  if (box.kind === 'control' && (box.control.kind !== 'text-field' || box.style.display !== 'inline-block')) throw new LoweringError(box.id, 'display', `the inline-level control ${box.id} is not laid out`);
+  // Of the inline-level controls only an inline-block text field or button is laid out (analysis/computed-checks.ts refuses the rest).
+  if (box.kind === 'control' && ((box.control.kind !== 'text-field' && box.control.kind !== 'button-block') || box.style.display !== 'inline-block')) throw new LoweringError(box.id, 'display', `the inline-level control ${box.id} is not laid out`);
   return box;
 }
 
@@ -899,7 +902,9 @@ function lowerReplaced(given: ResolvedElement, l: Lowerer, gridParent: GridConta
   // css-inline-3 §5.1: a replaced element holds no inline content, so text-box-trim has nothing to trim.
   const style: LayoutStyle = { ...own, textBoxTrim: null, gridItem: gridItem === null ? own.gridItem : gridItem };
   let natural: ReplacedLeaf['natural'] = { kind: 'none' };
-  if (el.element.tag === 'img') {
+  if (el.element.tag === 'img' && el.element.node.runtimeSrc !== undefined) {
+    natural = { kind: 'runtime' };
+  } else if (el.element.tag === 'img') {
     const src = el.element.attributes.get('src');
     const size = src === undefined ? undefined : images.get(src);
     if (size === undefined) throw new LoweringError(id, 'src', `<img> ${id} has no image the build read`);
@@ -1040,8 +1045,9 @@ function lowerBox(given: ResolvedElement, l: Lowerer, gridParent: GridContainer 
   const strut = strutOf(el, inlineContent, l.mode, zoom);
   // HTML §15.3.13: a block fieldset lays out its rendered legend, its first in-flow legend child, in its block-start border.
   if (el.element.tag === 'fieldset' && style.display === 'block') return { kind: 'control', id, boxType: 'element', style, control: { kind: 'fieldset' }, strut, children: withRenderedLegend(kids, children) };
-  // FORM-a: a block button centres its contents (Blink AlignBlockContent); a flex button is the plain flex container it is.
-  if (el.element.tag === 'button' && style.display === 'block') return { kind: 'control', id, boxType: 'element', style, control: { kind: 'button-block' }, strut, children };
+  // FORM-a: a block button centres its contents (Blink AlignBlockContent), and so does an inline-block one, which Blink lays out with
+  // the same BlockLayoutAlgorithm (RF-INL); a flex or inline-flex button is the plain flex container it is.
+  if (el.element.tag === 'button' && (style.display === 'block' || style.display === 'inline-block')) return { kind: 'control', id, boxType: 'element', style, control: { kind: 'button-block' }, strut, children };
   if (el.element.tag === 'input' && isCheckboxType(el.element.attributes.get('type'))) {
     // FORM-checkbox: Chrome's theme gives an auto width or height the part size, 13px (LayoutTheme, native_theme_base.cc kCheckboxSize).
     const part = (v: LayoutStyle['width']): LayoutStyle['width'] => (v.kind === 'auto' ? { kind: 'px', value: CHECKBOX_PART_SIZE } : v);

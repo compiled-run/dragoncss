@@ -5,7 +5,7 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { GATE_DEVICE_PX } from '../compare.ts';
-import { marklessFontFiles, parseMarklessStyleInput } from '../markless-style-input.ts';
+import { marklessFontFiles, marklessImageFiles, parseMarklessStyleInput } from '../markless-style-input.ts';
 import { parseNativeStyleExport } from '../native-style-export.ts';
 import { webColumn } from '../markless-web-column.ts';
 import type { WebColumnDevice } from '../markless-web-column.ts';
@@ -33,8 +33,9 @@ const device: WebColumnDevice = ios !== undefined ? { target: 'ios', udid: ios }
 let report: Awaited<ReturnType<typeof webColumn>>;
 try {
   const input = parseMarklessStyleInput(readFileSync(inputPath, 'utf8'));
-  const fonts = marklessFontFiles(input, (file) => readFileSync(resolve(dirname(inputPath), file)));
-  report = await webColumn(input, parseNativeStyleExport(readFileSync(exportPath, 'utf8')), device, fonts, shotDir);
+  const read = (file: string): Uint8Array => readFileSync(resolve(dirname(inputPath), file));
+  const fonts = marklessFontFiles(input, read);
+  report = await webColumn(input, parseNativeStyleExport(readFileSync(exportPath, 'utf8')), device, fonts, shotDir, undefined, undefined, marklessImageFiles(input, read));
 } catch (e) {
   console.error((e as Error).message);
   process.exit(1);
