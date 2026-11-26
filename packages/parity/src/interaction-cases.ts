@@ -157,6 +157,7 @@ export function stateOfMatches(p: InteractionPartition, m: Pick<InteractionSnaps
 function expectedAfter(p: InteractionPartition, before: InteractionSnapshot & { pending: boolean; keyboard: boolean }, s: InteractionStep, hit: string | null, consumes: (a: string) => boolean, keyboardInput: (a: string) => boolean): InteractionSnapshot & { pending: boolean; keyboard: boolean } {
   const pointerFocus = (x: InteractionSnapshot & { pending: boolean; keyboard: boolean }): InteractionSnapshot & { pending: boolean; keyboard: boolean } => {
     const f = focusTargetOf(p, hit);
+    if (f !== null && f === x.focus) return x;
     return { ...x, focus: f, focusVisible: f !== null && keyboardInput(f) ? f : null, keyboard: false };
   };
   switch (s.kind) {
