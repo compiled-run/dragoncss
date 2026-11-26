@@ -150,6 +150,20 @@ describe('factored states', () => {
     expect(expectCombines(text, true)).toBeGreaterThan(200);
   });
 
+  it("hovers a group's element through a child only another group shows", () => {
+    // h6's :hover colour follows state b; its child h7 exists only while branch-site:1 shows it, so b's table has no h7.
+    const text = variant((v) => {
+      v.branches.push({ id: 'branch-site:1', domain: ['0', '1'], initial: '1' });
+      v.nodes.push(
+        { kind: 'element', id: 'h6', element: 'div', parent: 'h0', attributes: {}, classByState: byAB((_a, b) => (b ? 'q y mk-g' : 'q mk-g')) },
+        { kind: 'element', id: 'h7', element: 'div', parent: 'h6', attributes: { class: 'kid mk-g' }, arm: { branch: 'branch-site:1', index: 0 } },
+        { kind: 'text', id: 'h7:text0', parent: 'h7', text: 'Inside', arm: { branch: 'branch-site:1', index: 0 } },
+      );
+      v.css += '\n.q.mk-g { padding: 4px; }\n.q.y.mk-g:hover { background-color: #ff0000; }\n.kid.mk-g { padding: 2px; }\n';
+    });
+    expect(expectCombines(text, true)).toBeGreaterThan(200);
+  });
+
   it("gives a select's shown option the states of every option", () => {
     const text = variant((v) => {
       v.nodes.push(
