@@ -564,8 +564,12 @@ export type BoxType = 'element' | 'anonymous' | 'block-in-inline';
 export type ObjectFit = 'fill' | 'contain' | 'cover' | 'none' | 'scale-down';
 /** One object-position axis as an offset from the left or top edge of the content box; the compiler refuses calculations. */
 export type ObjectPositionValue = Px | Percent;
-/** The natural dimensions of a replaced element in CSS px: an image's size (its ratio is the size's), or none (an iframe). */
-export type NaturalSizeValue = { readonly kind: 'image'; readonly width: number; readonly height: number } | { readonly kind: 'none' };
+/**
+ * The natural dimensions of a replaced element in CSS px: an image's size (its ratio is the size's), none (an iframe), or runtime:
+ * an img whose src the app sets while it runs, whose size the build does not know, so a layout that reads it is refused
+ * (runtime-image-size) and paint takes the decoded image's size on the device (paint.ts runtimeImagePaint).
+ */
+export type NaturalSizeValue = { readonly kind: 'image'; readonly width: number; readonly height: number } | { readonly kind: 'none' } | { readonly kind: 'runtime' };
 
 /**
  * A block-level replaced element (CSS 2.2 §10.3.4, §10.6.2; css-sizing-4 §5): a leaf box whose content is an image or a
@@ -593,7 +597,8 @@ export type CancelButton = { readonly marginStart: number; readonly marginEnd: n
  *   writes 129, Chrome's measured default track length; the engine zooms it like a px length);
  * - slider-thumb: the thumb, which its block container's layout moves along the inline axis by ratio x (content width - thumb
  *   width), ratio being the input's (value - min) / (max - min) in [0, 1] (AdjustSliderThumbInlineOffset);
- * - button-block: a block button, whose in-flow contents are centred safely in the block axis (AlignBlockContent);
+ * - button-block: a button laid out as a block container, whose in-flow contents are centred safely in the block axis
+ *   (AlignBlockContent): block-level (display block), or inline-block, an atomic inline among inline content (RF-INL);
  * - text-field (FORM-b): a single-line text field, a block container of its placeholder (if any) and its inner editor. Its intrinsic
  *   content inline size is size x the advance of 0 in its font, rounded up to a whole px, read only when avgChar is ahem; its auto
  *   content height is the editor's, which it centres unsafely in the block axis, and the placeholder's baseline is put on the

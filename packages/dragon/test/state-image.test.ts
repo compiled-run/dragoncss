@@ -13,7 +13,9 @@ describe('an image in a state program', () => {
     expect(nodeLit('kotlin', node([image]))).toContain('DragonStateWrite.Image("iVBORw0KGgo=", 160.0, 80.0, "cover", true, false)');
     expect(nodeLit('swift', node([{ ...image, pixelated: true }]))).toContain(', true)');
   });
-  it('leaves a web view refused by name', () => {
-    for (const lang of ['swift', 'kotlin'] as const) expect(() => nodeLit(lang, node([{ kind: 'foreign-view' }])), lang).toThrow('t1: a foreign-view write in a state program is not supported yet (web views, videos and svgs under SELD-R states)');
+  it('leaves a web view and a run-time image refused by name', () => {
+    for (const lang of ['swift', 'kotlin'] as const) {
+      for (const kind of ['foreign-view', 'runtime-image'] as const) expect(() => nodeLit(lang, node([{ kind }])), `${lang} ${kind}`).toThrow(`t1: a ${kind} write in a state program is not supported yet (run-time images, web views, videos and svgs under SELD-R states)`);
+    }
   });
 });

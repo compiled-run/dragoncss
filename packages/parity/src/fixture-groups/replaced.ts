@@ -50,6 +50,21 @@ export const REPLACED: readonly FixtureSpec[] = [
   // A zero natural width or height: PNG IHDR and JPEG SOFn forbid it, so the image never decodes (Chrome draws no image) and the
   // engine's empty-natural-size path is reachable only from a hand-written layout input (replaced.test.ts pins it there).
   reject('reject-replaced-zero-size', 'DRAGON_UNSUPPORTED_IMAGE', imgTag('reject-replaced-zero-size'), '<img> a: the PNG does not parse: zero image size'),
+  // REPL-r1: imgs whose src the app sets at run time (data-dragon-runtime-src), laid out once and compared with Chrome once per
+  // sample image (runtime-samples.ts); the rejects are the shapes whose box would follow the image.
+  both('replaced-runtime-sized'),
+  both('replaced-runtime-ratio'),
+  both('replaced-runtime-fit'),
+  both('replaced-runtime-flex'),
+  both('replaced-runtime-grid'),
+  both('replaced-runtime-absent'),
+  both('replaced-runtime-src-change'),
+  reject('reject-runtime-src-auto-height', 'DRAGON_RUNTIME_IMAGE_SIZE', imgTag('reject-runtime-src-auto-height'), "<img> a has a src set at run time, and its used size reads the image's natural ratio, since its height is auto"),
+  reject('reject-runtime-src-auto-ratio', 'DRAGON_RUNTIME_IMAGE_SIZE', imgTag('reject-runtime-src-auto-ratio'), "<img> a has a src set at run time, and its max-content contribution (a shrink-to-fit width, an intrinsic grid track or a flex container's intrinsic size measures it) reads the image's natural ratio, which comes before the width and height attributes' ratio"),
+  reject('reject-runtime-src-flex-auto-min', 'DRAGON_RUNTIME_IMAGE_SIZE', imgTag('reject-runtime-src-flex-auto-min'), '<img> a has a src set at run time, and its content size as a flex item'),
+  reject('reject-runtime-src-shrink-to-fit', 'DRAGON_RUNTIME_IMAGE_SIZE', imgTag('reject-runtime-src-shrink-to-fit'), '<img> a has a src set at run time, and its max-content contribution'),
+  reject('reject-runtime-src-absent-alt', 'DRAGON_RUNTIME_IMAGE_SIZE', imgTag('reject-runtime-src-absent-alt'), '<img> a has a src set at run time that may be missing, and a missing src shows its alt text'),
+  reject('reject-runtime-src-selector', 'DRAGON_RUNTIME_IMAGE_SIZE', imgTag('reject-runtime-src-selector'), 'a selector of the rule at'),
   both('replaced-video'),
   reject('reject-video-remote', 'DRAGON_UNSUPPORTED_ATTRIBUTE', startTag('reject-video-remote', 'video'), 'attribute src on a is not supported: its src https://example.com/a.mp4 is not a data: URL'),
   reject('reject-video-webm', 'DRAGON_UNSUPPORTED_ATTRIBUTE', startTag('reject-video-webm', 'video'), 'attribute src on a is not supported: its src is a data: URL of type video/webm'),

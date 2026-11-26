@@ -194,10 +194,10 @@ final class DragonShaper {
 
 /// The engine's GlyphShaper over the shim (T056 R1): the bridge measures and draws every text through it (DragonBridge.shaper).
 func dragonGlyphShaper() -> GlyphShaper {
-  return GlyphShaper { face, size, text, start, end, script, rtl, language, features in
+  return GlyphShaper({ face, size, text, start, end, script, rtl, language, features in
     let got = DragonShaper.shared.shape(face: face.description, size: size, units: text.u, start: dragonCheckedInt(start, "shape start"), end: dragonCheckedInt(end, "shape end"), script: script.description, rtl: rtl, language: language.description, features: features.items)
     return JsArray(got)
-  }
+  }, { _, _, _, _, _, _ in JsString("") })
 }
 
 /// Every probe call on the device's shim must give the host WASM shim's integers (T056 R3); a mismatch stops the run before any case.
@@ -282,12 +282,12 @@ fun dragonFeatureInt(v: Double): Int {
 /** The engine's GlyphShaper over the shim (T056 R1): the bridge measures and draws every text through it (DragonBridge.shaper). */
 fun dragonGlyphShaper(ctx: Context): GlyphShaper {
   val s = DragonShaper.shared(ctx)
-  return GlyphShaper { face, size, text, start, end, script, rtl, language, features ->
+  return GlyphShaper({ face, size, text, start, end, script, rtl, language, features ->
     val got = s.shape(face, size, text, dragonCheckedInt(start, "shape start"), dragonCheckedInt(end, "shape end"), script, rtl, language, IntArray(features.size) { dragonFeatureInt(features[it]) })
     val out = ArrayList<Double>(got.size)
     for (x in got) out.add(x.toDouble())
     out
-  }
+  }, { _, _, _, _, _, _ -> "" })
 }
 
 /** Every probe call on the device's shim must give the host WASM shim's integers (T056 R3); a mismatch stops the run before any case. */

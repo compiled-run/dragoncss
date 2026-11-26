@@ -1018,8 +1018,9 @@ export function nodeLit(lang: Lang, n: ProgramNode, moving: ReadonlySet<string> 
       case 'foreign-view':
       case 'video-view':
       case 'svg-shapes':
-        // REPL-a hosts a web view, MEDIA-EL a video player, and SVG-a2 an svg's shapes, from its own paint stage; the state runtime does not rebuild them yet.
-        throw new StateEmitError(`${n.id}: a ${w.kind} write in a state program is not supported yet (web views, videos and svgs under SELD-R states)`);
+      case 'runtime-image':
+        // REPL-a draws a run-time image or hosts a web view, MEDIA-EL a video player, and SVG-a2 an svg's shapes, from its own paint stage; the state runtime does not rebuild them yet.
+        throw new StateEmitError(`${n.id}: a ${w.kind} write in a state program is not supported yet (run-time images, web views, videos and svgs under SELD-R states)`);
       case 'border-radius':
         writes.push(lang === 'swift' ? `.radii([${w.lengths.map((l) => radiusLengthLit('swift', l)).join(', ')}])` : `DragonStateWrite.Radii(arrayOf(${w.lengths.map((l) => radiusLengthLit('kotlin', l)).join(', ')}))`);
         break;

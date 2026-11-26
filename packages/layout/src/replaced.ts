@@ -50,6 +50,21 @@ export type ReplacedSize = { readonly inline: LU; readonly block: LU };
 /** The edge sums of the box: horizontal and vertical border plus padding. */
 export type BorderPadding = { readonly inline: LU; readonly block: LU };
 
+/**
+ * What a replaced box is sized for, which names the fix when it reads a natural size set at run time: its used size, its min- or
+ * max-content contribution, or its content size as a flex item (its automatic minimum size or flex base size).
+ */
+export type NaturalReader = 'used-size' | 'min-content' | 'max-content' | 'flex-content';
+
+/** A natural size the build may not read (an img whose src the app sets at run time): reading it refuses the layout, naming the fix. */
+function runtimeNaturalRead(nodeId: string, s: LayoutStyle, what: 'ratio' | 'size', reader: NaturalReader): never {
+  const by = reader === 'used-size' ? 'its used size' : reader === 'min-content' ? 'its min-content contribution' : reader === 'max-content' ? "its max-content contribution (a shrink-to-fit width, an intrinsic grid track or a flex container's intrinsic size measures it)" : 'its content size as a flex item (its automatic minimum size or flex base size)';
+  const axis = reader !== 'used-size' ? '' : s.height.kind === 'auto' ? ', since its height is auto' : s.width.kind === 'auto' ? ', since its width is auto' : '';
+  const before = what === 'ratio' && s.aspectRatio.kind === 'auto-ratio' ? ", which comes before the width and height attributes' ratio" : '';
+  const fix = reader === 'flex-content' ? 'give it a min-width (a min-height in a column flex container)' : what === 'ratio' ? 'give it a CSS aspect-ratio, or a width and a height' : 'give it a width and a height';
+  return unsupported('runtime-image-size', nodeId, 'css-sizing-4 §5.1', `${by} reads the image's natural ${what}${axis}${before}: ${fix}`);
+}
+
 /** Blink BlockNode::GetReplacedAspectRatio: `<ratio>` wins, then the natural ratio, then the ratio of `auto && <ratio>`. */
 export function replacedAspectRatio(s: LayoutStyle, natural: NaturalSizing): LayoutRatio | null {
   const r = s.aspectRatio;
@@ -107,11 +122,36 @@ function mainNeedsContent(v: LengthPercent, basis: LU | null): boolean {
   return hasPercent(v) && basis === null;
 }
 
-/** Blink ComputeReplacedSize for a replaced box that is not an SVG document root. */
-export function replacedSize(nodeId: string, s: LayoutStyle, natural: NaturalSizing, defaultSize: ReplacedSize, bp: BorderPadding, space: ReplacedSpace, mode: ReplacedSizeMode, faults: EngineFaults): ReplacedSize {
-  const ratio = replacedAspectRatio(s, natural);
+/**
+ * Blink ComputeReplacedSize for a replaced box that is not an SVG document root. The ratio and the natural size are computed where
+ * Blink's ComputeReplacedSizeInternal first uses them, so a natural size set at run time (null) is read only by a size that
+ * follows it, which refuses the layout (runtimeNaturalRead).
+ */
+export function replacedSize(nodeId: string, s: LayoutStyle, natural: NaturalSizing | null, defaultSize: ReplacedSize, bp: BorderPadding, space: ReplacedSpace, mode: ReplacedSizeMode, faults: EngineFaults, reader: NaturalReader): ReplacedSize {
   const sizing = ratioBoxSizing(s);
-  const naturalSize = normalizedNaturalSize(natural, defaultSize, bp, ratio, sizing);
+  const read = (what: 'ratio' | 'size'): NaturalSizing => {
+    if (natural === null) return runtimeNaturalRead(nodeId, s, what, reader);
+    return natural;
+  };
+  let ratioKnown = false;
+  let ratioValue: LayoutRatio | null = null;
+  const ratioOf = (): LayoutRatio | null => {
+    if (!ratioKnown) {
+      const r = s.aspectRatio;
+      ratioValue = r.kind === 'ratio' ? { width: r.width, height: r.height } : replacedAspectRatio(s, read('ratio'));
+      ratioKnown = true;
+    }
+    return ratioValue;
+  };
+  let naturalKnown = false;
+  let naturalValue: ReplacedSize | null = null;
+  const naturalSizeOf = (): ReplacedSize | null => {
+    if (!naturalKnown) {
+      naturalValue = normalizedNaturalSize(read('size'), defaultSize, bp, ratioOf(), sizing);
+      naturalKnown = true;
+    }
+    return naturalValue;
+  };
   const width = lengthWidth(nodeId, s.width);
   const minWidth = lengthMinWidth(nodeId, s.minWidth);
   const maxWidth = lengthMaxWidth(nodeId, s.maxWidth);
@@ -121,9 +161,11 @@ export function replacedSize(nodeId: string, s: LayoutStyle, natural: NaturalSiz
 
   // The intrinsic block size for a block length that resolves to its content (BlockSizeFunc).
   const blockContent = (): LU | null => {
-    if (ratio === null) return (naturalSize as ReplacedSize).block;
-    if (mode === 'normal') return replacedSize(nodeId, s, natural, defaultSize, bp, space, 'ignore-block-lengths', faults).block;
-    return naturalSize === null ? null : naturalSize.block;
+    const ratio = ratioOf();
+    if (ratio === null) return (naturalSizeOf() as ReplacedSize).block;
+    if (mode === 'normal') return replacedSize(nodeId, s, natural, defaultSize, bp, space, 'ignore-block-lengths', faults, reader).block;
+    const n = naturalSizeOf();
+    return n === null ? null : n.block;
   };
 
   let blockMm: MinMax;
@@ -147,25 +189,28 @@ export function replacedSize(nodeId: string, s: LayoutStyle, natural: NaturalSiz
   }
 
   // ComputeTransferredMinMaxInlineSizes: the block min and max through the ratio.
-  let transferred: MinMax = { min: ZERO, max: null };
-  if (ratio !== null) {
+  const transferredOf = (): MinMax => {
+    const ratio = ratioOf();
+    if (ratio === null) return { min: ZERO, max: null };
     const tlo = blockMm.min > 0 ? inlineFromRatio(bp, ratio, sizing, blockMm.min) : ZERO;
     const thi = blockMm.max === null ? null : inlineFromRatio(bp, ratio, sizing, blockMm.max);
-    transferred = { min: tlo, max: thi === null ? null : max(thi, tlo) };
-  }
+    return { min: tlo, max: thi === null ? null : max(thi, tlo) };
+  };
 
   // The size an inline length that resolves to its content takes (MinMaxSizesFunc, min and max alike), or null.
   const inlineContent = (): LU | null => {
-    if (ratio === null) return (naturalSize as ReplacedSize).inline;
+    const ratio = ratioOf();
+    if (ratio === null) return (naturalSizeOf() as ReplacedSize).inline;
     if (replacedBlock !== null) return inlineFromRatio(bp, ratio, sizing, replacedBlock);
-    if (naturalSize !== null) return mode === 'normal' ? replacedSize(nodeId, s, natural, defaultSize, bp, space, 'ignore-inline-lengths', faults).inline : naturalSize.inline;
+    const n = naturalSizeOf();
+    if (n !== null) return mode === 'normal' ? replacedSize(nodeId, s, natural, defaultSize, bp, space, 'ignore-inline-lengths', faults, reader).inline : n.inline;
     return null;
   };
 
   let inlineMm: MinMax;
   let replacedInline: LU | null = null;
   if (mode === 'ignore-inline-lengths') {
-    inlineMm = transferred;
+    inlineMm = transferredOf();
   } else {
     const lo = minWidth.kind === 'auto' ? bp.inline : inlineLength(s, minWidth, space.percentInline, true, bp, faults);
     const hi = maxWidth.kind === 'none' ? null : inlineLength(s, maxWidth, space.percentInline, false, bp, faults);
@@ -173,6 +218,7 @@ export function replacedSize(nodeId: string, s: LayoutStyle, natural: NaturalSiz
     let mhi = hi;
     // css-sizing-4 §5.1 size transfers, unless the width is auto under an explicit stretch.
     if (width.kind === 'auto' && space.inlineAuto !== 'stretch-explicit') {
+      const transferred = transferredOf();
       mlo = max(mlo, mhi === null ? transferred.min : min(transferred.min, mhi));
       mhi = mhi === null ? transferred.max : transferred.max === null ? mhi : min(mhi, transferred.max);
     }
@@ -195,7 +241,7 @@ export function replacedSize(nodeId: string, s: LayoutStyle, natural: NaturalSiz
   if (replacedInline !== null && replacedBlock !== null) return { inline: replacedInline, block: replacedBlock };
 
   // Only a ratio and no size at all: stretch into the available inline size.
-  if (naturalSize === null && replacedInline === null && replacedBlock === null) {
+  if (replacedInline === null && replacedBlock === null && naturalSizeOf() === null) {
     let stretch: LU;
     if (space.availableInline !== null) stretch = max(bp.inline, sub(space.availableInline, space.inlineMargins));
     else if (width.kind !== 'auto' && hasPercent(width)) stretch = add(defaultSize.inline, bp.inline);
@@ -204,14 +250,16 @@ export function replacedSize(nodeId: string, s: LayoutStyle, natural: NaturalSiz
   }
 
   if (replacedInline !== null) {
-    const b = ratio === null ? (naturalSize as ReplacedSize).block : blockFromRatio(bp, ratio, sizing, replacedInline);
+    const ratio = ratioOf();
+    const b = ratio === null ? (naturalSizeOf() as ReplacedSize).block : blockFromRatio(bp, ratio, sizing, replacedInline);
     return { inline: replacedInline, block: constrain(b, blockMm) };
   }
   if (replacedBlock !== null) {
-    const i = ratio === null ? (naturalSize as ReplacedSize).inline : inlineFromRatio(bp, ratio, sizing, replacedBlock);
+    const ratio = ratioOf();
+    const i = ratio === null ? (naturalSizeOf() as ReplacedSize).inline : inlineFromRatio(bp, ratio, sizing, replacedBlock);
     return { inline: constrain(i, inlineMm), block: replacedBlock };
   }
-  const n = naturalSize as ReplacedSize;
+  const n = naturalSizeOf() as ReplacedSize;
   return { inline: constrain(n.inline, inlineMm), block: constrain(n.block, blockMm) };
 }
 
@@ -233,9 +281,13 @@ export function blockFlowSpace(cbInline: LU, cbBlock: LU | null, inlineMargins: 
 
 // ---------------------------------------------------------------- the engine's replaced leaves (input.ts ReplacedLeaf)
 
-/** A leaf's natural dimensions in LU; an image's ratio is its natural size, and an empty size has no ratio (Blink PhysicalSize::IsEmpty). */
-export function naturalSizingOf(leaf: ReplacedLeaf): NaturalSizing {
+/**
+ * A leaf's natural dimensions in LU; an image's ratio is its natural size, and an empty size has no ratio (Blink
+ * PhysicalSize::IsEmpty). null for an img whose src is set at run time: sizing must not read it (replacedSize).
+ */
+export function naturalSizingOf(leaf: ReplacedLeaf): NaturalSizing | null {
   const n = leaf.natural;
+  if (n.kind === 'runtime') return null;
   if (n.kind === 'none') return { width: null, height: null, ratio: null };
   const w = fromCssPx(n.width);
   const h = fromCssPx(n.height);
@@ -282,15 +334,15 @@ function marginSum(ctx: Ctx, a: LayoutStyle['marginLeft'], b: LayoutStyle['margi
 }
 
 /** The leaf's size in a space. */
-export function sizeReplaced(ctx: Ctx, leaf: ReplacedLeaf, bp: BorderPadding, space: ReplacedSpace, mode: ReplacedSizeMode): ReplacedSize {
-  return replacedSize(leaf.id, leaf.style, naturalSizingOf(leaf), defaultSizeOf(leaf), bp, space, mode, ctx.faults);
+export function sizeReplaced(ctx: Ctx, leaf: ReplacedLeaf, bp: BorderPadding, space: ReplacedSpace, mode: ReplacedSizeMode, reader: NaturalReader): ReplacedSize {
+  return replacedSize(leaf.id, leaf.style, naturalSizingOf(leaf), defaultSizeOf(leaf), bp, space, mode, ctx.faults, reader);
 }
 
 /** A block-level replaced box in normal flow (CSS 2.2 §10.3.4, §10.6.2): its border-box fragment. */
 export function layoutReplacedInFlow(ctx: Ctx, leaf: ReplacedLeaf, cbInline: LU, heightBasis: HeightBasis): Frag {
   const bp = replacedBorderPadding(ctx, leaf, cbInline);
   const space = blockFlowSpace(cbInline, replacedBlockBasis(leaf, heightBasis), marginSum(ctx, leaf.style.marginLeft, leaf.style.marginRight, cbInline));
-  return replacedFrag(leaf, sizeReplaced(ctx, leaf, bp, space, 'normal'));
+  return replacedFrag(leaf, sizeReplaced(ctx, leaf, bp, space, 'normal', 'used-size'));
 }
 
 /**
@@ -311,7 +363,7 @@ export type FlexItemSpace = {
 };
 
 /** A flex item leaf's border-box size. */
-export function sizeReplacedFlexItem(ctx: Ctx, leaf: ReplacedLeaf, bp: BorderPadding, f: FlexItemSpace, mode: ReplacedSizeMode): ReplacedSize {
+export function sizeReplacedFlexItem(ctx: Ctx, leaf: ReplacedLeaf, bp: BorderPadding, f: FlexItemSpace, mode: ReplacedSizeMode, reader: NaturalReader): ReplacedSize {
   const s = leaf.style;
   const space: ReplacedSpace = {
     availableInline: f.contentWidth,
@@ -325,7 +377,7 @@ export function sizeReplacedFlexItem(ctx: Ctx, leaf: ReplacedLeaf, bp: BorderPad
     inlineMargins: marginSum(ctx, s.marginLeft, s.marginRight, f.contentWidth),
     blockMargins: marginSum(ctx, s.marginTop, s.marginBottom, f.contentWidth),
   };
-  return sizeReplaced(ctx, leaf, bp, space, mode);
+  return sizeReplaced(ctx, leaf, bp, space, mode, reader);
 }
 
 /**
@@ -354,25 +406,20 @@ export function replacedContribution(ctx: Ctx, leaf: ReplacedLeaf, kind: 'min' |
 
 /**
  * Blink ComputeMinAndMaxContentContributionForReplaced: the leaf's min-content and max-content contribution (border box, no
- * margins), sized in the measure space; a percentage width or max-width makes the min-content size min-width.
+ * margins), sized in the measure space; a percentage width or max-width makes the min-content size min-width, without sizing the box.
  */
 export function replacedContributionIn(ctx: Ctx, leaf: ReplacedLeaf, kind: 'min' | 'max', space: ReplacedSpace): LU {
   const s = leaf.style;
   const bp = replacedBorderPadding(ctx, leaf, ZERO);
-  const size = sizeReplaced(ctx, leaf, bp, space, 'normal').inline;
   const width = lengthWidth(leaf.id, s.width);
   const minWidth = lengthMinWidth(leaf.id, s.minWidth);
   const maxWidth = lengthMaxWidth(leaf.id, s.maxWidth);
   const percentWidth = (width.kind !== 'auto' && hasPercent(width)) || (maxWidth.kind !== 'none' && hasPercent(maxWidth));
-  if (kind === 'max' || !percentWidth) return size;
+  if (kind === 'max' || !percentWidth) return sizeReplaced(ctx, leaf, bp, space, 'normal', kind === 'max' ? 'max-content' : 'min-content').inline;
   if (minWidth.kind === 'auto') return bp.inline;
   return borderBoxFromSpecified(resolveLength(minWidth, ZERO, ctx.faults), bp.inline, s.boxSizing);
 }
 
-/** The leaf's destination rect for a content box (objectFitRect with the leaf's object-fit and object-position). */
-export function replacedObjectRect(ctx: Ctx, leaf: ReplacedLeaf, content: ObjectRect): ObjectRect {
-  return objectFitRect(content, naturalSizingOf(leaf), leaf.objectFit, { x: leaf.objectPositionX, y: leaf.objectPositionY }, ctx.faults);
-}
 
 /** A rect in zoomed LU. */
 export type ObjectRect = { readonly x: LU; readonly y: LU; readonly width: LU; readonly height: LU };

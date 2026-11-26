@@ -141,6 +141,7 @@ const XML = `<?xml version="1.0" encoding="utf-8"?>
   <alias name="helvetica" to="sans-serif" />
   <family name="serif"><font weight="400" style="italic" index="1" postScriptName="X">Serif.ttc</font></family>
   <family lang="und-Zsye"><font weight="400" style="normal">NotoColorEmoji.ttf</font></family>
+  <family variant="elegant"><font weight="400" style="normal">NotoSansSymbols.ttf</font><font weight="400" style="normal" fallbackFor="serif">NotoSerifSymbols.ttf</font></family>
 </familyset>
 `;
 
@@ -192,11 +193,19 @@ describe('fonts.xml', () => {
     const x = parseFontsXml(XML);
     expect([...x.families.keys()]).toEqual(['sans-serif', 'serif']);
     expect(x.families.get('sans-serif')!.fonts).toEqual([
-      { file: 'Roboto-Regular.ttf', weight: 400, style: 'normal', index: 0, axes: { wght: 400 }, postScriptName: null },
-      { file: 'Roboto-Regular.ttf', weight: 700, style: 'normal', index: 0, axes: { wght: 700 }, postScriptName: null },
+      { file: 'Roboto-Regular.ttf', weight: 400, style: 'normal', index: 0, axes: { wght: 400 }, postScriptName: null, fallbackFor: null },
+      { file: 'Roboto-Regular.ttf', weight: 700, style: 'normal', index: 0, axes: { wght: 700 }, postScriptName: null, fallbackFor: null },
     ]);
     expect(x.families.get('serif')!.fonts[0]).toMatchObject({ file: 'Serif.ttc', style: 'italic', index: 1, postScriptName: 'X' });
     expect(x.aliases.get('helvetica')).toEqual({ to: 'sans-serif', weight: null });
+  });
+
+  it('reads the unnamed families as the fallback chain, in file order, with their languages, variant and fallbackFor', () => {
+    const x = parseFontsXml(XML);
+    expect(x.fallbacks.map((f) => [f.lang, f.variant, f.fonts.map((font) => [font.file, font.fallbackFor])])).toEqual([
+      [['und-Zsye'], null, [['NotoColorEmoji.ttf', null]]],
+      [[], 'elegant', [['NotoSansSymbols.ttf', null], ['NotoSerifSymbols.ttf', 'serif']]],
+    ]);
   });
 
   it('refuses what is not fonts.xml', () => {
@@ -534,6 +543,103 @@ describe('a Markless export with system fonts', () => {
       expect(text.lines![0]!.runs.map((r) => r.face)).toEqual(['system:system-ui:700']);
       expect(text.writes.find((w) => w['kind'] === 'font')).toMatchObject({ font: { family: 'system:system-ui:700', size: 28 } });
     }
+  });
+
+  it('draws a symbol the face lacks in the platform\'s fallback face, as its own run, and plans it for the device', () => {
+    if (process.platform !== 'darwin' || androidSystemImagePathOrNull() === null) {
+      missingToolchain('system fonts', 'Core Text (macOS) and the Android SDK system image');
+      return;
+    }
+    const icon = input.replace('.page { padding: 24px; }', '.page { padding: 24px; } .ui { line-height: 1; }').replace('Tide almanac', 'Tide ◎ almanac');
+    const { exported } = marklessStyleExport(icon, 'almanac.json', undefined, 'system', undefined, true);
+    const ios = 'system:fallback:.CJKSymbolsFallbackSC-Bold';
+    const android = 'system:fallback:NotoSansSymbols-Regular-Subsetted.ttf#0';
+    expect(exported.systemFonts?.map((e) => e.id)).toEqual(['system:default:400', ios, android, 'system:system-ui:700'].sort());
+    expect(exported.systemFonts?.find((e) => e.id === ios)).toEqual({ id: ios, fallback: true, ios: { face: { kind: 'cascade', base: { kind: 'system', weight: 0.4, design: 'default' }, text: '◎', postScriptName: '.CJKSymbolsFallbackSC-Bold' } } });
+    expect(exported.systemFonts?.find((e) => e.id === android)).toMatchObject({ fallback: true, android: { file: 'NotoSansSymbols-Regular-Subsetted.ttf', index: 0 } });
+    for (const [t, face] of [['ios', ios], ['android', android]] as const) {
+      const text = exported.targets[t]!.assignments[0]!.nodes.find((n) => n.id === 'h1:text0')!;
+      expect(text.lines!.flatMap((l) => l.runs.map((r) => [r.face, r.glyphs.length]))).toEqual([['system:system-ui:700', 5], [face, 1], ['system:system-ui:700', 8]]);
+      const plan = (exported.targets[t] as unknown as { plan?: { densities: { fallbacks?: unknown[][] }[] } }).plan;
+      expect(plan?.densities.every((d) => d.fallbacks?.some((c) => c[6] === face))).toBe(true);
+    }
+  });
+
+  it('goes on from a web font down its family list to system-ui, and from there to the platform\'s fallback', () => {
+    if (process.platform !== 'darwin' || androidSystemImagePathOrNull() === null) {
+      missingToolchain('system fonts', 'Core Text (macOS) and the Android SDK system image');
+      return;
+    }
+    const lato = new Uint8Array(readFileSync(new URL('../../dragon/test/fonts/woff/Lato-Regular.woff2', import.meta.url)));
+    const face = "@font-face { font-family: 'Harbour Lato'; src: url('./fonts/Lato-Regular.woff2') format('woff2'); font-weight: 400; } ";
+    const web = JSON.stringify({
+      ...JSON.parse(input.replace('Tide almanac', 'Tide ◎ ▾ almanac')),
+      css: `${face}.page { padding: 24px; } .ui { font-family: 'Harbour Lato', system-ui, sans-serif; font-size: 28px; font-weight: 400; line-height: 1; }`,
+      fonts: [{ url: './fonts/Lato-Regular.woff2', file: '../styles/fonts/Lato-Regular.woff2' }],
+    });
+    const { exported } = marklessStyleExport(web, 'almanac.json', () => lato, 'system', undefined, true);
+    const lines = (t: 'ios' | 'android'): string[] => exported.targets[t]!.assignments[0]!.nodes.find((n) => n.id === 'h1:text0')!.lines!.flatMap((l) => l.runs.map((r) => r.face));
+    const own = lines('ios')[0] as string;
+    expect(own).toMatch(/^sha256:/);
+    // San Francisco draws ▾, and Core Text's cascade from it ◎; Roboto draws neither, and fonts.xml's chain both.
+    expect(lines('ios')).toEqual([own, 'system:fallback:.CJKSymbolsFallbackSC-Regular', own, 'system:system-ui:400', own]);
+    expect(lines('android')).toEqual([own, 'system:fallback:NotoSansSymbols-Regular-Subsetted.ttf#0', own, 'system:fallback:NotoSansSymbols-Regular-Subsetted.ttf#0', own]);
+    expect(exported.systemFonts?.map((e) => e.id)).toEqual(['system:default:400', 'system:fallback:.CJKSymbolsFallbackSC-Regular', 'system:fallback:NotoSansSymbols-Regular-Subsetted.ttf#0', 'system:system-ui:400']);
+  });
+
+  it('gives a web font one fallback when only one of the weights it is drawn at has a code point it lacks', () => {
+    if (process.platform !== 'darwin' || androidSystemImagePathOrNull() === null) {
+      missingToolchain('system fonts', 'Core Text (macOS) and the Android SDK system image');
+      return;
+    }
+    const lato = new Uint8Array(readFileSync(new URL('../../dragon/test/fonts/woff/Lato-Regular.woff2', import.meta.url)));
+    const face = "@font-face { font-family: 'Harbour Lato'; src: url('./fonts/Lato-Regular.woff2') format('woff2'); font-weight: 400; } ";
+    // The heading (500) and the icon (400) are both Lato Regular, which goes on to system-ui at 500 and at 400; only the icon needs it.
+    const web = JSON.stringify({
+      ...JSON.parse(input.replace('No font family at all', '◎ Shop')),
+      css: `${face}.page { padding: 24px; font-family: 'Harbour Lato', system-ui, sans-serif; line-height: 1; font-weight: 400; } .ui { font-size: 28px; font-weight: 500; }`,
+      fonts: [{ url: './fonts/Lato-Regular.woff2', file: '../styles/fonts/Lato-Regular.woff2' }],
+    });
+    const { exported } = marklessStyleExport(web, 'almanac.json', () => lato, 'system');
+    const runs = exported.targets.ios!.assignments[0]!.nodes.find((n) => n.id === 'h2:text0')!.lines!.flatMap((l) => l.runs.map((r) => r.face));
+    expect(runs.slice(0, 1)).toEqual(['system:fallback:.CJKSymbolsFallbackSC-Regular']);
+  });
+
+  it('refuses on both platforms a web font whose family list goes on to no system face, rather than take Core Text\'s cascade on iOS', () => {
+    if (process.platform !== 'darwin' || androidSystemImagePathOrNull() === null) {
+      missingToolchain('system fonts', 'Core Text (macOS) and the Android SDK system image');
+      return;
+    }
+    const lato = new Uint8Array(readFileSync(new URL('../../dragon/test/fonts/woff/Lato-Regular.woff2', import.meta.url)));
+    const face = "@font-face { font-family: 'Harbour Lato'; src: url('./fonts/Lato-Regular.woff2') format('woff2'); font-weight: 400; } ";
+    const web = JSON.stringify({
+      ...JSON.parse(input.replace('No font family at all', '◎ Shop')),
+      css: `${face}.page { padding: 24px; font-family: 'Harbour Lato'; line-height: 1; font-weight: 400; } .ui { font-size: 28px; font-weight: 400; }`,
+      fonts: [{ url: './fonts/Lato-Regular.woff2', file: '../styles/fonts/Lato-Regular.woff2' }],
+    });
+    expect(() => marklessStyleExport(web, 'almanac.json', () => lato, 'system')).toThrow(/U\+25CE has no glyph/);
+  });
+
+  it('shapes an iOS fallback face from the iOS runtime\'s own file where the Mac\'s is another version', () => {
+    if (process.platform !== 'darwin' || androidSystemImagePathOrNull() === null) {
+      missingToolchain('system fonts', 'Core Text (macOS) and the Android SDK system image');
+      return;
+    }
+    // The Mac's AppleSDGothicNeo.ttc and the iOS 27.2 runtime's differ; the Mac's cascade picks the face for ▤, iOS's file shapes it.
+    const icon = input.replace('.page { padding: 24px; }', '.page { padding: 24px; } .ui { font-weight: 400; line-height: 1; }').replace('Tide almanac', 'Tide ▤ almanac');
+    const { exported } = marklessStyleExport(icon, 'almanac.json', undefined, 'system');
+    const id = 'system:fallback:.AppleSDGothicNeoI-Regular';
+    const runs = exported.targets.ios!.assignments[0]!.nodes.find((n) => n.id === 'h1:text0')!.lines!.flatMap((l) => l.runs.map((r) => r.face));
+    expect(runs).toEqual(['system:system-ui:400', id, 'system:system-ui:400']);
+    expect(exported.systemFonts?.find((e) => e.id === id)).toEqual({ id, fallback: true, ios: { face: { kind: 'cascade', base: { kind: 'system', weight: 0, design: 'default' }, text: '▤', postScriptName: '.AppleSDGothicNeoI-Regular' } } });
+  });
+
+  it('refuses the fallback under line-height: normal, whose line box takes in the fallback face', () => {
+    if (process.platform !== 'darwin' || androidSystemImagePathOrNull() === null) {
+      missingToolchain('system fonts', 'Core Text (macOS) and the Android SDK system image');
+      return;
+    }
+    expect(() => marklessStyleExport(input.replace('Tide almanac', 'Tide ◎ almanac'), 'almanac.json', undefined, 'system')).toThrow(/fallback face system:fallback:\S+ under line-height: normal/);
   });
 
   it('pinned, it keeps the stated reference\'s bundled Inter', () => {

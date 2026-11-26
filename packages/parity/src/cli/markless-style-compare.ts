@@ -7,7 +7,7 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { GATE_DEVICE_PX } from '../compare.ts';
 import { compareMarklessExport } from '../markless-style-compare.ts';
-import { marklessFontFiles, parseMarklessStyleInput } from '../markless-style-input.ts';
+import { marklessFontFiles, marklessImageFiles, parseMarklessStyleInput } from '../markless-style-input.ts';
 import { parseNativeStyleExport } from '../native-style-export.ts';
 
 const rest = process.argv.slice(2).filter((a) => a !== '--');
@@ -33,8 +33,9 @@ if (shotDir !== undefined) mkdirSync(shotDir, { recursive: true });
 let report: Awaited<ReturnType<typeof compareMarklessExport>>;
 try {
   const input = parseMarklessStyleInput(readFileSync(inputPath, 'utf8'));
-  const fonts = marklessFontFiles(input, (file) => readFileSync(resolve(dirname(inputPath), file)));
-  report = await compareMarklessExport(input, parseNativeStyleExport(readFileSync(exportPath, 'utf8')), shotDir, 'light', fonts, mode, only === undefined ? null : only.split(','));
+  const read = (file: string): Uint8Array => readFileSync(resolve(dirname(inputPath), file));
+  const fonts = marklessFontFiles(input, read);
+  report = await compareMarklessExport(input, parseNativeStyleExport(readFileSync(exportPath, 'utf8')), shotDir, 'light', fonts, mode, only === undefined ? null : only.split(','), marklessImageFiles(input, read));
 } catch (e) {
   console.error((e as Error).message);
   process.exit(1);

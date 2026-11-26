@@ -198,3 +198,20 @@ describe('markless.native-style-input/0 to dragon.native-style-export/1', () => 
     }
   });
 });
+
+describe('runtime images in rows', () => {
+  it('keeps an img\'s runtimeSrc on each copy of its row', async () => {
+    const { parseMarklessStyleInput, marklessWithRows } = await import('../src/markless-style-input.ts');
+    const parsed = parseMarklessStyleInput(JSON.stringify({
+      version: 'markless.native-style-input/0', component: 'Cards', css: 'img { width: 40px; height: 30px; }', states: [],
+      repeats: [{ id: 'repeat:0', parent: 'h0' }],
+      nodes: [
+        { kind: 'element', id: 'h0', element: 'main', parent: null, attributes: {} },
+        { kind: 'element', id: 'h1', element: 'img', parent: 'h0', attributes: { alt: '' }, runtimeSrc: { absent: false }, row: 'repeat:0' },
+      ],
+    }));
+    const out = marklessWithRows(parsed, new Map([['repeat:0', [{ key: 'a', states: {}, texts: new Map() }, { key: 'b', states: {}, texts: new Map() }]]]));
+    const copies = out.nodes.filter((n) => n.kind === 'element' && n.element === 'img');
+    expect(copies.map((n) => [n.id, n.kind === 'element' ? n.runtimeSrc : null])).toEqual([['h1@a', { absent: false }], ['h1@b', { absent: false }]]);
+  });
+});
