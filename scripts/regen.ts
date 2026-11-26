@@ -92,6 +92,7 @@ const LEGACY_STEPS: readonly Step[] = [
   { name: 'dpr-capture', argv: pnpm('parity:dpr-capture'), outputs: ['packages/parity/expected-dpr/**'], reads: [FIXTURES, FONTS] },
   { name: 'hit-capture', argv: pnpm('parity:hit-capture'), outputs: ['packages/parity/expected-hit/*.hit.json', 'packages/parity/expected-hit/dpr-*/*.hit.json'], reads: [FIXTURES, FONTS], lists: ['packages/parity/expected-hit'] },
   { name: 'vectors', argv: pnpm('layout:vectors'), outputs: ['packages/layout/vectors/*.json'], reads: [FIXTURES, FONTS, 'packages/parity/expected/**'], lists: ['packages/layout/vectors'] },
+  // layout:dpr-vectors runs at a 4 GB heap: it holds all three DPRs at once (master 1950-2048 MB, #651 ~2.8 GB); 2 GB again once it holds one.
   { name: 'dpr-vectors', argv: pnpm('layout:dpr-vectors'), outputs: ['packages/layout/vectors/dpr-*/**'], reads: [FIXTURES, FONTS, 'packages/parity/expected-dpr/**'] },
   { name: 'hit-vectors', argv: pnpm('parity:hit-capture', '--vectors'), outputs: ['packages/layout/rt-vectors/hit/**'], reads: [FIXTURES, FONTS] },
   { name: 'sticky-scroll-capture', argv: pnpm('parity:sticky-scroll-capture'), outputs: ['packages/parity/expected-sticky-scroll/**'], reads: [FIXTURES, FONTS] },

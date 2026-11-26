@@ -23,6 +23,8 @@ export const OUTLINE: readonly FixtureSpec[] = [
   both('outline-web'),
   both('outline-layers'),
   both('outline-transform'),
+  // A clipping layer's own outline (transformed, rotated, positioned) is drawn beside its clip view, outside the clip, as Chrome does.
+  both('outline-clip-layer'),
   reject('reject-outline-color', 'DRAGON_UNSUPPORTED_VALUE', 'Highlight', 'outline-color: Highlight is unsupported:'),
   reject('reject-outline-viewport', 'DRAGON_UNSUPPORTED_VALUE', '2vw', 'outline-offset: 2vw is unsupported: an outline length in a viewport unit'),
 ];
