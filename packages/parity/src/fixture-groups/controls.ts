@@ -79,7 +79,7 @@ export const CONTROLS: readonly FixtureSpec[] = [
   layout('controls-textarea-scrollbar'),
   // FORM-a: absolutely positioned boxes inside block and inline-block buttons (check-in /settings' switch thumbs).
   both('controls-button-abspos'),
-  reject('reject-controls-button-abspos-static', 'DRAGON_UNSUPPORTED_VALUE', 'auto', 'left: auto on the absolutely positioned <span> a inside <button> b'),
+  reject('reject-controls-button-abspos-static', 'DRAGON_UNSUPPORTED_VALUE', '<span data-dragon-id="a" class="a"></span>', 'left: auto on the absolutely positioned <span> a inside <button> b'),
   layout('controls-text-field-inline'),
   reject('reject-controls-text-field-inline-dir', 'DRAGON_UNSUPPORTED_VALUE', 'rtl', 'the inline-block <input> f is on a right-to-left line of d'),
   reject('reject-controls-text-field-inline-valign', 'DRAGON_UNSUPPORTED_VALUE', 'middle', 'vertical-align: middle on the inline-block <input> f is not supported'),

@@ -56,9 +56,10 @@ describe('FORM-a A3 identity: every case that predates the button package is unc
     // 24: the A3 buttons and A4 ranges, then fieldset-legend, fieldset-positioned, controls-text-field, FW1's controls-text-field-font-definite, controls-textarea,
     // controls-textarea-scrollbar, controls-text-field-search, OVFL-B's controls-textarea-rounded, controls-text-field-inline,
     // the four FORM-b selects (S4's controls-select-natural-width among them), GRID-items' grid-button-block and -flex, then
-    // FORM-checkbox's controls-checkbox and FORM-search's controls-search, and RF-INL's controls-button-inline.
-    expect(FIXTURES.filter((f) => f.kind === 'layout' && controlIds.has(f.id)).length).toBe(25);
-    expect(FIXTURES.filter((f) => f.kind === 'layout' && notEarlier.has(f.id)).length).toBe(25 + LATER_WITH_CONTROLS.length);
+    // FORM-checkbox's controls-checkbox and FORM-search's controls-search, RF-INL's controls-button-inline, and FORM-a's
+    // controls-button-abspos.
+    expect(FIXTURES.filter((f) => f.kind === 'layout' && controlIds.has(f.id)).length).toBe(26);
+    expect(FIXTURES.filter((f) => f.kind === 'layout' && notEarlier.has(f.id)).length).toBe(26 + LATER_WITH_CONTROLS.length);
   });
 
   it('no earlier element is a control, and the display adjustment leaves every one alone (appearance-values sets appearance only on displays Chrome keeps)', () => {
@@ -133,8 +134,8 @@ describe('FORM-a A4 identity: every case that predates the range package is unch
   it('covers every earlier layout fixture, the A3 controls cases included', () => {
     // 22: the 5 A3 cases, then fieldset-legend, fieldset-positioned, controls-text-field, controls-text-field-font-definite, controls-textarea, controls-textarea-scrollbar,
     // controls-text-field-search, controls-textarea-rounded, controls-text-field-inline, the four FORM-b selects, the two grid-button
-    // cases, controls-checkbox, controls-search and controls-button-inline, which hold no range.
-    expect(beforeA4.filter((f) => controlIds.has(f.id)).length).toBe(23);
+    // cases, controls-checkbox, controls-search, controls-button-inline and controls-button-abspos, which hold no range.
+    expect(beforeA4.filter((f) => controlIds.has(f.id)).length).toBe(24);
     expect(FIXTURES.filter((f) => f.id.startsWith('controls-range-')).length).toBe(2);
   });
   it('no earlier case resolves a range, lowers a range or thumb box, or changes its vector input or web body', () => {
