@@ -95,7 +95,7 @@ describe('replaced sizing (Blink ComputeReplacedSize) against Chrome 145 block-l
     const base: Partial<LayoutStyle> = { ...edges(5), ...border(3), boxSizing: 'border-box', width: px(100) };
     const bp = { inline: lu(16), block: lu(16) };
     const size = (over: Partial<LayoutStyle>, faults = NO_ENGINE_FAULTS) => {
-      const r = replacedSize('r', { ...divStyle, ...base, ...over }, NATURAL['wide'] as NaturalSizing, DEFAULT_OBJECT, bp, blockFlowSpace(lu(200), null, lu(0)), 'normal', faults, 'used-size');
+      const r = replacedSize('r', { ...divStyle, ...base, ...over }, NATURAL['wide'] as NaturalSizing, DEFAULT_OBJECT, bp, blockFlowSpace(lu(200), null, lu(0)), 'normal', faults, 'used-size', null);
       return [r.inline / 64, r.block / 64];
     };
     expect(size({})).toEqual([100, 58]);
