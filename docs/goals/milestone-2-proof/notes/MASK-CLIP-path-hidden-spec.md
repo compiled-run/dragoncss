@@ -81,6 +81,18 @@ pixels at DPR 2.625, where the wider scroll extent changes the scrollbar.
    axes), its content can't change any layout outside it (F1 to F6 against F7). Its subtree's replaced and form elements are then
    laid out as empty boxes at their UA sizes, without the paint refusals of FORM-b or of the UA border styles. Their pixels are
    never seen, and their sizes are measured only where layout reads them, inside the box.
+
+   The layout lane still compares each such element's rect with Chrome's: Chrome reports the radio's 13 × 13 box inside the
+   1 px wrapper. So the subtree can't simply be dropped. A radio or checkbox is laid out at Chrome's UA size and margins, which
+   needs their UA keys (`scripts/capture-ua-defaults.ts`; #568 has the radio's and checkbox's, for `appearance: none`). Part 2
+   lands them on their own, without #568's paint.
+
+   Master lays out a themed checkbox (FORM-checkbox, `computed-checks.ts` `checkCheckbox`) as a 13px block box, but only a
+   block-level one: an inline-level checkbox waits for RF-INL. `@markless/ui`'s hidden radio is Chrome's default `inline-block`, an
+   atomic inline on a line of the 1px wrapper. So part 2 is three steps:
+   - the radio's UA key;
+   - the checkbox layout reused for a radio, whose paint is waived inside a hidden box;
+   - a checkbox or radio laid out as an atomic inline, in the RF-INL way #717 did for buttons.
 5. **Accessibility: an open question (below).** A focusable or accessible element in the subtree (an `<input>`) stays in Chrome's
    accessibility tree. A hidden native view leaves it. MASK-CLIP today refuses anything focusable inside a hidden box for that
    reason (`clipLabelRefusal`), and this slice keeps that refusal until the owner rules.
