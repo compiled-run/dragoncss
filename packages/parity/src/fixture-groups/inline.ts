@@ -13,6 +13,8 @@ export const INLINE: readonly FixtureSpec[] = [
   both('inline-empty-boxes'),
   // An empty inline box with no inline-axis margin, border or padding paints nothing, whatever its background or visibility.
   both('inline-box-empty-paint'),
+  // ...and Chrome hits nothing of it: the hit table leaves it out (rt-hit.ts emptyInline).
+  both('inline-box-empty-hit'),
   both('inline-br'),
   both('inline-box-boundaries'),
   layout('inline-box-hyphen'),

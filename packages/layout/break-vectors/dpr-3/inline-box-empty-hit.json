@@ -1,0 +1,8 @@
+{
+  "case": "inline-box-empty-hit",
+  "dpr": 3,
+  "texts": [
+    {"id":"l1:text0","lines":[[0,4]]},
+    {"id":"l2:text0","lines":[[0,2]]}
+  ]
+}
