@@ -2381,8 +2381,8 @@ const CHECKBOX_THEMED_BOX: readonly (readonly [Longhand, (v: CssValue) => boolea
 /**
  * FORM-checkbox: an input[type=checkbox] with appearance: auto is laid out as a box 13px square unless its width or height is set,
  * and drawn as Chrome's light theme draws it (forms/checkbox.ts, layout controls.ts checkboxMarks). A block-level one is a block
- * box; an inline-block one (the UA display) is an atomic inline whose baseline is its border box's block-end edge, as Blink gives a
- * leaf theme part (logical_box_fragment.cc). An input[type=radio] is laid out the same way, and Dragon draws no themed radio, so
+ * box; an inline-block one (the UA display) is an atomic inline whose baseline is its border box's block-end edge, as Chrome 145
+ * places a leaf theme part on its line (controls-checkbox-inline). An input[type=radio] is laid out the same way, and Dragon draws no themed radio, so
  * one is accepted only inside a box an empty clip or clip-path hides (MASK-CLIP-path-hidden), where Chrome paints nothing of it.
  * Refused: any other appearance, an inline-flex or inline-grid one, a positioned one, a grid item, author padding, border
  * or content-box sizing (which Chrome's theme discards), and a zoom on it or an ancestor; for a drawn checkbox also a translucent

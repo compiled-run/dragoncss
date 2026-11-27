@@ -1128,7 +1128,8 @@ describe('PNT1-opacity-d: groups over the platform-drawn backdrop, scaled or tra
 function modelOut(p: NativeProgram, viewport: { width: number; height: number }): string | null {
   for (const n of p.nodes) {
     for (const w of n.writes) {
-      if (w.kind === 'replaced-image' || w.kind === 'foreign-view' || w.kind === 'video-view' || w.kind === 'background-layers' || w.kind === 'background-image') return `${n.id} draws ${w.kind}`;
+      // A themed checkbox's drawing (lower/paint/control.ts) is the pixel lane's to prove; the model draws CSS boxes only.
+      if (w.kind === 'replaced-image' || w.kind === 'foreign-view' || w.kind === 'video-view' || w.kind === 'background-layers' || w.kind === 'background-image' || w.kind === 'checkbox') return `${n.id} draws ${w.kind}`;
       if (w.kind === 'border-styles' && w.styles.some((x) => x !== 'solid' && x !== 'none' && x !== 'hidden')) return `${n.id} has a ${w.styles.join(' ')} border`;
     }
   }
@@ -1157,7 +1158,7 @@ function modelOut(p: NativeProgram, viewport: { width: number; height: number })
 
 /** The corpus cases outside the model (modelOut), pinned: a change here is a decision, not drift. */
 const OUT = [
-  'alias-paint', 'backface-values', 'backface-values-rtl', 'gradient-abspos', 'gradient-abspos-rtl', 'gradient-north-star', 'hit-order', 'hit-order-rtl', 'outline-transform', 'outline-transform-rtl', 'overflow-replaced', 'overflow-replaced-rtl', 'replaced-block', 'replaced-block-rtl', 'replaced-demo', 'replaced-demo-rtl', 'replaced-intrinsic', 'replaced-intrinsic-rtl',
+  'alias-paint', 'backface-values', 'backface-values-rtl', 'controls-checkbox-inline', 'controls-checkbox-inline-rtl', 'gradient-abspos', 'gradient-abspos-rtl', 'gradient-north-star', 'hit-order', 'hit-order-rtl', 'outline-transform', 'outline-transform-rtl', 'overflow-replaced', 'overflow-replaced-rtl', 'replaced-block', 'replaced-block-rtl', 'replaced-demo', 'replaced-demo-rtl', 'replaced-intrinsic', 'replaced-intrinsic-rtl',
   'transform-clip', 'transform-demo', 'transform-direction', 'transform-direction-rtl', 'transform-flex', 'transform-indiv-compose', 'transform-indiv-values', 'transform-indiv-values-rtl', 'transform-matrix', 'transform-nested',
   'transform-origin', 'transform-perspective', 'transform-perspective-rtl', 'transform-rotate', 'transform-scale', 'transform-text', 'transform-translate', 'transform-will-change', 'var-logical',
   'var-logical-rtl',
