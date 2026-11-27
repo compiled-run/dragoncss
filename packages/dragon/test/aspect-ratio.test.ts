@@ -1,10 +1,8 @@
-// css-sizing-4 §5.1 aspect-ratio (SIZE-ar): the parse Chrome 145 applies, the computed and emitted value, the raw layout ratio
-// the lowering gives the engine (equal to the engine's own float conversion), and the build-time refusals.
+// css-sizing-4 §5.1 aspect-ratio (SIZE-ar, ARAT): the parse Chrome 145 applies, the computed and emitted value, the authored parts
+// the lowering gives the engine (which converts them as Blink does), and the build-time refusals.
 import { describe, expect, it } from 'vitest';
 import type { LayoutBox } from '@dragon/layout';
-import { layoutRatio } from '../../layout/src/units.ts';
 import { createProjectWith, iosLayoutProjection, NO_FAULTS, WEB_CSS_PATH } from '../src/internal.ts';
-import { exactLayoutRatio } from '../src/css/values.ts';
 import { div, inputFor } from './helpers.ts';
 
 const FONT = 'body { margin: 0; font-family: Ahem; font-size: 10px; }';
@@ -68,38 +66,27 @@ describe('aspect-ratio parsing (Chrome 145, probed in the pinned Chrome)', () =>
   });
 });
 
-describe('the layout ratio the lowering gives the engine', () => {
-  it('is Blink raw LayoutUnits: exact parts kept, auto && <ratio> as auto-ratio, a degenerate ratio as auto', () => {
-    expect(lowered('16 / 9')).toEqual({ kind: 'ratio', width: 1024, height: 576 });
-    expect(lowered('auto 16 / 9')).toEqual({ kind: 'auto-ratio', width: 1024, height: 576 });
-    expect(lowered('1')).toEqual({ kind: 'ratio', width: 64, height: 64 });
-    expect(lowered('1.5')).toEqual({ kind: 'ratio', width: 96, height: 64 });
+describe('the ratio the lowering gives the engine', () => {
+  it('is the authored parts: auto && <ratio> as auto-ratio, a ratio with a zero part as auto', () => {
+    expect(lowered('16 / 9')).toEqual({ kind: 'ratio', width: 16, height: 9 });
+    expect(lowered('auto 16 / 9')).toEqual({ kind: 'auto-ratio', width: 16, height: 9 });
+    expect(lowered('1')).toEqual({ kind: 'ratio', width: 1, height: 1 });
+    expect(lowered('1.5')).toEqual({ kind: 'ratio', width: 1.5, height: 1 });
+    expect(lowered('3 / 3.4')).toEqual({ kind: 'ratio', width: 3, height: 3.4 });
+    expect(lowered('1.1875626880641925')).toEqual({ kind: 'ratio', width: 1.1875626880641925, height: 1 });
+    expect(lowered('0.7 / 0.7')).toEqual({ kind: 'ratio', width: 0.7, height: 0.7 });
+    // The engine zeroes a tiny part (gfx::SizeF); the compiler leaves that to it and lowers only a zero part as auto.
+    expect(lowered('1 / 0.0000005')).toEqual({ kind: 'ratio', width: 1, height: 0.0000005 });
     expect(lowered('0')).toEqual({ kind: 'auto' });
     expect(lowered('1 / 0')).toEqual({ kind: 'auto' });
     expect(lowered('auto')).toEqual({ kind: 'auto' });
   });
-  it('equals the engine float conversion (units.ts layoutRatio) wherever the compiler gives one', () => {
-    let compared = 0;
-    for (let a = 0; a <= 40; a++) {
-      for (let b = 0; b <= 40; b++) {
-        for (const [w, h] of [[a, b], [a / 64, b], [a / 4, b / 8], [a * 1000, b * 997], [a / 10, a / 10]] as const) {
-          const mine = exactLayoutRatio(w, h);
-          if (mine === null) continue;
-          compared++;
-          expect(mine === 'degenerate' ? null : mine, `${w} / ${h}`).toEqual(layoutRatio(w, h));
-        }
-      }
+  it('refuses no ratio for being fractional, tiny or large, on any target', () => {
+    for (const v of ['0.7', '3 / 3.4', '1 / 3.14159265358979', '1 / 0.0000005', '1000000 / 1.7', '1e40 / 1']) {
+      const c = compile(`.a { width: 100px; aspect-ratio: ${v}; }`);
+      expect(c.diagnostics.filter((x) => x.code === 'DRAGON_UNSUPPORTED_VALUE'), v).toEqual([]);
+      expect(c.outputs.web.kind, v).toBe('ready');
     }
-    expect(compared).toBeGreaterThan(8000);
-  });
-  it('refuses a ratio that needs Blink float continued fraction, at the declaration, on every target', () => {
-    const c = compile('.a { aspect-ratio: 0.7; }');
-    const d = c.diagnostics.filter((x) => x.code === 'DRAGON_UNSUPPORTED_VALUE');
-    expect(d.map((x) => x.target).sort()).toEqual(['ios', 'web']);
-    expect(d[0]?.message).toMatch(/^aspect-ratio: 0.7 \/ 1 on a is unsupported: Chrome converts a ratio whose parts are not whole multiples of 1\/64/);
-    expect(c.outputs.web.kind).toBe('blocked');
-    // Equal parts are 1 / 1 without float arithmetic.
-    expect(lowered('0.7 / 0.7')).toEqual({ kind: 'ratio', width: 64, height: 64 });
   });
   it('refuses a percentage height, min-height or max-height beside a ratio, and allows it beside a degenerate one', () => {
     for (const [p, v] of [['height', '50%'], ['min-height', '10%'], ['max-height', 'calc(50% - 1px)']]) {
@@ -109,6 +96,8 @@ describe('the layout ratio the lowering gives the engine', () => {
       expect(d[0]?.message, p).toMatch(new RegExp(`^${p}: .* beside aspect-ratio: 2 / 1 on a is unsupported`));
     }
     expect(compile('.a { aspect-ratio: 0 / 1; height: 50%; }').diagnostics.filter((x) => x.code === 'DRAGON_UNSUPPORTED_VALUE')).toEqual([]);
+    // A fractional ratio, and a tiny part Chrome takes as auto: refused all the same, since the compiler does not decide degeneracy.
+    for (const ratio of ['3 / 3.4', '1 / 0.0000005']) expect(compile(`.a { aspect-ratio: ${ratio}; height: 50%; }`).diagnostics.filter((x) => x.code === 'DRAGON_UNSUPPORTED_VALUE').map((x) => x.target).sort(), ratio).toEqual(['ios', 'web']);
     expect(compile('.a { aspect-ratio: 2; height: 50px; }').diagnostics.filter((x) => x.code === 'DRAGON_UNSUPPORTED_VALUE')).toEqual([]);
   });
 });
@@ -132,3 +121,83 @@ describe('object-position keywords (REPL-a, Macroscope 4164413914)', () => {
   });
 });
 
+
+describe('a non-replaced grid item with a ratio and an auto width (grid.ts transfers no size through its ratio)', () => {
+  const grid = (css: string, item: (r: Parameters<typeof div>[0]) => ReturnType<typeof div> = (r) => div(r, 'i', ['i'])) =>
+    project().compile(inputFor(`${FONT} .g { display: grid; grid-template-columns: 300px; } ${css}`, (r) => [div(r, 'g', ['g'], [item(r)])]));
+  const refusals = (c: ReturnType<typeof grid>): string[] => c.diagnostics.filter((d) => d.code === 'DRAGON_UNSUPPORTED_VALUE').map((d) => `${d.target} ${d.message}`);
+  const transfer = (block: string, justify: string): string => `ios aspect-ratio: 16 / 9 on i, a grid item with an auto width, ${block} and justify-self: ${justify}, is not laid out yet: the engine does not transfer a grid item's block size through its ratio to its width`;
+  const borderBox = (sides: string): string => `ios aspect-ratio: 16 / 9 on i, a border-box grid item with an auto width and a ${sides} border or padding, is not laid out yet: the engine does not widen a grid item past its column when its vertical border and padding exceed the height its ratio gives`;
+  const contentBox = (sides: string): string => `ios aspect-ratio: 16 / 9 on i, a content-box grid item with an auto width and a ${sides} border or padding, is not laid out yet: the engine does not size the grid's columns by the contribution that border and padding add through the ratio`;
+  const maxHeight = (v: string, justify: string): string => `ios aspect-ratio: 16 / 9 on i, a grid item with an auto width, max-height: ${v} and justify-self: ${justify}, is not laid out yet: the engine does not transfer a grid item's max-height through its ratio to its width`;
+
+  it('refuses on native a block size beside an inline alignment other than stretch, normal included (Chrome 145 lays these out as start)', () => {
+    // Probed in Chrome 145, ltr and rtl: a 16 / 9 item 90px high is 160px wide in each of these, and the engine gives 0 or the column's 300.
+    for (const [css, block, justify] of [
+      ['justify-self: start; height: 90px;', 'height: 90px', 'start'],
+      ['height: 90px;', 'height: 90px', 'normal'],
+      ['justify-self: center; height: 90px;', 'height: 90px', 'center'],
+      ['justify-self: self-end; height: 90px;', 'height: 90px', 'self-end'],
+      ['justify-self: left; height: 90px;', 'height: 90px', 'left'],
+      ['justify-self: start; min-height: 90px;', 'min-height: 90px', 'start'],
+      ['justify-self: start; align-self: stretch;', 'align-self: stretch', 'start'],
+      // Stretched in a definite row it is 160px wide in Chrome and 300px in the engine; refused in an auto row too, where both give 300.
+      ['align-self: stretch;', 'align-self: stretch', 'normal'],
+    ] as const) {
+      const c = grid(`.i { aspect-ratio: 16 / 9; ${css} }`);
+      expect(refusals(c), css).toEqual([transfer(block, justify)]);
+      expect(c.outputs.web.kind, css).toBe('ready');
+    }
+    expect(refusals(grid('.g { justify-items: start; } .i { aspect-ratio: 16 / 9; height: 90px; }'))).toEqual([transfer('height: 90px', 'start')]);
+    expect(refusals(grid('.g { justify-items: start; grid-template-rows: 90px; align-items: stretch; } .i { aspect-ratio: 16 / 9; }'))).toEqual([transfer('align-self: stretch', 'start')]);
+  });
+  it('refuses on native border-box sizing with a vertical border or padding, whatever the alignment', () => {
+    // Probed in Chrome 145, ltr and rtl: in a 12.34px column such an item widens to 17.765625px, and the engine keeps 12.328125.
+    expect(refusals(grid('.i { aspect-ratio: 16 / 9; box-sizing: border-box; padding: 3px 0 7px 0; }'))).toEqual([borderBox('top and bottom')]);
+    expect(refusals(grid('.i { aspect-ratio: 16 / 9; box-sizing: border-box; border-bottom: 2px solid; justify-self: stretch; }'))).toEqual([borderBox('bottom')]);
+    expect(refusals(grid('.i { aspect-ratio: 16 / 9; box-sizing: border-box; padding-top: 1px; justify-self: start; height: 90px; }'))).toEqual([transfer('height: 90px', 'start'), borderBox('top')]);
+  });
+  it('refuses on native a content-box item with a vertical border or padding, and a max-height beside an alignment other than stretch', () => {
+    // Probed in Chrome 145, ltr and rtl, DPR 1, 2, 2.625 and 3, in a repeat(2, 1fr) grid 360.5px wide with a 12px gap: with 3 / 3.4
+    // and padding 3px 0 7px 0 Chrome makes the columns 174.234375px and 183.046875px, and the engine keeps them equal; with
+    // justify-self: start and max-height: 45px Chrome's item is 39.703125 x 44.984375px, and the engine's 0 x 0.
+    for (const [css, want] of [
+      ['padding: 3px 0 7px 0;', [contentBox('top and bottom')]],
+      ['border-top: 2px solid; justify-self: stretch;', [contentBox('top')]],
+      ['justify-self: start; max-height: 45px;', [maxHeight('45px', 'start')]],
+      ['max-height: 45px;', [maxHeight('45px', 'normal')]],
+      ['justify-self: center; max-height: 0px;', [maxHeight('0px', 'center')]],
+    ] as const) {
+      const c = grid(`.i { aspect-ratio: 16 / 9; ${css} }`);
+      expect(refusals(c), css).toEqual(want);
+      expect(c.outputs.web.kind, css).toBe('ready');
+    }
+  });
+  it('compiles the shapes the engine lays out as Chrome does', () => {
+    for (const css of [
+      'aspect-ratio: 16 / 9; justify-self: stretch; height: 90px;',
+      'aspect-ratio: 16 / 9; justify-self: start; width: 160px;',
+      'aspect-ratio: 16 / 9; justify-self: start;',
+      'aspect-ratio: 16 / 9;',
+      'aspect-ratio: 16 / 9; justify-self: start; min-height: 0;',
+      'aspect-ratio: 16 / 9; box-sizing: border-box; padding: 0 5px 0 2px;',
+      'aspect-ratio: 16 / 9; padding: 0 5px 0 2px;',
+      'aspect-ratio: 16 / 9; justify-self: stretch; max-height: 45px;',
+      'aspect-ratio: 16 / 9; box-sizing: border-box; border-bottom-width: 2px;',
+      'aspect-ratio: 16 / 9; box-sizing: border-box; padding: 3px 0; width: 12px;',
+      'aspect-ratio: 0 / 1; justify-self: start; height: 90px;',
+      'aspect-ratio: 16 / 9; justify-self: start; height: 90px; position: absolute;',
+    ]) expect(refusals(grid(`.i { ${css} }`)), css).toEqual([]);
+    const img = (r: Parameters<typeof div>[0]) => ({ ...div(r, 'i', ['i']), tag: 'img' });
+    expect(refusals(grid('.i { aspect-ratio: 16 / 9; justify-self: start; height: 90px; box-sizing: border-box; padding: 3px; }', img))).toEqual([]);
+    const block = project().compile(inputFor(`${FONT} .i { aspect-ratio: 16 / 9; height: 90px; box-sizing: border-box; padding: 3px; }`, (r) => [div(r, 'b', [], [div(r, 'i', ['i'])])]));
+    expect(refusals(block)).toEqual([]);
+  });
+  it('leaves the Markless shop skeleton card alone (packages/mobile/apps/shop/styles/app.css, Markless f12707d7a), with its ratio or a whole one', () => {
+    for (const ratio of ['3 / 3.4', '3 / 4']) {
+      const css = `* { box-sizing: border-box; } .content { display: block; padding: 20px 16px; } .grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; list-style: none; margin: 0; padding: 0; } .skeleton { aspect-ratio: ${ratio}; border-radius: 12px; background: #eee; }`;
+      const c = project().compile(inputFor(`${FONT} ${css}`, (r) => [{ ...div(r, 'm', ['content'], [{ ...div(r, 'u', ['grid'], [0, 1, 2, 3].map((n) => ({ ...div(r, `s${n}`, ['skeleton']), tag: 'li' }))), tag: 'ul' }]), tag: 'main' }]));
+      expect(refusals(c).filter((m) => m.includes('grid item')), ratio).toEqual([]);
+    }
+  });
+});

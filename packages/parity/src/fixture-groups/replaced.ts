@@ -28,6 +28,9 @@ export const REPLACED: readonly FixtureSpec[] = [
   both('replaced-demo'),
   // Every object-fit with keyword and length object-positions, letterboxed so the destination edges sit inside the content boxes.
   both('replaced-fit'),
+  // SELD-R2b: check-in's list rows, a grid link with an object-fit: cover thumbnail and :active and :focus-visible rules; a tap on the
+  // image's letterbox or its cropped-away area hits as Chrome's (its border box), so the states compile on native.
+  both('hit-object-fit-rows'),
   // image-rendering: pixelated imgs upscaled whole and fractionally, contained, covered and rounded (nearest-neighbour texels), an
   // -webkit-optimize-contrast img Chrome draws as auto, and pixelated text and a bordered box, which paint no image layer.
   both('replaced-pixelated'),

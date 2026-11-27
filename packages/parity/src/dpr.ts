@@ -21,7 +21,7 @@ import { FIXTURES } from './fixtures.ts';
 import { repoPath } from './paths.ts';
 import { REFERENCE_PLATFORM } from './platform.ts';
 import type { Projection } from './pipeline.ts';
-import { enforcedCompile, fixtureCompileInput } from './pipeline.ts';
+import { compileFixture, enforcedCompile, fixtureCompileInput } from './pipeline.ts';
 
 /** The pixel ratios both native platforms run at (owner decision, Native lanes, milestone 2). */
 export const SHARED_DPRS: readonly number[] = [2, 3];
@@ -161,6 +161,25 @@ export type DprLaneSummary = {
 };
 
 /** The DPR lane over every layout case at every DPR, against the committed DPR captures. Needs no browser. */
+/**
+ * Each layout case's outcome at each DPR, handed to visit as it is run and not kept. A fixture is compiled once for all its cases
+ * and DPRs and then dropped, uncached: runDprLane's enforcedCompile keeps every fixture's compile for the whole run.
+ */
+export function eachDprOutcome(dprs: readonly number[], visit: (o: DprCaseOutcome, compiled: Compiled<'ios' | 'web'>) => void): void {
+  for (const f of layoutCases()) {
+    const compiles = new Map<string, Compiled<'ios' | 'web'>>();
+    for (const c of f.cases) {
+      const direction = c.environment.direction;
+      let compiled = compiles.get(direction);
+      if (compiled === undefined) {
+        compiled = compileFixture(f.spec, NO_FAULTS, 'enforce', direction).compiled;
+        compiles.set(direction, compiled);
+      }
+      for (const dpr of dprs) visit(runDprCase(c, compiled, dpr, committedDprCapture(c.id, dpr)), compiled);
+    }
+  }
+}
+
 export function runDprLane(dprs: readonly number[] = DPRS): DprLaneSummary[] {
   const all = layoutCases();
   return dprs.map((dpr) => {

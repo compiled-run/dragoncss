@@ -124,8 +124,8 @@ describe('the LayoutStyle constructor arguments', () => {
     expect([...STYLE_FIELDS]).toEqual(fields);
   });
   it('an aspect ratio is its typed constructor on both backends: ratio, auto-ratio, and auto for a box without one, before the null grid fields', () => {
-    const css = 'body { margin: 0; } .a { width: 64px; aspect-ratio: 16 / 9; } .b { width: 64px; aspect-ratio: auto 2 / 1; }';
-    const ratioInput = inputFor(css, (r) => [div(r, 'a', ['a']), div(r, 'b', ['b'])]);
+    const css = 'body { margin: 0; } .a { width: 64px; aspect-ratio: 16 / 9; } .b { width: 64px; aspect-ratio: auto 2 / 1; } .c { width: 64px; aspect-ratio: 1.1875626880641925; }';
+    const ratioInput = inputFor(css, (r) => [div(r, 'a', ['a']), div(r, 'b', ['b']), div(r, 'c', ['c'])]);
     const p = nativePrograms(createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 } } }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' }).compile(ratioInput), []);
     if (p.kind !== 'ready') throw new Error(p.reason);
     const swift = emitUikitCases([emitCase(p.programs.uikit)]).map((f) => f.text).join('\n');
@@ -135,11 +135,14 @@ describe('the LayoutStyle constructor arguments', () => {
     // textWrapStyle (auto), multicol (nil off a multi-column container), textBoxTrim (nil without text-box-trim), GRID's grid and gridItem, nil off a grid, anchor (nil off an anchored box), and ZOOM's zoom chain, empty without zoom.
     const swiftAlign = ', VerticalAlignKeywordValue(JsString("keyword"), JsString("baseline")), JsString("clip"), Px(JsString("px"), 0.0), 0.0, false, false, JsString("none"), NoneValue(JsString("none")), NoneValue(JsString("none")), Auto(JsString("auto")), nil, nil, nil, nil, nil, JsArray<Double>([]))';
     const kotlinAlign = ', VerticalAlignKeywordValue("keyword", "baseline"), "clip", Px("px", 0.0), 0.0, false, false, "none", NoneValue("none"), NoneValue("none"), Auto("auto"), null, null, null, null, null, jsArrayOf<Double>())';
-    expect(swift).toContain(`AspectRatioValue_ratio(JsString("ratio"), 1024.0, 576.0)${swiftAlign}`);
-    expect(swift).toContain(`AspectRatioValue_autoRatio(JsString("auto-ratio"), 128.0, 64.0)${swiftAlign}`);
+    expect(swift).toContain(`AspectRatioValue_ratio(JsString("ratio"), 16.0, 9.0)${swiftAlign}`);
+    // ARAT: the authored parts, which the engine converts; a fractional part keeps every bit.
+    expect(swift).toContain(`AspectRatioValue_ratio(JsString("ratio"), 1.1875626880641925, 1.0)${swiftAlign}`);
+    expect(swift).toContain(`AspectRatioValue_autoRatio(JsString("auto-ratio"), 2.0, 1.0)${swiftAlign}`);
     expect(swift).toContain(`JsString("start"), Auto(JsString("auto"))${swiftAlign}`);
-    expect(kotlin).toContain(`AspectRatioValue_ratio("ratio", 1024.0, 576.0)${kotlinAlign}`);
-    expect(kotlin).toContain(`AspectRatioValue_autoRatio("auto-ratio", 128.0, 64.0)${kotlinAlign}`);
+    expect(kotlin).toContain(`AspectRatioValue_ratio("ratio", 16.0, 9.0)${kotlinAlign}`);
+    expect(kotlin).toContain(`AspectRatioValue_ratio("ratio", 1.1875626880641925, 1.0)${kotlinAlign}`);
+    expect(kotlin).toContain(`AspectRatioValue_autoRatio("auto-ratio", 2.0, 1.0)${kotlinAlign}`);
   });
 });
 

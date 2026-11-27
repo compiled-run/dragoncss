@@ -275,7 +275,8 @@ describe('REPL-a replaced paint against the committed Chrome pixels', () => {
     expect(host.indexOf('fun capture() {')).toBeLessThan(host.indexOf('copy(0)'));
     expect(host.indexOf('copy(0)')).toBeLessThan(host.indexOf('fun settle('));
     const image = files.find((f) => f.path === 'kotlin/dev/dragon/views/paint/DragonPaintImage.kt')?.text ?? '';
-    expect(image).toMatch(/val bitmap = BitmapFactory\.decodeByteArray[^\n]*\n[^\n]*\n  bitmap\.prepareToDraw\(\)\n  return bitmap/);
+    expect(image).toMatch(/val bitmap = BitmapFactory\.decodeByteArray[^\n]*\n[^\n]*\n  bitmap\.prepareToDraw\(\)\n  dragonDecodedImages\[base64\] = bitmap\n  return bitmap/);
+    expect(image).toContain('fun dragonDecodeImage(base64: String, id: String): Bitmap {\n  dragonDecodedImages[base64]?.let { return it }');
   });
   // #72 landing device run: a filtered bitmap drawn straight into the window's frame moved other boxes' edges by one colour step
   // on the emulator (hit-order, replaced-fit-rtl, replaced-intrinsic). The stage draws it, still filtered, into a RenderNode with

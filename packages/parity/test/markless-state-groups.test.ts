@@ -201,7 +201,8 @@ function expectProduct(text: string): number {
   return compared;
 }
 
-describe('factored states', () => {
+// Each test exports a page twice with the layout plan; the slowest took 282 s on CI's macos-26 runner (test-files run 45879258132).
+describe('factored states', { timeout: 600_000 }, () => {
   it('orders the ids of several lists as each list does', () => {
     expect(mergedOrder([['a', 'c'], ['b', 'c'], ['a', 'b']])).toEqual(['a', 'b', 'c']);
     expect(() => mergedOrder([['a', 'b'], ['b', 'a']])).toThrow('both before and after');
