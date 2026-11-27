@@ -103,7 +103,7 @@ public func anchor_anchorOf(_ anchors: JsStringMap<AnchorRect>, _ id: JsString, 
   let r: AnchorRect? = anchors.get(id)
   // ts: packages/layout/src/anchor.ts:74
   if (r == nil) {
-    try unsupported_unsupported(S.s_anchor_order, box, S.s714, jsConcat(S.s1208, id, S.s166, box, S.s129))
+    try unsupported_unsupported(S.s_anchor_order, box, S.s714, jsConcat(S.s1214, id, S.s166, box, S.s129))
   }
   return try jsUnwrap(r)
 }
@@ -412,7 +412,7 @@ public func anchor_placeOption(_ ctx: Ctx, _ box: LayoutBox, _ o: AnchorOption, 
   }
   // ts: packages/layout/src/anchor.ts:347
   if (s.height.kind == S.s_stretch) {
-    try unsupported_unsupported(S.s_intrinsic_size_keyword, box.id, S.s736, jsConcat(S.s856, box.id))
+    try unsupported_unsupported(S.s_intrinsic_size_keyword, box.id, S.s736, jsConcat(S.s857, box.id))
   }
   let specified: Double? = try (sizeKeyword(s.width.kind) ? (nil as Double?) : (box_resolveInlineLengthWith(box_lengthWidth(box.id, s.width), regionWidth, ctx.faults) as Double?))
   var width: Double

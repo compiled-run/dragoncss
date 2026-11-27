@@ -1346,6 +1346,7 @@
     "text-font-tuning-ahem-rtl": "e1 is an inline box, which the hit table does not model yet (INL1a; no Chrome hit capture)",
     "text-font-variant-ahem": "f1 is an inline box, which the hit table does not model yet (INL1a; no Chrome hit capture)",
     "text-font-variant-ahem-rtl": "f1 is an inline box, which the hit table does not model yet (INL1a; no Chrome hit capture)",
+    "text-font-variant-numeric": "shaped text (text-latin-run.ts isShapedInput): the hit lane runs the plain cases until TXT1a-2 proves real-face hit points",
     "text-font-variant-caps-ahem": "sp is an inline box, which the hit table does not model yet (INL1a; no Chrome hit capture)",
     "text-font-variant-caps-ahem-rtl": "sp is an inline box, which the hit table does not model yet (INL1a; no Chrome hit capture)",
     "text-indent-ahem": "a6b is a <br>, which the hit table does not model yet (INL1a; no Chrome hit capture)",

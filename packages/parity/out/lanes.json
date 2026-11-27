@@ -183,7 +183,7 @@
             {
               "corpus": "extended",
               "suite": "text-latin",
-              "cases": 192
+              "cases": 196
             },
             {
               "corpus": "extended",
@@ -191,8 +191,8 @@
               "cases": 400
             }
           ],
-          "caseListSha256": "72e46949d0e15963612bb9bf8f5efd1527b9bc588da789eafa7a836cf6c0f43e",
-          "totalCases": 679896,
+          "caseListSha256": "a877caccf557032cf189c2b0edd9739b4b2cb54c27aa144e2948fd7b3a416512",
+          "totalCases": 679900,
           "run": {
             "toolchain": "Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)",
             "suites": [
@@ -366,8 +366,8 @@
               }
             ],
             "digests": {
-              "p1": "4b054d301192f86e9acc86c6b87e1a2c219e2c60ae25ae073e9b428198b7977d",
-              "extended": "94cfdceb7a1ae16edd2b6064c18df738914c5e5317682abb095663c0b132c78b"
+              "p1": "956cd772b5daa142e889b9a8aa60d44efbd10c078d29f015a23149d8e8918482",
+              "extended": "ff6b3ac3b4d20a692107ae2795d5ccb3db62c662daf028b685fc003132b6ba4d"
             }
           },
           "device": null,
@@ -503,7 +503,7 @@
             {
               "corpus": "extended",
               "suite": "text-latin",
-              "cases": 192
+              "cases": 196
             },
             {
               "corpus": "extended",
@@ -511,8 +511,8 @@
               "cases": 400
             }
           ],
-          "caseListSha256": "72e46949d0e15963612bb9bf8f5efd1527b9bc588da789eafa7a836cf6c0f43e",
-          "totalCases": 679896,
+          "caseListSha256": "a877caccf557032cf189c2b0edd9739b4b2cb54c27aa144e2948fd7b3a416512",
+          "totalCases": 679900,
           "run": null,
           "device": null,
           "evidence": null
@@ -2206,7 +2206,7 @@
         {
           "dpr": 2,
           "role": "shared",
-          "cases": 1448,
+          "cases": 1449,
           "valid": 1399,
           "chrome": 1399,
           "engine": 1399,
@@ -2216,7 +2216,7 @@
         {
           "dpr": 3,
           "role": "shared",
-          "cases": 1448,
+          "cases": 1449,
           "valid": 1399,
           "chrome": 1399,
           "engine": 1399,
@@ -2488,7 +2488,7 @@
             {
               "corpus": "extended",
               "suite": "text-latin",
-              "cases": 192
+              "cases": 196
             },
             {
               "corpus": "extended",
@@ -2496,8 +2496,8 @@
               "cases": 400
             }
           ],
-          "caseListSha256": "72e46949d0e15963612bb9bf8f5efd1527b9bc588da789eafa7a836cf6c0f43e",
-          "totalCases": 679896,
+          "caseListSha256": "a877caccf557032cf189c2b0edd9739b4b2cb54c27aa144e2948fd7b3a416512",
+          "totalCases": 679900,
           "run": {
             "toolchain": "kotlinc-jvm 2.4.20 (JRE 17.0.21+0); openjdk version \"17.0.21\" 2026-10-20",
             "suites": [
@@ -2671,8 +2671,8 @@
               }
             ],
             "digests": {
-              "p1": "4b054d301192f86e9acc86c6b87e1a2c219e2c60ae25ae073e9b428198b7977d",
-              "extended": "94cfdceb7a1ae16edd2b6064c18df738914c5e5317682abb095663c0b132c78b"
+              "p1": "956cd772b5daa142e889b9a8aa60d44efbd10c078d29f015a23149d8e8918482",
+              "extended": "ff6b3ac3b4d20a692107ae2795d5ccb3db62c662daf028b685fc003132b6ba4d"
             }
           },
           "device": null,
@@ -2808,7 +2808,7 @@
             {
               "corpus": "extended",
               "suite": "text-latin",
-              "cases": 192
+              "cases": 196
             },
             {
               "corpus": "extended",
@@ -2816,8 +2816,8 @@
               "cases": 400
             }
           ],
-          "caseListSha256": "72e46949d0e15963612bb9bf8f5efd1527b9bc588da789eafa7a836cf6c0f43e",
-          "totalCases": 679896,
+          "caseListSha256": "a877caccf557032cf189c2b0edd9739b4b2cb54c27aa144e2948fd7b3a416512",
+          "totalCases": 679900,
           "run": null,
           "device": null,
           "evidence": null
@@ -5013,7 +5013,7 @@
         {
           "dpr": 2,
           "role": "shared",
-          "cases": 1448,
+          "cases": 1449,
           "valid": 1399,
           "chrome": 1399,
           "engine": 1399,
@@ -5023,7 +5023,7 @@
         {
           "dpr": 3,
           "role": "shared",
-          "cases": 1448,
+          "cases": 1449,
           "valid": 1399,
           "chrome": 1399,
           "engine": 1399,
@@ -5033,7 +5033,7 @@
         {
           "dpr": 2.625,
           "role": "extra",
-          "cases": 1448,
+          "cases": 1449,
           "valid": 1399,
           "chrome": 1399,
           "engine": 1399,
