@@ -147,6 +147,8 @@ export type EngineFaults = {
   readonly wordSpacingAtItemStart: boolean;
   /** TXT2-b: no word spacing after a no-break space in a shaped item (Character::TreatAsSpace includes it). */
   readonly wordSpacingSkipsNbsp: boolean;
+  /** TXT-FONTFEAT: font-variant-numeric applies no OpenType feature (font_features.cc). */
+  readonly numericFeaturesDropped: boolean;
   /** A non-integer order rounds a tie to the even integer instead of toward +infinity (Blink RoundHalfTowardsPositiveInfinity). */
   readonly orderHalfEven: boolean;
   /** order is not clamped to the int range after rounding (Blink ClampToWithNaNTo0<int>). */
@@ -286,6 +288,7 @@ export const NO_ENGINE_FAULTS: EngineFaults = {
   ligaturesKept: false,
   wordSpacingAtItemStart: false,
   wordSpacingSkipsNbsp: false,
+  numericFeaturesDropped: false,
   orderHalfEven: false,
   orderUnclamped: false,
   gutterReserved: false,

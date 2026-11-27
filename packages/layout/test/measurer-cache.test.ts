@@ -45,7 +45,7 @@ function countingShaper(): { readonly shaper: GlyphShaper; readonly calls: strin
 }
 
 const fresh = (): TextMeasurer => deviceShapedMeasurer(new Map([[AHEM_FACE_ID, AHEM_FONT_DATA]]), countingShaper().shaper);
-const font = (size: number, letterSpacing: number, wordSpacing: number, smallCaps = false): TextFont => ({ family: AHEM_FACE_ID, size, letterSpacing, wordSpacing, smallCaps }) as unknown as TextFont;
+const font = (size: number, letterSpacing: number, wordSpacing: number, smallCaps = false): TextFont => ({ family: AHEM_FACE_ID, size, letterSpacing, wordSpacing, smallCaps, variantNumeric: { figure: 'normal', spacing: 'normal', fraction: 'normal', ordinal: false, slashedZero: false } }) as unknown as TextFont;
 
 // Texts that share prefixes and differ by one code point, refused ones among them, so a cache keyed wrongly answers wrongly.
 const texts = ['X', 'XX', 'XX X', 'X XX', 'É', 'Xé', 'X́', 'X—X', '日本', 'X日', 'Xα', 'α', 'X॑', ''];

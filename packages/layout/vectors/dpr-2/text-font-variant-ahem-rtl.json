@@ -502,7 +502,14 @@
          },
          "overflowWrap": "normal",
          "wordBreak": "normal",
-         "smallCaps": false
+         "smallCaps": false,
+         "variantNumeric": {
+          "figure": "normal",
+          "spacing": "normal",
+          "fraction": "normal",
+          "ordinal": false,
+          "slashedZero": false
+         }
         }
        ]
       },
@@ -692,7 +699,14 @@
          },
          "overflowWrap": "normal",
          "wordBreak": "normal",
-         "smallCaps": false
+         "smallCaps": false,
+         "variantNumeric": {
+          "figure": "normal",
+          "spacing": "normal",
+          "fraction": "normal",
+          "ordinal": false,
+          "slashedZero": false
+         }
         }
        ]
       },
@@ -882,7 +896,14 @@
          },
          "overflowWrap": "normal",
          "wordBreak": "normal",
-         "smallCaps": false
+         "smallCaps": false,
+         "variantNumeric": {
+          "figure": "normal",
+          "spacing": "tabular-nums",
+          "fraction": "normal",
+          "ordinal": true,
+          "slashedZero": true
+         }
         }
        ]
       },
@@ -1072,7 +1093,14 @@
          },
          "overflowWrap": "normal",
          "wordBreak": "normal",
-         "smallCaps": false
+         "smallCaps": false,
+         "variantNumeric": {
+          "figure": "normal",
+          "spacing": "normal",
+          "fraction": "normal",
+          "ordinal": false,
+          "slashedZero": false
+         }
         }
        ]
       },
@@ -1262,7 +1290,14 @@
          },
          "overflowWrap": "normal",
          "wordBreak": "normal",
-         "smallCaps": false
+         "smallCaps": false,
+         "variantNumeric": {
+          "figure": "normal",
+          "spacing": "normal",
+          "fraction": "normal",
+          "ordinal": false,
+          "slashedZero": false
+         }
         }
        ]
       },
@@ -1452,7 +1487,14 @@
          },
          "overflowWrap": "normal",
          "wordBreak": "normal",
-         "smallCaps": false
+         "smallCaps": false,
+         "variantNumeric": {
+          "figure": "oldstyle-nums",
+          "spacing": "normal",
+          "fraction": "normal",
+          "ordinal": false,
+          "slashedZero": false
+         }
         },
         {
          "kind": "inline",
@@ -1635,7 +1677,14 @@
            },
            "overflowWrap": "normal",
            "wordBreak": "normal",
-           "smallCaps": false
+           "smallCaps": false,
+           "variantNumeric": {
+            "figure": "normal",
+            "spacing": "normal",
+            "fraction": "normal",
+            "ordinal": false,
+            "slashedZero": false
+           }
           }
          ]
         },
@@ -1667,7 +1716,14 @@
          },
          "overflowWrap": "normal",
          "wordBreak": "normal",
-         "smallCaps": false
+         "smallCaps": false,
+         "variantNumeric": {
+          "figure": "oldstyle-nums",
+          "spacing": "normal",
+          "fraction": "normal",
+          "ordinal": false,
+          "slashedZero": false
+         }
         }
        ]
       },
@@ -2001,7 +2057,14 @@
            },
            "overflowWrap": "normal",
            "wordBreak": "normal",
-           "smallCaps": false
+           "smallCaps": false,
+           "variantNumeric": {
+            "figure": "oldstyle-nums",
+            "spacing": "normal",
+            "fraction": "normal",
+            "ordinal": false,
+            "slashedZero": false
+           }
           }
          ]
         },
@@ -2190,7 +2253,14 @@
            },
            "overflowWrap": "normal",
            "wordBreak": "normal",
-           "smallCaps": false
+           "smallCaps": false,
+           "variantNumeric": {
+            "figure": "oldstyle-nums",
+            "spacing": "normal",
+            "fraction": "normal",
+            "ordinal": false,
+            "slashedZero": false
+           }
           }
          ]
         }
@@ -2382,7 +2452,14 @@
          },
          "overflowWrap": "normal",
          "wordBreak": "normal",
-         "smallCaps": false
+         "smallCaps": false,
+         "variantNumeric": {
+          "figure": "normal",
+          "spacing": "tabular-nums",
+          "fraction": "normal",
+          "ordinal": false,
+          "slashedZero": false
+         }
         }
        ]
       },
@@ -2572,7 +2649,14 @@
          },
          "overflowWrap": "normal",
          "wordBreak": "normal",
-         "smallCaps": false
+         "smallCaps": false,
+         "variantNumeric": {
+          "figure": "normal",
+          "spacing": "proportional-nums",
+          "fraction": "normal",
+          "ordinal": false,
+          "slashedZero": false
+         }
         }
        ]
       },
@@ -2762,7 +2846,14 @@
          },
          "overflowWrap": "normal",
          "wordBreak": "normal",
-         "smallCaps": false
+         "smallCaps": false,
+         "variantNumeric": {
+          "figure": "lining-nums",
+          "spacing": "normal",
+          "fraction": "normal",
+          "ordinal": false,
+          "slashedZero": false
+         }
         }
        ]
       },
@@ -2952,7 +3043,14 @@
          },
          "overflowWrap": "normal",
          "wordBreak": "normal",
-         "smallCaps": false
+         "smallCaps": false,
+         "variantNumeric": {
+          "figure": "normal",
+          "spacing": "normal",
+          "fraction": "diagonal-fractions",
+          "ordinal": false,
+          "slashedZero": false
+         }
         }
        ]
       },
@@ -3142,7 +3240,14 @@
          },
          "overflowWrap": "normal",
          "wordBreak": "normal",
-         "smallCaps": false
+         "smallCaps": false,
+         "variantNumeric": {
+          "figure": "normal",
+          "spacing": "normal",
+          "fraction": "stacked-fractions",
+          "ordinal": false,
+          "slashedZero": false
+         }
         }
        ]
       },
@@ -3332,7 +3437,14 @@
          },
          "overflowWrap": "normal",
          "wordBreak": "normal",
-         "smallCaps": false
+         "smallCaps": false,
+         "variantNumeric": {
+          "figure": "normal",
+          "spacing": "normal",
+          "fraction": "normal",
+          "ordinal": true,
+          "slashedZero": false
+         }
         }
        ]
       },
@@ -3522,7 +3634,14 @@
          },
          "overflowWrap": "normal",
          "wordBreak": "normal",
-         "smallCaps": false
+         "smallCaps": false,
+         "variantNumeric": {
+          "figure": "normal",
+          "spacing": "normal",
+          "fraction": "normal",
+          "ordinal": false,
+          "slashedZero": true
+         }
         }
        ]
       }

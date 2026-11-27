@@ -4,7 +4,7 @@
 // case lays out exactly as it did with the font-data measurer, and draws one glyph per code point at its old x, to well under a LayoutUnit.
 import { describe, expect, it } from 'vitest';
 import type { LayoutInput, TextLeaf } from '@dragon/layout';
-import { AHEM_FACE_ID, AHEM_FONT_DATA, coveredIndex, layout, measurerFor, NO_ENGINE_FAULTS, pieceGlyphs, platformFontSize, zoomInput } from '@dragon/layout';
+import { AHEM_FACE_ID, AHEM_FONT_DATA, coveredIndex, layout, measurerFor, NO_ENGINE_FAULTS, NORMAL_NUMERIC, pieceGlyphs, platformFontSize, zoomInput } from '@dragon/layout';
 import { emitNativeSupport, programInput } from 'dragon';
 import { BACKEND_OF, expectedEngine, hostSources, nativeCases, referenceMeasurer } from '../src/native-host.ts';
 import { REFERENCE_PLATFORM } from '../src/platform.ts';
@@ -96,7 +96,7 @@ describe('the host apps', () => {
 });
 
 describe('the native reference measurer', () => {
-  const font = { family: AHEM_FACE_ID, size: 16 } as const;
+  const font = { family: AHEM_FACE_ID, size: 16, variantNumeric: NORMAL_NUMERIC } as const;
   it('is the shaped measurer: it shapes Ahem, which the font-data measurer does not', () => {
     expect(referenceMeasurer().shaped('Ahem', font as never).ok).toBe(true);
     expect(fontData.shaped('Ahem', font as never).ok).toBe(false);
@@ -126,7 +126,7 @@ describe('the native reference measurer', () => {
           const m = referenceMeasurer();
           for (const leaf of textLeaves(zoomed.root)) {
             const all = [...leaf.text];
-            const f = { family: leaf.font.family, size: leaf.font.size };
+            const f = { family: leaf.font.family, size: leaf.font.size, variantNumeric: NORMAL_NUMERIC };
             // A preserved U+000A (TXT2-c) ends a text item and has no glyph: each item between line feeds is shaped on its own, its pen from 0.
             let at = 0;
             for (const cps of leaf.text.split('\n').map((t) => [...t])) {

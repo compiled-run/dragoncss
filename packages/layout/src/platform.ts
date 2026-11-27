@@ -51,6 +51,7 @@ export function shapingFaultsOf(faults: EngineFaults): ShapingFaults {
     ligaturesKept: faults.ligaturesKept,
     wordSpacingAtItemStart: faults.wordSpacingAtItemStart,
     wordSpacingSkipsNbsp: faults.wordSpacingSkipsNbsp,
+    numericFeaturesDropped: faults.numericFeaturesDropped,
   };
 }
 
