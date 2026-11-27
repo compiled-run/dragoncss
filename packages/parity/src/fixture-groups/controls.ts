@@ -77,7 +77,7 @@ export const CONTROLS: readonly FixtureSpec[] = [
   // is the Markless notes form's field, resize: vertical included, which a phone draws no grip for, without its border-radius
   // (a rounded scroll container: Dragon #682).
   layout('controls-textarea-scrollbar'),
-  // FORM-a: absolutely positioned boxes inside block and inline-block buttons (check-in /settings' switch thumbs).
+  // FORM-a: absolutely positioned boxes inside block-level buttons (check-in /settings' switch thumbs).
   both('controls-button-abspos'),
   reject('reject-controls-button-abspos-static', 'DRAGON_UNSUPPORTED_VALUE', '<span data-dragon-id="a" class="a"></span>', 'left: auto on the absolutely positioned <span> a inside <button> b'),
   layout('controls-text-field-inline'),
