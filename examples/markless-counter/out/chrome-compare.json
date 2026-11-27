@@ -1,0 +1,264 @@
+{
+ "gateDevicePx": 1,
+ "failed": 0,
+ "targets": {
+  "ios": {
+   "viewport": {
+    "width": 402,
+    "height": 778
+   },
+   "dpr": 3,
+   "chrome": "145.0.7632.6",
+   "rows": [
+    {
+     "id": "html",
+     "chrome": {
+      "x": 0,
+      "y": 0,
+      "width": 1206,
+      "height": 603
+     },
+     "dragon": {
+      "x": 0,
+      "y": 0,
+      "width": 1206,
+      "height": 603
+     },
+     "maxDeltaDevicePx": 0,
+     "pass": true
+    },
+    {
+     "id": "body",
+     "chrome": {
+      "x": 0,
+      "y": 0,
+      "width": 1206,
+      "height": 603
+     },
+     "dragon": {
+      "x": 0,
+      "y": 0,
+      "width": 1206,
+      "height": 603
+     },
+     "maxDeltaDevicePx": 0,
+     "pass": true
+    },
+    {
+     "id": "h0",
+     "chrome": {
+      "x": 0,
+      "y": 0,
+      "width": 1206,
+      "height": 603
+     },
+     "dragon": {
+      "x": 0,
+      "y": 0,
+      "width": 1206,
+      "height": 603
+     },
+     "maxDeltaDevicePx": 0,
+     "pass": true
+    },
+    {
+     "id": "h1",
+     "chrome": {
+      "x": 460.5156555175781,
+      "y": 144,
+      "width": 284.953125,
+      "height": 87
+     },
+     "dragon": {
+      "x": 460.515625,
+      "y": 144,
+      "width": 284.953125,
+      "height": 87
+     },
+     "maxDeltaDevicePx": 0,
+     "pass": true
+    },
+    {
+     "id": "h1:text0",
+     "chrome": {
+      "x": 460.5156555175781,
+      "y": 144,
+      "width": 284.953125,
+      "height": 87
+     },
+     "dragon": {
+      "x": 460.515625,
+      "y": 144,
+      "width": 284.953125,
+      "height": 87
+     },
+     "maxDeltaDevicePx": 0,
+     "pass": true
+    },
+    {
+     "id": "h2",
+     "chrome": {
+      "x": 424.453125,
+      "y": 303,
+      "width": 357.09375,
+      "height": 156
+     },
+     "dragon": {
+      "x": 424.453125,
+      "y": 303,
+      "width": 357.09375,
+      "height": 156
+     },
+     "maxDeltaDevicePx": 0,
+     "pass": true
+    },
+    {
+     "id": "h2:text0",
+     "chrome": {
+      "x": 490.453125,
+      "y": 345,
+      "width": 225.09375,
+      "height": 72
+     },
+     "dragon": {
+      "x": 490.453125,
+      "y": 345,
+      "width": 225.09375,
+      "height": 72
+     },
+     "maxDeltaDevicePx": 0,
+     "pass": true
+    }
+   ]
+  },
+  "android": {
+   "viewport": {
+    "width": 411,
+    "height": 818
+   },
+   "dpr": 2.625,
+   "chrome": "145.0.7632.6",
+   "rows": [
+    {
+     "id": "html",
+     "chrome": {
+      "x": 0,
+      "y": 0,
+      "width": 1079.0000495910645,
+      "height": 528.0000286102295
+     },
+     "dragon": {
+      "x": 0,
+      "y": 0,
+      "width": 1079,
+      "height": 528
+     },
+     "maxDeltaDevicePx": 0,
+     "pass": true
+    },
+    {
+     "id": "body",
+     "chrome": {
+      "x": 0,
+      "y": 0,
+      "width": 1079.0000495910645,
+      "height": 528.0000286102295
+     },
+     "dragon": {
+      "x": 0,
+      "y": 0,
+      "width": 1079,
+      "height": 528
+     },
+     "maxDeltaDevicePx": 0,
+     "pass": true
+    },
+    {
+     "id": "h0",
+     "chrome": {
+      "x": 0,
+      "y": 0,
+      "width": 1079.0000495910645,
+      "height": 528.0000286102295
+     },
+     "dragon": {
+      "x": 0,
+      "y": 0,
+      "width": 1079,
+      "height": 528
+     },
+     "maxDeltaDevicePx": 0,
+     "pass": true
+    },
+    {
+     "id": "h1",
+     "chrome": {
+      "x": 414.82814598083496,
+      "y": 126,
+      "width": 249.3281364440918,
+      "height": 76.00000047683716
+     },
+     "dragon": {
+      "x": 414.828125,
+      "y": 126,
+      "width": 249.328125,
+      "height": 76
+     },
+     "maxDeltaDevicePx": 0,
+     "pass": true
+    },
+    {
+     "id": "h1:text0",
+     "chrome": {
+      "x": 414.82814598083496,
+      "y": 126,
+      "width": 249.3280963897705,
+      "height": 76.00001049041748
+     },
+     "dragon": {
+      "x": 414.828125,
+      "y": 126,
+      "width": 249.328125,
+      "height": 76
+     },
+     "maxDeltaDevicePx": 0,
+     "pass": true
+    },
+    {
+     "id": "h2",
+     "chrome": {
+      "x": 383.51564025878906,
+      "y": 265.0000104904175,
+      "width": 311.95312786102295,
+      "height": 136.99999809265137
+     },
+     "dragon": {
+      "x": 383.515625,
+      "y": 265,
+      "width": 311.953125,
+      "height": 137
+     },
+     "maxDeltaDevicePx": 0,
+     "pass": true
+    },
+    {
+     "id": "h2:text0",
+     "chrome": {
+      "x": 441.01562118530273,
+      "y": 301.5000114440918,
+      "width": 196.95314598083496,
+      "height": 63.999996185302734
+     },
+     "dragon": {
+      "x": 441.015625,
+      "y": 301.5,
+      "width": 196.953125,
+      "height": 64
+     },
+     "maxDeltaDevicePx": 0,
+     "pass": true
+    }
+   ]
+  }
+ }
+}
