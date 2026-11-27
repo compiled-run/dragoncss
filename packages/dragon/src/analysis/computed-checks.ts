@@ -2588,10 +2588,9 @@ function checkInsideButton(el: ResolvedElement, button: ResolvedElement, targets
   const position = el.props.get('position') as ResolvedValue;
   const pos = keywordOf(position);
   if (pos !== 'absolute' && pos !== 'fixed') return;
-  // A block or inline-block button lays out its out-of-flow boxes as any block container does (controls-button-abspos), but Chrome
-  // gives one with an auto inset on an axis the static position of an inline in the button's centred line, which Dragon does not.
-  const display = keywordOf(button.props.get('display') as ResolvedValue);
-  if (pos === 'absolute' && button.element.tag === 'button' && (display === 'block' || display === 'inline-block')) {
+  // A block button lays out its out-of-flow boxes as any block container does (controls-button-abspos), but Chrome gives one with
+  // both insets of an axis auto the static position of an inline in the button's centred line, which Dragon does not.
+  if (pos === 'absolute' && button.element.tag === 'button' && keywordOf(button.props.get('display') as ResolvedValue) === 'block') {
     const auto = (p: Longhand): boolean => keywordOf(el.props.get(p) as ResolvedValue) === 'auto';
     const axis = auto('left') && auto('right') ? 'left' : auto('top') && auto('bottom') ? 'top' : null;
     if (axis === null) return;
