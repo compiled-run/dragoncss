@@ -24,7 +24,7 @@ export type { SnappedRect } from './snap.ts';
 export { snapEdges, snapRect } from './snap.ts';
 // Replaced elements (REPL-a): sizing and the object-fit destination rect.
 export type { BorderPadding, InlineAutoBehavior, NaturalSizing, ObjectFit, ObjectPosition, ObjectRect, PixelRect, ReplacedSize, ReplacedSizeMode, ReplacedSpace } from './replaced.ts';
-export { blockFlowSpace, drawnObjectRect, objectFitRect, pixelSnappedRect, replacedAspectRatio, replacedSize } from './replaced.ts';
+export { blockFlowSpace, drawnObjectRect, objectFitRect, pixelSnappedRect, replacedAspectRatio, replacedSize, runtimeImageScrollShift } from './replaced.ts';
 export type { ReplacedPaint } from './paint.ts';
 export { opacityAlpha8, replacedPaint, runtimeImagePaint } from './paint.ts';
 export type { MenuListArrowPaint } from './paint-menulist.ts';

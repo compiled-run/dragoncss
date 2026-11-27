@@ -7,7 +7,7 @@ import { dimensionRefusal, iframeSrcRefusal } from './analysis/elements/replaced
 import { isSvgShapeTag, svgAttributeRefusal } from './analysis/elements/svg.ts';
 import { compileImages, imageMapProblem } from './images/compile.ts';
 import type { RuntimeImageLayout } from './images/runtime.ts';
-import { runtimeImageNotes, runtimeLayoutRefusals, runtimeSrcSelectorRefusals } from './images/runtime.ts';
+import { runtimeImageNotes, runtimeLayoutRefusals, runtimeSrcSelectorRefusals, withFollowedImages } from './images/runtime.ts';
 import type { CompiledImages } from './images/compile.ts';
 import { compileVideos } from './videos/compile.ts';
 import type { ImageAssetMap } from './images/manifest.ts';
@@ -1989,7 +1989,9 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
         }
       }
     }
-    runtimeLayoutRefusals(runtimeTrees, options.runtimeImageLayout, originOfAddress, diagnostics);
+    // REPL-r2a: an img that follows its image is laid out, exported and started on the device at 0 by 0, as while it loads.
+    const follows = runtimeLayoutRefusals(runtimeTrees, options.runtimeImageLayout, options.faults, originOfAddress, diagnostics, Object.fromEntries(fontFallbacks));
+    if (follows.size > 0) for (const m of loweredByBand) for (const [key, tree] of m) m.set(key, withFollowedImages(tree, follows));
   }
   const lowered = loweredByBand[nativeBand] ?? new Map<string, LayoutBox>();
   // TXT1a-1: when every native blocker is a deferred font refusal, the engine lane gets an engine-mode lowering; when a native

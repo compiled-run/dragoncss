@@ -70,6 +70,8 @@ export type RuntimeImageWrite = {
    * box, drawn when that box is over 2 device px each way (measured in Chrome 145 at DPR 2, 2.625 and 3).
    */
   readonly absent: { readonly color: Rgba8; readonly width: number } | null;
+  /** REPL-r2a: the img's height follows its image, so the host lays the page out again with each decoded image's natural size. */
+  readonly follows: boolean;
 };
 
 /** The no-image outline's colour, Blink's Color::kLightGray. */
@@ -164,8 +166,8 @@ export const IMAGE_LOWERING: PaintLowering<ImageWrite | SvgShapesWrite | Runtime
     }
     if (box.kind !== 'replaced' || el === null || el.element.tag !== 'img') return [];
     const runtime = el.element.node.runtimeSrc;
-    if (box.natural.kind === 'runtime' && runtime !== undefined) {
-      return [{ kind: 'runtime-image', fit: box.objectFit, position: [box.objectPositionX, box.objectPositionY], layer: !transformMoves, pixelated: isPixelated(el.props.get('image-rendering')?.value), absent: runtime.absent ? NO_IMAGE_OUTLINE : null }];
+    if ((box.natural.kind === 'runtime' || box.natural.kind === 'followed') && runtime !== undefined) {
+      return [{ kind: 'runtime-image', follows: box.natural.kind === 'followed', fit: box.objectFit, position: [box.objectPositionX, box.objectPositionY], layer: !transformMoves, pixelated: isPixelated(el.props.get('image-rendering')?.value), absent: runtime.absent ? NO_IMAGE_OUTLINE : null }];
     }
     if (box.natural.kind !== 'image') throw new ProgramError(`${box.id}: an img leaf without a natural size`);
     // The host draws a file's picture itself (InternalOptions.hostImages): Dragon writes no image content for it.

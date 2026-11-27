@@ -90,6 +90,7 @@
     "parity:resize-capture": "node --conditions=dragon-internal packages/parity/src/cli/resize-capture.ts",
     "parity:resize-report": "node --conditions=dragon-internal packages/parity/src/cli/resize-report.ts",
     "parity:runtime-capture": "node --conditions=dragon-internal packages/parity/src/cli/runtime-capture.ts",
+    "parity:scroll-anchor-capture": "node --conditions=dragon-internal packages/parity/src/cli/scroll-anchor-capture.ts",
     "markless:style-compare": "node --conditions=dragon-internal packages/parity/src/cli/markless-style-compare.ts"
   },
   "devDependencies": {

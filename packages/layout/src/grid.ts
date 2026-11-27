@@ -84,7 +84,7 @@ import { intrinsicContentInlineSize } from './intrinsic.ts';
 import { isOutOfFlow, relativeOffsetWith } from './position.ts';
 import { hasAspectRatio } from './ratio.ts';
 import type { ReplacedSpace } from './replaced.ts';
-import { replacedBorderPadding, replacedContributionIn, replacedFrag, replacedMeasureSpace, sizeReplaced } from './replaced.ts';
+import { followedImageUnder, replacedBorderPadding, replacedContributionIn, replacedFrag, replacedMeasureSpace, sizeReplaced } from './replaced.ts';
 import { unsupported } from './unsupported.ts';
 
 /** Blink kIndefiniteSize: LayoutUnit(-1), an indefinite size or an infinite growth limit. */
@@ -2326,6 +2326,17 @@ export function layoutGridContainer(ctx: Ctx, box: LayoutBox, a: GridArgs): Grid
       const first = firstSetGeometry(grid, grid.rows, available.block);
       finalizeGeometry(grid.rows, first.start, first.gutter);
     }
+  }
+  // REPL-r2a: a second column pass reads a row's size only through a replaced item, measured with its row area as its block size.
+  if (again && grid.columns.props.nonDefinite) {
+    let followed: string | null = null;
+    let ratioItem: string | null = null;
+    for (const i of grid.items) {
+      const f = followedImageUnder(i.box);
+      if (f !== null && followed === null) followed = f;
+      if (ratioItem === null && i.sizingDependsOnBlockSize && i.box.kind === 'replaced' && i.box.natural.kind !== 'followed') ratioItem = i.box.id;
+    }
+    if (followed !== null && ratioItem !== null) unsupported('runtime-image-size', followed, 'css-grid-2 §12.1', `grid ${box.id} sizes its columns again after its rows, which ${followed}'s image sizes, and replaced item ${ratioItem} is measured at its row's height, so its image could change a column's width`);
   }
   if (again) {
     initializeTrackSizes(ctx, grid, 'columns');

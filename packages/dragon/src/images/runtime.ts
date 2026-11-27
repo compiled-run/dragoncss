@@ -3,7 +3,7 @@
 // natural size (the engine's runtime-image-size, at every case, band, interaction state and export viewport, and each band's
 // edge widths), an alt text a missing src would show, and a selector that tests the src. A load error, an empty src or a src
 // removed at run time is a named divergence: Chrome draws fallback content, which the build names per img.
-import type { LayoutBox, LayoutInput } from '@dragon/layout';
+import type { AnchorOption, LayoutBox, LayoutInput, LayoutRect } from '@dragon/layout';
 import type { ResolvedElement } from '../analysis/resolve.ts';
 import { runtimeSrcSelectors } from '../analysis/match.ts';
 import type { Rule } from '../css/stylesheet.ts';
@@ -14,15 +14,16 @@ import { contains } from '../media/band.ts';
 import { wholeAtOrAbove, wholeAtOrBelow } from '../media/viewport.ts';
 import type { Diagnostic, Origin } from '../types.ts';
 
-/**
- * A device the build lays every case out at: its viewport in CSS px, its DPR, and the engine's layout with the device's text
- * measurer, which gives the engine's refusal or null.
- */
+/** The engine's answer at a device: its refusal, or the laid-out boxes in absolute LU (layout.ts absoluteRects). */
+export type DeviceLayout = { readonly kind: 'refused'; readonly code: string; readonly nodeId: string; readonly detail: string } | { readonly kind: 'ok'; readonly rects: ReadonlyMap<string, LayoutRect> };
+
+/** A device the build lays every case out at: its viewport in CSS px, its DPR, and the engine's layout with the device's text measurer. */
 export type LayoutDevice = {
   readonly width: number;
   readonly height: number;
   readonly dpr: number;
-  readonly layout: (input: LayoutInput) => { readonly code: string; readonly nodeId: string; readonly detail: string } | null;
+  /** fontFallbacks: each bundled face's system fallback face (the compile's record.fontFallbacks), as the export's measurers take it. */
+  readonly layout: (input: LayoutInput, fontFallbacks: Readonly<Record<string, string>>) => DeviceLayout;
 };
 
 /** The build-time layout a compile with a runtimeSrc img needs (InternalOptions.runtimeImageLayout): the export devices. */
@@ -91,6 +92,19 @@ function runtimeLeaves(n: Node, out: string[]): string[] {
   return out;
 }
 
+/** The first box under n sized by anchor-size(), whose anchor's size the image could change, or null. */
+function anchorSized(n: Node): string | null {
+  if (n.kind !== 'box' && n.kind !== 'control' && n.kind !== 'replaced') return null;
+  const sized = (o: AnchorOption): boolean => o.widthAnchor !== null || o.heightAnchor !== null || o.minWidthAnchor !== null || o.minHeightAnchor !== null || o.maxWidthAnchor !== null || o.maxHeightAnchor !== null;
+  if ((n.style.anchor?.options ?? []).some(sized)) return n.id;
+  if (n.kind === 'replaced') return null;
+  for (const c of n.children) {
+    const a = anchorSized(c);
+    if (a !== null) return a;
+  }
+  return null;
+}
+
 /**
  * The widths the band's own edges give (Q3): the smallest and largest whole CSS px of each width interval, the largest export
  * viewport standing in for a band with no maximum.
@@ -110,12 +124,57 @@ export function bandEdgeWidths(band: Band, devices: readonly LayoutDevice[]): nu
 }
 
 /**
- * Lays every lowered tree holding a runtimeSrc img out at every device and at each of its band's edge widths, refusing every img
- * whose size the layout reads from its image. Without a build-time layout every such img is refused: nothing proves its box.
+ * REPL-r2a (the sweep): natural sizes an img that follows its image is laid out at, in image px, beside the 0 by 0 of loading:
+ * square, the camera ratios, a long strip each way and the extremes of the ratio clamp (Judge amendment 6). An exact fit of each
+ * img's max-height is added per img (exactFit).
  */
-export function runtimeLayoutRefusals(trees: readonly { readonly tree: LayoutBox; readonly rootFontSize: number; readonly band: Band | null; readonly resolved: ResolvedElement }[], layout: RuntimeImageLayout | null, originOf: OriginOf, diagnostics: Diagnostic[]): void {
+export const FOLLOW_SAMPLES: readonly (readonly [number, number])[] = [[1, 1], [4000, 3000], [3000, 4000], [1000, 1000], [1920, 1080], [1080, 1920], [1000, 100], [100, 1000], [1, 1000], [1000, 1]];
+
+function withNaturals(n: Node, sizes: ReadonlyMap<string, readonly [number, number]>): Node {
+  if (n.kind === 'replaced') {
+    const size = sizes.get(n.id);
+    return size === undefined || n.natural.kind !== 'runtime' ? n : { ...n, natural: { kind: 'followed', width: size[0], height: size[1] } };
+  }
+  if (n.kind === 'box' || n.kind === 'control') return { ...n, children: n.children.map((c) => withNaturals(c, sizes) as typeof c) };
+  return n;
+}
+
+/** The tree with each img in ids following its image, at 0 by 0 as while it loads: the tree the export lays out and the device starts from. */
+export function withFollowedImages(tree: LayoutBox, ids: ReadonlySet<string>): LayoutBox {
+  return ids.size === 0 ? tree : (withNaturals(tree, new Map([...ids].map((id) => [id, [0, 0] as const]))) as LayoutBox);
+}
+
+function leafOf(n: Node, id: string): Extract<Node, { kind: 'replaced' }> | null {
+  if (n.kind === 'replaced') return n.id === id ? n : null;
+  if (n.kind === 'box' || n.kind === 'control') for (const c of n.children) { const f = leafOf(c, id); if (f !== null) return f; }
+  return null;
+}
+
+/**
+ * A natural size whose ratio gives the img's content box exactly its max-height (Judge amendment 6), from its loading layout's
+ * border box, when its max-height and its inline padding and borders are lengths in px.
+ */
+function exactFit(tree: LayoutBox, id: string, rect: LayoutRect | undefined): readonly [number, number] | null {
+  const leaf = leafOf(tree, id);
+  if (leaf === null || rect === undefined) return null;
+  const st = leaf.style;
+  if (st.maxHeight.kind !== 'px' || st.paddingLeft.kind !== 'px' || st.paddingRight.kind !== 'px' || st.borderLeftWidth.kind !== 'px' || st.borderRightWidth.kind !== 'px') return null;
+  const inline = rect.width / 64 - st.paddingLeft.value - st.paddingRight.value - st.borderLeftWidth.value - st.borderRightWidth.value;
+  return inline > 0 && st.maxHeight.value > 0 ? [inline * 64, st.maxHeight.value * 64] : null;
+}
+
+/**
+ * Lays every lowered tree holding a runtimeSrc img out at every device and at each of its band's edge widths, refusing every img
+ * whose size the layout reads from its image, except one whose only read is REPL-r2a's (a used size with a definite inline size,
+ * replaced.ts followsRead): that img follows its image when, at every device and sample, the page lays out and no box moves or
+ * resizes inline. Without a build-time layout every such img is refused: nothing proves its box. Gives the imgs that follow.
+ */
+export function runtimeLayoutRefusals(trees: readonly { readonly tree: LayoutBox; readonly rootFontSize: number; readonly band: Band | null; readonly resolved: ResolvedElement }[], layout: RuntimeImageLayout | null, faults: CompilerFaults, originOf: OriginOf, diagnostics: Diagnostic[], fontFallbacks: Readonly<Record<string, string>>): Set<string> {
   const reported = new Set<string>();
+  const refusedIds = new Set<string>();
+  const follows = new Set<string>();
   const refuse = (root: ResolvedElement, id: string, message: string): void => {
+    refusedIds.add(id);
     if (reported.has(`${id}|${message}`)) return;
     reported.add(`${id}|${message}`);
     diagnostics.push(diagnostic('DRAGON_RUNTIME_IMAGE_SIZE', { origin: originOf(root, id), message }));
@@ -130,11 +189,52 @@ export function runtimeLayoutRefusals(trees: readonly { readonly tree: LayoutBox
     const edges = t.band === null ? [] : layout.devices.flatMap((d) => bandEdgeWidths(t.band as Band, layout.devices).map((width) => ({ ...d, width })));
     for (const d of [...layout.devices, ...edges]) {
       const viewport = { width: d.width, height: d.height };
-      const r = d.layout({ viewport, devicePixelRatio: d.dpr, viewportUnits: { small: viewport, large: viewport, dynamic: viewport }, safeArea: { top: 0, right: 0, bottom: 0, left: 0 }, rootFontSize: t.rootFontSize, root: t.tree });
-      if (r === null) continue;
-      if (r.code === 'runtime-image-size') refuse(t.resolved, r.nodeId, `<img> ${r.nodeId} has a src set at run time, and ${r.detail}`);
-      // A layout stopped before the img proves nothing about it.
-      else for (const id of leaves) refuse(t.resolved, id, `<img> ${id} has a src set at run time, and the build could not lay the page out at ${d.width}x${d.height} (${r.code} at ${r.nodeId}), so nothing proves its box does not follow its image`);
+      const at = (tree: LayoutBox): DeviceLayout => d.layout({ viewport, devicePixelRatio: d.dpr, viewportUnits: { small: viewport, large: viewport, dynamic: viewport }, safeArea: { top: 0, right: 0, bottom: 0, left: 0 }, rootFontSize: t.rootFontSize, root: tree }, fontFallbacks);
+      const stopped = (r: Extract<DeviceLayout, { kind: 'refused' }>, where: string): void => {
+        if (r.code === 'runtime-image-size') refuse(t.resolved, r.nodeId, `<img> ${r.nodeId} has a src set at run time, and ${r.detail}`);
+        // A layout stopped before the img proves nothing about it.
+        else for (const id of leaves) refuse(t.resolved, id, `<img> ${id} has a src set at run time, and the build could not lay the page out at ${d.width}x${d.height}${where} (${r.code} at ${r.nodeId}), so nothing proves its box does not follow its image`);
+      };
+      // An img whose first refused read is a used size may follow its image: laid out again with it following, until none is read.
+      const here = new Set<string>();
+      let base: DeviceLayout = at(t.tree);
+      while (base.kind === 'refused' && base.code === 'runtime-image-size' && leaves.includes(base.nodeId) && !here.has(base.nodeId)) {
+        here.add(base.nodeId);
+        base = at(withFollowedImages(t.tree, here));
+      }
+      if (base.kind === 'refused') {
+        stopped(base, '');
+        continue;
+      }
+      if (here.size === 0) continue;
+      const sized = anchorSized(t.tree);
+      if (sized !== null) {
+        for (const id of here) refuse(t.resolved, id, `<img> ${id} has a src set at run time, and ${sized} is sized by anchor-size(), whose anchor's width the image could change: only block sizes may follow the image`);
+        continue;
+      }
+      const loading = base.rects;
+      for (const id of here) {
+        const fit = exactFit(t.tree, id, loading.get(id));
+        for (const sample of fit === null ? FOLLOW_SAMPLES : [...FOLLOW_SAMPLES, fit]) {
+          const sizes = new Map([...here].map((h) => [h, h === id ? sample : ([0, 0] as const)] as const));
+          const r = at(withNaturals(t.tree, sizes) as LayoutBox);
+          const named = `${sample[0]}x${sample[1]}`;
+          if (r.kind === 'refused') {
+            stopped(r, ` with ${id}'s image ${named}`);
+            continue;
+          }
+          if (faults.runtimeFollowsWidthUnchecked) continue;
+          for (const [box, b] of loading) {
+            const now = r.rects.get(box);
+            if (now !== undefined && now.x === b.x && now.width === b.width) continue;
+            refuse(t.resolved, id, `<img> ${id} has a src set at run time, and its image changes the inline size or position of ${box} (at ${d.width}x${d.height}, its border box is ${b.width / 64}px wide at x ${b.x / 64} while the image loads and ${now === undefined ? 'absent' : `${now.width / 64}px wide at x ${now.x / 64}`} with a ${named} image): only block sizes may follow the image`);
+            break;
+          }
+        }
+        follows.add(id);
+      }
     }
   }
+  for (const id of refusedIds) follows.delete(id);
+  return follows;
 }

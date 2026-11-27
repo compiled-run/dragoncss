@@ -17,7 +17,7 @@
       "x": 0,
       "y": 0,
       "width": 400,
-      "height": 320,
+      "height": 1,
       "computed": null
     },
     {
@@ -27,7 +27,7 @@
       "x": 0,
       "y": 0,
       "width": 400,
-      "height": 320,
+      "height": 1,
       "computed": null
     },
     {
@@ -37,7 +37,7 @@
       "x": 0,
       "y": 0,
       "width": 400,
-      "height": 320,
+      "height": 1,
       "computed": null
     },
     {
@@ -46,8 +46,8 @@
       "hasBox": true,
       "x": 0,
       "y": 0,
-      "width": 400,
-      "height": 320,
+      "width": 1,
+      "height": 1,
       "computed": null
     }
   ]

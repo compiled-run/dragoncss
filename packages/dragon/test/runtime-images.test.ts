@@ -3,19 +3,21 @@
 // replaced-runtime-* and reject-runtime-src-* prove the accepted and refused shapes against Chrome.
 import { describe, expect, it } from 'vitest';
 import type { LayoutInput } from '@dragon/layout';
-import { layout, measurerFor, REFERENCE_PLATFORM } from '@dragon/layout';
+import { absoluteRects, layout, measurerFor, REFERENCE_PLATFORM } from '@dragon/layout';
 import type { Band } from '../src/media/band.ts';
 import { bandEdgeWidths } from '../src/images/runtime.ts';
 import type { RuntimeImageLayout } from '../src/images/runtime.ts';
-import { createProjectWith, NO_FAULTS } from '../src/internal.ts';
+import { createProjectWith, NO_FAULTS, nativeLayoutProjection } from '../src/internal.ts';
+import { nodeLit, StateEmitError } from '../src/emit/runtime/state.ts';
+import type { ProgramNode } from '../src/lower/native-program.ts';
 import type { AttributeBinding, ElementNode, Origin, SourceRef, TreeNode } from '../src/types.ts';
-import { always, div, DOC, inputFor, staticClass } from './helpers.ts';
+import { always, div, DOC, inputFor, staticClass, text } from './helpers.ts';
 
 const m = measurerFor(REFERENCE_PLATFORM);
 if (m.kind !== 'ok') throw new Error(m.detail);
 const engine = (input: LayoutInput) => {
   const r = layout(input, m.measurer);
-  return r.kind === 'ok' ? null : r.unsupported;
+  return r.kind === 'ok' ? { kind: 'ok' as const, rects: absoluteRects(r.boxes) } : { kind: 'refused' as const, ...r.unsupported };
 };
 const DEVICES: RuntimeImageLayout = { devices: [{ width: 400, height: 300, dpr: 1, layout: engine }] };
 
@@ -64,7 +66,7 @@ describe('REPL-r1 layout: the build lays the img out without its image', () => {
   });
 
   it('refuses a read the devices reach, naming the engine\'s fix', () => {
-    expect(refusals(compile('img { display: block; width: 100%; }', (r) => [div(r, 'c', [], [img(r, 'a', [], { absent: false })])]), 'DRAGON_RUNTIME_IMAGE_SIZE')).toEqual(["<img> a has a src set at run time, and its used size reads the image's natural ratio, since its height is auto: give it a CSS aspect-ratio, or a width and a height"]);
+    expect(refusals(compile('img { display: block; max-width: 100%; }', (r) => [div(r, 'c', [], [img(r, 'a', [], { absent: false })])]), 'DRAGON_RUNTIME_IMAGE_SIZE')).toEqual(["<img> a has a src set at run time, and its used size reads the image's natural ratio, since its height is auto: give it a CSS aspect-ratio, or a width and a height"]);
   });
 
   it('also lays each band out at its edge widths, so a read only a band the devices miss reaches is refused (Q3)', () => {
@@ -85,6 +87,41 @@ describe('REPL-r1 layout: the build lays the img out without its image', () => {
   });
 });
 
+describe('REPL-r2a: an img whose height follows its image', () => {
+  const ENV = { viewport: { width: 400, height: 300 }, devicePixelRatio: 1, direction: 'ltr', rootFont: 'ua-default' } as const;
+  const lowered = (c: ReturnType<typeof compile>): string => JSON.stringify(nativeLayoutProjection(c, ENV, []));
+  it('accepts a 100% wide img with an auto height, and lowers it as following its image at 0 by 0', () => {
+    const c = compile('img { display: block; width: 100%; max-height: 320px; } p { margin: 0; }', (r) => [div(r, 'c', [], [img(r, 'a', [], { absent: false }), div(r, 'p', [])])]);
+    expect(refusals(c, 'DRAGON_RUNTIME_IMAGE_SIZE')).toEqual([]);
+    expect(lowered(c)).toContain('"natural":{"kind":"followed","width":0,"height":0}');
+  });
+  it('refuses it when its image moves a box inline: an abspos box whose width follows its containing block\'s height', () => {
+    const css = 'img { display: block; width: 100%; } .c { position: relative; } .ab { position: absolute; top: 0; bottom: 0; left: 0; aspect-ratio: 1 / 1; }';
+    const got = refusals(compile(css, (r) => [div(r, 'c', ['c'], [img(r, 'a', [], { absent: false }), div(r, 'ab', ['ab'])])]), 'DRAGON_RUNTIME_IMAGE_SIZE');
+    expect(got.length).toBeGreaterThan(0);
+    expect(got.every((m) => m.startsWith('<img> a has a src set at run time, and its image changes the inline size or position of ab '))).toBe(true);
+  });
+  it('refuses it in a grid that sizes its columns again after its rows, when a replaced item is measured at its row\'s height', () => {
+    const css = 'img { display: block; width: 100%; } .g { display: grid; grid-template-columns: 100px auto; height: 200px; } .p { height: 50%; border: 0; }';
+    // The img's track is fixed, so only the second pass, which re-measures .p against its row, could reach it.
+    const got = refusals(compile(css, (r) => [div(r, 'g', ['g'], [div(r, 'c', [], [img(r, 'a', [], { absent: false })]), img(r, 'p', ['p'], undefined, { src: 'https://example.com/' }, 'iframe')])]), 'DRAGON_RUNTIME_IMAGE_SIZE');
+    expect(got).toContain("<img> a has a src set at run time, and grid g sizes its columns again after its rows, which a's image sizes, and replaced item p is measured at its row's height, so its image could change a column's width");
+    const plain = refusals(compile(css.replace(' height: 50%;', ' height: 50%; width: 10px;'), (r) => [div(r, 'g', ['g'], [div(r, 'c', [], [img(r, 'a', [], { absent: false })]), div(r, 'p', ['p'], [])])]), 'DRAGON_RUNTIME_IMAGE_SIZE');
+    expect(plain).toEqual([]);
+  });
+  it('refuses it beside a box sized by anchor-size()', () => {
+    const css = 'img { display: block; width: 100%; anchor-name: --i; } .c { position: relative; } .x { position: absolute; position-anchor: --i; top: 0; left: 0; width: anchor-size(width); height: 10px; }';
+    const got = refusals(compile(css, (r) => [div(r, 'c', ['c'], [img(r, 'a', [], { absent: false }), div(r, 'x', ['x'])])]), 'DRAGON_RUNTIME_IMAGE_SIZE');
+    expect(got).toContain("<img> a has a src set at run time, and x is sized by anchor-size(), whose anchor's width the image could change: only block sizes may follow the image");
+  });
+  it('is never laid out by Dragon\'s state or interaction machines: a state program refuses its node, so no hit table holds it at 0 by 0', () => {
+    const write = { kind: 'runtime-image', follows: true, fit: 'cover', position: [{ kind: 'percent', value: 50 }, { kind: 'percent', value: 50 }], layer: false, pixelated: false, absent: null };
+    const n = { id: 'a', kind: 'box', parent: null, writes: [write] } as unknown as ProgramNode;
+    expect(() => nodeLit('swift', n)).toThrow(StateEmitError);
+    expect(() => nodeLit('kotlin', n)).toThrow(/a: a runtime-image write in a state program is not supported yet/);
+  });
+});
+
 describe('REPL-r1 selectors: a selector that tests the src of a runtimeSrc img is refused', () => {
   const body = (r: SourceRef): TreeNode[] => [div(r, 'c', ['c'], [img(r, 'a', ['ph'], { absent: true }, { alt: '' }), div(r, 'n', ['n'])])];
   for (const sel of ['img[src]', 'img:not([src])', '[src^="https:"]', '.c > [src] + .n', '.c:has(img[src])', 'img[src]:hover', '.c:hover img[src]']) {
@@ -98,3 +135,4 @@ describe('REPL-r1 selectors: a selector that tests the src of a runtimeSrc img i
     expect(refusals(compile(`${SIZED} .c img, .ph, div[src] { margin-left: 3px; }`, body), 'DRAGON_RUNTIME_IMAGE_SIZE')).toEqual([]);
   });
 });
+
