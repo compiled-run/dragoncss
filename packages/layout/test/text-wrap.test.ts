@@ -4,12 +4,12 @@
 // (the sum of each line's squared slack, a line penalty per line and the orphans penalty) or its bisection picks.
 import { describe, expect, it } from 'vitest';
 import type { EngineFaults, LayoutBox, LayoutStyle, TextWrapStyle } from '../src/index.ts';
-import { ahemMeasurer, fromCssPx, layoutWithFaults, NO_ENGINE_FAULTS, NO_GRID_FAULTS, placeLines, validateLayoutInput, zoomInput } from '../src/index.ts';
+import { ahemMeasurer, fromCssPx, layoutWithFaults, newLayoutMemo, NO_ENGINE_FAULTS, NO_GRID_FAULTS, placeLines, validateLayoutInput, zoomInput } from '../src/index.ts';
 import { linePenaltyOf, scoreBreakPoints } from '../src/text-wrap.ts';
 import { ahemFont, box, neutralEnvironment, px, span, text } from './helpers.ts';
 import { UnsupportedSignal } from '../src/unsupported.ts';
 
-const ctx = (faults: EngineFaults = NO_ENGINE_FAULTS) => ({ measurer: ahemMeasurer, devicePixelRatio: 1, faults, gridFaults: NO_GRID_FAULTS });
+const ctx = (faults: EngineFaults = NO_ENGINE_FAULTS) => ({ measurer: ahemMeasurer, devicePixelRatio: 1, faults, gridFaults: NO_GRID_FAULTS, memo: newLayoutMemo() });
 const BALANCE: TextWrapStyle = { kind: 'balance', zoom: 1 };
 const PRETTY: TextWrapStyle = { kind: 'pretty', zoom: 1 };
 

@@ -337,7 +337,18 @@ export const NO_ENGINE_FAULTS: EngineFaults = {
 };
 
 /** gridFaults: seeded grid errors (grid.ts GridFaults), set only by the G-P differential test; NO_GRID_FAULTS otherwise. */
-export type Ctx = { readonly measurer: TextMeasurer; readonly devicePixelRatio: number; readonly faults: EngineFaults; readonly gridFaults: GridFaults };
+/**
+ * What one layout keeps, as Blink keeps it on the box: each box's min and max-content sizes (LayoutBox::IntrinsicLogicalWidths), and a
+ * formatting context root's layout at each set of arguments (its cached layout result). Sizing a flex or grid container lays each item
+ * out more than once, so nested containers otherwise lay their contents out exponentially often.
+ */
+export type LayoutMemo = { readonly intrinsicMin: Map<LayoutBox, LU>; readonly intrinsicMax: Map<LayoutBox, LU>; readonly roots: Map<LayoutBox, Map<string, ContentsResult>> };
+
+export function newLayoutMemo(): LayoutMemo {
+  return { intrinsicMin: new Map<LayoutBox, LU>(), intrinsicMax: new Map<LayoutBox, LU>(), roots: new Map<LayoutBox, Map<string, ContentsResult>>() };
+}
+
+export type Ctx = { readonly measurer: TextMeasurer; readonly devicePixelRatio: number; readonly faults: EngineFaults; readonly gridFaults: GridFaults; readonly memo: LayoutMemo };
 
 /** css-writing-modes-4 §2.1: the box's inline base direction. */
 export function directionOf(ctx: Ctx, box: LayoutNode): Direction {
@@ -430,6 +441,32 @@ function clampScrollBaseline(box: LayoutBox, baseline: LU | null, height: LU): L
 // its plain box, and a block button then centres its contents (controls.ts). css-contain-2 §3.2: a box with layout containment has
 // no baseline for anything outside it to align to.
 export function layoutContents(ctx: Ctx, node: LayoutBox | ControlBox, a: ContentsArgs): ContentsResult {
+  if (node.kind !== 'box' || !a.formattingContextRoot) return layoutContentsOnce(ctx, node, a);
+  let results = ctx.memo.roots.get(node);
+  if (results === undefined) {
+    results = new Map<string, ContentsResult>();
+    ctx.memo.roots.set(node, results);
+  }
+  const key = contentsKey(a);
+  const cached = results.get(key);
+  if (cached !== undefined) return cached;
+  const r = layoutContentsOnce(ctx, node, a);
+  results.set(key, r);
+  return r;
+}
+
+function basisKey(b: HeightBasis): string {
+  return b.kind === 'definite' ? `d${b.value}` : b.kind;
+}
+
+/** Every argument a formatting context root's layout reads, as one string. */
+function contentsKey(a: ContentsArgs): string {
+  const forced = a.forcedBorderBoxHeight === null ? 'n' : `${a.forcedBorderBoxHeight}`;
+  const stretch = a.blockStretch.kind === 'refused' ? 'r' : `a${basisKey(a.blockStretch.basis)}:${a.blockStretch.margins}`;
+  return `${a.cbInline} ${a.borderBoxWidth} ${forced} ${a.forcedHeightDefinite ? 't' : 'f'} ${basisKey(a.heightBasis)} ${a.bfcLineOffset} ${stretch}`;
+}
+
+function layoutContentsOnce(ctx: Ctx, node: LayoutBox | ControlBox, a: ContentsArgs): ContentsResult {
   const r = layoutOwnContents(ctx, node, a);
   if (!node.style.containLayout) return r;
   return { ...r, frag: { ...r.frag, baseline: null }, lastBaseline: null, lastBaselineFlex: '', defaultLastBaseline: null, defaultLastBaselineFlex: '' };

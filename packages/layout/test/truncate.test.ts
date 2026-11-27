@@ -2,7 +2,7 @@
 // text-overflow fixture group (packages/parity); these cases pin the port's decisions in 10px Ahem (every glyph and U+2026 1em).
 import { describe, expect, it } from 'vitest';
 import type { EngineFaults, LayoutBox, LayoutRect, LayoutResult, LayoutStyle } from '../src/index.ts';
-import { absoluteRects, ahemMeasurer, fontDataMeasurer, fromCssPx, layoutWithFaults, NO_ENGINE_FAULTS, NO_GRID_FAULTS, placeLines } from '../src/index.ts';
+import { absoluteRects, ahemMeasurer, fontDataMeasurer, fromCssPx, layoutWithFaults, newLayoutMemo, NO_ENGINE_FAULTS, NO_GRID_FAULTS, placeLines } from '../src/index.ts';
 import { AHEM_FONT_DATA } from '../src/text.ts';
 import type { TextMeasurer } from '../src/text.ts';
 import { ahemFont, box, neutralEnvironment, px, span, text } from './helpers.ts';
@@ -27,7 +27,7 @@ function frags(r: LayoutResult, leaf: string): number[][] {
   return out;
 }
 
-const ctx = (measurer: TextMeasurer = ahemMeasurer, faults: EngineFaults = NO_ENGINE_FAULTS) => ({ measurer, devicePixelRatio: 1, faults, gridFaults: NO_GRID_FAULTS });
+const ctx = (measurer: TextMeasurer = ahemMeasurer, faults: EngineFaults = NO_ENGINE_FAULTS) => ({ measurer, devicePixelRatio: 1, faults, gridFaults: NO_GRID_FAULTS, memo: newLayoutMemo() });
 
 describe('TXT2-f: line truncation (line_truncator.cc TruncateLine)', () => {
   it('cuts an overflowing nowrap line at a character, not a word, and puts U+2026 after it', () => {

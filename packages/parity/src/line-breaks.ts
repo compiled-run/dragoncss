@@ -8,7 +8,7 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, w
 import { join } from 'node:path';
 import type { Page } from 'playwright';
 import type { ControlBox, Ctx, InlineChild, LayoutBox, LayoutInput, LayoutRect, ListMarker, LU, PlacedLine, TextFont, TextLeaf, TextMeasurer } from '@dragon/layout';
-import { absoluteRects, clampedInput, controlAsBox, fromCssPx, layout, inlineLeaves, leafFontOf, markerTextId, NO_ENGINE_FAULTS, NO_GRID_FAULTS, placeLines, resolveBorder, resolvedInput, resolvePadding, snapEdges } from '@dragon/layout';
+import { absoluteRects, clampedInput, controlAsBox, fromCssPx, layout, inlineLeaves, leafFontOf, markerTextId, newLayoutMemo, NO_ENGINE_FAULTS, NO_GRID_FAULTS, placeLines, resolveBorder, resolvedInput, resolvePadding, snapEdges } from '@dragon/layout';
 import type { TextTransform } from 'dragon';
 import { applyTextTransform, NO_FAULTS } from 'dragon';
 import { dprLabel } from './dpr.ts';
@@ -110,7 +110,7 @@ export function engineTextLines(input: LayoutInput, measurer: TextMeasurer): Eng
     cache.set(id, w);
     return w;
   };
-  const ctx: Ctx = { measurer, devicePixelRatio: zoomed.devicePixelRatio, faults: NO_ENGINE_FAULTS, gridFaults: NO_GRID_FAULTS };
+  const ctx: Ctx = { measurer, devicePixelRatio: zoomed.devicePixelRatio, faults: NO_ENGINE_FAULTS, gridFaults: NO_GRID_FAULTS, memo: newLayoutMemo() };
   const out: EngineText[] = [];
   for (const r of boxes) {
     if (isLine(r)) continue;

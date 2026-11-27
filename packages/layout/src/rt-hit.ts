@@ -9,7 +9,7 @@
 // hit_test_location.cc or paint_layer.cc. Transforms map the 1x1 px box in float (paint/hit_testing_transform_state.cc, ui/gfx/geometry/axis_transform2d.h, no FMA).
 // Every length is in LU (1/64 px), absolute to the root.
 import type { Ctx as EngineCtx } from './block.ts';
-import { NO_ENGINE_FAULTS } from './block.ts';
+import { newLayoutMemo, NO_ENGINE_FAULTS } from './block.ts';
 import { NO_GRID_FAULTS } from './grid.ts';
 import { hasPercent, isScrollContainer, resolveBorder, resolvePadding } from './box.ts';
 import type { Edges } from './box.ts';
@@ -1419,7 +1419,7 @@ export function hitTableOf(input: LayoutInput, measurer: TextMeasurer, facts: Re
   const zmap = new Map<string, LayoutBox>();
   const rmap = new Map<string, LayoutStyle>();
   indexZoomed(zmap, rmap, zoomed.root);
-  const s: TableState = { nodes: [], ids: [], activation: [], abs: absoluteRects(out.boxes), boxes: out.boxes, zoomed: zmap, zoomedReplaced: rmap, inks: new Map<string, InkRect>(), buttons: new Map<string, boolean>(), ctx: { measurer, devicePixelRatio: zoomed.devicePixelRatio, faults: NO_ENGINE_FAULTS, gridFaults: NO_GRID_FAULTS }, dpr: input.devicePixelRatio, facts, faults };
+  const s: TableState = { nodes: [], ids: [], activation: [], abs: absoluteRects(out.boxes), boxes: out.boxes, zoomed: zmap, zoomedReplaced: rmap, inks: new Map<string, InkRect>(), buttons: new Map<string, boolean>(), ctx: { measurer, devicePixelRatio: zoomed.devicePixelRatio, faults: NO_ENGINE_FAULTS, gridFaults: NO_GRID_FAULTS, memo: newLayoutMemo() }, dpr: input.devicePixelRatio, facts, faults };
   boxNodes(s, input.root, -1, null, -1, 'auto', 0, 0, 0, 0, -1);
   const nodes: HitNode[] = [];
   for (let i = 0; i < s.nodes.length; i++) nodes.push(withInk(s, s.nodes[i] as HitNode, i));

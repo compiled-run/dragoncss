@@ -22,6 +22,16 @@ const NONE: NoneValue = { kind: 'none' };
 // CalculateMinMaxSizesIgnoringChildren). css-contain-2 §3.1: under size or inline-size containment it is contain-intrinsic-width, none
 // being 0.
 export function intrinsicContentInlineSize(ctx: Ctx, node: LayoutBox | ControlBox, kind: IntrinsicKind): LU {
+  if (node.kind !== 'box') return measureIntrinsicContentInlineSize(ctx, node, kind);
+  const sizes = kind === 'min' ? ctx.memo.intrinsicMin : ctx.memo.intrinsicMax;
+  const known = sizes.get(node);
+  if (known !== undefined) return known;
+  const measured = measureIntrinsicContentInlineSize(ctx, node, kind);
+  sizes.set(node, measured);
+  return measured;
+}
+
+function measureIntrinsicContentInlineSize(ctx: Ctx, node: LayoutBox | ControlBox, kind: IntrinsicKind): LU {
   if (node.kind === 'control' && node.control.kind === 'range') return fromCssPx(node.control.defaultInlineSize);
   // FORM-b: a text field's is size x its average character width, whatever its value (controls.ts textFieldInlineSize).
   if (node.kind === 'control' && node.control.kind === 'text-field') {

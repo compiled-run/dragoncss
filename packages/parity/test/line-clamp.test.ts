@@ -3,7 +3,7 @@
 // compiler's web output keeps the authored -webkit-box (planted webkitBoxEmittedAsFlowRoot writes flow-root). No Chrome runs here.
 import { describe, expect, it } from 'vitest';
 import type { EngineFaults, LayoutBox } from '@dragon/layout';
-import { fromCssPx, NO_ENGINE_FAULTS, NO_GRID_FAULTS, placeLines } from '@dragon/layout';
+import { fromCssPx, newLayoutMemo, NO_ENGINE_FAULTS, NO_GRID_FAULTS, placeLines } from '@dragon/layout';
 import { engineLayoutProjection, NO_FAULTS } from 'dragon';
 import type { DprCaseOutcome } from '../src/dpr.ts';
 import { committedDprCapture, DPRS, layoutCases, runDprCase } from '../src/dpr.ts';
@@ -53,7 +53,7 @@ describe('TXT2-g: -webkit-line-clamp against Chrome 145', () => {
     const find = (b: LayoutBox): LayoutBox | undefined => (b.id === 'l6' ? b : b.children.flatMap((k) => (k.kind === 'box' ? [find(k)] : [])).find((x) => x !== undefined));
     const l6 = find(p.input.root) as LayoutBox;
     const ellipsisAt = (faults: EngineFaults): number | null => {
-      const ctx = { measurer: referenceShapedMeasurer(faults), devicePixelRatio: 1, faults, gridFaults: NO_GRID_FAULTS };
+      const ctx = { measurer: referenceShapedMeasurer(faults), devicePixelRatio: 1, faults, gridFaults: NO_GRID_FAULTS, memo: newLayoutMemo() };
       const e = placeLines(ctx, l6, fromCssPx(100))[0]?.ellipsis ?? null;
       return e === null ? null : e.x / 64;
     };

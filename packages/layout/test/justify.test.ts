@@ -10,7 +10,7 @@ import { pieceGlyphs } from '../src/shaping.ts';
 import { latinBreakClass, maybeCjkIdeographOrSymbol } from '../src/inline.ts';
 import { coveredIndex } from '../src/text.ts';
 import { AHEM_FONT_DATA } from '../src/text.ts';
-import { absoluteRects, ahemMeasurer, fromCssPx, layout, NO_ENGINE_FAULTS, NO_GRID_FAULTS, placeLines } from '../src/index.ts';
+import { absoluteRects, ahemMeasurer, fromCssPx, layout, newLayoutMemo, NO_ENGINE_FAULTS, NO_GRID_FAULTS, placeLines } from '../src/index.ts';
 import type { LayoutBox, LayoutRect, LayoutResult, TextLeaf } from '../src/index.ts';
 import { box, br, neutralEnvironment, px, span, text } from './helpers.ts';
 
@@ -35,7 +35,7 @@ const justified = (width: number, leaves: (TextLeaf | ReturnType<typeof span> | 
   box('root', {}, [box('a', { width: px(width), textAlign: 'justify', ...style }, leaves)]);
 
 const shifts = (width: number, leaves: TextLeaf[]): number[][] =>
-  placeLines({ measurer: ahemMeasurer, devicePixelRatio: 1, faults: NO_ENGINE_FAULTS, gridFaults: NO_GRID_FAULTS }, justified(width, leaves).children[0] as LayoutBox, fromCssPx(width)).map((l) => [...(l.pieces[0]?.shifts ?? [])]);
+  placeLines({ measurer: ahemMeasurer, devicePixelRatio: 1, faults: NO_ENGINE_FAULTS, gridFaults: NO_GRID_FAULTS, memo: newLayoutMemo() }, justified(width, leaves).children[0] as LayoutBox, fromCssPx(width)).map((l) => [...(l.pieces[0]?.shifts ?? [])]);
 
 describe('text-align: justify', () => {
   it('expands every line but the last at its spaces, from the line-left edge; the last line is start-aligned', () => {
@@ -88,7 +88,7 @@ describe('text-align: justify on the real-font path', () => {
           for (const direction of ['ltr', 'rtl'] as const) {
             const leaves = (family: string): TextLeaf[] => [text('t', value, { font: { family, size, specifiedSize: { kind: 'px', value: size }, absoluteSize: true } })];
             const make = (family: string): LayoutBox => box('a', { width: px(width), textAlign: 'justify', direction }, leaves(family));
-            const ctx = (measurer: typeof ahemMeasurer) => ({ measurer, devicePixelRatio: 1, faults: NO_ENGINE_FAULTS, gridFaults: NO_GRID_FAULTS });
+            const ctx = (measurer: typeof ahemMeasurer) => ({ measurer, devicePixelRatio: 1, faults: NO_ENGINE_FAULTS, gridFaults: NO_GRID_FAULTS, memo: newLayoutMemo() });
             const want = placeLines(ctx(ahemMeasurer), make('Ahem'), fromCssPx(width));
             const got = placeLines(ctx(shapedMeasurer), make(SHAPED), fromCssPx(width));
             expect(got, `${value} at ${width}px, ${size}px ${direction}`).toEqual(want);
@@ -100,7 +100,7 @@ describe('text-align: justify on the real-font path', () => {
     expect(justifiedLines).toBeGreaterThan(500);
   });
   it('refuses a justified line holding a CJK ideograph or symbol Chrome expands around, its hanging end included', () => {
-    const ctx = { measurer: shapedMeasurer, devicePixelRatio: 1, faults: NO_ENGINE_FAULTS, gridFaults: NO_GRID_FAULTS };
+    const ctx = { measurer: shapedMeasurer, devicePixelRatio: 1, faults: NO_ENGINE_FAULTS, gridFaults: NO_GRID_FAULTS, memo: newLayoutMemo() };
     const font = { family: SHAPED, size: 10, specifiedSize: { kind: 'px' as const, value: 10 }, absoluteSize: true };
     const make = (value: string): LayoutBox => box('a', { width: px(55), textAlign: 'justify' }, [text('t', value, { font })]);
     const refusal = (value: string): string | null => {

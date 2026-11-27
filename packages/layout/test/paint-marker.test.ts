@@ -3,7 +3,7 @@
 // font-size s inside a ul with margin-top 10px and padding-left 60px, at DPR 1, 2, 3 and 2.625, black on white).
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { absoluteRects, ahemMeasurer, layout, NO_ENGINE_FAULTS, NO_GRID_FAULTS, validateLayoutInput, zoomInput } from '../src/index.ts';
+import { absoluteRects, ahemMeasurer, layout, newLayoutMemo, NO_ENGINE_FAULTS, NO_GRID_FAULTS, validateLayoutInput, zoomInput } from '../src/index.ts';
 import type { LayoutBox, LayoutInput, ListMarker, MarkerSymbol } from '../src/index.ts';
 import type { Ctx } from '../src/block.ts';
 import { symbolPaintRect } from '../src/marker.ts';
@@ -37,7 +37,7 @@ function devicePaint(c: Crop) {
   const zoomed = zoomInput(input, NO_ENGINE_FAULTS);
   const li = ((zoomed.root.children[0] as LayoutBox).children[0] as LayoutBox).children[0] as LayoutBox;
   if (li.marker === null) throw new Error(`${c.id}: the zoomed li lost its marker`);
-  const ctx: Ctx = { measurer: ahemMeasurer, devicePixelRatio: zoomed.devicePixelRatio, faults: NO_ENGINE_FAULTS, gridFaults: NO_GRID_FAULTS };
+  const ctx: Ctx = { measurer: ahemMeasurer, devicePixelRatio: zoomed.devicePixelRatio, faults: NO_ENGINE_FAULTS, gridFaults: NO_GRID_FAULTS, memo: newLayoutMemo() };
   return { ctx, marker: li.marker, x: at.x, y: at.y };
 }
 
