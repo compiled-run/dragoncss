@@ -1335,7 +1335,7 @@ function hitModelRefusals(cases: readonly CaseResult[], rules: readonly Rule[], 
         if (pseudo === null) continue;
         const origin = interactionRuleOrigin(r, c.resolved.element.node.origin);
         const message = fact !== null
-          ? `:${pseudo} needs Dragon hit testing through ${fact.property} on ${fact.address}, which is not built yet (package SELD-R2b)`
+          ? `:${pseudo} needs Dragon hit testing through ${fact.property === 'z-index' ? 'the negative z-index' : fact.property} on ${fact.address}, which is not built yet (package SELD-R2b)`
           : control !== null
             ? `:${pseudo} needs Dragon hit testing through the form control ${control}, which is not built yet (FORM-a)`
             : `:${pseudo} needs Dragon hit testing through the ${unmodelled?.kind} ${unmodelled?.address}${unmodelled?.reason === undefined ? '' : ` (${unmodelled.reason})`}, which is not built yet (package ${unmodelled?.pkg} hit model)`;
@@ -1343,7 +1343,9 @@ function hitModelRefusals(cases: readonly CaseResult[], rules: readonly Rule[], 
         if (seen.has(id)) continue;
         seen.add(id);
         const manual = fact !== null
-          ? `Keep ${fact.property} at its initial value in a document with :${pseudo} rules, or style the state with a component state until SELD-R2b.`
+          ? fact.property === 'z-index'
+            ? `Give ${fact.address} z-index auto, 0 or a positive integer in a document with :${pseudo} rules, or style the state with a component state until SELD-R2b.`
+            : `Keep ${fact.property} at its initial value in a document with :${pseudo} rules, or style the state with a component state until SELD-R2b.`
           : control !== null
             ? `Style the state with a component state in a document with a form control until control hit testing is built.`
             : unmodelled?.pkg === 'INL2a'

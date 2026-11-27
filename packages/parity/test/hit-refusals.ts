@@ -1,5 +1,5 @@
 // The hit lane leaves out, each by name, PNT2's cases that write a rotated transform (until SELD-R2b T146), these PNT1 cases with a
-// stacking context below the root that rt-hit.ts does not order (an integer z-index, a context its hit facts do not name), these INL1a inline-box and <br> cases and the INL2a atomic-inline cases rt-hit.ts still refuses (rt-hit.ts
+// stacking context below the root that rt-hit.ts does not order (a negative z-index, a normal-flow layer), these INL1a inline-box and <br> cases and the INL2a atomic-inline cases rt-hit.ts still refuses (rt-hit.ts
 // hitRefusal) and the SVG-a1 svg cases (hit-capture.ts hitRefusal). Shared by hit-report.test.ts and lanes.test.ts so both judge
 // the same exact union.
 export const INLINE_OUT: readonly string[] = [
@@ -73,16 +73,14 @@ export const INLINE_REASON = /is (an inline box|a <br>|an atomic inline), which 
 export const TRANSFORM_NAMED: readonly string[] = ['alias-paint', 'backface-values', 'backface-values-rtl'];
 export const TRANSFORM_REASON = /^transform on .+: hit testing through a rotated transform is SELD-R2b \(T146\)$/;
 // The opacity, filter, isolation, backdrop-filter, mix-blend-mode, mask and containment cases whose every stacking context is in the
-// z-index 0 layer are in the hit lane (rt-hit.ts orders them as their own layers); these hold one in another layer (an integer
-// z-index), a normal-flow layer, or one their hit facts do not name (opacity-group-clipped's clip has z-index: 0).
+// z-index 0 or a positive layer are in the hit lane (rt-hit.ts orders them as their own layers, by z); these hold one in a negative
+// layer or a normal-flow layer.
 export const STACKING_OUT: readonly string[] = [
-  'opacity-group-clipped', 'opacity-group-clipped-rtl', 'stacking-basic',
-  'stacking-basic-rtl', 'stacking-context', 'stacking-context-rtl', 'stacking-escape', 'stacking-escape-rtl', 'stacking-grid-items',
+  'stacking-basic', 'stacking-basic-rtl', 'stacking-context', 'stacking-context-rtl', 'stacking-grid-items',
   'stacking-grid-items-rtl', 'stacking-isolation', 'stacking-isolation-rtl', 'stacking-backface', 'stacking-backface-rtl',
-  // stacking-transform's transforms translate only, and its t-r2 has an integer z-index; isolation-stacking holds negative and positive z-index layers.
-  'stacking-transform', 'stacking-transform-rtl', 'isolation-stacking', 'isolation-stacking-rtl',
+  'isolation-stacking', 'isolation-stacking-rtl',
 ];
-export const STACKING_REASON = /^stacking context on .+: hit testing through z-index layers and stacking contexts in the normal flow is not modelled yet/;
+export const STACKING_REASON = /^stacking context on .+: hit testing through negative z-index layers and stacking contexts in the normal flow is not modelled yet/;
 // Chrome hits an svg's painted shapes (pointer-events: visiblePainted), which the hit table models with SVG-a2. svg-hidden is in
 // VISIBILITY_OUT instead: its <svg> s3 is visibility hidden, and hitRefusal names visibility before an svg.
 export const SVG_OUT: readonly string[] = ['svg-basic', 'svg-basic-rtl', 'svg-viewbox', 'svg-viewbox-rtl', 'svg-paint', 'svg-paint-rtl', 'svg-flex', 'svg-flex-rtl', 'svg-colors', 'svg-colors-rtl', 'svg-opacity', 'svg-opacity-rtl', 'svg-stroke', 'svg-stroke-rtl', 'svg-dash', 'svg-dash-rtl', 'svg-geometry', 'svg-geometry-rtl', 'svg-paint-order', 'svg-paint-order-rtl', 'svg-rrect', 'svg-rrect-rtl', 'svg-vector-effect', 'svg-vector-effect-rtl', 'svg-inert', 'svg-inert-rtl', 'inline-replaced-svg', 'inline-replaced-svg-rtl'];

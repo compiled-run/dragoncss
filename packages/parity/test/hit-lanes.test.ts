@@ -53,8 +53,8 @@ describe('device-hit on fake records', () => {
       expect(ios).toContain(`${id}\\t`);
       expect(android).toContain(`${id}\\t`);
     }
-    expect(ios).toContain('rtHit_hitTableOf(c.input(scale), measurer, map, HitTableFaults(false, false, false))');
-    expect(android).toContain('rtHit_hitTableOf(c.input(scale), measurer, map, HitTableFaults(false, false, false))');
+    expect(ios).toContain('rtHit_hitTableOf(c.input(scale), measurer, map, HitTableFaults(false, false, false, false))');
+    expect(android).toContain('rtHit_hitTableOf(c.input(scale), measurer, map, HitTableFaults(false, false, false, false))');
     // No JVM string constant may pass 64 KB.
     for (const lit of android.match(/^ {2}".*",$/gm) ?? []) expect(lit.length).toBeLessThan(65_535);
   });
