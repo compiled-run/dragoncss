@@ -7,8 +7,9 @@ export const INLINE_OUT: readonly string[] = [
   'contain-intrinsic-ahem', 'contain-intrinsic-ahem-rtl', 'containment-layout', 'containment-layout-rtl',
   // GRID-controls: the fixtures' inline-grid container sits on its line as an atomic inline.
   'grid-controls', 'grid-controls-rtl', 'grid-controls-fields',
-  // GEN and TABLE (#443): an inline ::before or ::after box, and table-properties' inline boxes.
-  'gen-inline-text', 'gen-inline-text-rtl', 'gen-inline-empty', 'gen-cascade', 'gen-cascade-rtl', 'gen-hr-li', 'gen-hr-li-rtl', 'gen-counters-quotes', 'gen-counters-quotes-rtl', 'table-properties', 'table-properties-rtl',
+  // GEN and TABLE (#443): an inline ::before or ::after box with content, and table-properties' inline boxes (gen-inline-empty's
+  // are empty, which the hit table leaves out).
+  'gen-inline-text', 'gen-inline-text-rtl', 'gen-cascade', 'gen-cascade-rtl', 'gen-hr-li', 'gen-hr-li-rtl', 'gen-counters-quotes', 'gen-counters-quotes-rtl', 'table-properties', 'table-properties-rtl',
   'inline-mixed-sizes', 'inline-mixed-sizes-rtl', 'inline-empty-boxes', 'inline-empty-boxes-rtl', 'inline-br', 'inline-br-rtl', 'inline-box-boundaries',
   'inline-box-boundaries-rtl', 'inline-box-hyphen', 'inline-tags', 'inline-tags-rtl', 'inline-baselines', 'inline-baselines-rtl',
   // #266's float-clear-inert holds an inline box.
