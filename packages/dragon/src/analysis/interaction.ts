@@ -663,6 +663,10 @@ export const HIT_MODELLED: ReadonlyMap<Longhand, (v: CssValue) => boolean> = new
   ['outline-style', all],
   ['outline-width', all],
   ['outline-offset', all],
+  // SELD-R2b: Blink hits a replaced box by its border box (LayoutReplaced::NodeAtPoint), wherever object-fit and object-position put
+  // its image; replaced-fit's hit points equal Chrome over every object-fit value and object-position form.
+  ['object-fit', all],
+  ['object-position', all],
 ]);
 
 /** A select, text field or textarea (textFieldPartOf holds both), whose UA shadow parts Chrome retargets to it, so the hit table holds it as one box (rt-hit.ts hitControlBox). */

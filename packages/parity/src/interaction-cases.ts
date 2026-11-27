@@ -65,14 +65,27 @@ export function interactionProgramOf(g: InteractionGroup, backend: NativeBackend
  */
 export function groupHit(g: InteractionGroup, inputs: readonly InteractionLevelInput[], dpr: number): (program: NativeProgram, app: number, state: number, x: number, y: number) => string | null {
   if (!Number.isFinite(dpr) || dpr <= 0) throw new Error(`${g.id}: the hit test's DPR ${dpr} is not a positive number`);
-  return (program, app, state, x, y) => {
+  // A table depends on the program, app and state only, and building one lays the page out, so each is built once, not per point.
+  const tables = new WeakMap<NativeProgram, Map<string, { readonly ids: readonly string[]; readonly prepared: ReturnType<typeof prepareHit> }>>();
+  const tableOf = (program: NativeProgram, app: number, state: number): { readonly ids: readonly string[]; readonly prepared: ReturnType<typeof prepareHit> } => {
+    let byState = tables.get(program);
+    if (byState === undefined) tables.set(program, (byState = new Map()));
+    const k = `${app} ${state}`;
+    const hit = byState.get(k);
+    if (hit !== undefined) return hit;
     const n = g.cases[app] as NativeCase;
     const key = state < 0 ? null : (inputs[app] as InteractionLevelInput).partition.states[state]?.key;
     if (key === undefined) throw new Error(`${n.case.id}: no interaction state ${state}`);
     const facts = hitFacts(n.compiled, n.case.assignment, key);
     if (facts === null) throw new Error(`${n.case.id}: no hit facts for interaction state ${state}`);
     const t = programHitTable(program, facts, n.case.environment.viewport, dpr);
-    const id = t.ids[hitAt(prepareHit(t.nodes, { ignorePointerEventsNone: false, reversedOrder: false }), x * (dpr * LU), y * (dpr * LU))] as string;
+    const built = { ids: t.ids, prepared: prepareHit(t.nodes, { ignorePointerEventsNone: false, reversedOrder: false }) };
+    byState.set(k, built);
+    return built;
+  };
+  return (program, app, state, x, y) => {
+    const t = tableOf(program, app, state);
+    const id = t.ids[hitAt(t.prepared, x * (dpr * LU), y * (dpr * LU))] as string;
     // The view hit returns the document element when nothing else is hit; the hit names element addresses only.
     return (inputs[app] as InteractionLevelInput).partition.elements.some((e) => e.address === id) ? id : null;
   };
@@ -157,6 +170,7 @@ export function stateOfMatches(p: InteractionPartition, m: Pick<InteractionSnaps
 function expectedAfter(p: InteractionPartition, before: InteractionSnapshot & { pending: boolean; keyboard: boolean }, s: InteractionStep, hit: string | null, consumes: (a: string) => boolean, keyboardInput: (a: string) => boolean): InteractionSnapshot & { pending: boolean; keyboard: boolean } {
   const pointerFocus = (x: InteractionSnapshot & { pending: boolean; keyboard: boolean }): InteractionSnapshot & { pending: boolean; keyboard: boolean } => {
     const f = focusTargetOf(p, hit);
+    if (f !== null && f === x.focus) return x;
     return { ...x, focus: f, focusVisible: f !== null && keyboardInput(f) ? f : null, keyboard: false };
   };
   switch (s.kind) {
