@@ -217,6 +217,18 @@ export type EngineFaults = {
   readonly wrapStyleGreedy: boolean;
   /** css-inline-3 §5.1: text-box-trim is ignored; every line keeps its line box's block-start and block-end edges. */
   readonly textBoxTrimIgnored: boolean;
+  /** ARAT: a ratio part at or below 2^-20 is kept instead of zeroed as gfx::SizeF does, so 1 / 0.0000005 is not auto. */
+  readonly ratioNoTrivialClamp: boolean;
+  /** ARAT: the ratio's continued fraction runs in double instead of float. */
+  readonly ratioDoubleFraction: boolean;
+  /** ARAT: every ratio is LayoutUnit(part) for each part, Blink's first step without the exact, equal-parts and continued-fraction steps. */
+  readonly ratioTruncatedParts: boolean;
+  /** ARAT: the ratio's continued fraction stops after 8 steps instead of 16. */
+  readonly ratioEightSteps: boolean;
+  /** ARAT, Chrome deviation aspect-ratio-continued-fraction: a size transfers through the exact quotient of the authored parts. */
+  readonly ratioExactSpec: boolean;
+  /** ARAT: a size transfers through the layout ratio rounded instead of truncated. */
+  readonly ratioRoundedMulDiv: boolean;
   /** FORM-search: a search field's editor and placeholder take the whole content box, as if it had no cancel button. */
   readonly searchCancelIgnored: boolean;
   /** REPL-r2a: an img that follows its image gives its natural size to every read, not only a used size with a definite width. */
@@ -315,6 +327,12 @@ export const NO_ENGINE_FAULTS: EngineFaults = {
   containerJoinsFlow: false,
   wrapStyleGreedy: false,
   textBoxTrimIgnored: false,
+  ratioNoTrivialClamp: false,
+  ratioDoubleFraction: false,
+  ratioTruncatedParts: false,
+  ratioEightSteps: false,
+  ratioExactSpec: false,
+  ratioRoundedMulDiv: false,
   searchCancelIgnored: false,
 };
 
@@ -436,7 +454,7 @@ function layoutOwnContents(ctx: Ctx, node: LayoutBox | ControlBox, a: ContentsAr
   const minMax = blockMinMaxWith(box, a.heightBasis, vbp, ctx.faults, a.blockStretch);
   const specified = a.forcedBorderBoxHeight === null ? specifiedBlockSizeWith(box, a.heightBasis, vbp, ctx.faults, a.blockStretch) : null;
   // css-sizing-4 §5.1: an auto height comes from the ratio; it is definite for the children before content (ratio.ts).
-  const fromRatio = a.forcedBorderBoxHeight === null && specified === null ? ratioInitialBlockSize(box, a.borderBoxWidth, hbp, vbp) : null;
+  const fromRatio = a.forcedBorderBoxHeight === null && specified === null ? ratioInitialBlockSize(box, ctx.faults, a.borderBoxWidth, hbp, vbp) : null;
   const fixedBorderBox = a.forcedBorderBoxHeight !== null
     ? a.forcedBorderBoxHeight
     : specified !== null ? constrain(specified, minMax) : fromRatio === null ? null : constrain(fromRatio, minMax);
@@ -759,7 +777,7 @@ export function blockLevelInlineSize(ctx: Ctx, node: LayoutBox | ControlBox, cbI
   // ResolveInlineLengthInternal, length_utils.cc at 145.0.7632.6).
   const keyword = (k: string): LU | null => {
     if (k !== 'min-content' && k !== 'max-content' && k !== 'fit-content' && k !== 'stretch') return null;
-    if (hasAspectRatio(s)) return unsupported('intrinsic-size-keyword', box.id, 'css-sizing-4 §5.1', `${k} with an aspect-ratio`);
+    if (hasAspectRatio(s, ctx.faults)) return unsupported('intrinsic-size-keyword', box.id, 'css-sizing-4 §5.1', `${k} with an aspect-ratio`);
     // css-sizing-4 §3.1: stretch fills the space the margins leave (auto margins as 0), whatever box-sizing says.
     if (k === 'stretch') return stretched;
     const minC = add(intrinsicContentInlineSize(ctx, node, 'min'), hbp);
@@ -779,7 +797,7 @@ export function blockLevelInlineSize(ctx: Ctx, node: LayoutBox | ControlBox, cbI
   const raw = keywordWidth !== null ? keywordWidth : specified === null ? auto() : borderBoxFromSpecified(specified, hbp, s.boxSizing);
   const lengths = inlineMinMaxWith(s, keywordMin !== null ? AUTO : lengthMinWidth(box.id, s.minWidth), keywordMax !== null ? NONE : lengthMaxWidth(box.id, s.maxWidth), cbInline, hbp, ctx.faults);
   const mm: MinMax = { min: keywordMin !== null ? keywordMin : lengths.min, max: keywordMax !== null ? keywordMax : lengths.max };
-  const width = keywordWidth === null && specified === null && hasAspectRatio(s) ? ratioBlockLevelInlineSize(ctx, box, cbInline, raw) : max(constrain(raw, mm), hbp);
+  const width = keywordWidth === null && specified === null && hasAspectRatio(s, ctx.faults) ? ratioBlockLevelInlineSize(ctx, box, cbInline, raw) : max(constrain(raw, mm), hbp);
   return placeWithMargins(m, container, width);
 }
 

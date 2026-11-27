@@ -1029,8 +1029,8 @@
           "textAlign": "start",
           "aspectRatio": {
            "kind": "ratio",
-           "width": 1024,
-           "height": 576
+           "width": 16,
+           "height": 9
           },
           "verticalAlign": {
            "kind": "keyword",
@@ -1381,8 +1381,8 @@
         "textAlign": "start",
         "aspectRatio": {
          "kind": "ratio",
-         "width": 1024,
-         "height": 576
+         "width": 16,
+         "height": 9
         },
         "verticalAlign": {
          "kind": "keyword",

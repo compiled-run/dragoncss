@@ -343,7 +343,7 @@ function placeOption(ctx: Ctx, box: LayoutBox, o: AnchorOption, defaultAnchor: s
   const yStretch = !ym.hasAutoInset && yAxis.align === 'normal';
   const styled: LayoutBox = { ...box, style: s };
   const sizeKeyword = (k: string): boolean => k === 'min-content' || k === 'max-content' || k === 'fit-content' || k === 'stretch';
-  if (hasAspectRatio(s) && (sizeKeyword(s.width.kind) || sizeKeyword(s.height.kind))) unsupported('intrinsic-size-keyword', box.id, 'css-sizing-4 §5.1', `an intrinsic size keyword with an aspect-ratio on the anchored ${box.id}`);
+  if (hasAspectRatio(s, ctx.faults) && (sizeKeyword(s.width.kind) || sizeKeyword(s.height.kind))) unsupported('intrinsic-size-keyword', box.id, 'css-sizing-4 §5.1', `an intrinsic size keyword with an aspect-ratio on the anchored ${box.id}`);
   if (s.height.kind === 'stretch') unsupported('intrinsic-size-keyword', box.id, 'css-sizing-4 §3.1', `height: stretch on the anchored ${box.id}`);
   const specified = sizeKeyword(s.width.kind) ? null : resolveInlineLengthWith(lengthWidth(box.id, s.width), regionWidth, ctx.faults);
   let width: LU;
@@ -355,7 +355,7 @@ function placeOption(ctx: Ctx, box: LayoutBox, o: AnchorOption, defaultAnchor: s
     width = s.width.kind === 'stretch' ? available : s.width.kind === 'min-content' ? minContent : s.width.kind === 'max-content' ? maxContent : min(maxContent, max(minContent, available));
   } else if (specified !== null) width = borderBoxFromSpecified(specified, hbp, s.boxSizing);
   // css-sizing-4 §5.1 (ratio.ts): an auto width may come through the ratio from a height or a stretched block size.
-  else if (hasAspectRatio(s)) width = ratioAbsoluteInlineSize(ctx, styled, regionWidth, xStretch ? sub(xAvailable, xMarginSum) : null, sub(xAvailable, xMarginSum), yStretch ? sub(yAvailable, add(mt.value, mb.value)) : null);
+  else if (hasAspectRatio(s, ctx.faults)) width = ratioAbsoluteInlineSize(ctx, styled, regionWidth, xStretch ? sub(xAvailable, xMarginSum) : null, sub(xAvailable, xMarginSum), yStretch ? sub(yAvailable, add(mt.value, mb.value)) : null);
   else if (xStretch) width = sub(xAvailable, xMarginSum);
   else {
     const minContent = add(intrinsicContentInlineSize(ctx, styled, 'min'), hbp);
@@ -367,7 +367,7 @@ function placeOption(ctx: Ctx, box: LayoutBox, o: AnchorOption, defaultAnchor: s
   // Height (ComputeOofBlockDimensions): auto stretches between two insets with normal alignment; otherwise the contents decide, a
   // min-content, max-content or fit-content height as auto does.
   let forced: LU | null = null;
-  if (s.height.kind === 'auto' && yStretch && !ratioSetsAbsoluteHeight(styled, xStretch)) {
+  if (s.height.kind === 'auto' && yStretch && !ratioSetsAbsoluteHeight(styled, ctx.faults, xStretch)) {
     forced = max(constrain(sub(yAvailable, add(mt.value, mb.value)), blockMinMaxWith(styled, { kind: 'definite', value: regionHeight }, vbp, ctx.faults, NO_STRETCH)), vbp);
   }
   const contentHeight = s.height.kind === 'min-content' || s.height.kind === 'max-content' || s.height.kind === 'fit-content';

@@ -657,8 +657,8 @@ describe.sequential('S5 parity: Chrome 145 vs Dragon, every case of every fixtur
     });
   }
   it('T040 (M2): every registered Chrome deviation is distinguished; the contradicted auto-margin-overflow-cross-start is retired', () => {
-    expect(chromeDeviations.map((d) => [d.id, d.finding.kind])).toEqual([['half-leading-floor', 'distinguished'], ['min-max-end-margin', 'distinguished'], ['wrap-reverse-baseline-line', 'distinguished']]);
-    expect(chromeDeviations.map((d) => d.fault)).toEqual(['halfLeadingSpec', 'minMaxEndMarginSpec', 'wrapReverseBaselineSpec']);
+    expect(chromeDeviations.map((d) => [d.id, d.finding.kind])).toEqual([['half-leading-floor', 'distinguished'], ['min-max-end-margin', 'distinguished'], ['wrap-reverse-baseline-line', 'distinguished'], ['aspect-ratio-continued-fraction', 'distinguished']]);
+    expect(chromeDeviations.map((d) => d.fault)).toEqual(['halfLeadingSpec', 'minMaxEndMarginSpec', 'wrapReverseBaselineSpec', 'ratioExactSpec']);
     expect(Object.keys(NO_ENGINE_FAULTS)).not.toContain('autoMarginOverflowSpec');
   });
 

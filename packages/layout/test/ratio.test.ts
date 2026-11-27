@@ -5,9 +5,8 @@ import type { AspectRatioValue, LayoutBox, LayoutRect, LayoutStyle, TextLeaf } f
 import { box, neutralEnvironment, pct, px, text } from './helpers.ts';
 
 // SIZE-ar (T050): aspect-ratio on non-replaced boxes, pinned to rects measured in Chrome 145.0.7632.6 (probe markup mirrored
-// here: body margin 0, 10px Ahem, a 400x300 viewport). Layout ratios are raw LayoutUnit pairs, as the compiler writes them.
-const r = (w: number, h: number): AspectRatioValue => ({ kind: 'ratio', width: w * 64, height: h * 64 });
-const raw = (width: number, height: number): AspectRatioValue => ({ kind: 'ratio', width, height });
+// here: body margin 0, 10px Ahem, a 400x300 viewport). The engine takes the authored parts, as the compiler writes them.
+const r = (w: number, h: number): AspectRatioValue => ({ kind: 'ratio', width: w, height: h });
 const t = (id: string, s: string) => text(`${id}:text0`, s);
 const edges = (side: 'padding' | 'border', top: number, right: number, bottom = top, left = right): Partial<LayoutStyle> =>
   side === 'padding'
@@ -38,7 +37,7 @@ describe('block-level: the auto height comes from the width', () => {
       [101, r(16, 9), 56.8125],
       [100, r(7, 3), 42.84375],
       [100, r(3, 7), 233.328125],
-      [100, raw(7, 10), 142.84375],
+      [100, r(0.7, 1), 142.84375],
       [100, r(1000, 1), 0.09375],
       [10, r(1, 1000), 10000],
     ];
@@ -195,10 +194,11 @@ describe('the validator', () => {
       expect(validateLayoutInput(input({ height })).ok, JSON.stringify(height)).toBe(true);
     }
     expect(validateLayoutInput(input({ aspectRatio: r(1, 1), height: pp(0) })).ok).toBe(true);
-    expect(validateLayoutInput(input({ aspectRatio: { kind: 'ratio', width: 0, height: 64 } })).ok).toBe(false);
-    expect(validateLayoutInput(input({ aspectRatio: { kind: 'ratio', width: 1.5, height: 64 } })).ok).toBe(false);
-    expect(validateLayoutInput(input({ aspectRatio: { kind: 'ratio', width: 2147483648, height: 64 } })).ok).toBe(false);
-    expect(validateLayoutInput(input({ aspectRatio: { kind: 'auto-ratio', width: 64, height: 2147483647 } })).ok).toBe(true);
+    // The parts are the authored <number>s: finite and non-negative, zero, fractional and huge included.
+    for (const [width, height] of [[0, 1], [1.5, 1], [3, 3.4], [2147483648, 1], [1e40, 1], [1, 0.0000005]] as const) expect(validateLayoutInput(input({ aspectRatio: { kind: 'ratio', width, height } })).ok, `${width} / ${height}`).toBe(true);
+    for (const [width, height] of [[-1, 1], [1, -0.5], [Number.POSITIVE_INFINITY, 1], [1, Number.NaN]] as const) expect(validateLayoutInput(input({ aspectRatio: { kind: 'auto-ratio', width, height } })).ok, `${width} / ${height}`).toBe(false);
+    // A percentage block size stays refused beside any ratio but auto, a degenerate one included.
+    for (const aspectRatio of [r(1, 0), r(1, 0.0000005), r(3, 3.4)]) expect(validateLayoutInput(input({ aspectRatio, height: pct(50) })).ok, JSON.stringify(aspectRatio)).toBe(false);
   });
 });
 
@@ -225,6 +225,31 @@ describe('units.ts layoutRatio and mulDiv (Blink LayoutRatioFromSizeF and Layout
     for (const [w, h] of [[0, 1], [1, 0], [0, 0], [1e-7, 1]] as const) expect(layoutRatio(w, h), `${w} / ${h}`).toBeNull();
     // Chrome clamps a part to the float range: 1e40 is FLT_MAX, which saturates the LayoutUnit.
     expect(layoutRatio(1e40, 1)).toEqual({ width: 2147483647, height: 64 });
+  });
+  it('zeroes a part at or below 2^-20 after the float narrowing, as gfx::SizeF does', () => {
+    // Chrome 145 computes 0.00000095367432 as 0 (it narrows to 2^-20) and 0.0000009536744 as 9.53674e-07.
+    expect(layoutRatio(1, 0.00000095367432)).toBeNull();
+    expect(layoutRatio(1, 2 ** -20)).toBeNull();
+    expect(layoutRatio(1, 0.0000009536744)).toEqual({ width: 7340031, height: 7 });
+    expect(layoutRatio(1, 0.0000005)).toBeNull();
+    expect(layoutRatio(0.0000005, 1)).toBeNull();
+    expect(layoutRatio(1, 0.000001)).toEqual({ width: 1000000, height: 1 });
+  });
+  it('lays out the nodes that tell the conversion steps apart, and the Markless shop card, as Chrome 145 does', () => {
+    const height = (w: number, h: number, widthPx: number, dpr = 1): number => {
+      const lr = layoutRatio(w, h);
+      if (lr === null) throw new Error(`${w} / ${h} is degenerate`);
+      return mulDiv(fromCssPx(widthPx * dpr), lr.height, lr.width) / 64;
+    };
+    expect([111, 148, 185].map((x) => height(1.1875626880641925, 1, x))).toEqual([93.453125, 124.609375, 155.765625]);
+    expect(height(1, 3.14159265358979, 56.5)).toBe(177.5);
+    expect(height(1.618033988749895, 1, 240)).toBe(148.3125);
+    expect(height(3, 3.4, 100)).toBe(113.328125);
+    expect(height(3, 3.4, 173.5)).toBe(196.625);
+    // The shop's skeleton card at a 390px viewport is 173px wide; Chrome's device px at DPR 1 and 3.
+    expect(height(3, 3.4, 173)).toBe(196.0625);
+    expect(height(3, 3.4, 173, 3)).toBe(588.1875);
+    expect(at(run([box('a', { width: px(173), aspectRatio: r(3, 3.4) })]), 'a')).toEqual([0, 0, 173, 196.0625]);
   });
   it('mulDiv is exact in 64-bit integers, truncates toward zero and clamps to int', () => {
     const cases: readonly [number, number, number][] = [
