@@ -1081,6 +1081,10 @@ function naturalSizeValue(v: JsonValue, path: string): NaturalSizeValue {
     obj(v, ['kind'], path);
     return { kind: 'runtime' };
   }
+  if (k === 'followed') {
+    const o = obj(v, ['kind', 'width', 'height'], path);
+    return { kind: 'followed', width: numField(o, 'width', path), height: numField(o, 'height', path) };
+  }
   return fail(`${path}: unknown kind ${k}`);
 }
 
@@ -1293,7 +1297,7 @@ const FAULT_KEYS: readonly string[] = [
   'orderHalfEven', 'orderUnclamped', 'gutterReserved', 'overflowIgnoresPadding', 'ellipsisInTextFont', 'noDotsFallback', 'truncateChangesBlockSize',
   'preservedSpaceCollapsed', 'trailingPreWrapNotHanging', 'breakSpacesHanging', 'indentEveryLine', 'indentAfterBr', 'indentPercentInIntrinsic', 'indentRtlFromLeft',
   'anywhereMinContentIgnored', 'breakWordShrinksMinContent', 'breakAnywhereAlways', 'emergencyBreakBeforeOpportunity', 'wordBreakBreakWordIgnored', 'breakAllIgnored',
-  'clampHeightIncludesHiddenLines', 'clampEllipsisMissingWhenLineFits', 'clampEllipsisOnExactLastLine', 'containedContentSized', 'menuListShownLabelOnly', 'containerJoinsFlow', 'wrapStyleGreedy', 'textBoxTrimIgnored', 'searchCancelIgnored',
+  'clampHeightIncludesHiddenLines', 'clampEllipsisMissingWhenLineFits', 'clampEllipsisOnExactLastLine', 'containedContentSized', 'menuListShownLabelOnly', 'containerJoinsFlow', 'wrapStyleGreedy', 'textBoxTrimIgnored', 'searchCancelIgnored', 'runtimeFollowsReadUnguarded', 'runtimeFollowsDeviceCheckSkipped',
   'inlineBlockFirstBaseline', 'overflowBaselineIgnored', 'inlineFlexLastBaseline', 'atomicMarginExcluded', 'noBreakAroundAtomic', 'atomicShrinkToFitIgnored',
   'inlineGridLastItemBaseline',
   'ratioNoTrivialClamp', 'ratioDoubleFraction', 'ratioTruncatedParts', 'ratioEightSteps', 'ratioExactSpec', 'ratioRoundedMulDiv',
@@ -1397,6 +1401,8 @@ function decodeFaults(v: JsonValue): EngineFaults {
     ratioExactSpec: b('ratioExactSpec'),
     ratioRoundedMulDiv: b('ratioRoundedMulDiv'),
     searchCancelIgnored: b('searchCancelIgnored'),
+    runtimeFollowsReadUnguarded: b('runtimeFollowsReadUnguarded'),
+    runtimeFollowsDeviceCheckSkipped: b('runtimeFollowsDeviceCheckSkipped'),
   };
 }
 
@@ -4093,6 +4099,8 @@ export function runMarklessLayout(line: string): string {
     if (parsed.kind === 'obj' && parsed.values.has('slots')) keys.push('slots');
     if (parsed.kind === 'obj' && parsed.values.has('sticky')) keys.push('sticky');
     if (parsed.kind === 'obj' && parsed.values.has('textAreas')) keys.push('textAreas');
+    if (parsed.kind === 'obj' && parsed.values.has('naturals')) keys.push('naturals');
+    if (parsed.kind === 'obj' && parsed.values.has('faults')) keys.push('faults');
     if (parsed.kind === 'obj' && parsed.values.has('groups')) keys.push('groups');
     return marklessLayout(obj(parsed, keys, '$'), null);
   } catch (e) {
@@ -4224,6 +4232,8 @@ export function runMarklessRowsLayout(line: string, shaper: GlyphShaper): string
     if (parsed.kind === 'obj' && parsed.values.has('texts')) keys.push('texts');
     if (parsed.kind === 'obj' && parsed.values.has('sticky')) keys.push('sticky');
     if (parsed.kind === 'obj' && parsed.values.has('textAreas')) keys.push('textAreas');
+    if (parsed.kind === 'obj' && parsed.values.has('naturals')) keys.push('naturals');
+    if (parsed.kind === 'obj' && parsed.values.has('faults')) keys.push('faults');
     if (parsed.kind === 'obj' && parsed.values.has('groups')) keys.push('groups');
     return marklessLayout(obj(parsed, keys, '$'), shaper);
   } catch (e) {
@@ -4598,6 +4608,86 @@ function variantRootJson(plan: JsonObj, vi: number): JsonValue {
   return field(obj(variants[vi] as JsonValue, ['rootFontSize', 'root'], `$.plan.variants[${vi}]`), 'root', `$.plan.variants[${vi}]`);
 }
 
+/** REPL-r2a on the device: the tree with each img that follows its image given its decoded natural size in CSS px ([width, height]). */
+export function withFollowedNaturals(box: LayoutBox, given: Map<string, readonly number[]>): LayoutBox {
+  return { ...box, children: box.children.map((c) => followedChild(c, given)) };
+}
+
+function followedChild(c: LayoutBox['children'][number], given: Map<string, readonly number[]>): LayoutBox['children'][number] {
+  if (c.kind === 'replaced') {
+    const leaf: ReplacedLeaf = c;
+    const g = given.get(leaf.id);
+    if (g === undefined || leaf.natural.kind !== 'followed' || g.length !== 2) return c;
+    const natural: NaturalSizeValue = { kind: 'followed', width: g[0] as number, height: g[1] as number };
+    const out: ReplacedLeaf = { ...leaf, natural };
+    return out;
+  }
+  if (c.kind === 'box') return withFollowedNaturals(c, given);
+  if (c.kind === 'control') {
+    const control: ControlBox = c;
+    const out: ControlBox = { ...control, children: control.children.map((k) => followedChild(k, given)) };
+    return out;
+  }
+  return c;
+}
+
+/** The ids of the imgs in the tree that follow their image. */
+export function followedImageIds(box: LayoutBox | LayoutBox['children'][number], out: string[]): string[] {
+  if (box.kind === 'replaced' && box.natural.kind === 'followed') out.push(box.id);
+  if (box.kind === 'box' || box.kind === 'control') for (const c of box.children) followedImageIds(c, out);
+  return out;
+}
+
+/**
+ * REPL-r2a: naturals, {img id: [width, height] in CSS px, or null while it loads or has no src (0 by 0)}, one per img of the
+ * variant that follows its image and no other.
+ */
+function planNaturals(v: JsonValue, followed: readonly string[]): Map<string, readonly number[]> {
+  const out = new Map<string, readonly number[]>();
+  const known = new Map<string, boolean>();
+  for (const id of followed) known.set(id, true);
+  if (v.kind !== 'obj') return fail('$.naturals: expected an object');
+  for (const [id, n] of v.values) {
+    if (!known.has(id)) fail(`$.naturals.${id}: not an img of the plan that follows its image`);
+    if (n.kind === 'null') {
+      out.set(id, [0, 0]);
+      continue;
+    }
+    const a = arr(n, `$.naturals.${id}`);
+    if (a.length !== 2) fail(`$.naturals.${id}: expected [width, height] or null`);
+    const w = num(a[0] as JsonValue, `$.naturals.${id}[0]`);
+    const ht = num(a[1] as JsonValue, `$.naturals.${id}[1]`);
+    if (!(w >= 0) || !(ht >= 0)) fail(`$.naturals.${id}: a natural size is not negative`);
+    out.set(id, [w, ht]);
+  }
+  return out;
+}
+
+/**
+ * REPL-r2a ruling 1(c): the device's own proof that an image moved only block sizes. Every box's and line's inline position and
+ * size equal those of the layout with each such img at 0 by 0, at the same viewport and ratio; else the layout stops, naming it.
+ */
+function followedInlineCheck(loading: LayoutInput, measurer: TextMeasurer, abs: Map<string, LayoutRect>, lines: readonly PlanText[]): void {
+  const base = layoutWithInflow(loading, measurer, NO_ENGINE_FAULTS, NO_GRID_FAULTS).result;
+  if (base.kind !== 'ok') fail(`the engine refused the plan while its images load, at ${base.unsupported.nodeId}: ${base.unsupported.code} ${base.unsupported.detail}`);
+  for (const [id, b] of absoluteRects(base.boxes)) {
+    const now = abs.get(id);
+    if (now === undefined || now.x !== b.x || now.width !== b.width) fail(`an image that follows its image changes the inline size or position of ${id} (runtime-image-size)`);
+  }
+  const before = new Map<string, readonly PlanLine[]>();
+  for (const t of planTextLines(loading, measurer, base.boxes)) before.set(t.id, t.lines);
+  for (const t of lines) {
+    const was = before.get(t.id);
+    if (was === undefined || was.length !== t.lines.length) fail(`an image that follows its image changes the lines of ${t.id} (runtime-image-size)`);
+    const old = was as readonly PlanLine[];
+    for (let i = 0; i < t.lines.length; i++) {
+      const l = t.lines[i] as PlanLine;
+      const w = old[i] as PlanLine;
+      if (w.start !== l.start || w.rect.x !== l.rect.x || w.rect.width !== l.rect.width) fail(`an image that follows its image changes the lines of ${t.id} (runtime-image-size)`);
+    }
+  }
+}
+
 function marklessLayout(o: JsonObj, live: GlyphShaper | null): string {
     const plan = planObj(field(o, 'plan', '$'));
     const values = slotValues(o, planSlots(plan));
@@ -4616,7 +4706,12 @@ function marklessLayout(o: JsonObj, live: GlyphShaper | null): string {
     const variant = spliced === null ? (o.values.has('groups') ? groupedVariant(plan, pageParts, field(o, 'groups', '$')) : slottedVariant(plan, parts.variant, parts.fields, parts.refusals, values)) : spliced.variant;
     const viewport = decodeViewport(field(o, 'viewport', '$'), '$.viewport');
     const safe = obj(field(o, 'safeArea', '$'), ['top', 'right', 'bottom', 'left'], '$.safeArea');
-    const input: LayoutInput = {
+    const followed = followedImageIds(variant.root, []);
+    // REPL-r2a ruling 4: a row's copy of an img that follows its image is not laid out again per row.
+    for (const id of followed) if (holds(id, '@')) fail(`the engine refused the plan at ${id} (a row: <template id>@<row key>): runtime-image-size an img that follows its image is not laid out again inside a row`);
+    const hasNaturals = o.values.has('naturals');
+    const given = hasNaturals ? planNaturals(field(o, 'naturals', '$'), followed) : new Map<string, readonly number[]>();
+    const loading: LayoutInput = {
       viewport,
       devicePixelRatio: dpr,
       viewportUnits: { small: viewport, large: viewport, dynamic: viewport },
@@ -4624,10 +4719,19 @@ function marklessLayout(o: JsonObj, live: GlyphShaper | null): string {
       rootFontSize: variant.rootFontSize,
       root: variant.root,
     };
+    const input: LayoutInput = {
+      viewport,
+      devicePixelRatio: dpr,
+      viewportUnits: { small: viewport, large: viewport, dynamic: viewport },
+      safeArea: { top: numField(safe, 'top', '$.safeArea'), right: numField(safe, 'right', '$.safeArea'), bottom: numField(safe, 'bottom', '$.safeArea'), left: numField(safe, 'left', '$.safeArea') },
+      rootFontSize: variant.rootFontSize,
+      root: hasNaturals ? withFollowedNaturals(variant.root, given) : variant.root,
+    };
     const dashed = spliced === null ? parts.dashed : spliced.dashed;
     const scrollers = spliced === null ? parts.scrollers : spliced.scrollers;
 
-    const placed = layoutWithInflow(input, measurer, NO_ENGINE_FAULTS, NO_GRID_FAULTS);
+    const faults = o.values.has('faults') ? decodeFaults(field(o, 'faults', '$')) : NO_ENGINE_FAULTS;
+    const placed = layoutWithInflow(input, measurer, faults, NO_GRID_FAULTS);
     const r = placed.result;
     // REPL-r1: a row's copy is named <template id>@<row key>, so a stop inside a row names the row.
     if (r.kind !== 'ok') return fail(`the engine refused the plan at ${r.unsupported.nodeId}${holds(r.unsupported.nodeId, '@') ? ' (a row: <template id>@<row key>)' : ''}: ${r.unsupported.code} ${r.unsupported.detail}`);
@@ -4641,11 +4745,13 @@ function marklessLayout(o: JsonObj, live: GlyphShaper | null): string {
     const zoomed = resolvedInput(input, measurer, NO_ENGINE_FAULTS);
     planDeviceBorders(zoomed.root, zoomed.devicePixelRatio, deviceBorders);
     const lines = new Map<string, string>();
-    for (const t of planTextLines(input, measurer, boxes)) {
+    const textLines = planTextLines(input, measurer, boxes);
+    for (const t of textLines) {
       const text = texts.get(t.id);
       const at = abs.get(t.id);
       if (text !== undefined && at !== undefined) lines.set(t.id, planLines(t, text, at, measurer));
     }
+    if (hasNaturals && !faults.runtimeFollowsDeviceCheckSkipped) followedInlineCheck(loading, measurer, abs, textLines);
     const ranges = scrollRanges(input, measurer);
     if (ranges.kind === 'refused') return fail(`the engine refused the scroll ranges at ${ranges.nodeId}: ${ranges.detail}`);
     const rangeOf = new Map<string, ScrollRange>();

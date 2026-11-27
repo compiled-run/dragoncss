@@ -19,7 +19,7 @@ import type { RgbaImage } from '../src/native-compare.ts';
 import { compileFixture, enforcedCompile } from '../src/pipeline.ts';
 import type { Projection } from '../src/pipeline.ts';
 import type { RuntimeSample } from '../src/runtime-samples.ts';
-import { committedRuntimeCapture, fixtureRuntimeLayout, QUADRANTS, RUNTIME_DPRS, runtimeImgs, runtimePixelsPath, samplesOf } from '../src/runtime-samples.ts';
+import { committedRuntimeCapture, fixtureRuntimeLayout, PENDING_URL, QUADRANTS, RUNTIME_DPRS, runtimeImgs, runtimePixelsPath, samplesOf } from '../src/runtime-samples.ts';
 import { decodePng } from '../src/pixel-reference.ts';
 import { referenceShapedMeasurer } from '../src/text-shaper-host.ts';
 
@@ -49,14 +49,14 @@ const uncheckedProjection: Projection = (compiled, env, assignment) => {
 describe('REPL-r1: every sample image Chrome loads lays out as Dragon\'s one layout', () => {
   it('covers the runtime fixtures, at DPR 1 and every device DPR', () => {
     expect(RUNTIME_DPRS).toEqual([1, ...DEVICE_DPRS]);
-    expect(LAYOUT.map((s) => s.id)).toEqual(['replaced-runtime-sized', 'replaced-runtime-ratio', 'replaced-runtime-fit', 'replaced-runtime-flex', 'replaced-runtime-grid', 'replaced-runtime-absent', 'replaced-runtime-src-change']);
-    expect(RUNTIME.length - LAYOUT.length).toBe(6);
+    expect(LAYOUT.map((s) => s.id)).toEqual(['replaced-runtime-sized', 'replaced-runtime-ratio', 'replaced-runtime-fit', 'replaced-runtime-flex', 'replaced-runtime-grid', 'replaced-runtime-absent', 'replaced-runtime-src-change', 'replaced-runtime-follows']);
+    expect(RUNTIME.length - LAYOUT.length).toBe(7);
   });
 
   it('at DPR 1, 2, 2.625 and 3, in both directions, every sample (loaded, pending, no src and changed) is exact in LU', () => {
     const off: string[] = [];
     let compared = 0;
-    for (const spec of LAYOUT) {
+    for (const spec of LAYOUT.filter((x) => x.id !== FOLLOWS)) {
       for (const c of casesOfSpec(spec.id)) {
         const compiled = enforcedCompile(spec, c.environment.direction);
         for (const sample of samples(spec.id)) {
@@ -70,6 +70,69 @@ describe('REPL-r1: every sample image Chrome loads lays out as Dragon\'s one lay
     }
     expect(off).toEqual([]);
     expect(compared).toBe(14 * 4 * 9 + 2 * 4 * 2);
+  });
+});
+
+const FOLLOWS = 'replaced-runtime-follows';
+// REPL-r2a: the natural size a host gives an img that follows its image, per sample: a PNG's pixel size, an SVG's viewBox (only its
+// ratio matters, as the width is definite), 0 by 0 while it loads. Chrome sizes an SVG with no size and no viewBox as 300x150
+// with no ratio, which no natural size gives: that sample is a named divergence (IMG-runtime-natural-spec.md).
+// A swap to a src that has not loaded keeps the old image, and its natural size, until the new one is set.
+const followNatural = (s: RuntimeSample): readonly [number, number] | null => {
+  if (s.id === 'svg-unsized') return null;
+  if (s.id === 'svg-viewbox') return [4, 3];
+  if (s.kind === 'swap' && s.url === PENDING_URL && s.from !== undefined) return [s.from.width, s.from.height];
+  return [s.width, s.height];
+};
+const following = (n: LayoutNode, size: readonly [number, number]): LayoutNode => {
+  if (n.kind === 'replaced') return n.natural.kind === 'followed' ? { ...n, natural: { kind: 'followed', width: size[0], height: size[1] } } : n;
+  if (n.kind === 'box' || n.kind === 'control') return { ...n, children: n.children.map((c) => (c.kind === 'box' || c.kind === 'control' || c.kind === 'replaced' ? following(c, size) : c)) } as LayoutNode;
+  return n;
+};
+const followProjection = (size: readonly [number, number]): Projection => (compiled, env, assignment) => {
+  const p: LayoutProjection = engineLayoutProjection(compiled, env, assignment);
+  return p.kind === 'ready' ? { ...p, input: { ...p.input, root: following(p.input.root, size) as LayoutBox } } : p;
+};
+const followOff = (id: string, compile: (direction: 'ltr' | 'rtl') => Compiled<'ios' | 'web'>): { readonly off: string[]; readonly compared: number } => {
+  const off: string[] = [];
+  let compared = 0;
+  for (const c of casesOfSpec(id)) {
+    const compiled = compile(c.environment.direction);
+    for (const sample of samples(id)) {
+      const size = followNatural(sample);
+      if (size === null) continue;
+      for (const dpr of RUNTIME_DPRS) {
+        const o = runDprCase(c, compiled, dpr, committedRuntimeCapture(c.id, sample.id, dpr), NO_ENGINE_FAULTS, followProjection(size));
+        compared++;
+        if (o.status !== 'pass') off.push(`${c.id}~${sample.id}@${dpr}: ${o.reason}`);
+      }
+    }
+  }
+  return { off, compared };
+};
+
+describe('REPL-r2a: an img that follows its image lays out as Chrome does once each sample loads', () => {
+  it('at DPR 1, 2, 2.625 and 3, in both directions, every sample but the unsized SVG is exact in LU', () => {
+    const spec = RUNTIME.find((x) => x.id === FOLLOWS) as (typeof RUNTIME)[number];
+    const r = followOff(FOLLOWS, (d) => enforcedCompile(spec, d));
+    expect(r.off).toEqual([]);
+    expect(r.compared).toBe(2 * 9 * 4);
+  });
+  it('loading (0 by 0) is a different layout from a loaded image, so the comparison is not vacuous', () => {
+    const [c] = casesOfSpec(FOLLOWS) as [ParityCase];
+    const spec = RUNTIME.find((x) => x.id === FOLLOWS) as (typeof RUNTIME)[number];
+    expect(runDprCase(c, enforcedCompile(spec, 'ltr'), 1, committedRuntimeCapture(c.id, 'png-400x300', 1), NO_ENGINE_FAULTS, followProjection([0, 0])).status).toBe('fail');
+  });
+  // The engine itself lays the page out as Chrome does under the plant: rule 2 guards what the build fixes for the device (its text
+  // plans), so what fails is the device's own check (markless-follows.test.ts), not this lane.
+  it('plant runtimeFollowsWidthUnchecked: reject-runtime-follows-width compiles, its box moving inline with the image', () => {
+    const id = 'reject-runtime-follows-width';
+    const planted = (d: 'ltr' | 'rtl') => compileFixture(RUNTIME.find((x) => x.id === id) as (typeof RUNTIME)[number], { ...NO_FAULTS, runtimeFollowsWidthUnchecked: true }, 'enforce', d, (i) => i, fixtureRuntimeLayout(ENVIRONMENT.viewport)).compiled;
+    expect(planted('ltr').diagnostics.filter((d) => d.code === 'DRAGON_RUNTIME_IMAGE_SIZE').map((d) => d.message)).toEqual([]);
+    expect(planted('ltr').ok).toBe(true);
+    expect(followOff(id, planted).off).toEqual([]);
+    const [c] = casesOfSpec(id) as [ParityCase];
+    expect(runDprCase(c, planted('ltr'), 1, committedRuntimeCapture(c.id, 'png-400x300', 1), NO_ENGINE_FAULTS, followProjection([0, 0])).status).toBe('fail');
   });
 });
 

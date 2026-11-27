@@ -1,0 +1,113 @@
+{
+  "chrome": "145.0.7632.6",
+  "cases": [
+    {
+      "id": "below-at-0",
+      "dpr": 1,
+      "before": 0,
+      "after": 0,
+      "top": 600,
+      "was": 0,
+      "now": 300
+    },
+    {
+      "id": "above",
+      "dpr": 1,
+      "before": 700,
+      "after": 1000,
+      "top": 600,
+      "was": 0,
+      "now": 300
+    },
+    {
+      "id": "above-swap",
+      "dpr": 1,
+      "before": 1000,
+      "after": 1020,
+      "top": 600,
+      "was": 300,
+      "now": 320
+    },
+    {
+      "id": "crossing-swap",
+      "dpr": 1,
+      "before": 700,
+      "after": 700,
+      "top": 600,
+      "was": 300,
+      "now": 320
+    },
+    {
+      "id": "top-at-0",
+      "dpr": 1,
+      "before": 0,
+      "after": 0,
+      "top": 0,
+      "was": 0,
+      "now": 300
+    },
+    {
+      "id": "top-above",
+      "dpr": 1,
+      "before": 100,
+      "after": 400,
+      "top": 0,
+      "was": 0,
+      "now": 300
+    },
+    {
+      "id": "below-at-0",
+      "dpr": 3,
+      "before": 0,
+      "after": 0,
+      "top": 600,
+      "was": 0,
+      "now": 300
+    },
+    {
+      "id": "above",
+      "dpr": 3,
+      "before": 700,
+      "after": 1000,
+      "top": 600,
+      "was": 0,
+      "now": 300
+    },
+    {
+      "id": "above-swap",
+      "dpr": 3,
+      "before": 1000,
+      "after": 1020,
+      "top": 600,
+      "was": 300,
+      "now": 320
+    },
+    {
+      "id": "crossing-swap",
+      "dpr": 3,
+      "before": 700,
+      "after": 700,
+      "top": 600,
+      "was": 300,
+      "now": 320
+    },
+    {
+      "id": "top-at-0",
+      "dpr": 3,
+      "before": 0,
+      "after": 0,
+      "top": 0,
+      "was": 0,
+      "now": 300
+    },
+    {
+      "id": "top-above",
+      "dpr": 3,
+      "before": 100,
+      "after": 400,
+      "top": 0,
+      "was": 0,
+      "now": 300
+    }
+  ]
+}

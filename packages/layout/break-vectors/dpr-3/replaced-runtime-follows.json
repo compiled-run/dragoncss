@@ -1,0 +1,12 @@
+{
+  "case": "replaced-runtime-follows",
+  "dpr": 3,
+  "texts": [
+    {"id":"h:text0","lines":[[0,7]]},
+    {"id":"k1:text0","lines":[[0,2]]},
+    {"id":"v1:text0","lines":[[0,11]]},
+    {"id":"k2:text0","lines":[[0,3]]},
+    {"id":"v2:text0","lines":[[0,2]]},
+    {"id":"p:text0","lines":[[0,11]]}
+  ]
+}
