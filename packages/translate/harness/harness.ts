@@ -1154,6 +1154,10 @@ function controlKind(v: JsonValue, path: string): ControlKind {
     obj(v, ['kind'], path);
     return { kind: 'legend' };
   }
+  if (k === 'theme-leaf') {
+    obj(v, ['kind'], path);
+    return { kind: 'theme-leaf' };
+  }
   if (k === 'select-menulist') {
     const o = obj(v, ['kind', 'font', 'lineHeight', 'arrowWidth', 'options'], path);
     const options = arr(field(o, 'options', path), `${path}.options`).map((x, i) => decodeText(x, `${path}.options[${i}]`));
@@ -1294,7 +1298,7 @@ const FAULT_KEYS: readonly string[] = [
   'anywhereMinContentIgnored', 'breakWordShrinksMinContent', 'breakAnywhereAlways', 'emergencyBreakBeforeOpportunity', 'wordBreakBreakWordIgnored', 'breakAllIgnored',
   'clampHeightIncludesHiddenLines', 'clampEllipsisMissingWhenLineFits', 'clampEllipsisOnExactLastLine', 'containedContentSized', 'menuListShownLabelOnly', 'containerJoinsFlow', 'wrapStyleGreedy', 'textBoxTrimIgnored', 'searchCancelIgnored',
   'inlineBlockFirstBaseline', 'overflowBaselineIgnored', 'inlineFlexLastBaseline', 'atomicMarginExcluded', 'noBreakAroundAtomic', 'atomicShrinkToFitIgnored',
-  'inlineGridLastItemBaseline',
+  'inlineGridLastItemBaseline', 'themeLeafMarginBaseline',
 ];
 
 function decodeFaults(v: JsonValue): EngineFaults {
@@ -1358,6 +1362,7 @@ function decodeFaults(v: JsonValue): EngineFaults {
     gutterReserved: b('gutterReserved'),
     overflowIgnoresPadding: b('overflowIgnoresPadding'),
     inlineBlockFirstBaseline: b('inlineBlockFirstBaseline'),
+    themeLeafMarginBaseline: b('themeLeafMarginBaseline'),
     overflowBaselineIgnored: b('overflowBaselineIgnored'),
     inlineFlexLastBaseline: b('inlineFlexLastBaseline'),
     inlineGridLastItemBaseline: b('inlineGridLastItemBaseline'),

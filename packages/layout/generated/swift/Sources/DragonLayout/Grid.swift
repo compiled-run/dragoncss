@@ -3516,7 +3516,7 @@ public func grid_logicalBsp(_ pad: Edges, _ bor: Edges, _ rtl: Bool) throws -> E
 
 // ts: packages/layout/src/grid.ts:2219
 public func grid_gridPlacesControl(_ c: ControlBox) throws -> Bool {
-  return ((((c.control.kind == S.s_button_block) || ((c.control as! any U_ControlKind_3783ef31a987d835).kind == S.s_select_menulist)) || ((c.control as! any U_ControlKind_bc81690f21173798).kind == S.s_text_field)) || ((c.control as! any U_ControlKind_fieldset_ControlKind_legend_ControlKind_range_ControlKind_selectInner_ControlKind_sliderThumb_ControlKind_textArea_ControlKind_textEditor_ControlKind_textPlaceholder).kind == S.s_text_area))
+  return ((((c.control.kind == S.s_button_block) || ((c.control as! any U_ControlKind_c47b8e3a9aaf124d).kind == S.s_select_menulist)) || ((c.control as! any U_ControlKind_f2c9e95521c39144).kind == S.s_text_field)) || ((c.control as! any U_ControlKind_d7c23ecce829c427).kind == S.s_text_area))
 }
 
 // ts: packages/layout/src/grid.ts:2224

@@ -1,0 +1,25 @@
+{
+  "case": "controls-checkbox-inline",
+  "chrome": "145.0.7632.6",
+  "dpr": 2,
+  "texts": [
+    {"id":"words:text0","data":"XX ","lines":1,"units":[0,0,0],"blank":[]},
+    {"id":"words:text1","data":" XX","lines":1,"units":[0,0,0],"blank":[]},
+    {"id":"checked:text0","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"checked:text1","data":"XX","lines":1,"units":[0,0],"blank":[]},
+    {"id":"size:text0","data":"XX ","lines":1,"units":[0,0,0],"blank":[]},
+    {"id":"size:text1","data":" XX","lines":1,"units":[0,0,0],"blank":[]},
+    {"id":"tall:text0","data":"XX ","lines":1,"units":[0,0,0],"blank":[]},
+    {"id":"tall:text1","data":" XX","lines":1,"units":[0,0,0],"blank":[]},
+    {"id":"small:text0","data":"XX ","lines":1,"units":[0,0,0],"blank":[]},
+    {"id":"small:text1","data":" X ","lines":1,"units":[0,0,0],"blank":[]},
+    {"id":"small:text2","data":" XX","lines":1,"units":[0,0,0],"blank":[]},
+    {"id":"wrap:text0","data":"XXX ","lines":1,"units":[0,0,0,0],"blank":[3]},
+    {"id":"wrap:text1","data":" XXX ","lines":1,"units":[0,0,0,0,0],"blank":[0,4]},
+    {"id":"wrap:text2","data":" X","lines":1,"units":[0,0],"blank":[]},
+    {"id":"l1:text0","data":"Small","lines":1,"units":[0,0,0,0,0],"blank":[]},
+    {"id":"l2:text0","data":"Large","lines":1,"units":[0,0,0,0,0],"blank":[]},
+    {"id":"l3:text0","data":"X","lines":1,"units":[0],"blank":[]},
+    {"id":"l4:text0","data":"Pin","lines":1,"units":[0,0,0],"blank":[]}
+  ]
+}

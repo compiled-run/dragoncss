@@ -1294,9 +1294,9 @@ function controlRefusal(id: string): string {
   return `${id} is a form control, which the hit table does not model yet (FORM-a; Chrome retargets its parts to the control, no Chrome hit capture)`;
 }
 
-/** Whether the hit table models a control: a button, a select, a text field or a textarea; a range (its touch, T064 P7), a fieldset and a legend not yet. */
+/** Whether the hit table models a control: a button, a select, a text field, a textarea or a theme leaf (a checkbox or radio); a range (its touch, T064 P7), a fieldset and a legend not yet. */
 function hitModelsControl(c: ControlBox): boolean {
-  return c.control.kind === 'button-block' || c.control.kind === 'select-menulist' || c.control.kind === 'text-field' || c.control.kind === 'text-area';
+  return c.control.kind === 'button-block' || c.control.kind === 'select-menulist' || c.control.kind === 'text-field' || c.control.kind === 'text-area' || c.control.kind === 'theme-leaf';
 }
 
 /** A control the hit table models as its box: a button with its children, a select, text field or textarea as one box, since Chrome retargets its UA shadow parts to it. */

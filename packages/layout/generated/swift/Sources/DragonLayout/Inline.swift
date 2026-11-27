@@ -825,7 +825,7 @@ public func inline_checkInlineBox(_ ctx: Ctx, _ b: InlineBox) throws -> Void {
   let va: any U_LengthCalc_Percent_Px_VerticalAlignKeywordValue = s.verticalAlign
   // ts: packages/layout/src/inline.ts:401
   if ((va.kind != S.s_keyword) || ((va as! VerticalAlignKeywordValue).value != S.s_baseline)) {
-    try unsupported_unsupported(S.s_vertical_align, b.id, S.s349, jsConcat(S.s1258, b.id, S.s5))
+    try unsupported_unsupported(S.s_vertical_align, b.id, S.s349, jsConcat(S.s1259, b.id, S.s5))
   }
   // ts: packages/layout/src/inline.ts:402
   if (s.position != S.s_static) {
@@ -843,7 +843,7 @@ public func inline_checkAtomic(_ a: any U_ControlBox_LayoutBox_ReplacedLeaf) thr
   let va: any U_LengthCalc_Percent_Px_VerticalAlignKeywordValue = s.verticalAlign
   // ts: packages/layout/src/inline.ts:415
   if ((va.kind != S.s_keyword) || ((va as! VerticalAlignKeywordValue).value != S.s_baseline)) {
-    try unsupported_unsupported(S.s_vertical_align, a.id, S.s349, jsConcat(S.s1259, a.id, S.s5))
+    try unsupported_unsupported(S.s_vertical_align, a.id, S.s349, jsConcat(S.s1260, a.id, S.s5))
   }
   // ts: packages/layout/src/inline.ts:416
   if (((s.height.kind == S.s_stretch) || (s.minHeight.kind == S.s_stretch)) || (s.maxHeight.kind == S.s_stretch)) {
@@ -874,7 +874,7 @@ public func inline_flattenTop(_ ctx: Ctx, _ kids: JsArray<any U_ControlBox_Inlin
         try inline_checkAtomic((k as! any U_ControlBox_LayoutBox_ReplacedLeaf))
         let atom: Double = jsLength(out.atomics)
         _ = jsPush(out.atomics, (k as! any U_ControlBox_LayoutBox_ReplacedLeaf))
-        _ = jsPush(out.items, Inline_Item(S.s_atomic, -1.0, -1.0, S.s1287, inline_OBJECT, -1.0, -1.0, atom))
+        _ = jsPush(out.items, Inline_Item(S.s_atomic, -1.0, -1.0, S.s1288, inline_OBJECT, -1.0, -1.0, atom))
       } else {
         try inline_flatten(ctx, JsArray<any U_InlineBox_LineBreak_TextLeaf>([(k as! any U_InlineBox_LineBreak_TextLeaf)]), -1.0, out)
       }
@@ -1136,7 +1136,7 @@ public func inline_buildIfc(_ ctx: Ctx, _ box: LayoutBox) throws -> Ifc {
       }
       // ts: packages/layout/src/inline.ts:549
       if (t.wordBreak == S.s_auto_phrase) {
-        try unsupported_unsupported(S.s_word_break, t.id, S.s741, jsConcat(S.s1277, t.wordBreak, S.s169, t.id))
+        try unsupported_unsupported(S.s_word_break, t.id, S.s741, jsConcat(S.s1278, t.wordBreak, S.s169, t.id))
       }
       // ts: packages/layout/src/inline.ts:550
       if try ((first != nil) && ((t.overflowWrap != jsUnwrap(first).overflowWrap) || (t.wordBreak != jsUnwrap(first).wordBreak))) {
@@ -1283,7 +1283,7 @@ public func inline_lineFeedSegments(_ t: TextLeaf) throws -> JsArray<JsString> {
 public func inline_checkPreservedText(_ ctx: Ctx, _ box: LayoutBox, _ flat: Flat, _ mode: JsString) throws -> Void {
   // ts: packages/layout/src/inline.ts:663
   if ((jsLength(flat.boxes) > 0.0) || (jsLength(flat.brs) > 0.0)) {
-    try unsupported_unsupported(S.s_mixed_white_space, box.id, S.s749, jsConcat(S.s1262, mode, S.s194, box.id))
+    try unsupported_unsupported(S.s_mixed_white_space, box.id, S.s749, jsConcat(S.s1263, mode, S.s194, box.id))
   }
   // ts: packages/layout/src/inline.ts:664
   do {
@@ -1298,7 +1298,7 @@ public func inline_checkPreservedText(_ ctx: Ctx, _ box: LayoutBox, _ flat: Flat
       }
       // ts: packages/layout/src/inline.ts:666
       if ((mode == S.s_break_spaces) && (t.font.family != text_AHEM_FACE_ID)) {
-        try unsupported_unsupported(S.s_line_break, t.id, S.s750, jsConcat(S.s1263, t.id, S.s7))
+        try unsupported_unsupported(S.s_line_break, t.id, S.s750, jsConcat(S.s1264, t.id, S.s7))
       }
       // ts: packages/layout/src/inline.ts:668
       if try (inline_leafFontOf(t).letterSpacing != 0.0) {
@@ -1368,7 +1368,7 @@ public func inline_checkPreservedBesideInline(_ box: LayoutBox, _ kids: JsArray<
       _i120 += 1
       // ts: packages/layout/src/inline.ts:686
       if (t.whiteSpaceCollapse != S.s_collapse) {
-        try unsupported_unsupported(S.s_mixed_white_space, t.id, S.s749, jsConcat(S.s1262, t.whiteSpaceCollapse, S.s195, box.id))
+        try unsupported_unsupported(S.s_mixed_white_space, t.id, S.s749, jsConcat(S.s1263, t.whiteSpaceCollapse, S.s195, box.id))
       }
     }
   }
@@ -1630,7 +1630,7 @@ public func inline_opportunities(_ ctx: Ctx, _ box: LayoutBox, _ cps: JsArray<Do
         _i128 += 1
         // ts: packages/layout/src/inline.ts:831
         if (cp == inline_OBJECT) {
-          try unsupported_unsupported(S.s_word_break, box.id, S.s741, jsConcat(S.s1278, box.id, S.s130))
+          try unsupported_unsupported(S.s_word_break, box.id, S.s741, jsConcat(S.s1279, box.id, S.s130))
         }
       }
     }
@@ -2233,7 +2233,7 @@ public func inline_breakAllOpportunities(_ box: LayoutBox, _ cps: JsArray<Double
       }
       // ts: packages/layout/src/inline.ts:1234
       if (cp == inline_SOFT_HYPHEN) {
-        try unsupported_unsupported(S.s_word_break, box.id, S.s741, jsConcat(S.s1279, box.id, S.s130))
+        try unsupported_unsupported(S.s_word_break, box.id, S.s741, jsConcat(S.s1280, box.id, S.s130))
       }
       i += 1.0
     }
@@ -3334,25 +3334,25 @@ public func inline_wrapStyleContext(_ ctx: Ctx, _ box: LayoutBox, _ ifc: Ifc, _ 
   } else if try (((strut == nil) || (jsUnwrap(strut).font.family != jsUnwrap(leaf).font.family)) || (jsUnwrap(strut).font.size != jsUnwrap(leaf).font.size)) {
     beside = S.s868
   } else if ((ifc.mode != S.s_collapse) || (!ifc.wrap)) {
-    beside = S.s1272
+    beside = S.s1273
   } else if try (((ifc.anywhere || ifc.minAnywhere) || (jsUnwrap(leaf).overflowWrap != S.s_normal)) || (jsUnwrap(leaf).wordBreak != S.s_normal)) {
-    beside = S.s1270
+    beside = S.s1271
   } else if try ((!inline_zeroSpacing(jsUnwrap(leaf).letterSpacing)) || (!inline_zeroSpacing(jsUnwrap(leaf).wordSpacing))) {
-    beside = S.s1269
+    beside = S.s1270
   } else if try jsUnwrap(leaf).smallCaps {
     beside = S.s871
   } else if try inline_holdsSoftHyphen(ifc) {
-    beside = S.s1268
+    beside = S.s1269
   } else if (indent != units_ZERO) {
-    beside = S.s1274
-  } else if (box.style.textAlign == S.s_justify) {
-    beside = S.s1273
-  } else if (box.style.lineClamp != 0.0) {
-    beside = S.s1266
-  } else if ((box.style.textOverflow == S.s_ellipsis) && ((box.style.overflowX != S.s_visible) || (box.style.overflowY != S.s_visible))) {
     beside = S.s1275
-  } else if (box.marker != nil) {
+  } else if (box.style.textAlign == S.s_justify) {
+    beside = S.s1274
+  } else if (box.style.lineClamp != 0.0) {
     beside = S.s1267
+  } else if ((box.style.textOverflow == S.s_ellipsis) && ((box.style.overflowX != S.s_visible) || (box.style.overflowY != S.s_visible))) {
+    beside = S.s1276
+  } else if (box.marker != nil) {
+    beside = S.s1268
   }
   // ts: packages/layout/src/inline.ts:1925
   if (beside != S.s0) {
@@ -3582,11 +3582,11 @@ public func inline_textIndentOf(_ ctx: Ctx, _ box: LayoutBox, _ ifc: Ifc, _ avai
   if (box.boxType == S.s_anonymous) {
     beside = S.s870
   } else if (ifc.mode != S.s_collapse) {
-    beside = S.s1271
+    beside = S.s1272
   } else if (box.style.textAlign == S.s_justify) {
-    beside = S.s1273
+    beside = S.s1274
   } else if ((box.style.textOverflow == S.s_ellipsis) && ((box.style.overflowX != S.s_visible) || (box.style.overflowY != S.s_visible))) {
-    beside = S.s1275
+    beside = S.s1276
   } else if (jsLength(ifc.atomics) > 0.0) {
     beside = S.s661
   }
@@ -4751,7 +4751,7 @@ public func inline_shapedIntrinsicSize(_ ctx: Ctx, _ box: LayoutBox, _ ifc: Ifc,
       // ts: packages/layout/src/inline.ts:2766
       if try (((((lastChar != nil) && (jsUnwrap(lastChar).kind == S.s_char)) && (jsUnwrap(lastChar).cp == 173.0)) && (!b.forced)) && (!ctx.faults.softHyphenWidthMissing)) {
         let t: TextLeaf = try jsUnwrap(jsAt(ifc.leaves, jsUnwrap(lastChar).leaf))
-        let h: any U_MeasureResult_okFalse_MeasureResult_okTrue = try ctx.measurer.measure(S.s1285, inline_fontOf(t.font))
+        let h: any U_MeasureResult_okFalse_MeasureResult_okTrue = try ctx.measurer.measure(S.s1286, inline_fontOf(t.font))
         let hyphen: any U_MeasureResult_okFalse_MeasureResult_okTrue = try (h.ok ? (h as any U_MeasureResult_okFalse_MeasureResult_okTrue) : (ctx.measurer.measure(S.s254, inline_fontOf(t.font)) as any U_MeasureResult_okFalse_MeasureResult_okTrue))
         // ts: packages/layout/src/inline.ts:2770
         if (!hyphen.ok) {

@@ -40,13 +40,13 @@ fun controls_controlAsBox(c: ControlBox): LayoutBox {
 }
 
 // ts: packages/layout/src/controls.ts:48
-fun controls_controlOf(box: U_ControlBox_LayoutBox): U_ControlKind_d084c13b74a53fa6? {
+fun controls_controlOf(box: U_ControlBox_LayoutBox): U_ControlKind_57c5cd1a1bb26daa? {
   return (if (jsStrEq(box.kind, "control")) (box as ControlBox).control else null)
 }
 
 // ts: packages/layout/src/controls.ts:56
 fun controls_compressesPercentWidth(box: U_ControlBox_LayoutBox): Boolean {
-  return (jsStrEq(box.kind, "control") && ((jsStrEq((box as ControlBox).control.kind, "text-field") || jsStrEq(((box as ControlBox).control as U_ControlKind_4bd11acfa0b830ad).kind, "text-area")) || jsStrEq(((box as ControlBox).control as U_ControlKind_fcf228c48ff511b1).kind, "select-menulist")))
+  return (jsStrEq(box.kind, "control") && ((jsStrEq((box as ControlBox).control.kind, "text-field") || jsStrEq(((box as ControlBox).control as U_ControlKind_f2458316df6f3b3e).kind, "text-area")) || jsStrEq(((box as ControlBox).control as U_ControlKind_a6b9a3a1b54fa608).kind, "select-menulist")))
 }
 
 // ts: packages/layout/src/controls.ts:61

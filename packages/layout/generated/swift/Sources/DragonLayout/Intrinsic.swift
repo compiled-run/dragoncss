@@ -91,7 +91,7 @@ public func intrinsic_intrinsicContentInlineSize(_ ctx: Ctx, _ node: any U_Contr
 
 // ts: packages/layout/src/intrinsic.ts:71
 public func intrinsic_menuListNaturalInlineSize(_ ctx: Ctx, _ node: ControlBox) throws -> Double {
-  let c: any U_ControlKind_d084c13b74a53fa6 = node.control
+  let c: any U_ControlKind_57c5cd1a1bb26daa = node.control
   // ts: packages/layout/src/intrinsic.ts:73
   if (c.kind != S.s_select_menulist) {
     throw JsError(message: jsConcat(node.id, S.s122))

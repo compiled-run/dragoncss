@@ -4,7 +4,7 @@
 // focus-visible), resolves every combination of them and stores each distinct resolution once. The combinations are a second
 // level under the case's app assignment, so case keys and counts do not change; each dimension is linear in the elements.
 import { GENERATED_TAGS, MARKER_TAG } from './elements.ts';
-import { inputTypeState, isCheckboxType, isControlTag, isTextFieldType } from './elements/controls.ts';
+import { inputTypeState, isCheckboxType, isControlTag, isRadioType, isTextFieldType } from './elements/controls.ts';
 import { isReplacedTag } from './elements/replaced.ts';
 import { authored, diagnostic } from '../diagnostics/catalogue.ts';
 import { PROPERTY_ASPECTS } from '../css/properties.ts';
@@ -676,12 +676,12 @@ export function hitRetargetsParts(el: ResolvedElement): boolean {
 
 /**
  * FORM-a: the first form control of a resolved tree in preorder whose box the hit table does not model (rt-hit.ts hitModelsControl),
- * or null. A button, a select, a text field, a textarea and a checkbox (a plain box in the layout input, FORM-checkbox) are modelled;
+ * or null. A button, a select, a text field, a textarea, a checkbox and a radio (a plain box or a theme leaf, FORM-checkbox) are modelled;
  * a range is not (its touch, T064 P7), nor a block fieldset or any other control tag.
  */
 export function hitUnmodelledControl(root: ResolvedElement): string | null {
   const tag = root.element.tag;
-  if (isControlTag(tag) && tag !== 'button' && tag !== 'select' && tag !== 'textarea' && !(tag === 'input' && (isTextFieldType(root.element.attributes.get('type')) || isCheckboxType(root.element.attributes.get('type'))))) return root.element.address;
+  if (isControlTag(tag) && tag !== 'button' && tag !== 'select' && tag !== 'textarea' && !(tag === 'input' && (isTextFieldType(root.element.attributes.get('type')) || isCheckboxType(root.element.attributes.get('type')) || isRadioType(root.element.attributes.get('type'))))) return root.element.address;
   // A block fieldset lays out as the fieldset control with its rendered legend (ios-layout.ts), which the table refuses too.
   const display = root.props.get('display');
   if (tag === 'fieldset' && display !== undefined && display.value.kind === 'keyword' && display.value.value === 'block') return root.element.address;

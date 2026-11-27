@@ -103,7 +103,7 @@ public func environment_resolveEnvironment(_ input: LayoutInput, _ faults: Engin
 // ts: packages/layout/src/environment.ts:177
 public func environment_boxNeedsEnvironment(_ b: any U_ControlBox_LayoutBox, _ faults: EngineFaults) throws -> Bool {
   // ts: packages/layout/src/environment.ts:179
-  if ((b.kind == S.s_control) && (((b as! ControlBox).control.kind == S.s_text_field) || (((b as! ControlBox).control as! any U_ControlKind_4bd11acfa0b830ad).kind == S.s_select_menulist))) {
+  if ((b.kind == S.s_control) && (((b as! ControlBox).control.kind == S.s_text_field) || (((b as! ControlBox).control as! any U_ControlKind_f2458316df6f3b3e).kind == S.s_select_menulist))) {
     return true
   }
   // ts: packages/layout/src/environment.ts:181
@@ -322,7 +322,7 @@ public func environment_resolveChildren(_ children: JsArray<any U_ControlBox_Inl
 // ts: packages/layout/src/environment.ts:263
 public func environment_resolveControl(_ b: ControlBox, _ parent: Env) throws -> ControlBox {
   let env: Env = try environment_atElement(parent, b.id, b.style)
-  let c: any U_ControlKind_d084c13b74a53fa6 = b.control
+  let c: any U_ControlKind_57c5cd1a1bb26daa = b.control
   let style: LayoutStyle = try environment_resolveStyle(b.style, env)
   // ts: packages/layout/src/environment.ts:267
   if (c.kind == S.s_text_field) {
@@ -334,12 +334,12 @@ public func environment_resolveControl(_ b: ControlBox, _ parent: Env) throws ->
     return try ControlBox(S.s_control, b.id, b.boxType, style, ControlKind_textField(S.s_text_field, (c as! ControlKind_textField).size, own.font, own.lineHeight, (c as! ControlKind_textField).avgChar, (((c as! ControlKind_textField).cancelButton == nil) ? (nil as CancelButton?) : (CancelButton(units_zoomCssPx(jsUnwrap((c as! ControlKind_textField).cancelButton).marginStart, env.zoom), units_zoomCssPx(jsUnwrap((c as! ControlKind_textField).cancelButton).marginEnd, env.zoom)) as CancelButton?))), environment_resolveStrutOf(b, env), environment_resolveChildren(children, env))
   }
   // ts: packages/layout/src/environment.ts:274
-  if ((c as! any U_ControlKind_4bd11acfa0b830ad).kind == S.s_text_area) {
+  if ((c as! any U_ControlKind_f2458316df6f3b3e).kind == S.s_text_area) {
     let own: LineStrut = try environment_resolveStrut(LineStrut((c as! ControlKind_textArea).font, (c as! ControlKind_textArea).lineHeight), env)
     return try ControlBox(S.s_control, b.id, b.boxType, style, ControlKind_textArea(S.s_text_area, (c as! ControlKind_textArea).cols, (c as! ControlKind_textArea).rows, own.font, own.lineHeight, (c as! ControlKind_textArea).avgChar, controls_textAreaScrollbar((c as! ControlKind_textArea).scrollbarInline, env.device), controls_textAreaScrollbar((c as! ControlKind_textArea).scrollbarBlock, env.device)), environment_resolveStrutOf(b, env), environment_resolveChildren(b.children, env))
   }
   // ts: packages/layout/src/environment.ts:278
-  if ((c as! any U_ControlKind_fcf228c48ff511b1).kind == S.s_select_menulist) {
+  if ((c as! any U_ControlKind_a6b9a3a1b54fa608).kind == S.s_select_menulist) {
     let own: LineStrut = try environment_resolveStrut(LineStrut((c as! ControlKind_selectMenulist).font, (c as! ControlKind_selectMenulist).lineHeight), env)
     let children: JsArray<any U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf> = try environment_resolveChildren(b.children, env)
     let lh: (any U_LineHeightCalc_NormalValue_NumberValue_Percent_Px)? = try ((own.lineHeight.kind == S.s_normal) ? (environment_menuListLineHeight(own.font, env) as (any U_LineHeightCalc_NormalValue_NumberValue_Percent_Px)?) : (nil as (any U_LineHeightCalc_NormalValue_NumberValue_Percent_Px)?))
@@ -353,8 +353,8 @@ public func environment_resolveControl(_ b: ControlBox, _ parent: Env) throws ->
     return try environment_resolveText(o, env)
 })), environment_resolveStrutOf(b, env), inset)
   }
-  let control: any U_ControlKind_d084c13b74a53fa6 = try (((c as! any U_ControlKind_buttonBlock_ControlKind_fieldset_ControlKind_legend_ControlKind_range_ControlKind_selectInner_ControlKind_sliderThumb_ControlKind_textEditor_ControlKind_textPlaceholder).kind == S.s_range) ? (ControlKind_range(S.s_range, controls_zoomTrackLength((c as! ControlKind_range).defaultInlineSize, env.zoom)) as any U_ControlKind_d084c13b74a53fa6) : (((c as! any U_ControlKind_buttonBlock_ControlKind_fieldset_ControlKind_legend_ControlKind_selectInner_ControlKind_sliderThumb_ControlKind_textEditor_ControlKind_textPlaceholder) as! any U_ControlKind_d084c13b74a53fa6) as any U_ControlKind_d084c13b74a53fa6))
-  return try ControlBox(S.s_control, b.id, b.boxType, style, ((control as! any U_ControlKind_buttonBlock_ControlKind_fieldset_ControlKind_legend_ControlKind_range_ControlKind_selectInner_ControlKind_sliderThumb_ControlKind_textEditor_ControlKind_textPlaceholder) as! any U_ControlKind_d084c13b74a53fa6), environment_resolveStrutOf(b, env), environment_resolveChildren(b.children, env))
+  let control: any U_ControlKind_57c5cd1a1bb26daa = try (((c as! any U_ControlKind_7090d88b641171f7).kind == S.s_range) ? (ControlKind_range(S.s_range, controls_zoomTrackLength((c as! ControlKind_range).defaultInlineSize, env.zoom)) as any U_ControlKind_57c5cd1a1bb26daa) : (((c as! any U_ControlKind_buttonBlock_ControlKind_fieldset_ControlKind_legend_ControlKind_selectInner_ControlKind_sliderThumb_ControlKind_textEditor_ControlKind_textPlaceholder_ControlKind_themeLeaf) as! any U_ControlKind_57c5cd1a1bb26daa) as any U_ControlKind_57c5cd1a1bb26daa))
+  return try ControlBox(S.s_control, b.id, b.boxType, style, ((control as! any U_ControlKind_7090d88b641171f7) as! any U_ControlKind_57c5cd1a1bb26daa), environment_resolveStrutOf(b, env), environment_resolveChildren(b.children, env))
 }
 
 // ts: packages/layout/src/environment.ts:298

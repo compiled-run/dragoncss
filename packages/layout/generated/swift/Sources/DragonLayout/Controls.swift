@@ -60,13 +60,13 @@ public func controls_controlAsBox(_ c: ControlBox) throws -> LayoutBox {
 }
 
 // ts: packages/layout/src/controls.ts:48
-public func controls_controlOf(_ box: any U_ControlBox_LayoutBox) throws -> (any U_ControlKind_d084c13b74a53fa6)? {
-  return ((box.kind == S.s_control) ? ((box as! ControlBox).control as (any U_ControlKind_d084c13b74a53fa6)?) : (nil as (any U_ControlKind_d084c13b74a53fa6)?))
+public func controls_controlOf(_ box: any U_ControlBox_LayoutBox) throws -> (any U_ControlKind_57c5cd1a1bb26daa)? {
+  return ((box.kind == S.s_control) ? ((box as! ControlBox).control as (any U_ControlKind_57c5cd1a1bb26daa)?) : (nil as (any U_ControlKind_57c5cd1a1bb26daa)?))
 }
 
 // ts: packages/layout/src/controls.ts:56
 public func controls_compressesPercentWidth(_ box: any U_ControlBox_LayoutBox) throws -> Bool {
-  return ((box.kind == S.s_control) && ((((box as! ControlBox).control.kind == S.s_text_field) || (((box as! ControlBox).control as! any U_ControlKind_4bd11acfa0b830ad).kind == S.s_text_area)) || (((box as! ControlBox).control as! any U_ControlKind_fcf228c48ff511b1).kind == S.s_select_menulist)))
+  return ((box.kind == S.s_control) && ((((box as! ControlBox).control.kind == S.s_text_field) || (((box as! ControlBox).control as! any U_ControlKind_f2458316df6f3b3e).kind == S.s_text_area)) || (((box as! ControlBox).control as! any U_ControlKind_a6b9a3a1b54fa608).kind == S.s_select_menulist)))
 }
 
 // ts: packages/layout/src/controls.ts:61
