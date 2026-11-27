@@ -14,6 +14,7 @@ const name = (n: number): string => String.fromCharCode(Math.floor(n / 16777216)
 function measure(v: VariantNumeric, faults: ShapingFaults = NO_SHAPING_FAULTS): { readonly width: number; readonly features: readonly string[] } {
   let seen: string[] = [];
   const shaper: GlyphShaper = {
+    fallback: () => '',
     shape(_face, size, t, start, end, _script, _rtl, _language, features) {
       seen = [];
       for (let i = 0; i < features.length; i += FEATURE_STRIDE) {
@@ -42,7 +43,7 @@ describe('font-variant-numeric on the shaped path', () => {
     expect(measure({ figure: 'lining-nums', spacing: 'normal', fraction: 'stacked-fractions', ordinal: false, slashedZero: false }).features).toEqual(['chws=1', 'lnum=1', 'afrc=1']);
   });
   it('shapes a text once per variant: the cache keys on it', () => {
-    const shaper: GlyphShaper = { shape: (_f, size, _t, start, end, _s, _r, _l, features) => Array.from({ length: end - start }, (_, k) => [1, start + k, (features.length > FEATURE_STRIDE ? 10 : 6) * (size / 10) * 65536, 0, 0, 0, 0]).flat() };
+    const shaper: GlyphShaper = { fallback: () => '', shape: (_f, size, _t, start, end, _s, _r, _l, features) => Array.from({ length: end - start }, (_, k) => [1, start + k, (features.length > FEATURE_STRIDE ? 10 : 6) * (size / 10) * 65536, 0, 0, 0, 0]).flat() };
     const m = shapedMeasurer(new Map([['Fake', { id: 'Fake', data: AHEM_FONT_DATA, hanKerning: NO_HAN_KERNING }]]), shaper, NO_SHAPING_FAULTS, 'en');
     const at = (v: VariantNumeric): number => {
       const r = m.measure('11', { family: 'Fake', size: 10, letterSpacing: 0, wordSpacing: 0, smallCaps: false, variantNumeric: v });
