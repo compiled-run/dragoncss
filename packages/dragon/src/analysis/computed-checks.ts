@@ -2588,6 +2588,16 @@ function checkInsideButton(el: ResolvedElement, button: ResolvedElement, targets
   const position = el.props.get('position') as ResolvedValue;
   const pos = keywordOf(position);
   if (pos !== 'absolute' && pos !== 'fixed') return;
+  // A block or inline-block button lays out its out-of-flow boxes as any block container does (controls-button-abspos), but Chrome
+  // gives one with an auto inset on an axis the static position of an inline in the button's centred line, which Dragon does not.
+  const display = keywordOf(button.props.get('display') as ResolvedValue);
+  if (pos === 'absolute' && button.element.tag === 'button' && (display === 'block' || display === 'inline-block')) {
+    const auto = (p: Longhand): boolean => keywordOf(el.props.get(p) as ResolvedValue) === 'auto';
+    const axis = auto('left') && auto('right') ? 'left' : auto('top') && auto('bottom') ? 'top' : null;
+    if (axis === null) return;
+    refuseOn(el, el.props.get(axis) as ResolvedValue, 'inside-static', 'DRAGON_UNSUPPORTED_VALUE', targets.filter((t) => t === 'ios' || t === 'android'), diagnostics, reported, `${axis}: auto on the absolutely positioned <${el.element.tag}> ${el.element.address} inside <button> ${button.element.address}, with its opposite inset auto too, places it at its static position, which Chrome takes from the button's centred line and Dragon does not lay out`, `Set ${axis} (or ${axis === 'left' ? 'right' : 'bottom'}) on ${el.element.address}.`);
+    return;
+  }
   refuseOn(el, position, 'inside', 'DRAGON_UNSUPPORTED_VALUE', targets, diagnostics, reported, `position: ${pos} on <${el.element.tag}> ${el.element.address} inside <${button.element.tag}> ${button.element.address} is not supported yet: an absolutely positioned box inside a form control`, `Position the box outside <${button.element.tag}> ${button.element.address}.`);
 }
 
