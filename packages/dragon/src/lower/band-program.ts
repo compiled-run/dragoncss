@@ -151,21 +151,24 @@ export const NO_BAND_RUNTIME_FAULTS: BandRuntimeFaults = { bandStale: false, res
 export const withBand = (a: Assignment, band: number): Assignment => [...a, { state: { instance: ENV_INSTANCE, state: BAND_STATE }, value: band }];
 
 /**
- * The state program of a tree case set over every band: one assignment per (app assignment, band), env#band last, the initial
- * assignment's in initialBand first; the 64-assignment cap counts bands too (StateProgramError beyond it).
+ * The state program of a tree case set over every band, or over the held bands only (a group's band classes): one assignment per
+ * (app assignment, band), env#band last, the initial assignment's in initialBand first; the 64-assignment cap counts bands too
+ * (StateProgramError beyond it).
  */
-export function bandStateProgram(backend: NativeBackend, cases: readonly BandCase[], bands: number, initialBand: number, faults: StateFaults = NO_STATE_FAULTS, bandFaults: BandRuntimeFaults = NO_BAND_RUNTIME_FAULTS): StateProgram {
+export function bandStateProgram(backend: NativeBackend, cases: readonly BandCase[], bands: number, initialBand: number, faults: StateFaults = NO_STATE_FAULTS, bandFaults: BandRuntimeFaults = NO_BAND_RUNTIME_FAULTS, held: readonly number[] = [...Array(bands).keys()]): StateProgram {
   if (!Number.isInteger(bands) || bands < 1) throw new BandProgramError(`a band program needs at least one band, got ${bands}`);
   if (!Number.isInteger(initialBand) || initialBand < 0 || initialBand >= bands) throw new BandProgramError(`initial band ${initialBand} is not one of the ${bands} bands`);
+  // A group's table holds only the bands its classes read (native-styles.ts), the initial band among them.
+  if (held.length === 0 || !held.includes(initialBand) || held.some((b, i) => !Number.isInteger(b) || b < 0 || b >= bands || (i > 0 && b <= (held[i - 1] as number)))) throw new BandProgramError(`bands ${held.join(', ')} are not ascending bands of the ${bands} holding the initial band ${initialBand}`);
   for (const c of cases) {
-    if (!Number.isInteger(c.band) || c.band < 0 || c.band >= bands) throw new BandProgramError(`a case in band ${c.band}, which is not one of the ${bands} bands`);
+    if (!held.includes(c.band)) throw new BandProgramError(`a case in band ${c.band}, which is not one of the bands ${held.join(', ')}`);
     if (c.assignment.some((a) => stateKey(a.state.instance, a.state.state) === BAND_KEY)) throw new BandProgramError(`an app assignment names ${BAND_KEY}`);
   }
   // Every app assignment must be present in every band, or a band change could reach an assignment the table lacks.
   const keys = (b: number): string[] => cases.filter((c) => c.band === b).map((c) => canonicalJson(c.assignment)).sort();
-  const first = keys(0);
-  for (let b = 1; b < bands; b++) if (canonicalJson(keys(b)) !== canonicalJson(first)) throw new BandProgramError(`band ${b} does not hold the same app assignments as band 0`);
-  // Band-major order keeps band 0's assignments first, so the domain of env#band is 0, 1, ... in order.
+  const first = keys(held[0] as number);
+  for (const b of held.slice(1)) if (canonicalJson(keys(b)) !== canonicalJson(first)) throw new BandProgramError(`band ${b} does not hold the same app assignments as band ${held[0]}`);
+  // Band-major order keeps the first band's assignments first, so the domain of env#band is the held bands in order.
   const ordered = [...cases].sort((a, b) => a.band - b.band);
   const stateCases: StateCase[] = ordered.map((c) => ({ assignment: withBand(c.assignment, c.band), isInitial: c.isInitial && c.band === initialBand, program: c.program }));
   const sp = deriveStateProgram(backend, stateCases, faults);

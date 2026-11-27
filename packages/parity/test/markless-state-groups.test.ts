@@ -296,6 +296,22 @@ describe('factored states', { timeout: 600_000 }, () => {
     expect((g.groups ?? []).map((x) => [x.groupStates, x.assignments.length])).toEqual([[['state:a'], 4], [['state:b'], 4], [['branch-site:0'], 2]]);
   });
 
+  it('gives a group one row per assignment and band class, where bands style its elements alike, and steps them as the unfactored page', () => {
+    // Four bands, min-width and dark.
+    const text = variant((v) => {
+      v.css += '\n@media (prefers-color-scheme: dark) { .panel.mk-g { background-color: #333333; } }\n';
+    });
+    const g = exportOf(text, true, false).targets.ios as ExportTarget;
+    const bandsOf = (x: ExportGroup): readonly unknown[] | null => x.states.find((st) => st.key === '@env#band')?.domain ?? null;
+    // state:a changes the panel, which the dark band styles too, so its four bands are four classes; state:b changes only its
+    // button, which reads the width alone, so it holds the light bands below and above 500px; the branch's elements read neither.
+    expect((g.groups ?? []).map((x) => [x.groupStates, x.assignments.length, bandsOf(x)])).toEqual([[['state:a'], 8, [0, 1, 2, 3]], [['state:b'], 4, [0, 2]], [['branch-site:0'], 2, null]]);
+    // The phone reads the product, which maps each band to its class's rows, and no classes.
+    expect((g.groups ?? []).map((x) => 'bandClasses' in x)).toEqual([false, false, false]);
+    expect(expectCombines(text, true)).toBeGreaterThan(0);
+    expect(expectProduct(text)).toBeGreaterThan(0);
+  });
+
   it('does not refuse a paragraph that only one group changes beside text no group changes', () => {
     const text = variant((v) => {
       v.branches.push({ id: 'branch-site:1', domain: ['0', '1'], initial: '1' });
