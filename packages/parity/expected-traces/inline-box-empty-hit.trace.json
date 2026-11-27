@@ -10,7 +10,7 @@
   "runs": [
     {
       "targets": ["ios","android"],
-      "stepsSha256": "3fca1ec0eaf0ec914f85e9ec709bacb6968a44d6a89d6ec1b05cff3a318316eb",
+      "stepsSha256": "22c6116b98c2db7cd25d81765d2c8b907c907106fa594786b47f5e44c8b5e968",
       "steps": [
         {"kind":"move","context":"mouse","hoverMedia":true,"hover":["html"],"active":[],"focus":[],"focusVisible":[],"style":null},
         {"kind":"mouse-down","context":"mouse","hoverMedia":true,"hover":["html"],"active":["html"],"focus":[],"focusVisible":[],"style":null},
@@ -93,7 +93,7 @@
         {"kind":"mouse-up","context":"mouse","hoverMedia":true,"hover":["html","body","choice2"],"active":[],"focus":[],"focusVisible":[],"style":null},
         {"kind":"exit","context":"mouse","hoverMedia":true,"hover":[],"active":[],"focus":[],"focusVisible":[],"style":null},
         {"kind":"touch-down","context":"touch","hoverMedia":false,"hover":[],"active":[],"focus":[],"focusVisible":[],"style":[]},
-        {"kind":"touch-up","context":"touch","hoverMedia":false,"hover":["html","body","choice2"],"active":[],"focus":[],"focusVisible":[],"style":[]},
+        {"kind":"touch-up","context":"touch","hoverMedia":false,"hover":["html","body","choice2"],"active":["html","body","choice2"],"focus":[],"focusVisible":[],"style":[]},
         {"kind":"touch-down","context":"touch","hoverMedia":false,"hover":["html","body","choice2"],"active":[],"focus":[],"focusVisible":[],"style":[]},
         {"kind":"touch-cancel","context":"touch","hoverMedia":false,"hover":["html","body","choice2"],"active":[],"focus":[],"focusVisible":[],"style":[]},
         {"kind":"move","context":"mouse","hoverMedia":true,"hover":["html","body","choice2","mark2"],"active":[],"focus":[],"focusVisible":[],"style":null},

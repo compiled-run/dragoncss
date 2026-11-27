@@ -352,7 +352,7 @@
         },
         "minHeight": {
          "kind": "px",
-         "value": 30
+         "value": 32
         },
         "maxWidth": {
          "kind": "none"
@@ -370,7 +370,7 @@
         },
         "marginBottom": {
          "kind": "px",
-         "value": 4
+         "value": 8
         },
         "marginLeft": {
          "kind": "px",
@@ -394,19 +394,19 @@
         },
         "borderTopWidth": {
          "kind": "px",
-         "value": 1
+         "value": 0
         },
         "borderRightWidth": {
          "kind": "px",
-         "value": 1
+         "value": 0
         },
         "borderBottomWidth": {
          "kind": "px",
-         "value": 1
+         "value": 0
         },
         "borderLeftWidth": {
          "kind": "px",
-         "value": 1
+         "value": 0
         },
         "flexDirection": "row",
         "flexWrap": "nowrap",
@@ -422,11 +422,11 @@
         "alignContent": "normal",
         "rowGap": {
          "kind": "px",
-         "value": 6
+         "value": 8
         },
         "columnGap": {
          "kind": "px",
-         "value": 6
+         "value": 8
         },
         "textAlign": "start",
         "aspectRatio": {
@@ -490,11 +490,11 @@
           "boxSizing": "content-box",
           "width": {
            "kind": "px",
-           "value": 12
+           "value": 16
           },
           "height": {
            "kind": "px",
-           "value": 12
+           "value": 16
           },
           "minWidth": {
            "kind": "auto"
@@ -610,10 +610,10 @@
          "strut": {
           "font": {
            "family": "Ahem",
-           "size": 10,
+           "size": 16,
            "specifiedSize": {
             "kind": "px",
-            "value": 10
+            "value": 16
            },
            "absoluteSize": true
           },
@@ -765,10 +765,10 @@
            },
            "font": {
             "family": "Ahem",
-            "size": 10,
+            "size": 16,
             "specifiedSize": {
              "kind": "px",
-             "value": 10
+             "value": 16
             },
             "absoluteSize": true
            },
@@ -923,10 +923,10 @@
          "strut": {
           "font": {
            "family": "Ahem",
-           "size": 10,
+           "size": 16,
            "specifiedSize": {
             "kind": "px",
-            "value": 10
+            "value": 16
            },
            "absoluteSize": true
           },
@@ -942,10 +942,10 @@
            "text": "XXXX",
            "font": {
             "family": "Ahem",
-            "size": 10,
+            "size": 16,
             "specifiedSize": {
              "kind": "px",
-             "value": 10
+             "value": 16
             },
             "absoluteSize": true
            },
@@ -1006,7 +1006,7 @@
         },
         "minHeight": {
          "kind": "px",
-         "value": 30
+         "value": 32
         },
         "maxWidth": {
          "kind": "none"
@@ -1024,7 +1024,7 @@
         },
         "marginBottom": {
          "kind": "px",
-         "value": 4
+         "value": 8
         },
         "marginLeft": {
          "kind": "px",
@@ -1048,19 +1048,19 @@
         },
         "borderTopWidth": {
          "kind": "px",
-         "value": 1
+         "value": 0
         },
         "borderRightWidth": {
          "kind": "px",
-         "value": 1
+         "value": 0
         },
         "borderBottomWidth": {
          "kind": "px",
-         "value": 1
+         "value": 0
         },
         "borderLeftWidth": {
          "kind": "px",
-         "value": 1
+         "value": 0
         },
         "flexDirection": "row",
         "flexWrap": "nowrap",
@@ -1076,11 +1076,11 @@
         "alignContent": "normal",
         "rowGap": {
          "kind": "px",
-         "value": 6
+         "value": 8
         },
         "columnGap": {
          "kind": "px",
-         "value": 6
+         "value": 8
         },
         "textAlign": "start",
         "aspectRatio": {
@@ -1144,11 +1144,11 @@
           "boxSizing": "content-box",
           "width": {
            "kind": "px",
-           "value": 12
+           "value": 16
           },
           "height": {
            "kind": "px",
-           "value": 12
+           "value": 16
           },
           "minWidth": {
            "kind": "auto"
@@ -1264,10 +1264,10 @@
          "strut": {
           "font": {
            "family": "Ahem",
-           "size": 10,
+           "size": 16,
            "specifiedSize": {
             "kind": "px",
-            "value": 10
+            "value": 16
            },
            "absoluteSize": true
           },
@@ -1419,10 +1419,10 @@
            },
            "font": {
             "family": "Ahem",
-            "size": 10,
+            "size": 16,
             "specifiedSize": {
              "kind": "px",
-             "value": 10
+             "value": 16
             },
             "absoluteSize": true
            },
@@ -1577,10 +1577,10 @@
          "strut": {
           "font": {
            "family": "Ahem",
-           "size": 10,
+           "size": 16,
            "specifiedSize": {
             "kind": "px",
-            "value": 10
+            "value": 16
            },
            "absoluteSize": true
           },
@@ -1596,10 +1596,10 @@
            "text": "XX",
            "font": {
             "family": "Ahem",
-            "size": 10,
+            "size": 16,
             "specifiedSize": {
              "kind": "px",
-             "value": 10
+             "value": 16
             },
             "absoluteSize": true
            },
@@ -1636,7 +1636,7 @@
    "x": 0,
    "y": 0,
    "width": 25600,
-   "height": 4608
+   "height": 5120
   },
   {
    "id": "body",
@@ -1644,23 +1644,23 @@
    "x": 0,
    "y": 0,
    "width": 25600,
-   "height": 4352
+   "height": 4608
   },
   {
    "id": "choice1",
    "parent": "body",
    "x": 0,
    "y": 0,
-   "width": 12928,
+   "width": 12800,
    "height": 2048
   },
   {
    "id": "mark1",
    "parent": "choice1",
-   "x": 4608,
-   "y": 640,
-   "width": 768,
-   "height": 768
+   "x": 3584,
+   "y": 512,
+   "width": 1024,
+   "height": 1024
   },
   {
    "id": "dot1",
@@ -1681,42 +1681,42 @@
   {
    "id": "l1",
    "parent": "choice1",
-   "x": 5760,
-   "y": 704,
-   "width": 2560,
-   "height": 640
+   "x": 5120,
+   "y": 512,
+   "width": 4096,
+   "height": 1024
   },
   {
    "id": "l1:text0",
    "parent": "l1",
    "x": 0,
    "y": 0,
-   "width": 2560,
-   "height": 640
+   "width": 4096,
+   "height": 1024
   },
   {
    "id": "l1:text0:line0",
    "parent": "l1:text0",
    "x": 0,
    "y": 0,
-   "width": 2560,
-   "height": 640
+   "width": 4096,
+   "height": 1024
   },
   {
    "id": "choice2",
    "parent": "body",
    "x": 0,
-   "y": 2304,
-   "width": 12928,
+   "y": 2560,
+   "width": 12800,
    "height": 2048
   },
   {
    "id": "mark2",
    "parent": "choice2",
-   "x": 5248,
-   "y": 640,
-   "width": 768,
-   "height": 768
+   "x": 4608,
+   "y": 512,
+   "width": 1024,
+   "height": 1024
   },
   {
    "id": "dot2",
@@ -1737,26 +1737,26 @@
   {
    "id": "l2",
    "parent": "choice2",
-   "x": 6400,
-   "y": 704,
-   "width": 1280,
-   "height": 640
+   "x": 6144,
+   "y": 512,
+   "width": 2048,
+   "height": 1024
   },
   {
    "id": "l2:text0",
    "parent": "l2",
    "x": 0,
    "y": 0,
-   "width": 1280,
-   "height": 640
+   "width": 2048,
+   "height": 1024
   },
   {
    "id": "l2:text0:line0",
    "parent": "l2:text0",
    "x": 0,
    "y": 0,
-   "width": 1280,
-   "height": 640
+   "width": 2048,
+   "height": 1024
   }
  ]
 }
