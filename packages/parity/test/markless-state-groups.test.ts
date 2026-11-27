@@ -312,6 +312,21 @@ describe('factored states', { timeout: 600_000 }, () => {
     expect(expectProduct(text)).toBeGreaterThan(0);
   });
 
+  it("keeps a band of its own for a group that changes only a text, whose parent the dark band colours", () => {
+    const text = variant((v) => {
+      v.css += '\n@media (prefers-color-scheme: dark) { .note.mk-g { color: #ffffff; } }\n';
+      (v.nodes as unknown[]).push(
+        { kind: 'element', id: 'h6', element: 'p', parent: 'h0', attributes: { class: 'note mk-g' } },
+        { kind: 'text', id: 'h6:text0', parent: 'h6', text: 'Off', textByState: byAB((_, b) => (b ? 'On' : 'Off')) as { when: Record<string, boolean>; value: string }[] },
+      );
+    });
+    const g = exportOf(text, true, false).targets.ios as ExportTarget;
+    const b = (g.groups ?? []).find((x) => x.groupStates.includes('state:b'));
+    // state:b's button reads the width and its text's paragraph the colour scheme, so its four bands are four classes.
+    expect(b?.states.find((st) => st.key === '@env#band')?.domain).toEqual([0, 1, 2, 3]);
+    expect(expectCombines(text, true)).toBeGreaterThan(0);
+  });
+
   it('does not refuse a paragraph that only one group changes beside text no group changes', () => {
     const text = variant((v) => {
       v.branches.push({ id: 'branch-site:1', domain: ['0', '1'], initial: '1' });

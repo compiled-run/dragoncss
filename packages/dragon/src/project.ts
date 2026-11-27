@@ -1830,8 +1830,9 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       if (bands !== null) {
         const count = bands.partition.bands.length;
         // A group holds one row per (assignment, band class): one per assignment when its elements style alike in every band.
-        const rows = linked?.groups == null ? cases.length * count : Math.max(...linked.groups.map((g, k) => g.cases.length * new Set(groupBandClasses?.[k] ?? []).size));
-        refuseBandedStateSpace(rows / count, count, bands.conditions, nativeTargets, diagnostics);
+        const tables = linked?.groups == null ? [{ assignments: cases.length, rows: count }] : linked.groups.map((g, k) => ({ assignments: g.cases.length, rows: new Set(groupBandClasses?.[k] ?? []).size }));
+        const widest = tables.reduce((a, b) => (b.assignments * b.rows > a.assignments * a.rows ? b : a));
+        refuseBandedStateSpace(widest.assignments, count, widest.rows, bands.conditions, nativeTargets, diagnostics);
       }
       // MQ-R1 R8: on native, a transition a size change would start is refused until MQ-Rt; each band's listings are analysed apart.
       // Like the animation support gate, it is a support fact: derive mode (the lanes that find what passes) does not apply it.
@@ -2274,10 +2275,12 @@ function bandClasses(group: readonly number[], bandCases: readonly { readonly ca
     prints.set(props, made);
     return made;
   };
+  // An element's print holds its text children's content too: a group that changes only a text changes the text's parent, whose
+  // styles the text's font and colour come from.
   const byAddress = (root: ResolvedElement | null, only: ReadonlySet<string> | null): Map<string, string> => {
     const out = new Map<string, string>();
     const walk = (el: ResolvedElement): void => {
-      if (only === null || only.has(el.element.address)) out.set(el.element.address, printOf(el.props));
+      if (only === null || only.has(el.element.address)) out.set(el.element.address, `${printOf(el.props)}\u0001${el.children.map((c) => (c.kind === 'text' ? c.text : '\u0002')).join('\u0003')}`);
       for (const c of el.children) if (c.kind === 'element') walk(c);
     };
     if (root !== null) walk(root);

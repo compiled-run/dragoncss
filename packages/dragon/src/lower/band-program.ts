@@ -94,17 +94,18 @@ export function bandTableOf(partition: Extract<BandPartition, { kind: 'bands' }>
 }
 
 /**
- * MQ-R1: the state table of a native output holds every (app assignment, band) pair, so the 64-assignment limit counts bands. A
+ * MQ-R1: the state table of a native output holds every (app assignment, band class) pair, so the 64-assignment limit counts bands. A
  * sheet that splits a document past it is refused on each native target at its first @media, not left to fail when the program is built.
  */
-export function refuseBandedStateSpace(assignments: number, bands: number, conditions: readonly RuleCondition[], targets: readonly ('ios' | 'android')[], diagnostics: Diagnostic[]): void {
+export function refuseBandedStateSpace(assignments: number, bands: number, classes: number, conditions: readonly RuleCondition[], targets: readonly ('ios' | 'android')[], diagnostics: Diagnostic[]): void {
   const c = conditions[0];
-  if (bands <= 1 || assignments * bands <= MAX_STATE_TABLE_ASSIGNMENTS || c === undefined) return;
+  if (bands <= 1 || assignments * classes <= MAX_STATE_TABLE_ASSIGNMENTS || c === undefined) return;
+  const pairs = classes === bands ? `${assignments * bands} (assignment, band) pairs` : `${assignments * classes} (assignment, band class) pairs over ${classes} classes of bands that style its elements alike`;
   for (const t of targets) {
     diagnostics.push(diagnostic('DRAGON_STATE_SPACE_LIMIT', {
       origin: authored(c.span),
       target: t,
-      message: `${assignments} reachable assignments in ${bands} @media bands are ${assignments * bands} (assignment, band) pairs, above the ${t} state table limit of ${MAX_STATE_TABLE_ASSIGNMENTS}`,
+      message: `${assignments} reachable assignments in ${bands} @media bands are ${pairs}, above the ${t} state table limit of ${MAX_STATE_TABLE_ASSIGNMENTS}`,
     }));
   }
 }
