@@ -86,15 +86,28 @@ describe('device-traces, host side (SELD-R2 PR 4)', () => {
       expect(one[70]).toBe('70\t0\t-1\t0,1,5\t-\t-1\t-1');
       expect(frac[70]).toBe('70\t0\t-1\t0,1,4\t-\t-1\t-1');
     }
-    // At the shared ratios every CSS px edge of the fixtures is a whole device px, so the references equal DPR 1's.
-    for (const id of traceScriptIds()) for (const dpr of [2, 3]) expect(traceReference(id, dpr)).toEqual(traceReference(id, 1));
+    // At the shared ratios every CSS px edge of the fixtures is a whole device px, so the references equal DPR 1's, except where a
+    // point sits on a rounded corner: hit-object-fit-rows-rtl's t1 point (718, 22) is inside its 10px corner at DPR 1 and outside it
+    // at 2 and 3, and Chrome 145's elementFromPoint names t1 at DPR 1 and r1 at 2 and 3 (measured 2026-11-26).
+    const corner = [56, 57, 58, 59, 60, 61, 62, 63, 64, 66, 68, 112, 113, 114, 115, 116, 117, 118, 119, 120, 122, 124, 168, 169, 170, 171, 172, 173, 174, 175, 176, 178, 180];
+    for (const id of traceScriptIds()) for (const dpr of [2, 3]) {
+      const one = traceReference(id, 1);
+      const at = traceReference(id, dpr);
+      if (id !== 'hit-object-fit-rows-rtl~trace') {
+        expect(at).toEqual(one);
+        continue;
+      }
+      expect(at.map((l, i) => (l === one[i] ? -1 : i)).filter((i) => i >= 0)).toEqual(corner);
+      expect([one[56], at[56]]).toEqual(['56\t0\t0\t0,1,2,3,4\t-\t3\t3', '56\t0\t0\t0,1,2,3\t-\t3\t3']);
+    }
     // A DPR-1 record fails at 2.625, and the 2.625 reference passes.
     const at = join(dir, 'fractional');
     mkdirSync(at);
     writeRecords(2.625, (id) => traceReference(id, 1), at);
     const stale = evaluateTraces(at, 2.625);
-    expect(stale.failed).toBe(2);
+    expect(stale.failed).toBe(3);
     expect(stale.details.join('\n')).toContain('first at trace 70 (after a move step)');
+    expect(stale.details.join('\n')).toContain('hit-object-fit-rows-rtl');
     writeRecords(2.625, (id) => traceReference(id, 2.625), at);
     expect(evaluateTraces(at, 2.625)).toEqual({ passed: traceScriptIds().length, failed: 0, details: [] });
     const g = interactionGroups()[0];
