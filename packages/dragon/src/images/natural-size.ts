@@ -7,7 +7,13 @@ import type { PngFacts } from './png.ts';
 
 export type NaturalSize = { readonly width: number; readonly height: number };
 
-export type ImageHeader = { readonly format: 'png'; readonly facts: PngFacts } | { readonly format: 'jpeg'; readonly facts: JpegFacts };
+/** A GIF's logical screen, which Chrome takes as its natural size. */
+export type GifFacts = { readonly width: number; readonly height: number };
+
+export type ImageHeader =
+  | { readonly format: 'png'; readonly facts: PngFacts }
+  | { readonly format: 'jpeg'; readonly facts: JpegFacts }
+  | { readonly format: 'gif'; readonly facts: GifFacts };
 
 const INCH = 2;
 const DEFAULT_DPI = 72;
@@ -39,6 +45,7 @@ export function naturalSize(header: ImageHeader, faults: ImageFaults = NO_IMAGE_
     const { width, height } = header.facts;
     return faults.ihdrSwap ? { width: height, height: width } : { width, height };
   }
+  if (header.format === 'gif') return { width: header.facts.width, height: header.facts.height };
   const f = header.facts;
   const physical = { width: f.width, height: f.height };
   const sized = faults.densityIgnored ? physical : densityCorrectedSize(physical, f.exif);

@@ -35,6 +35,8 @@ export type BoxPaintContext = {
   readonly facts: Record<string, unknown>;
   /** REPL-a: the bytes of every drawable image src of the case (images/compile.ts). */
   readonly images: ReadonlyMap<string, Uint8Array>;
+  /** The host draws each <img>'s picture (InternalOptions.hostImages), so an <img> gets no image content write. */
+  readonly hostImages: boolean;
   /** Whether this box or an ancestor has a transform that moves at run time (animated, transitioned or state-dependent). */
   readonly transformMoves: boolean;
   /**

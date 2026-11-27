@@ -10,9 +10,9 @@ import { collectNodes, nameCollected } from './capture.ts';
 import type { CapturedNode, CollectedElement } from './capture.ts';
 import { GATE_DEVICE_PX } from './compare.ts';
 import { BAND_KEY } from 'dragon';
-import { checkCoverage, checkInputFonts, checkTargets, collectBackdrops, documentMismatch, marklessDocumentHtml, marklessDocumentTree, modalIds, pairBoxes, readDocumentTree, readRootProbe, usedScheme, withCleanup } from './markless-style-compare.ts';
+import { checkCoverage, checkInputFonts, checkTargets, collectBackdrops, documentMismatch, marklessDocumentHtml, marklessDocumentTree, modalIds, pairBoxes, readDocumentTree, readRootProbe, usedScheme, withCleanup, withImageDataUrls } from './markless-style-compare.ts';
 import type { BoxProblem, CompareRow, DocumentNode, RootProbe } from './markless-style-compare.ts';
-import type { MarklessAtSize, MarklessExportAssignment, MarklessFontFile, MarklessStyleInput } from './markless-style-input.ts';
+import type { MarklessAtSize, MarklessExportAssignment, MarklessFontFile, MarklessImageFile, MarklessStyleInput } from './markless-style-input.ts';
 import { checkMarklessExport, marklessCompiledTargets, marklessHeightDependence, schemeOf } from './markless-style-input.ts';
 import type { ExportAssignment, ExportTarget, NativeStyleExport } from './native-style-export.ts';
 
@@ -191,13 +191,15 @@ export function webColumnRows(input: MarklessStyleInput, target: WebColumnDevice
  * prefers it; every device change is undone afterwards, also on failure. Scaled, the export's frames are compared as a host draws
  * them on the device (each frame's CSS px, export px / export dpr, at the device's dpr).
  */
-export async function webColumn(input: MarklessStyleInput, given: NativeStyleExport, device: WebColumnDevice, fonts: readonly MarklessFontFile[] = [], screenshots?: string, size: WebColumnSize = { kind: 'proof' }, host: WebColumnHost = DEVICE_HOST): Promise<{ readonly browser: string; readonly size: BrowserSize; readonly compared: number; readonly failed: number; readonly rows: readonly WebColumnRow[] }> {
+export async function webColumn(input: MarklessStyleInput, given: NativeStyleExport, device: WebColumnDevice, fonts: readonly MarklessFontFile[] = [], screenshots?: string, size: WebColumnSize = { kind: 'proof' }, host: WebColumnHost = DEVICE_HOST, images: readonly MarklessImageFile[] = []): Promise<{ readonly browser: string; readonly size: BrowserSize; readonly compared: number; readonly failed: number; readonly rows: readonly WebColumnRow[] }> {
   const exported = checkMarklessExport(given);
   if (exported.fontMode !== 'system') throw new Error(`the export resolved fonts as ${exported.fontMode}; the web column measures the phone's own system fonts, so it compares only an export with system fonts`);
   const t = exported.targets[device.target];
   if (t === undefined) throw new Error(`the export has no ${device.target} target`);
   const at = size.kind === 'proof' ? size.at : undefined;
-  const compiled = marklessCompiledTargets(input, fonts, 'system', at);
+  const compiled = marklessCompiledTargets(input, fonts, 'system', at, images);
+  // Chrome loads each image file from a data: URL in place of its src, so it draws the bytes Dragon read.
+  const web = withImageDataUrls(input, images);
   checkTargets(input, exported, compiled);
   checkInputFonts(exported, fonts);
   for (const [target, x] of Object.entries(exported.targets)) if (x !== undefined) checkCoverage(input, compiled[target as NativeStyleTarget], target, x);
@@ -207,7 +209,7 @@ export async function webColumn(input: MarklessStyleInput, given: NativeStyleExp
   const anySize = size.kind !== 'proof';
   if (native !== undefined && t.assignments[native.assignment] === undefined) throw new Error(`the phone drew assignment ${native.assignment}, which the export's ${device.target} target does not have`);
   if (native !== undefined) {
-    const reads = marklessHeightDependence(input, fonts, 'system', device.target, native.viewport.width, native.scale, [t.viewport.height, native.viewport.height]);
+    const reads = marklessHeightDependence(input, fonts, 'system', device.target, native.viewport.width, native.scale, [t.viewport.height, native.viewport.height], images);
     if (reads.length > 0) throw new Error(`${device.target}: the page's layout depends on the viewport's height through ${reads.join(', ')}; a phone's page area is not its browser's 100vh, so a phone's layout is compared only for a page laid out by its width`);
   }
   const laid: LaidOutAt | null | undefined = size.kind === 'scaled' ? null
@@ -239,7 +241,7 @@ export async function webColumn(input: MarklessStyleInput, given: NativeStyleExp
       });
       return;
     }
-    res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' }).end(pageOf(input, assignment.values, files, `/result?i=${i}`, anySize ? null : t.viewport.width));
+    res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' }).end(pageOf(web, assignment.values, files, `/result?i=${i}`, anySize ? null : t.viewport.width));
   });
   const rows: WebColumnRow[] = [];
   let browser = '';

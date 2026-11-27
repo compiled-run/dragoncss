@@ -28,6 +28,7 @@ function countingShaper(): { readonly shaper: GlyphShaper; readonly calls: strin
   const calls: string[] = [];
   const fonts = new Map<number, number>();
   const shaper: GlyphShaper = {
+    fallback: (): string => '',
     shape(face, size, text, start, end, script, rtl, language, features) {
       calls.push(`${face} ${size} ${start}-${end} ${text}`);
       let font = fonts.get(size);

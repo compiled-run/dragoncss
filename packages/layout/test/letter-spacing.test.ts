@@ -61,6 +61,7 @@ describe('the environment pass resolves letter-spacing', () => {
 describe('letter-spacing on the shaped path', () => {
   // A face whose every code unit is one 10px glyph, except "fi", which is one ligature glyph (cluster at the f) unless liga is off.
   const shaper: GlyphShaper = {
+    fallback: (): string => '',
     shape(_face, size, t, start, end, _script, _rtl, _language, features) {
       let ligaOff = false;
       for (let i = 0; i < features.length; i += FEATURE_STRIDE) if (features[i] === TAG_LIGA && features[i + 1] === 0) ligaOff = true;

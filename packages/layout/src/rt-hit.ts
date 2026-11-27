@@ -1068,8 +1068,10 @@ function boxNodes(s: TableState, b: LayoutBox, parent: number, orders: Map<strin
     if (c.kind === 'text') leaves.push(c);
     else if (c.kind === 'inline' || c.kind === 'br') throw new HitError(inlineRefusal(c.id, c.kind));
     else if ((c.kind === 'box' || c.kind === 'replaced') && isAtomicInline(c) && b.strut === null) throw new HitError(atomicRefusal(c.id));
-    else if ((c.kind === 'box' || c.kind === 'replaced') && isAtomicInline(c)) atoms.push(c);
-    else if ((c.kind === 'box' || c.kind === 'replaced') && c.style.float !== 'none' && c.style.position !== 'absolute' && c.style.position !== 'fixed' && (b.style.display === 'block' || b.style.display === 'inline-block')) throw new HitError(floatRefusal(c.id));
+    else if ((c.kind === 'box' || c.kind === 'replaced') && isAtomicInline(c)) {
+      if (child.kind === 'control' && child.control.kind === 'button-block') s.buttons.set(c.id, true);
+      atoms.push(c);
+    } else if ((c.kind === 'box' || c.kind === 'replaced') && c.style.float !== 'none' && c.style.position !== 'absolute' && c.style.position !== 'fixed' && (b.style.display === 'block' || b.style.display === 'inline-block')) throw new HitError(floatRefusal(c.id));
     else kids++;
   }
   if ((leaves.length > 0 || atoms.length > 0) && kids > 0) throw new HitError(`${b.id} mixes inline content and boxes; the compiler wraps inline content in anonymous boxes`);

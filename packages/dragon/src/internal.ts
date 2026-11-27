@@ -26,7 +26,7 @@ import type { Assignment, Origin, Target } from './types.ts';
 // The public API without createProject, whose committed lanes verdict (create-project.ts) the harness passes itself.
 export * from './api.ts';
 export { createProjectWith, COMPILER_VERSION } from './project.ts';
-export type { NativeStyleBlocked, NativeStyleOutput, NativeStyles, NativeStylesConfig, NativeStyleTarget } from './native-styles.ts';
+export type { NativeStateGroup, NativeStyleBlocked, NativeStyleOutput, NativeStyles, NativeStylesConfig, NativeStyleTarget } from './native-styles.ts';
 export { compileNativeStyles, compileNativeStylesWith, NATIVE_STYLES_VERSION } from './native-styles.ts';
 export type { InternalOptions } from './project.ts';
 export type { CompilerFaults } from './faults.ts';
@@ -40,6 +40,7 @@ export { nativeOutlinePending, PROFILE_NOTES, profileNoteFor, statusOf } from '.
 export type { ProfileNote } from './profiles/types.ts';
 export { sha256Hex } from './digest.ts';
 export { SYNTHETIC_BOLD_KEYS, SYNTHETIC_BOLD_VALUES, syntheticBoldStroke } from './fonts/synthetic-bold.ts';
+export { sniffImage } from './images/index.ts';
 export { SYSTEM_FACE_ROLES, SYSTEM_FACE_WEIGHTS, SYSTEM_FACES, isSystemFaceRole, systemFaceId } from './fonts/system-faces.ts';
 export type { SystemFaceRequest, SystemFaceRole, SystemFaceWeight } from './fonts/system-faces.ts';
 export { chromeVersion } from './ua/chrome-145.darwin-arm64.generated.ts';
@@ -70,6 +71,7 @@ export { applyFix } from './diagnostics/fix.ts';
 export type { FixResult } from './diagnostics/fix.ts';
 export { MAX_STATE_ASSIGNMENTS, assignmentKey, isWhitespaceText, textAddresser } from './analysis/link.ts';
 export { isScalar, isTreeNodeId } from './analysis/input.ts';
+export type { LayoutDevice, RuntimeImageLayout } from './images/runtime.ts';
 export { collapseInlineContext, collapseInlineRun, phaseOne, phaseOneContext } from './analysis/resolve.ts';
 export { applyTextTransform } from './analysis/text-transform.ts';
 export type { TextTransform } from './analysis/text-transform.ts';
@@ -81,7 +83,7 @@ export type { TextLonghand } from './css/properties.ts';
 export type { BorderStyleName, NativeBackend, NativeProgram, ProgramNode, ProgramWrite, Technique, WriteKind } from './lower/native-program.ts';
 export { BACKEND_TARGET, NATIVE_BACKENDS, NATIVE_CLASSES, PROGRAM_VERSIONS, renameWriteNodes, VOCABULARY, WRITE_CSS } from './lower/native-program.ts';
 export type { ExpectedDump, ExpectedEngine, ExpectedNode, NodeGeometry } from './emit/expected-dump.ts';
-export { appliedKeyMap, appliedValue, borderDevicePx, cssCoverage, EXPECTED_SCHEMA, expectedDigest, expectedDump, programInput, replacedGeometries, textInstanceSize } from './emit/expected-dump.ts';
+export { appliedKeyMap, appliedValue, borderDevicePx, cssCoverage, EXPECTED_SCHEMA, expectedDigest, expectedDump, programInput, replacedContents, replacedGeometries, textInstanceSize } from './emit/expected-dump.ts';
 export { clipPathInsets, clipPathRect, clipShapeGeometry, clipShapeKind, clipShapeValues } from './emit/paint/clip.ts';
 export type { EmitCase } from './emit/native-support.ts';
 export { emitNativeSupport, NATIVE_SUPPORT_VERSION, SUPPORT_FILES, SUPPORT_PLANTS } from './emit/native-support.ts';
@@ -142,6 +144,14 @@ export function focusReachableIn(compiled: object): boolean {
 /** SELD-R2: whether a compile outside the parity lanes refuses this document on the native target (interactionLanes). */
 export function laneOnlyNative(compiled: object, target: 'ios' | 'android'): boolean {
   return internalRecord(compiled)?.laneOnlyNative.includes(target) === true;
+}
+
+/** The factored groups (analysis/link.ts StateGroup) with their cases' assignments, the initial first; null when cases are every assignment. */
+export function stateGroupsIn(compiled: object): readonly { readonly states: readonly number[]; readonly bandFree: boolean; readonly cases: readonly { readonly assignment: Assignment; readonly isInitial: boolean }[] }[] | null {
+  const record = internalRecord(compiled);
+  const groups = record?.linked?.groups ?? null;
+  if (record === undefined || groups === null) return null;
+  return groups.map((g, k) => ({ states: g.states, bandFree: record.groupBandFree?.[k] === true, cases: g.cases.map((i) => ({ assignment: (record.cases[i] as InternalCase).assignment, isInitial: (record.cases[i] as InternalCase).isInitial })) }));
 }
 
 /** Dragon's reachable assignments, in its enumeration order, with the initial case marked. */
@@ -387,7 +397,7 @@ export function nativePrograms(compiled: object, assignment: Assignment, state: 
   if (c.nativeLowered === null || c.resolved === null) return { kind: 'blocked', reason: 'the case has no native lowering' };
   try {
     const record = internalRecord(compiled) as NonNullable<ReturnType<typeof internalRecord>>;
-    return { kind: 'ready', programs: lowerNativePrograms(c.nativeLowered, c.resolved, record.images, movingOf(record), record.textPlants) };
+    return { kind: 'ready', programs: lowerNativePrograms(c.nativeLowered, c.resolved, record.images, movingOf(record), record.textPlants, record.hostImages) };
   } catch (e) {
     if (e instanceof ProgramError) return { kind: 'blocked', reason: e.message };
     throw e;
@@ -403,7 +413,7 @@ export function nativeProgramFor(compiled: object, assignment: Assignment, targe
   if (c.nativeLowered === null || c.resolved === null) return { kind: 'blocked', reason: 'the case has no native lowering' };
   try {
     const record = internalRecord(compiled) as NonNullable<ReturnType<typeof internalRecord>>;
-    return { kind: 'ready', program: lowerNativeProgram(target === 'ios' ? 'uikit' : 'android-views', c.nativeLowered, c.resolved, record.images, movingOf(record), record.textPlants) };
+    return { kind: 'ready', program: lowerNativeProgram(target === 'ios' ? 'uikit' : 'android-views', c.nativeLowered, c.resolved, record.images, movingOf(record), record.textPlants, record.hostImages) };
   } catch (e) {
     if (e instanceof ProgramError) return { kind: 'blocked', reason: e.message };
     throw e;
@@ -585,7 +595,7 @@ export function nativeBandPrograms(compiled: object, assignment: Assignment, ban
   const c = bandCaseOf(record, assignment, band);
   if (typeof c === 'string') return { kind: 'blocked', reason: c };
   try {
-    return { kind: 'ready', programs: lowerNativePrograms(c.nativeLowered, c.resolved, record.images, movingOf(record), record.textPlants) };
+    return { kind: 'ready', programs: lowerNativePrograms(c.nativeLowered, c.resolved, record.images, movingOf(record), record.textPlants, record.hostImages) };
   } catch (e) {
     if (e instanceof ProgramError) return { kind: 'blocked', reason: e.message };
     throw e;
@@ -616,7 +626,7 @@ export function nativeBandProgramFor(compiled: object, assignment: Assignment, b
   const c = bandCaseOf(record, assignment, band);
   if (typeof c === 'string') return { kind: 'blocked', reason: c };
   try {
-    return { kind: 'ready', program: lowerNativeProgram(target === 'ios' ? 'uikit' : 'android-views', c.nativeLowered, c.resolved, record.images, movingOf(record), record.textPlants) };
+    return { kind: 'ready', program: lowerNativeProgram(target === 'ios' ? 'uikit' : 'android-views', c.nativeLowered, c.resolved, record.images, movingOf(record), record.textPlants, record.hostImages) };
   } catch (e) {
     if (e instanceof ProgramError) return { kind: 'blocked', reason: e.message };
     throw e;
@@ -686,7 +696,7 @@ export function interactionLevelInputIn(compiled: object, assignment: Assignment
     const i = c.interaction.find((x) => x.value.key === state);
     if (i === undefined || i.nativeLowered === null) return { kind: 'blocked', reason: `interaction state ${state} has no native lowering in band ${band}` };
     try {
-      return { kind: 'ready', programs: lowerNativePrograms(i.nativeLowered, i.resolved, record.images, movingOf(record), record.textPlants) };
+      return { kind: 'ready', programs: lowerNativePrograms(i.nativeLowered, i.resolved, record.images, movingOf(record), record.textPlants, record.hostImages) };
     } catch (e) {
       if (e instanceof ProgramError) return { kind: 'blocked', reason: e.message };
       throw e;

@@ -66,7 +66,7 @@ describe('Appendix E paint order', () => {
     expect(s.native).toEqual(s.order);
     expect(s.writes.get('p')).toEqual({ host: 'html', bucket: 2, rank: 3, index: 4 });
     expect(s.writes.get('q')).toEqual({ host: 'html', bucket: -1, rank: 0, index: 0 });
-    expect(s.facts.get('p')).toEqual({ paintOrder: 8, context: 'html', createsContext: true, layer: 'positive', host: 'html', clipChain: [], underClip: false, paintLayer: 'p' });
+    expect(s.facts.get('p')).toEqual({ paintOrder: 8, context: 'html', createsContext: true, layer: 'positive', z: 2, host: 'html', clipChain: [], underClip: false, paintLayer: 'p' });
     expect(s.facts.get('f1')?.paintLayer).toBe('html');
     expect(s.facts.get('f1')?.layer).toBe('flow');
   });

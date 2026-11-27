@@ -530,6 +530,15 @@ export function buildIfc(ctx: Ctx, box: LayoutBox): Ifc {
       if (!m.ok) {
         if (m.code === 'text-script') unsupported('text-script', t.id, 'notes/T056-txt1a-spec.md R4', m.reason);
         unsupported('text-glyph', t.id, 'css-fonts-4 §5', m.reason);
+      }      // Under line-height: normal Blink's line box takes in each fallback face's ascent and descent (InlineBoxState::ComputeTextMetrics),
+      // which the line metrics here, from the primary face, do not.
+      if (t.lineHeight.kind === 'normal') {
+        const shaped = ctx.measurer.shaped(segment, leafFontOf(t));
+        if (shaped.ok) {
+          for (const run of shaped.result.runs) {
+            if (run.face !== t.font.family) unsupported('text-glyph', t.id, 'css-inline-3 §3.3', `${t.id} draws part of its text in the fallback face ${run.face} under line-height: normal, whose line box takes in the fallback face's metrics; give it a line-height`);
+          }
+        }
       }
     }
     if (first !== undefined && t.textWrapMode !== first.textWrapMode) {
@@ -962,6 +971,8 @@ export function latinBreakClass(cp: number): number {
   if (cp === 0x2019 || cp === 0x201d) return LC_QU_PF;
   if (cp === 0x2026) return LC_IN;
   if (cp === ZWSP) return LC_ZW;
+  // Geometric Shapes (U+25A0..U+25FF) are AL or AI, and U+2713 CHECK MARK is AL: icons a page draws in a fallback face.
+  if ((cp >= 0x25a0 && cp <= 0x25ff) || cp === 0x2713) return LC_AL;
   return -1;
 }
 

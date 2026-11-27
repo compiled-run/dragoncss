@@ -1,8 +1,8 @@
 // Fixture group controls (FORM-a, T052): A3 buttons painted as CSS boxes, as block containers that centre their contents safely
 // and size to their content in block flow, as flex items, and as flex containers, in both directions; the button type changing
 // nothing; Chrome's appearance display adjustment (an li with appearance: auto is a block, with no marker). The rejects name what
-// A3 refuses: a themed button (FORM-b), an inline-level one (RF-INL), the UA control font, an absolutely positioned button, an
-// auto-width flex button in block flow, and an inline element that appearance makes inline-block. A fieldset lays out its rendered
+// A3 refuses: a themed button (FORM-b), an inline or inline-grid one (RF-INL lays out inline-block and inline-flex buttons as
+// atomic inlines on their lines), the UA control font, an absolutely positioned button, an auto-width flex button in block flow, and an inline element that appearance makes inline-block. A fieldset lays out its rendered
 // legend in its block-start border (HTML §15.3.13); the rejects name the legend cutout paint, a non-block fieldset and the UA groove.
 // FORM-b adds a single select with appearance: none or devolved to menulist-button, and refuses a list box, a themed menulist, a
 // shrink-to-fit width and an optgroup.
@@ -29,9 +29,10 @@ export const CONTROLS: readonly FixtureSpec[] = [
   both('grid-button-flex'),
   both('controls-button-demo'),
   both('controls-button-type'),
+  both('controls-button-inline'),
   both('controls-appearance-display'),
   reject('reject-controls-button-theme', 'DRAGON_UNSUPPORTED_VALUE', '<button data-dragon-id="b">XX</button>', '<button> b with appearance: auto and no author background or border is painted by the platform theme'),
-  reject('reject-controls-button-inline', 'DRAGON_UNSUPPORTED_VALUE', '<button data-dragon-id="b">XX</button>', 'display: inline-block on <button> b makes it an inline-level control'),
+  reject('reject-controls-button-inline', 'DRAGON_UNSUPPORTED_VALUE', 'inline-grid', 'display: inline-grid on <button> b makes it an inline-level control'),
   reject('reject-controls-button-font', 'DRAGON_UNSUPPORTED_FONT', '<button data-dragon-id="b">XX</button>', '<button> b uses Chrome\'s user-agent control font'),
   reject('reject-controls-button-abspos', 'DRAGON_UNSUPPORTED_VALUE', 'absolute', 'position: absolute on <button> b is not supported on a form control'),
   reject('reject-controls-button-flex-width', 'DRAGON_UNSUPPORTED_VALUE', '<button data-dragon-id="b">XX</button>', '<button> b is a flex button with an auto width in block flow'),

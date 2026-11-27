@@ -66,6 +66,11 @@ function numericFeatures(v: VariantNumeric): readonly number[] {
  */
 export interface GlyphShaper {
   shape(face: string, size: number, text: string, start: number, end: number, script: string, rtl: boolean, language: string, features: readonly number[]): readonly number[];
+  /**
+   * FontFallbackIterator's next face for text[start, end), a run the face draws with no glyph: the platform's fallback face, which
+   * the core then shapes the run in, or '' when the platform has none (the core then refuses the run as before).
+   */
+  fallback(face: string, text: string, start: number, end: number, script: string, language: string): string;
 }
 
 /** HanKerning::FontData (han_kerning.cc) of a face for the measurer's language, read by the host from GPOS and glyph bounds. */
@@ -461,7 +466,7 @@ function hanKerningFeatures(item: ShapeItem, start: number, end: number, isLineS
 
 type ShapingGlyph = { readonly glyph: number; readonly ci: number; readonly advance: number; safe: boolean };
 /** size: the font instance size the run is shaped at (the item's, or its small-caps size). */
-type ShapingRun = { readonly start: number; readonly numChars: number; readonly size: number; readonly glyphs: readonly ShapingGlyph[]; readonly width: number };
+type ShapingRun = { readonly start: number; readonly numChars: number; readonly face: string; readonly size: number; readonly glyphs: readonly ShapingGlyph[]; readonly width: number };
 
 /** A shaped range [start, end) of the item, with Blink's cached safe-to-break flags and positions per UTF-16 offset. */
 export type ShapeResult = {
@@ -659,6 +664,64 @@ function isSmallCapsLower(item: ShapeItem, offset: number): boolean {
   return smallCapsCodePoint(cp) !== cp;
 }
 
+/** The [from, to) pairs of UTF-16 clusters in [start, end) that shaped glyphs g draws with glyph 0 (.notdef), merged when adjacent. */
+function notdefRanges(g: readonly number[], start: number, end: number): number[] {
+  const out: number[] = [];
+  let from = -1;
+  let to = -1;
+  for (let o = 0; o < g.length; o = o + GLYPH_STRIDE) {
+    if ((g[o] as number) !== 0) continue;
+    const cluster = g[o + 1] as number;
+    let next = end;
+    for (let k = o + GLYPH_STRIDE; k < g.length; k = k + GLYPH_STRIDE) {
+      const c = g[k + 1] as number;
+      if (c > cluster) {
+        next = c;
+        break;
+      }
+    }
+    if (from >= 0 && to >= cluster) {
+      if (to < next) to = next;
+    } else {
+      if (from >= 0) {
+        out.push(from);
+        out.push(to);
+      }
+      from = cluster < start ? start : cluster;
+      to = next;
+    }
+  }
+  if (from >= 0) {
+    out.push(from);
+    out.push(to);
+  }
+  return out;
+}
+
+/** One ShapingRun of the clusters [from, to) of glyphs g, shaped over [s, e) in face, appended to runs; returns the summed width. */
+function pushRun(item: ShapeItem, runs: ShapingRun[], g: readonly number[], s: number, e: number, face: string, size: number, from: number, to: number, width: number): number {
+  const glyphs: ShapingGlyph[] = [];
+  const advances: number[] = [];
+  let first = true;
+  for (let o = 0; o < g.length; o = o + GLYPH_STRIDE) {
+    const cluster = g[o + 1] as number;
+    if (cluster < from || cluster >= to) continue;
+    const gid = g[o] as number;
+    const flags = g[o + 6] as number;
+    // A run after a fallback hole keeps its first glyph's own flag, as the segment's buffer shaped it.
+    const safe = first && (from === s || o === 0) ? true : cluster === (g[o + 1 - GLYPH_STRIDE] as number) ? false : Number.isInteger(flags / 2);
+    first = false;
+    const raw = g[o + 2] as number;
+    const shaped = item.faults.wholePixelPositions && !Number.isInteger(raw / 65536) ? wholePixel(raw) : raw;
+    const advance = item.letterSpacing16 === 0 && item.wordSpacing16 === 0 ? shaped : shaped + spacingAfterGlyph(item, g, o, e);
+    glyphs.push({ glyph: gid, ci: cluster - from, advance, safe });
+    advances.push(advance);
+  }
+  const run: ShapingRun = { start: from, numChars: to - from, face, size, glyphs, width: sumAdvances(advances, item.faults, item.letterSpacing16 === 0 && item.wordSpacing16 === 0) };
+  runs.push(run);
+  return accumulate(width, run.width, item.faults);
+}
+
 /** HarfBuzzShaper::Shape over [start, end) with the item as context. */
 function shapeRange(item: ShapeItem, start: number, end: number, isLineStart: boolean, hanStart: boolean, hanEnd: boolean): ShapeResult {
   const runs: ShapingRun[] = [];
@@ -675,23 +738,24 @@ function shapeRange(item: ShapeItem, start: number, end: number, isLineStart: bo
     for (const f of extra.features) features.push(f);
     for (const u of extra.unsafeBefore) unsafe.push(u);
     const g = ranges.lower ? item.shaper.shape(item.face, item.smallCapsSize, item.upper, s, e, seg.script, false, item.language, features) : item.shaper.shape(item.face, item.size, item.text, s, e, seg.script, false, item.language, features);
-    const glyphs: ShapingGlyph[] = [];
-    const advances: number[] = [];
-    for (let o = 0; o < g.length; o = o + GLYPH_STRIDE) {
-      const gid = g[o] as number;
-      const cluster = g[o + 1] as number;
-      if (gid === 0 && missing < 0) missing = item.units[cluster] as number;
-      const flags = g[o + 6] as number;
-      const safe = o === 0 ? true : cluster === (g[o + 1 - GLYPH_STRIDE] as number) ? false : Number.isInteger(flags / 2);
-      const raw = g[o + 2] as number;
-      const shaped = item.faults.wholePixelPositions && !Number.isInteger(raw / 65536) ? wholePixel(raw) : raw;
-      const advance = item.letterSpacing16 === 0 && item.wordSpacing16 === 0 ? shaped : shaped + spacingAfterGlyph(item, g, o, e);
-      glyphs.push({ glyph: gid, ci: cluster - s, advance, safe });
-      advances.push(advance);
+    const size = ranges.lower ? item.smallCapsSize : item.size;
+    // HarfBuzzShaper::ShapeSegment: the clusters the face draws with no glyph are shaped again in the platform's fallback face.
+    // A synthesized small-caps run falls back nowhere, so its holes stay missing.
+    const holes = notdefRanges(g, s, e);
+    let at = s;
+    for (let h = 0; h < holes.length; h = h + 2) {
+      const from = holes[h] as number;
+      const to = holes[h + 1] as number;
+      if (at < from) width = pushRun(item, runs, g, s, e, item.face, size, at, from, width);
+      const face = ranges.lower ? '' : item.shaper.fallback(item.face, item.text, from, to, seg.script, item.language);
+      const again = face === '' ? [] : item.shaper.shape(face, size, item.text, from, to, seg.script, false, item.language, features);
+      if (face === '' || notdefRanges(again, from, to).length > 0) {
+        if (missing < 0) missing = item.units[from] as number;
+        width = pushRun(item, runs, g, s, e, item.face, size, from, to, width);
+      } else width = pushRun(item, runs, again, from, to, face, size, from, to, width);
+      at = to;
     }
-    const run: ShapingRun = { start: s, numChars: e - s, size: ranges.lower ? item.smallCapsSize : item.size, glyphs, width: sumAdvances(advances, item.faults, item.letterSpacing16 === 0 && item.wordSpacing16 === 0) };
-    runs.push(run);
-    width = accumulate(width, run.width, item.faults);
+    if (at < e) width = pushRun(item, runs, g, s, e, item.face, size, at, e, width);
   }
   // ShapeResult::AddUnsafeToBreak (LTR).
   for (const offset of unsafe) {
@@ -1854,14 +1918,14 @@ function offsetOfCodePoint(units: readonly number[], codePoint: number): number 
  * glyph's pen x in px from the piece's left, its HarfBuzz 16.16 advances summed exactly as the cached positions sum them, and the
  * code point of its cluster, counted from the piece's start (a justified line shifts each glyph by its code point's LinePiece shift).
  */
-export type PieceGlyphs = { readonly ok: true; readonly glyphs: readonly number[]; readonly xs: readonly number[]; readonly chars: readonly number[]; readonly sizes: readonly number[] } | { readonly ok: false; readonly reason: string };
+export type PieceGlyphs = { readonly ok: true; readonly glyphs: readonly number[]; readonly xs: readonly number[]; readonly chars: readonly number[]; readonly sizes: readonly number[]; readonly faces: readonly string[] } | { readonly ok: false; readonly reason: string };
 
 /**
  * The glyphs of code points [start, end) of text as the measurer shapes it (TextMeasurer.shaped): the whole item's shaping, not
  * ShapeLine's reshaping at line edges, and no glyph x or y offsets. Both are exact for Ahem; the real-face slice adds them.
  */
 export function pieceGlyphs(measurer: TextMeasurer, textIn: string, font: TextFont, startIn: number, endIn: number): PieceGlyphs {
-  if (endIn <= startIn) return { ok: true, glyphs: [], xs: [], chars: [], sizes: [] };
+  if (endIn <= startIn) return { ok: true, glyphs: [], xs: [], chars: [], sizes: [], faces: [] };
   // A preserved U+000A (TXT2-c) ends a text item: the piece is shaped in the text between the line feeds that holds it (without
   // one, the whole text and its offsets).
   let k = 0;
@@ -1886,6 +1950,7 @@ export function pieceGlyphs(measurer: TextMeasurer, textIn: string, font: TextFo
   const xs: number[] = [];
   const chars: number[] = [];
   const sizes: number[] = [];
+  const faces: string[] = [];
   let pen = 0;
   for (const run of s.result.runs) {
     for (const g of run.glyphs) {
@@ -1895,10 +1960,11 @@ export function pieceGlyphs(measurer: TextMeasurer, textIn: string, font: TextFo
       xs.push(pen / 65536);
       chars.push(codePointOfOffset(s.item.units, at) - start);
       sizes.push(run.size);
+      faces.push(run.face);
       pen = pen + g.advance;
     }
   }
-  return { ok: true, glyphs, xs, chars, sizes };
+  return { ok: true, glyphs, xs, chars, sizes, faces };
 }
 
 /** R2: the measurer over bundled faces and the host's HarfBuzz. */

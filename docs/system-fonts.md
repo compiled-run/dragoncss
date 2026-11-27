@@ -74,11 +74,24 @@ face with how each target's host rebuilds it:
 iOS `kind: "system"` is `UIFont.systemFont(ofSize:weight:)` at that `UIFont.Weight`; `kind: "name"` is
 `CTFontCreateWithName(postScriptName)`. Android is `/system/fonts/<file>` at those axes.
 
+## Font fallback
+
+Where a system face has no glyph for a code point, the engine shapes those clusters again in the face the platform falls back
+to, as a run of their own (Blink's HarfBuzzShaper::ShapeSegment), and the line's runs name each face. On iOS the face is the one
+Core Text's cascade draws the text in on the build Mac, accepted only when the iOS runtime holds the same font file byte for byte;
+it is a hidden font (`.CJKSymbolsFallbackSC-Regular` for `◎`), which no host can open by name, so its entry is
+`kind: "cascade"`: `CTFontCreateForString(base, text)`, which a host checks gives `postScriptName`. On Android it is Skia's
+choice from fonts.xml's fallback families (elegant variants first, the content language from most to least specific, then any
+language, in file order), the first whose font maps the code point. Its id is `system:fallback:<PostScript name>` (iOS) or
+`system:fallback:<file>#<index>` (Android); the entry carries `fallback: true` and only its own platform's face. A plan records
+each fallback the engine asked for (`densities[].fallbacks`), which the device replays.
+
 ## Refused
 
 - A weight other than the nine, `font-style: oblique`, and italic where the platform has no italic face (iOS: none listed).
 - Where Chrome would synthesize: bold over a face lighter than 600 (Android `monospace` bold), and oblique.
-- Text Core Text draws with a fallback font (a code point the face lacks), and right-to-left text in a system face.
+- Font fallback under `line-height: normal`, where Blink's line box takes in the fallback face's ascent and descent; a code point
+  no platform face draws; fallback from a bundled or author face; and right-to-left text in a system face.
 - `ui-serif`, `ui-monospace` and other family names are not system faces.
 
 ## Comparisons

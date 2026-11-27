@@ -1,0 +1,124 @@
+{
+  "fixture": "replaced-runtime-fit-rtl",
+  "chrome": "145.0.7632.6",
+  "browser": "chromium-headless-shell",
+  "platform": "darwin-arm64",
+  "viewport": {
+    "width": 400,
+    "height": 300
+  },
+  "devicePixelRatio": 2.625,
+  "direction": "rtl",
+  "nodes": [
+    {
+      "id": "html",
+      "kind": "element",
+      "hasBox": true,
+      "x": 0,
+      "y": 0,
+      "width": 400,
+      "height": 120,
+      "computed": null
+    },
+    {
+      "id": "body",
+      "kind": "element",
+      "hasBox": true,
+      "x": 0,
+      "y": 0,
+      "width": 400,
+      "height": 120,
+      "computed": null
+    },
+    {
+      "id": "grid",
+      "kind": "element",
+      "hasBox": true,
+      "x": 0,
+      "y": 0,
+      "width": 400,
+      "height": 120,
+      "computed": null
+    },
+    {
+      "id": "i0",
+      "kind": "element",
+      "hasBox": true,
+      "x": 307,
+      "y": 3,
+      "width": 90,
+      "height": 54,
+      "computed": null
+    },
+    {
+      "id": "i1",
+      "kind": "element",
+      "hasBox": true,
+      "x": 211,
+      "y": 3,
+      "width": 90,
+      "height": 54,
+      "computed": null
+    },
+    {
+      "id": "i2",
+      "kind": "element",
+      "hasBox": true,
+      "x": 115,
+      "y": 3,
+      "width": 90,
+      "height": 54,
+      "computed": null
+    },
+    {
+      "id": "i3",
+      "kind": "element",
+      "hasBox": true,
+      "x": 19,
+      "y": 3,
+      "width": 90,
+      "height": 54,
+      "computed": null
+    },
+    {
+      "id": "i4",
+      "kind": "element",
+      "hasBox": true,
+      "x": 307,
+      "y": 63,
+      "width": 90,
+      "height": 54,
+      "computed": null
+    },
+    {
+      "id": "i5",
+      "kind": "element",
+      "hasBox": true,
+      "x": 211,
+      "y": 63,
+      "width": 90,
+      "height": 54,
+      "computed": null
+    },
+    {
+      "id": "i6",
+      "kind": "element",
+      "hasBox": true,
+      "x": 115,
+      "y": 63,
+      "width": 90,
+      "height": 54,
+      "computed": null
+    },
+    {
+      "id": "i7",
+      "kind": "element",
+      "hasBox": true,
+      "x": 19,
+      "y": 63,
+      "width": 90,
+      "height": 54,
+      "computed": null
+    }
+  ]
+}

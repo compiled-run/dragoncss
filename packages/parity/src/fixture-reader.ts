@@ -133,6 +133,9 @@ export function parseFixtureHtml(html: string): { root: RawElement; style: { sta
 
 const escapeAttr = (s: string): string => s.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
 
+/** The fixture attribute that marks an img whose src the harness sets at run time (REPL-r1). */
+export const RUNTIME_SRC_ATTRIBUTE = 'data-dragon-runtime-src';
+
 /**
  * The compiled rendering of a fixture for the chrome-dual lane: the same markup and text, with each element's class
  * attribute replaced by its generated class and the stylesheet text replaced by Dragon's web output.
@@ -268,8 +271,11 @@ export function fixtureToInput(id: string, html: string, options: FixtureReadOpt
     if (id === undefined) throw new Error(`<${el.tag}> at ${el.start} needs data-dragon-id`);
     const classAttr = el.attrs.get('class');
     const attributes = [...el.attrs.entries()]
-      .filter(([k]) => k !== 'data-dragon-id' && k !== 'class')
+      .filter(([k]) => k !== 'data-dragon-id' && k !== 'class' && k !== RUNTIME_SRC_ATTRIBUTE)
       .map(([name, value]) => ({ name, value: [{ when: always, value }], origin: origin(el.start, el.openEnd) }));
+    // REPL-r1: an img the harness gives a src at run time (runtime-samples.ts); "absent" says it may also have none.
+    const runtime = el.attrs.get(RUNTIME_SRC_ATTRIBUTE);
+    if (runtime !== undefined && runtime !== '' && runtime !== 'absent') throw new Error(`<${el.tag}> ${id}: ${RUNTIME_SRC_ATTRIBUTE} is "" or "absent", not "${runtime}"`);
     const children: TreeNode[] = [];
     let k = 0;
     for (const c of el.children) {
@@ -289,6 +295,7 @@ export function fixtureToInput(id: string, html: string, options: FixtureReadOpt
       attributes,
       children,
       origin: origin(el.start, el.end),
+      ...(runtime === undefined ? {} : { runtimeSrc: { absent: runtime === 'absent' } }),
     };
   };
   const tree = convert(root);

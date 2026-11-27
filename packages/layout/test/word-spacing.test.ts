@@ -62,6 +62,7 @@ describe('the environment pass resolves word-spacing', () => {
 describe('word-spacing on the shaped path', () => {
   // A face whose every code unit is one 10px glyph in its own cluster.
   const shaper: GlyphShaper = {
+    fallback: (): string => '',
     shape(_face, size, t, start, end) {
       const out: number[] = [];
       for (let i = start; i < end; i++) out.push(t.charCodeAt(i) === 0x20 ? 3 : 1, i, size * 65536, 0, 0, 0, 0);
