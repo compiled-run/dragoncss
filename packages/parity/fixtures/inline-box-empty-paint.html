@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+/* Empty inline boxes with a background, a radius and visibility: Chrome 145 paints none of them, as
+   each fragment is 0 wide (the dot of @markless/ui's radio group, a span with width and height, which an inline box ignores). */
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.choice { display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 30px; width: 200px; margin-bottom: 4px; border: 1px solid rgb(120, 120, 120); border-radius: 10px; }
+.dot { width: 10px; height: 10px; border-radius: 50%; background-color: rgb(31, 122, 77); }
+.off .dot { visibility: hidden; }
+.c { width: 200px; margin-bottom: 4px; background-color: rgb(236, 240, 244); }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="choice1" class="choice"><div data-dragon-id="mark1"><span data-dragon-id="dot1" class="dot"></span></div><div data-dragon-id="l1">XXXX</div></div>
+<div data-dragon-id="choice2" class="choice off"><div data-dragon-id="mark2"><span data-dragon-id="dot2" class="dot"></span></div><div data-dragon-id="l2">XX</div></div>
+<div data-dragon-id="line1" class="c">XX<span data-dragon-id="dot3" class="dot"></span>XX</div>
+</body>
+</html>

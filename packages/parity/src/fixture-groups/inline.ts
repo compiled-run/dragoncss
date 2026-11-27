@@ -11,6 +11,8 @@ export const INLINE: readonly FixtureSpec[] = [
   // Inline boxes, <br>s and struts (CSS2 §10.8), from INL-P families 1 to 3; '-' is refused in rtl, so inline-box-hyphen runs ltr.
   both('inline-mixed-sizes'),
   both('inline-empty-boxes'),
+  // An empty inline box with no inline-axis margin, border or padding paints nothing, whatever its background or visibility.
+  both('inline-box-empty-paint'),
   both('inline-br'),
   both('inline-box-boundaries'),
   layout('inline-box-hyphen'),

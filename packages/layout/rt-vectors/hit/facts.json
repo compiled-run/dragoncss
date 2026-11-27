@@ -1156,6 +1156,8 @@
     "inline-mixed-sizes-rtl": "m1s is an inline box, which the hit table does not model yet (INL1a; no Chrome hit capture)",
     "inline-empty-boxes": "e1s is an inline box, which the hit table does not model yet (INL1a; no Chrome hit capture)",
     "inline-empty-boxes-rtl": "e1s is an inline box, which the hit table does not model yet (INL1a; no Chrome hit capture)",
+    "inline-box-empty-paint": "dot1 is an inline box, which the hit table does not model yet (INL1a; no Chrome hit capture)",
+    "inline-box-empty-paint-rtl": "dot1 is an inline box, which the hit table does not model yet (INL1a; no Chrome hit capture)",
     "inline-br": "r1b is a <br>, which the hit table does not model yet (INL1a; no Chrome hit capture)",
     "inline-br-rtl": "r1b is a <br>, which the hit table does not model yet (INL1a; no Chrome hit capture)",
     "inline-box-boundaries": "k1s is an inline box, which the hit table does not model yet (INL1a; no Chrome hit capture)",
