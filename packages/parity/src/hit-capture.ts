@@ -6,7 +6,7 @@
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import type { Browser } from 'playwright';
-import { hitFacts, programInput, svgScenes } from 'dragon';
+import { hitFacts, insetClipsEverything, programInput, shapeClipsEverything, svgScenes } from 'dragon';
 import type { ControlBox, LayoutBox } from '../../layout/src/input.ts';
 import type { HitFaults, HitTable, HitTableFaults } from '../../layout/src/rt-hit.ts';
 import { activationTarget, hitAt, hitGrid as rtHitGrid, hitFactsRefusal, hitRefusal as inputHitRefusal, hitRuns, hitTableOf, hitTest, hitTransformRefusal, NO_HIT_FAULTS, NO_HIT_TABLE_FAULTS, prepareHit } from '../../layout/src/rt-hit.ts';
@@ -214,7 +214,8 @@ export function hitRefusal(n: NativeCase): string | null {
   // facts give each of them pointer-events none (internal.ts hitFacts), so the table passes over them too (MASK-CLIP-path-hidden).
   // MASK-CLIP: Chrome's elementFromPoint passes over the part of a box and its descendants that its clip-path clips away, which the
   // hit test does not model yet.
-  const clipped = nodes.filter((x) => x.writes.some((w) => w.kind === 'clip-path-inset' || w.kind === 'clip-path-shape')).map((x) => x.id);
+  // A shape empty at every size hides its box and subtree, which the hit facts leave out (MASK-CLIP-path-hidden).
+  const clipped = nodes.filter((x) => x.writes.some((w) => (w.kind === 'clip-path-inset' && !insetClipsEverything(w.edges)) || (w.kind === 'clip-path-shape' && !shapeClipsEverything(w.shape)))).map((x) => x.id);
   if (clipped.length > 0) return `clip-path on ${clipped.join(', ')}: hit testing past what a clip-path clips away is not modelled yet (MASK-CLIP)`;
   // rt-hit.ts orders only z-index 0 contexts its hit facts name; other contexts and normal-flow layers stay refused.
   const ordered = (id: string, f: { readonly createsContext?: boolean; readonly layer?: string }): boolean => f.layer === 'positioned' && facts?.get(id)?.context === true;

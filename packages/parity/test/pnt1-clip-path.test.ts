@@ -127,8 +127,8 @@ function judge(caseId: string, p: NativeProgram, viewport: { width: number; heig
 }
 
 describe('MASK-CLIP clip-path: the paint model at every sample point equals the committed Chrome pixels', () => {
-  it('covers the five clip-path fixtures in both directions', () => {
-    expect(CLIP_FIXTURES.map((f) => f.id)).toEqual(['clip-path-basic', 'clip-path-nested', 'clip-path-circle', 'clip-path-polygon', 'clip-path-text']);
+  it('covers the six clip-path fixtures in both directions', () => {
+    expect(CLIP_FIXTURES.map((f) => f.id)).toEqual(['clip-path-basic', 'clip-path-nested', 'clip-path-circle', 'clip-path-polygon', 'clip-path-text', 'clip-path-sr-only']);
   });
   for (const spec of CLIP_FIXTURES) {
     for (const c of casesOf(spec, fixtureInput(spec))) {

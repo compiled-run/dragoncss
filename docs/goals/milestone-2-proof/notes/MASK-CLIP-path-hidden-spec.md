@@ -68,10 +68,13 @@ pixels at DPR 2.625, where the wider scroll extent changes the scrollbar.
    Lengths in px depend on the box's size and stay a shape clip, unchanged. That shape analysis lives beside `clipsEverything`
    (`css/properties/clip-path.ts`). `clipHidesBox` becomes "the box's clip rect or clip-path hides it" wherever MASK-CLIP reads it:
    `outline.ts`, `clip-label.ts`, `analysis/paint-values/clip.ts` and `lower/paint/clip.ts`.
-2. **Paint.** Such a box lowers as the empty clip rect does: the box view is hidden, or takes the clip label write when its subtree
-   has text Chrome exposes. The shape clip's refusals don't apply to it. An outline, a box-shadow or a fixed box in the subtree
-   is not drawn natively: Chrome draws none of them (F4 to F6). Today the outline refusal names the views outside the box view
-   (`outline.ts`, `viewOutsideClip`); for a hidden box, those views are left out instead.
+2. **Paint.** Such a box keeps its shape clip's lowering (`clip-path-inset` or `clip-path-shape`, and `clip-text`). On the
+   device it clips the box view and every view inside it to nothing, and leaves the text accessible, as Markless rung u18 proves
+   on both phones for `base.visuallyhidden`. The one change is outlines: no outline in a box an empty clip or clip-path hides is
+   drawn (`BoxPaintContext.clipHidden`, `lower/paint/outline.ts`), because Chrome draws none (F4, F5, F9) and the outline view
+   would sit in the root view, outside the clip. So neither the clip-path check nor the outline checks refuse them
+   (`clipPathRefusal`, `checkOutlinePlacement`, `viewOutsideClip`). The box's own box-shadow, an inline box and html or body
+   stay refused, as for any shape clip.
 3. **Hits.** The hit table holds no node of the subtree (F1 to F8). Neither `clip` nor `clip-path` is in `HIT_MODELLED` today,
    so a page whose `clip-path` compiles has its interaction rules refused (`hitUnmodelledFact`); the empty clip-path wrapper only
    escapes that now because its value is refused first. The slice adds a hit fact: a box an empty clip or clip-path hides.

@@ -217,7 +217,7 @@ describe('clip: the label of a box its empty rect hides (lower/paint/clip-label.
     const p = lowered(HIDDEN, (r) => [div(r, 'p', ['p'], [div(r, 'a', ['a'], [div(r, 'c1', [], [text(r, 'c1-t', '  Hello  ')]), div(r, 'c2', [], [text(r, 'c2-t', 'wor'), { ...div(r, 's', [], [text(r, 's-t', 'ld')]), tag: 'span' }, text(r, 'c2-u', ' !')])])])]);
     for (const prog of [p.uikit, p['android-views']]) {
       const writes = prog.nodes.find((n) => n.id === 'a')?.writes.filter((w) => w.kind.startsWith('clip-rect')) ?? [];
-      expect(writes).toEqual([expect.objectContaining({ kind: 'clip-rect-label', label: 'Hello world !', css: ['clip', 'clip-path'] })]);
+      expect(writes).toEqual([expect.objectContaining({ kind: 'clip-rect-label', label: 'Hello world !', css: ['clip'] })]);
     }
     expect(p.uikit.nodes.find((n) => n.id === 'a')?.writes.find((w) => w.kind === 'clip-rect-label')).toEqual(expect.objectContaining({ key: 'dragonClipRect.label', technique: 'native-property' }));
     expect(p['android-views'].nodes.find((n) => n.id === 'a')?.writes.find((w) => w.kind === 'clip-rect-label')).toEqual(expect.objectContaining({ key: 'dragonClipRect.label' }));
@@ -285,7 +285,7 @@ describe('clip: lowering', () => {
       expect(kinds('a')).toEqual(['padding-box-clip', 'clip-rect-empty']);
       expect(kinds('b')).toEqual([]);
       expect(kinds('p')).toEqual([]);
-      expect(prog.nodes.find((n) => n.id === 'a')?.writes.find((w) => w.kind === 'clip-rect-empty')).toEqual(expect.objectContaining({ key: 'dragonClipRect.hidden', technique: 'native-property', css: ['clip', 'clip-path'] }));
+      expect(prog.nodes.find((n) => n.id === 'a')?.writes.find((w) => w.kind === 'clip-rect-empty')).toEqual(expect.objectContaining({ key: 'dragonClipRect.hidden', technique: 'native-property', css: ['clip'] }));
     }
   });
   it('writes nothing where clip does not apply, and never moves layout', () => {

@@ -18,4 +18,7 @@ export const CLIP_PATH: readonly FixtureSpec[] = [
   both('clip-path-circle'),
   both('clip-path-polygon'),
   both('clip-path-text'),
+  // MASK-CLIP-path-hidden: shapes empty at every size (inset(50%), inset(0 50%), circle(0), an in-flow inset(50% 0)) and
+  // @markless/ui's visually-hidden span among text, which Chrome paints and hits none of.
+  both('clip-path-sr-only'),
 ];

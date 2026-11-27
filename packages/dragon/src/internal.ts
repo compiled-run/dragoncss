@@ -85,6 +85,7 @@ export { BACKEND_TARGET, NATIVE_BACKENDS, NATIVE_CLASSES, PROGRAM_VERSIONS, rena
 export type { ExpectedDump, ExpectedEngine, ExpectedNode, NodeGeometry } from './emit/expected-dump.ts';
 export { appliedKeyMap, appliedValue, borderDevicePx, cssCoverage, EXPECTED_SCHEMA, expectedDigest, expectedDump, programInput, replacedContents, replacedGeometries, textInstanceSize } from './emit/expected-dump.ts';
 export { clipPathInsets, clipPathRect, clipShapeGeometry, clipShapeKind, clipShapeValues } from './emit/paint/clip.ts';
+export { insetClipsEverything, shapeClipsEverything } from './css/properties/clip-hidden.ts';
 export type { EmitCase } from './emit/native-support.ts';
 export { emitNativeSupport, NATIVE_SUPPORT_VERSION, SUPPORT_FILES, SUPPORT_PLANTS } from './emit/native-support.ts';
 export type { SupportPlant } from './emit/native-support.ts';

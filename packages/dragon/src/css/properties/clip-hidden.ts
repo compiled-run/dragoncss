@@ -15,9 +15,16 @@ function insetAxisEmpty(start: ShapeLength, end: ShapeLength): boolean {
 
 const zeroRadius = (r: ShapeRadius): boolean => typeof r !== 'string' && r.value === 0;
 
+/** Whether inset() edges (top, right, bottom, left) leave no region at any reference box size. */
+export function insetClipsEverything(edges: readonly ShapeLength[]): boolean {
+  const [top, right, bottom, left] = edges;
+  if (top === undefined || right === undefined || bottom === undefined || left === undefined) throw new Error(`inset() has ${edges.length} edges, not 4`);
+  return insetAxisEmpty(top, bottom) || insetAxisEmpty(left, right);
+}
+
 /** Whether a shape's region is empty at every reference box size (css-shapes-1 §3.1), as F8 measures: a polygon or a keyword radius depends on the box. */
 export function shapeClipsEverything(shape: ClipShape): boolean {
-  if (shape.kind === 'inset') return insetAxisEmpty(shape.edges[0], shape.edges[2]) || insetAxisEmpty(shape.edges[3], shape.edges[1]);
+  if (shape.kind === 'inset') return insetClipsEverything(shape.edges);
   if (shape.kind === 'circle') return zeroRadius(shape.radius);
   if (shape.kind === 'ellipse') return zeroRadius(shape.radii[0]) || zeroRadius(shape.radii[1]);
   return false;

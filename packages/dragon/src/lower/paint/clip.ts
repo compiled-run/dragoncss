@@ -20,7 +20,6 @@ import { elementMaskGradient } from '../../analysis/mask.ts';
 import type { ClipShape, InsetEdge, ShapeLength } from '../../css/properties/clip-path.ts';
 import { clipPathShape, shapeLengths } from '../../css/properties/clip-path.ts';
 import { clipHidesBox } from '../../css/properties/clip-rect.ts';
-import { clipPathHidesBox } from '../../css/properties/clip-hidden.ts';
 import { textClipFillOf } from '../../analysis/paint-values/gradient.ts';
 import type { PaintLowering } from './types.ts';
 import { ProgramError } from './types.ts';
@@ -57,18 +56,15 @@ export const CLIP_LOWERING: PaintLowering<ClipWrite> = {
       'clip-text': { key: 'dragonClipText.exposed', technique: 'native-property', detail: "the canvas clip leaves the text views' accessibility untouched; the contentDescription of each DragonTextView inside the box view whose AccessibilityNodeInfo TalkBack reaches (visible to the user, important for accessibility), in child preorder" },
     },
   },
-  css: { 'padding-box-clip': ['overflow-x', 'overflow-y'], 'clip-rect-empty': ['clip', 'clip-path'], 'clip-rect-label': ['clip', 'clip-path'], 'clip-path-inset': ['clip-path'], 'clip-path-shape': ['clip-path'], 'clip-text': ['clip-path', 'mask-image', 'visibility'] },
+  css: { 'padding-box-clip': ['overflow-x', 'overflow-y'], 'clip-rect-empty': ['clip'], 'clip-rect-label': ['clip'], 'clip-path-inset': ['clip-path'], 'clip-path-shape': ['clip-path'], 'clip-text': ['clip-path', 'mask-image', 'visibility'] },
   lower: ({ box, el }) => {
     const out: ClipWrite[] = hostsClipView(box, el) ? [{ kind: 'padding-box-clip' }] : [];
     if (el === null) return out;
-    const rectHides = clipHidesBox(el);
-    if (rectHides === null) throw new ProgramError(`${el.element.address}: clip applies with a rect that is not empty at every size, which has no native technique (MASK-CLIP)`);
-    // A clip-path shape empty at every size hides the box as an empty clip rect does, and has no shape to clip to.
-    const pathHides = !rectHides && clipPathHidesBox(el);
-    const hides = rectHides || pathHides;
+    const hides = clipHidesBox(el);
+    if (hides === null) throw new ProgramError(`${el.element.address}: clip applies with a rect that is not empty at every size, which has no native technique (MASK-CLIP)`);
     const label = hides ? clipLabelOf(box, hiddenTexts(el)) : null;
     if (hides) out.push(label === null ? { kind: 'clip-rect-empty' } : { kind: 'clip-rect-label', label });
-    const shape = pathHides ? null : clipPathShape(el);
+    const shape = clipPathShape(el);
     if (shape !== null) {
       if (shapeLengths(shape).some((e: ShapeLength) => e.unit !== 'px' && e.unit !== '%')) throw new ProgramError(`${el.element.address}: clip-path has a length not computed to px or %`);
       out.push(shape.kind === 'inset' ? { kind: 'clip-path-inset', edges: shape.edges.map((e) => ({ value: e.value, unit: e.unit })) } : { kind: 'clip-path-shape', shape });

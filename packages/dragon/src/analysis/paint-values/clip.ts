@@ -146,16 +146,6 @@ function clipPathRefusal(el: ResolvedElement): { readonly fact: string; readonly
   if (tag === 'html' || tag === 'body') return { fact: `it is <${tag}>, whose background is the canvas's, which Chrome does not clip`, manual: `Move the clip-path from <${tag}> to a box inside it.` };
   const display = keywordOf(el, 'display');
   if (display === 'inline') return { fact: 'it is an inline box, whose content the native runtime places beside its view, not in it, until INL1b', manual: `Give ${at} display: inline-block or block, or move the clip-path to a block.` };
-  // A shape empty at every size hides the box whole, lowered as an empty clip rect is (MASK-CLIP-path-hidden): its refusals are those.
-  if (clipPathHidesBox(el)) {
-    if (clipHidesBox(el) === true) return null;
-    const why = viewOutsideClip(el);
-    if (why !== null) return { fact: `it hides the box whole, and ${why}`, manual: `Move what ${at} must not hide out of it, or remove it from ${at}.` };
-    const text = exposedTextInside(el);
-    const unlabelled = text === null ? null : clipLabelRefusal(el);
-    if (unlabelled !== null) return { fact: `it hides the box whole, and its text ${text as string} stays in Chrome's accessibility tree, but ${unlabelled}`, manual: `Keep only plain text in ${at} (div, span, p and inline emphasis, nothing focusable and no accessibility attributes), or move the rest out of it.` };
-    return null;
-  }
   const shadow = el.props.get('box-shadow')?.value;
   if (shadow !== undefined && !(shadow.kind === 'keyword' && shadow.value === 'none')) return { fact: 'it has a box-shadow, drawn by a companion view beside the box view, outside the clip', manual: `Move the box-shadow of ${at} to a wrapper, or remove it.` };
   const outline = (e: ResolvedElement, root: boolean): string | null => {
@@ -167,7 +157,8 @@ function clipPathRefusal(el: ResolvedElement): { readonly fact: string; readonly
     }
     return null;
   };
-  const ringed = outline(el, true);
+  // A shape empty at every size hides every outline in the box, which is then drawn nowhere (MASK-CLIP-path-hidden F4, F5).
+  const ringed = clipPathHidesBox(el) ? null : outline(el, true);
   if (ringed !== null) return { fact: `${ringed} an outline, which Dragon draws in the root view, outside the clip`, manual: `Remove the outline inside ${at}, or the clip-path.` };
   // The clip covers every descendant, text included, which Chrome keeps in the accessibility tree; the native clip touches no view's
   // accessibility either, as the clip-text readback proves on the device (lower/paint/clip.ts).
