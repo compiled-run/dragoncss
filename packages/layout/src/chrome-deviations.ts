@@ -3,7 +3,7 @@
 // same run, and every declared branch needs at least one node. Each entry has a planted fault (EngineFaults) that applies the
 // spec reading instead; for a distinguished entry it makes every registered node non-exact. blink cites the source at 145.0.7632.6.
 
-export type DeviationFault = 'halfLeadingSpec' | 'minMaxEndMarginSpec' | 'wrapReverseBaselineSpec';
+export type DeviationFault = 'halfLeadingSpec' | 'minMaxEndMarginSpec' | 'wrapReverseBaselineSpec' | 'ratioExactSpec';
 
 export type ChromeDeviation = {
   readonly id: string;
@@ -97,5 +97,28 @@ export const chromeDeviations: readonly ChromeDeviation[] = [
       { branch: 'column-wrap-reverse-rtl', fixture: 'flex-baseline-column-wrap-reverse', node: 'x4' },
     ],
     controls: [],
+  },
+  {
+    id: 'aspect-ratio-continued-fraction',
+    specSection: 'css-sizing-4 §5.1',
+    spec: 'A preferred aspect ratio transfers a size from one axis to the other through the exact quotient of the <ratio> parts.',
+    blink: 'third_party/blink/renderer/platform/geometry/physical_size.cc lines 38-94 at 145.0.7632.6 (LayoutRatioFromSizeF): StyleAspectRatio converts the float parts once into a pair of raw LayoutUnits, keeping parts that are whole LayoutUnits, giving equal parts 1 / 1, and otherwise taking the float continued-fraction convergent within 1e-6 of width / height in at most 16 steps; layout then transfers sizes by FixedPoint::MulDiv over that pair (core/layout/length_utils.cc BlockSizeFromAspectRatio, InlineSizeFromAspectRatio).',
+    fault: 'ratioExactSpec',
+    finding: { kind: 'distinguished' },
+    branches: [
+      { id: 'continued-fraction', description: 'parts that are neither whole LayoutUnits nor equal: the size transfers through the float convergent, so 1.1875626880641925 at 111px wide is 93.453125px high (exactly, 93.46875px), and 1 / 997.3 at 10px wide is 9970px high (exactly, 9973px)' },
+    ],
+    nodes: [
+      { branch: 'continued-fraction', fixture: 'sizing-ratio-fraction-abspos', node: 'd1' },
+      { branch: 'continued-fraction', fixture: 'sizing-ratio-fraction-abspos', node: 'd2' },
+      { branch: 'continued-fraction', fixture: 'sizing-ratio-fraction-abspos', node: 'd3' },
+      { branch: 'continued-fraction', fixture: 'sizing-ratio-fraction-abspos', node: 'd4' },
+      { branch: 'continued-fraction', fixture: 'sizing-ratio-fraction-abspos', node: 'd5' },
+      { branch: 'continued-fraction', fixture: 'sizing-ratio-fraction-abspos', node: 'd6' },
+    ],
+    controls: [
+      { fixture: 'sizing-ratio-fraction-abspos', node: 'k1', relativeTo: 'f', reason: 'the whole-64ths path: 16 / 9 is kept as raw 1024 / 576, the same rational as the exact quotient, so MulDiv and the spec reading truncate to the same LayoutUnit' },
+      { fixture: 'sizing-ratio-fraction-abspos', node: 'k2', relativeTo: 'f', reason: 'the equal-parts path: 1.3 / 1.3 is 1 / 1 in both readings' },
+    ],
   },
 ];

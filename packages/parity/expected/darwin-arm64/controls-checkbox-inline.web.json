@@ -1876,7 +1876,7 @@
         "border-image-repeat": "stretch",
         "appearance": "auto",
         "caret-color": "rgb(0, 0, 0)",
-        "accent-color": "rgb(194, 65, 12)",
+        "accent-color": "auto",
         "-webkit-user-modify": "read-only",
         "border-collapse": "separate",
         "-webkit-border-horizontal-spacing": "0px",
