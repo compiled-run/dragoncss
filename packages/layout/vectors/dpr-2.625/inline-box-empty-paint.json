@@ -645,12 +645,10 @@
             "direction": "ltr",
             "boxSizing": "content-box",
             "width": {
-             "kind": "px",
-             "value": 10
+             "kind": "auto"
             },
             "height": {
-             "kind": "px",
-             "value": 10
+             "kind": "auto"
             },
             "minWidth": {
              "kind": "auto"
@@ -1299,12 +1297,10 @@
             "direction": "ltr",
             "boxSizing": "content-box",
             "width": {
-             "kind": "px",
-             "value": 10
+             "kind": "auto"
             },
             "height": {
-             "kind": "px",
-             "value": 10
+             "kind": "auto"
             },
             "minWidth": {
              "kind": "auto"
@@ -1836,12 +1832,10 @@
           "direction": "ltr",
           "boxSizing": "content-box",
           "width": {
-           "kind": "px",
-           "value": 10
+           "kind": "auto"
           },
           "height": {
-           "kind": "px",
-           "value": 10
+           "kind": "auto"
           },
           "minWidth": {
            "kind": "auto"
