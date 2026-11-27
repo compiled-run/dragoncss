@@ -42,6 +42,7 @@ import { casePoints, checkCasePixels, committedPixels, decodePng, devicePoints, 
 import type { ImageSize, SamplePoint } from './samples.ts';
 import { ruleKind, SAMPLE_RULES } from './samples.ts';
 import type { LaneId, NativeTarget, TargetConfig } from './targets.ts';
+import { isShapedInput, joinHyphenRects } from './text-latin-run.ts';
 import { ANIM_LANE, DEVICE_CHECK_LANES, ENV_LANE, HIT_LANE, STATE_LANE, TRACE_LANE } from './lane-ids.ts';
 import type { DeviceCheckLane, DeviceLaneId } from './lane-ids.ts';
 export { ANIM_LANE, DEVICE_CHECK_LANES, ENV_LANE, HIT_LANE, STATE_LANE, TRACE_LANE };
@@ -129,10 +130,12 @@ function chromeCheck(dump: NativeDump, ref: CaseReference): CheckResult {
 export function caseReference(target: NativeTarget, n: CheckedCase, dpr: number): CaseReference {
   const program = programOf(n, target);
   const viewport = n.case.environment.viewport;
+  const capture = committedDprCapture(n.case.id, dpr);
   return {
     engine: engineBoxes(program, viewport, dpr),
     expected: expectedDump(program, n.case.id, viewport, dpr, expectedEngine()),
-    chrome: committedDprCapture(n.case.id, dpr),
+    // Chrome captures a shaped line's generated hyphen as its own rect; the device's line, like the engine's, holds it.
+    chrome: isShapedInput(programInput(program, viewport, dpr)) ? joinHyphenRects(capture) : capture,
     breaks: readBreakVector(n.case.id, dpr),
     chromeBreaks: readChromeBreaks(n.case.id, dpr),
     points: devicePoints(program, viewport, dpr),
