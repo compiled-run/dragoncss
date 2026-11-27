@@ -35,6 +35,8 @@ export const TRANSFORMS: readonly FixtureSpec[] = [
   layout('transform-hit-scale'),
   layout('transform-hit-subpixel'),
   layout('transform-hit-snap'),
+  // SELD-R2b: the individual translate in the hit table, as a transform's first op (check-in /settings' switch thumbs).
+  layout('transform-hit-translate'),
   reject('reject-transform-skew', 'DRAGON_UNSUPPORTED_VALUE', 'skewX(10deg)', `transform: skewX(10deg) is unsupported: ${M}`),
   reject('reject-transform-3d', 'DRAGON_UNSUPPORTED_VALUE', 'rotateY(20deg)', `transform: rotateY(20deg) is unsupported: ${M}`),
   reject('reject-transform-perspective', 'DRAGON_UNSUPPORTED_VALUE', 'perspective(200px)', `transform: perspective(200px) is unsupported: ${M}`),

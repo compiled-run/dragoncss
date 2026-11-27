@@ -645,6 +645,15 @@ describe('interaction states: hit model (R13)', () => {
     const plain = internalRecord(compile({}, css.replace('transform: rotate(5deg);', 'overflow: hidden; transform-origin: 0 0;'), body, TARGETS, 'derive'))?.cases[0]?.resolved as ResolvedElement;
     expect(hitUnmodelledFact(plain, referenceDataset())).toBeNull();
   });
+
+  it('models the individual translate, the first op of the transform the hit facts carry (transform-hit-translate); rotate and scale stay unmodelled', () => {
+    const factOf = (decl: string): ReturnType<typeof hitUnmodelledFact> => hitUnmodelledFact(internalRecord(compile({}, css.replace('transform: rotate(5deg);', decl), body, TARGETS, 'derive'))?.cases[0]?.resolved as ResolvedElement, referenceDataset());
+    expect(factOf('translate: 20px 0;')).toBeNull();
+    expect(factOf('translate: -25% 50%;')).toBeNull();
+    expect(factOf('translate: 10px 0; transform: scale(0.8);')).toBeNull();
+    expect(factOf('rotate: 5deg;')).toEqual({ property: 'rotate', address: 'h' });
+    expect(factOf('scale: 0.5;')).toEqual({ property: 'scale', address: 'h' });
+  });
 });
 
 describe('interaction states: focusability (R9)', () => {
