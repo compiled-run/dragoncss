@@ -2337,8 +2337,8 @@
           "textAlign": "start",
           "aspectRatio": {
            "kind": "ratio",
-           "width": 128,
-           "height": 64
+           "width": 2,
+           "height": 1
           },
           "verticalAlign": {
            "kind": "keyword",
@@ -2486,8 +2486,8 @@
           "textAlign": "start",
           "aspectRatio": {
            "kind": "ratio",
-           "width": 128,
-           "height": 64
+           "width": 2,
+           "height": 1
           },
           "verticalAlign": {
            "kind": "keyword",
@@ -2634,8 +2634,8 @@
           "textAlign": "start",
           "aspectRatio": {
            "kind": "auto-ratio",
-           "width": 128,
-           "height": 64
+           "width": 2,
+           "height": 1
           },
           "verticalAlign": {
            "kind": "keyword",
@@ -2781,8 +2781,8 @@
           "textAlign": "start",
           "aspectRatio": {
            "kind": "ratio",
-           "width": 128,
-           "height": 64
+           "width": 2,
+           "height": 1
           },
           "verticalAlign": {
            "kind": "keyword",

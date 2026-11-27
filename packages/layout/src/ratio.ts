@@ -1,9 +1,11 @@
 // css-sizing-4 §5 aspect-ratio on non-replaced boxes, as Chrome 145 applies it (Blink length_utils.cc, block_node.cc,
 // absolute_utils.cc and flex_layout_algorithm.cc): the ratio transfers a definite size from one axis to the other, and min and
-// max sizes transfer through it. Sizes here are border-box LU; the layout ratio is two raw LayoutUnit values (input.ts).
+// max sizes transfer through it. Sizes here are border-box LU; the layout ratio is the authored parts converted as Blink does (units.ts layoutRatio).
 import type { LayoutBox, LayoutStyle } from './input.ts';
 import type { LU } from './units.ts';
-import { add, max, min, mulDiv, sub, ZERO } from './units.ts';
+import type { LayoutRatio, RatioFaults } from './units.ts';
+import { add, layoutRatioWith, max, min, mulDiv, roundedHalf, sub, truncQuotient, ZERO } from './units.ts';
+import type { EngineFaults } from './block.ts';
 import type { HeightBasis, MinMax } from './box.ts';
 import {
   blockMinMaxWith,
@@ -26,9 +28,19 @@ import {
 import type { Ctx } from './block.ts';
 import { intrinsicContentInlineSize } from './intrinsic.ts';
 
-/** Whether the box has a preferred aspect ratio (a degenerate ratio arrives as auto). */
-export function hasAspectRatio(s: LayoutStyle): boolean {
-  return s.aspectRatio.kind !== 'auto';
+function ratioFaults(f: EngineFaults): RatioFaults {
+  return { noTrivialClamp: f.ratioNoTrivialClamp, doubleFraction: f.ratioDoubleFraction, truncatedParts: f.ratioTruncatedParts, eightSteps: f.ratioEightSteps };
+}
+
+/** Blink StyleAspectRatio::GetLayoutRatio (core/style/style_aspect_ratio.h): the box's authored parts converted once (units.ts layoutRatio), or null for auto or a degenerate ratio. */
+export function styleLayoutRatio(s: LayoutStyle, f: EngineFaults): LayoutRatio | null {
+  const r = s.aspectRatio;
+  return r.kind === 'auto' ? null : layoutRatioWith(r.width, r.height, ratioFaults(f));
+}
+
+/** Whether the box has a preferred aspect ratio (StyleAspectRatio::GetType: a degenerate ratio is auto). */
+export function hasAspectRatio(s: LayoutStyle, f: EngineFaults): boolean {
+  return styleLayoutRatio(s, f) !== null;
 }
 
 /** Blink ComputedStyle::BoxSizingForAspectRatio: `auto && <ratio>` sizes the content box whatever box-sizing says. */
@@ -36,41 +48,55 @@ function ratioBoxSizing(s: LayoutStyle): LayoutStyle['boxSizing'] {
   return s.aspectRatio.kind === 'auto-ratio' ? 'content-box' : s.boxSizing;
 }
 
-function ratioInline(s: LayoutStyle): number {
-  const r = s.aspectRatio;
-  if (r.kind === 'auto') throw new Error('the box has no aspect ratio');
-  return r.width;
+function layoutRatioOf(s: LayoutStyle, f: EngineFaults): LayoutRatio {
+  const r = styleLayoutRatio(s, f);
+  if (r === null) throw new Error('the box has no aspect ratio');
+  return r;
 }
 
-function ratioBlock(s: LayoutStyle): number {
-  const r = s.aspectRatio;
-  if (r.kind === 'auto') throw new Error('the box has no aspect ratio');
-  return r.height;
+/** Blink FixedPoint::MulDiv of a size by the layout ratio to / from (the planted faults round it, or use the exact quotient of the authored parts). */
+function transfer(s: LayoutStyle, f: EngineFaults, r: LayoutRatio, size: LU, toBlock: boolean): LU {
+  const a = s.aspectRatio;
+  if (f.ratioExactSpec && a.kind !== 'auto') return toBlock ? truncQuotient(size, a.height, a.width) : truncQuotient(size, a.width, a.height);
+  const m = toBlock ? r.height : r.width;
+  const d = toBlock ? r.width : r.height;
+  if (f.ratioRoundedMulDiv) return roundedHalf(mulDiv(size, m * 2, d));
+  return mulDiv(size, m, d);
+}
+
+function blockWith(s: LayoutStyle, f: EngineFaults, r: LayoutRatio, hbp: LU, vbp: LU, inline: LU): LU {
+  if (ratioBoxSizing(s) === 'border-box') return max(vbp, transfer(s, f, r, inline, true));
+  return add(transfer(s, f, r, sub(inline, hbp), true), vbp);
+}
+
+function inlineWith(s: LayoutStyle, f: EngineFaults, r: LayoutRatio, hbp: LU, vbp: LU, block: LU): LU {
+  if (ratioBoxSizing(s) === 'border-box') return max(hbp, transfer(s, f, r, block, false));
+  return add(transfer(s, f, r, sub(block, vbp), false), hbp);
 }
 
 /** Blink BlockSizeFromAspectRatio: the border-box block size for a border-box inline size. */
-export function blockFromRatio(s: LayoutStyle, hbp: LU, vbp: LU, inline: LU): LU {
-  if (ratioBoxSizing(s) === 'border-box') return max(vbp, mulDiv(inline, ratioBlock(s), ratioInline(s)));
-  return add(mulDiv(sub(inline, hbp), ratioBlock(s), ratioInline(s)), vbp);
+export function blockFromRatio(s: LayoutStyle, f: EngineFaults, hbp: LU, vbp: LU, inline: LU): LU {
+  return blockWith(s, f, layoutRatioOf(s, f), hbp, vbp, inline);
 }
 
 /** Blink InlineSizeFromAspectRatio: the border-box inline size for a border-box block size. */
-export function inlineFromRatio(s: LayoutStyle, hbp: LU, vbp: LU, block: LU): LU {
-  if (ratioBoxSizing(s) === 'border-box') return max(hbp, mulDiv(block, ratioInline(s), ratioBlock(s)));
-  return add(mulDiv(sub(block, vbp), ratioInline(s), ratioBlock(s)), hbp);
+export function inlineFromRatio(s: LayoutStyle, f: EngineFaults, hbp: LU, vbp: LU, block: LU): LU {
+  return inlineWith(s, f, layoutRatioOf(s, f), hbp, vbp, block);
 }
 
 /** Blink ComputeTransferredMinMaxInlineSizes: block min and max (border box, max null for none) through the ratio. */
-export function transferredInlineMinMax(s: LayoutStyle, block: MinMax, hbp: LU, vbp: LU): MinMax {
-  const lo = block.min > 0 ? inlineFromRatio(s, hbp, vbp, block.min) : ZERO;
-  const hi = block.max === null ? null : inlineFromRatio(s, hbp, vbp, block.max);
+export function transferredInlineMinMax(s: LayoutStyle, f: EngineFaults, block: MinMax, hbp: LU, vbp: LU): MinMax {
+  const r = layoutRatioOf(s, f);
+  const lo = block.min > 0 ? inlineWith(s, f, r, hbp, vbp, block.min) : ZERO;
+  const hi = block.max === null ? null : inlineWith(s, f, r, hbp, vbp, block.max);
   return { min: lo, max: hi === null ? null : max(hi, lo) };
 }
 
 /** Blink ComputeTransferredMinMaxBlockSizes: inline min and max through the ratio. */
-export function transferredBlockMinMax(s: LayoutStyle, inline: MinMax, hbp: LU, vbp: LU): MinMax {
-  const lo = inline.min > 0 ? blockFromRatio(s, hbp, vbp, inline.min) : ZERO;
-  const hi = inline.max === null ? null : blockFromRatio(s, hbp, vbp, inline.max);
+export function transferredBlockMinMax(s: LayoutStyle, f: EngineFaults, inline: MinMax, hbp: LU, vbp: LU): MinMax {
+  const r = layoutRatioOf(s, f);
+  const lo = inline.min > 0 ? blockWith(s, f, r, hbp, vbp, inline.min) : ZERO;
+  const hi = inline.max === null ? null : blockWith(s, f, r, hbp, vbp, inline.max);
   return { min: lo, max: hi === null ? null : max(hi, lo) };
 }
 
@@ -140,16 +166,16 @@ export function ratioBlockLevelInlineSize(ctx: Ctx, box: LayoutBox, cbInline: LU
   const basis = noPercentBasis(box);
   const block = initialBlockSize(ctx, box, basis, e.vbp);
   const own = inlineMinMaxOf(box.id, s, cbInline, e.hbp, ctx.faults);
-  const mm = withTransferred(block === null || isScrollContainer(s) ? own : withAutoMinInline(ctx, box, own, e.hbp), transferredInlineMinMax(s, blockMinMaxWith(box, basis, e.vbp, ctx.faults, NO_STRETCH), e.hbp, e.vbp));
-  const extent = block === null ? stretched : inlineFromRatio(s, e.hbp, e.vbp, block);
+  const mm = withTransferred(block === null || isScrollContainer(s) ? own : withAutoMinInline(ctx, box, own, e.hbp), transferredInlineMinMax(s, ctx.faults, blockMinMaxWith(box, basis, e.vbp, ctx.faults, NO_STRETCH), e.hbp, e.vbp));
+  const extent = block === null ? stretched : inlineFromRatio(s, ctx.faults, e.hbp, e.vbp, block);
   return max(clampTo(extent, mm), e.hbp);
 }
 
 /** Blink ComputeBlockSizeForFragment with a ratio and height auto: the border-box block size from the inline size, before content. */
-export function ratioInitialBlockSize(box: LayoutBox, borderBoxWidth: LU, hbp: LU, vbp: LU): LU | null {
+export function ratioInitialBlockSize(box: LayoutBox, f: EngineFaults, borderBoxWidth: LU, hbp: LU, vbp: LU): LU | null {
   const s = box.style;
-  if (!hasAspectRatio(s) || s.height.kind !== 'auto') return null;
-  return blockFromRatio(s, hbp, vbp, borderBoxWidth);
+  if (!hasAspectRatio(s, f) || s.height.kind !== 'auto') return null;
+  return blockFromRatio(s, f, hbp, vbp, borderBoxWidth);
 }
 
 /**
@@ -170,9 +196,9 @@ export function ratioFinalBlockSize(box: LayoutBox, ratioSize: LU, contentBorder
 export function ratioContentInlineSize(ctx: Ctx, box: LayoutBox, kind: 'min' | 'max', block: LU | null, cbInline: LU): LU {
   const s = box.style;
   const e = edgesOf(ctx, box, cbInline);
-  if (block !== null) return inlineFromRatio(s, e.hbp, e.vbp, block);
+  if (block !== null) return inlineFromRatio(s, ctx.faults, e.hbp, e.vbp, block);
   const content = add(intrinsicContentInlineSize(ctx, box, kind), e.hbp);
-  return clampTo(content, transferredInlineMinMax(s, blockMinMaxWith(box, noPercentBasis(box), e.vbp, ctx.faults, NO_STRETCH), e.hbp, e.vbp));
+  return clampTo(content, transferredInlineMinMax(s, ctx.faults, blockMinMaxWith(box, noPercentBasis(box), e.vbp, ctx.faults, NO_STRETCH), e.hbp, e.vbp));
 }
 
 /**
@@ -194,7 +220,7 @@ export function ratioInlineContribution(ctx: Ctx, box: LayoutBox, kind: 'min' | 
     max: maxWidth.kind !== 'none' && !hasPercent(maxWidth) ? borderBoxFromSpecified(resolveLength(maxWidth, ZERO, ctx.faults), e.hbp, s.boxSizing) : null,
   };
   const autoMin = block !== null && !isScrollContainer(s) ? withAutoMinInline(ctx, box, own, e.hbp) : own;
-  const mm = s.width.kind === 'auto' ? withTransferred(autoMin, transferredInlineMinMax(s, blockMinMaxWith(box, basis, e.vbp, ctx.faults, NO_STRETCH), e.hbp, e.vbp)) : autoMin;
+  const mm = s.width.kind === 'auto' ? withTransferred(autoMin, transferredInlineMinMax(s, ctx.faults, blockMinMaxWith(box, basis, e.vbp, ctx.faults, NO_STRETCH), e.hbp, e.vbp)) : autoMin;
   return max(clampTo(size, mm), e.hbp);
 }
 
@@ -217,9 +243,9 @@ export function ratioAbsoluteInlineSize(ctx: Ctx, box: LayoutBox, cbWidth: LU, s
   const own = inlineMinMaxOf(box.id, s, cbWidth, e.hbp, ctx.faults);
   const ratioWins = block !== null && (stretchInline === null || s.height.kind !== 'auto');
   const autoMin = ratioWins && !isScrollContainer(s) ? withAutoMinInline(ctx, box, own, e.hbp) : own;
-  const mm = withTransferred(autoMin, transferredInlineMinMax(s, blockMm, e.hbp, e.vbp));
+  const mm = withTransferred(autoMin, transferredInlineMinMax(s, ctx.faults, blockMm, e.hbp, e.vbp));
   let extent: LU;
-  if (ratioWins) extent = inlineFromRatio(s, e.hbp, e.vbp, block as LU);
+  if (ratioWins) extent = inlineFromRatio(s, ctx.faults, e.hbp, e.vbp, block as LU);
   else if (stretchInline !== null) extent = stretchInline;
   else {
     const minContent = add(intrinsicContentInlineSize(ctx, box, 'min'), e.hbp);
@@ -233,6 +259,6 @@ export function ratioAbsoluteInlineSize(ctx: Ctx, box: LayoutBox, cbWidth: LU, s
  * Whether an absolutely positioned box's auto height comes from its ratio rather than stretching between its block insets: only
  * when its width stretches between its inline insets too (Chrome 145 stretches a width: 30px box with top and bottom set).
  */
-export function ratioSetsAbsoluteHeight(box: LayoutBox, inlineStretches: boolean): boolean {
-  return hasAspectRatio(box.style) && box.style.height.kind === 'auto' && inlineStretches;
+export function ratioSetsAbsoluteHeight(box: LayoutBox, f: EngineFaults, inlineStretches: boolean): boolean {
+  return hasAspectRatio(box.style, f) && box.style.height.kind === 'auto' && inlineStretches;
 }

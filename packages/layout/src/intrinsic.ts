@@ -115,7 +115,7 @@ export function inlineContribution(ctx: Ctx, node: LayoutNode, kind: IntrinsicKi
   // stretch has no size without an available space: a width or min-width of stretch contributes as auto, a max-width as none.
   const keyword = (k: string): LU | null => {
     if (k !== 'min-content' && k !== 'max-content' && k !== 'fit-content') return null;
-    if (hasAspectRatio(s)) return unsupported('intrinsic-size-keyword', box.id, 'css-sizing-4 §5.1', `${k} with an aspect-ratio`);
+    if (hasAspectRatio(s, ctx.faults)) return unsupported('intrinsic-size-keyword', box.id, 'css-sizing-4 §5.1', `${k} with an aspect-ratio`);
     return add(intrinsicContentInlineSize(ctx, node.kind === 'control' ? node : box, k === 'min-content' ? 'min' : k === 'max-content' ? 'max' : kind), bp);
   };
   const width = keyword(s.width.kind);
@@ -130,7 +130,7 @@ export function inlineContribution(ctx: Ctx, node: LayoutNode, kind: IntrinsicKi
     const w = s.width.kind === 'stretch' ? AUTO : lengthWidth(box.id, s.width);
     if (w.kind !== 'auto' && !hasPercent(w)) size = borderBoxFromSpecified(resolveLength(w, ZERO, ctx.faults), bp, s.boxSizing);
     else if (w.kind !== 'auto' && kind === 'min' && node.kind === 'control' && compressesPercentWidth(node)) size = borderBoxFromSpecified(resolveLength(w, ZERO, ctx.faults), bp, s.boxSizing);
-    else if (hasAspectRatio(s)) size = ratioInlineContribution(ctx, box, kind);
+    else if (hasAspectRatio(s, ctx.faults)) size = ratioInlineContribution(ctx, box, kind);
     else size = add(intrinsicContentInlineSize(ctx, node, kind), bp);
   }
   if (maxWidth !== null) {

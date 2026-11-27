@@ -107,6 +107,7 @@ Those files are under the licences below, with the copyright lines from their he
 - `third_party/blink/renderer/core/style/border_edge.cc`: Copyright 2014 The Chromium Authors
 - `third_party/blink/renderer/core/style/display_style.h`: Copyright 2023 The Chromium Authors
 - `third_party/blink/renderer/core/style/position_area.cc`: Copyright 2023 The Chromium Authors
+- `third_party/blink/renderer/core/style/style_aspect_ratio.h`: Copyright 2020 The Chromium Authors
 - `third_party/blink/renderer/platform/fonts/opentype/open_type_caps_support.cc`: Copyright 2015 The Chromium Authors
 - `third_party/blink/renderer/platform/fonts/script_run_iterator.cc`: Copyright 2015 The Chromium Authors
 - `third_party/blink/renderer/platform/fonts/shaping/font_features.cc`: Copyright 2021 The Chromium Authors
@@ -139,6 +140,7 @@ Those files are under the licences below, with the copyright lines from their he
 - `ui/gfx/geometry/quad_f.cc`: Copyright 2012 The Chromium Authors
 - `ui/gfx/geometry/rect_f.cc`: Copyright 2012 The Chromium Authors
 - `ui/gfx/geometry/sin_cos_degrees.h`: Copyright 2023 The Chromium Authors
+- `ui/gfx/geometry/size_f.h`: Copyright 2012 The Chromium Authors
 - `ui/gfx/geometry/transform.cc`: Copyright 2012 The Chromium Authors
 - `ui/gfx/geometry/triangle_f.cc`: Copyright 2021 The Chromium Authors
 - `ui/native_theme/native_theme_base.cc`: Copyright 2012 The Chromium Authors

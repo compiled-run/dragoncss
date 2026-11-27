@@ -86,9 +86,9 @@ const padding = tagged({ ...px(0), ...percent(0), ...calc });
 // R5: an initial line width is typed in device px by the compiler (Chrome stores it unzoomed); only the four border widths take it.
 const border = tagged({ ...px(0), 'device-px': { value: num(0) }, ...calc });
 const gap = tagged({ ...px(0), ...percent(0), normal: {}, ...calc });
-// A layout ratio is two raw LayoutUnit values, positive integers (StyleAspectRatio::GetLayoutRatio).
-const rawRatio = { width: { t: 'number', min: 1, exclusiveMin: false, integer: true }, height: { t: 'number', min: 1, exclusiveMin: false, integer: true } } as const;
-const aspectRatio = tagged({ ...auto, ratio: rawRatio, 'auto-ratio': rawRatio });
+// The authored <ratio> parts, each finite and non-negative; the engine converts them (units.ts layoutRatio).
+const ratioParts = { width: num(0), height: num(0) };
+const aspectRatio = tagged({ ...auto, ratio: ratioParts, 'auto-ratio': ratioParts });
 
 const justify = lit(
   'normal', 'flex-start', 'flex-end', 'center', 'space-between', 'space-around', 'space-evenly',
@@ -1018,12 +1018,8 @@ function exprHoldsPercent(e: unknown): boolean {
 // refuses a percentage or stretch height, min-height or max-height beside an aspect-ratio (the compiler reports it).
 function checkRatioBlockLengths(style: Record<string, unknown>, path: string, errors: ValidationError[], percentsRefused = true): void {
   const ratio = style['aspectRatio'];
+  // Any ratio but auto, a degenerate one included: whether it converts to auto is the engine's to decide, after validation.
   if (!isRecord(ratio) || ratio['kind'] === 'auto') return;
-  // The parts are raw LayoutUnits (int), which keeps units.ts mulDiv exact.
-  for (const part of ['width', 'height']) {
-    const v = ratio[part];
-    if (typeof v === 'number' && v > 2147483647) errors.push({ path: `${path}.style.aspectRatio.${part}`, code: 'bad-value', message: 'a layout ratio part is a raw LayoutUnit, at most 2147483647' });
-  }
   // A ratio transfers a stretch block size before layout knows what it fills, as with a percentage (ratio.ts noPercentBasis).
   for (const key of ['height', 'minHeight', 'maxHeight']) {
     const v = style[key];

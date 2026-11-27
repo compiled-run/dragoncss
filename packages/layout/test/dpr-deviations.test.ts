@@ -31,7 +31,7 @@ const at = (m: Map<string, LayoutRect>, id: string): LayoutRect => {
 describe('DPR Chrome deviation registry', () => {
   it('holds initial-line-width-unzoomed with the MF5 shape plus a DPR per node; the DPR-1 registry is unchanged', () => {
     expect(dprChromeDeviations.map((d) => [d.id, d.fault, d.branches.map((b) => b.id)])).toEqual([['initial-line-width-unzoomed', 'initialLineWidthZoomed', ['no-width-declared', 'shorthand-omitted']]]);
-    expect(chromeDeviations.map((d) => d.id)).toEqual(['half-leading-floor', 'min-max-end-margin', 'wrap-reverse-baseline-line']);
+    expect(chromeDeviations.map((d) => d.id)).toEqual(['half-leading-floor', 'min-max-end-margin', 'wrap-reverse-baseline-line', 'aspect-ratio-continued-fraction']);
     for (const d of dprChromeDeviations) {
       expect(Object.keys(NO_ENGINE_FAULTS)).toContain(d.fault);
       expect(d.blink).toMatch(/145\.0\.7632\.6/);
