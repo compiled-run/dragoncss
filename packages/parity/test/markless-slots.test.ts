@@ -2,6 +2,7 @@
 // runMarklessLayout with `slots`) gives exactly the frames and writes of an export of the same input with those values written in,
 // and that export matches Chrome: every box within the comparison's gate, every colour the slots move equal to Chrome's computed one.
 import { readFileSync } from 'node:fs';
+import { textDecoration } from '@dragon/layout';
 import { describe, expect, it } from 'vitest';
 import { launchChrome, openPage } from '../src/chrome.ts';
 import { compareMarklessExport, marklessDocumentHtml } from '../src/markless-style-compare.ts';
@@ -10,6 +11,7 @@ import { filledAtInitial, marklessStyleExport, parseMarklessStyleInput } from '.
 import type { ExportNode } from '../src/native-style-export.ts';
 import { checkPlan } from '../src/markless-plan.ts';
 import { repoPath } from '../src/paths.ts';
+import { decodePng } from '../src/pixel-reference.ts';
 
 const { runMarklessLayout } = (await import(new URL('../../translate/harness/harness.ts', import.meta.url).href)) as { runMarklessLayout(line: string): string };
 const { bitsHex, hexBits } = (await import(new URL('../../translate/harness/host.ts', import.meta.url).href)) as { bitsHex(x: number): string; hexBits(s: string): number };
@@ -178,10 +180,84 @@ describe('typed slots of a Markless style input', () => {
     }
   }, 120_000);
 
-  it('refuses a slot whose value is not a straight line of it, by name', () => {
-    // Chrome keeps an rgb() alpha as round(a × 255) clamped, which is neither rule.
-    const alpha = { ...input, css: `${input.css}\n.panel { background-color: rgb(10 20 30 / var(--size, 1)); }` };
-    expect(() => marklessStyleExport(JSON.stringify(alpha), PATH, undefined, 'system', undefined, true)).toThrow(/the background-color write of h4 is not a straight line or an rgb\(\) channel of slot:size from zero up \(at \["color","alpha"\]\)/);
-    expect(() => marklessStyleExport(TEXT, PATH, undefined, 'system')).toThrow(/only with the layout plan/);
-  }, 120_000);
+  describe('an rgb() alpha a slot moves', () => {
+    const ALPHA_PATH = 'examples/markless-styles/input/slots-alpha.native-style-input.json';
+    const alphaInput = { ...input, css: `${input.css}\n.panel { background-color: rgb(10 20 30 / var(--size, 1)); }` };
+    const alphaText = JSON.stringify(alphaInput);
+    const size = slots.findIndex((s) => s.id === 'slot:size');
+    const slotted = marklessStyleExport(alphaText, ALPHA_PATH, undefined, 'system', undefined, true).exported;
+    /** Alphas no build samples; 0.7 separates k = 255 from a fitted k = 128 (calc(a * 0.5)), and 0.002, 0.501, 0.999 round at Chrome's byte edges. */
+    const ALPHAS = [0.3, 0.7, 0.002, 0.501, 0.999];
+
+    it('binds through the channel rule with k = 255 from zero up, and to 0 below zero', () => {
+      for (const t of ['ios', 'android'] as const) {
+        const w = (slotted.targets[t]!.plan!.assignments[0]!.slotWrites ?? []).filter(([slot, node, kind]) => slot === size && node === 'h4' && kind === 'background-color');
+        expect(JSON.parse(JSON.stringify(w.map(([, , , path, pieces]) => [path, pieces]))), t).toEqual([[['color', 'alpha'], [['line', 0, 0], ['channel', 0, 255], null]]]);
+      }
+    }, 120_000);
+
+    for (const a of ALPHAS) {
+      it(`at ${a}, the phone gives the export with that alpha written in, which matches Chrome`, async () => {
+        const values = slots.map((s, k) => (k === size ? a : s.initial));
+        const web = filledAtInitial(parseMarklessStyleInput(JSON.stringify({ ...alphaInput, slots: slots.map((s, k) => ({ ...s, initial: values[k] })) })));
+        const concrete = marklessStyleExport(JSON.stringify(web), ALPHA_PATH, undefined, 'system', undefined, true).exported;
+        for (const t of ['ios', 'android'] as const) {
+          const x = slotted.targets[t]!;
+          const line = { assignment: 0, dpr: x.dpr, viewport: x.viewport, safeArea: { top: 0, right: 0, bottom: 0, left: 0 }, plan: x.plan, slots: values.map(bitsHex) };
+          const out = JSON.parse(runMarklessLayout(JSON.stringify(line))) as unknown[];
+          expect(out[0], JSON.stringify(out)).toBe('ok');
+          const want = concrete.targets[t]!;
+          const bare = { assignment: 0, dpr: want.dpr, viewport: want.viewport, safeArea: { top: 0, right: 0, bottom: 0, left: 0 }, plan: want.plan };
+          expect(out.slice(0, 3)).toEqual(JSON.parse(runMarklessLayout(JSON.stringify(bare))));
+          const writes = new Map(x.assignments[0]!.nodes.map((n) => [n.id, n.writes as unknown]));
+          for (const [node, kind, path, value] of out[3] as [string, string, (string | number)[], string][]) {
+            const was = writes.get(node) as readonly Record<string, unknown>[];
+            writes.set(node, withPath(was, [was.findIndex((w) => w['kind'] === kind), ...path], hexBits(value)));
+          }
+          for (const n of want.assignments[0]!.nodes) expect(writes.get(n.id), `${t} ${n.id} writes`).toEqual(n.writes);
+        }
+        const r = await compareMarklessExport(web, marklessStyleExport(JSON.stringify(web), ALPHA_PATH).exported);
+        expect(r.rows.filter((row) => !row.pass)).toEqual([]);
+        expect(r.compared).toBeGreaterThan(20);
+        const browser = await launchChrome();
+        try {
+          for (const t of ['ios', 'android'] as const) {
+            const x = concrete.targets[t]!;
+            const page = await openPage(browser, marklessDocumentHtml(web, {}), { viewport: x.viewport, devicePixelRatio: x.dpr, direction: 'ltr', rootFont: 'ua-default' });
+            const chrome = (await page.evaluate(() => getComputedStyle(document.querySelector('[data-dragon-id="h4"]') as Element).backgroundColor)) as string;
+            await page.context().close();
+            const m = /^rgba?\((\d+), (\d+), (\d+)(?:, ([\d.]+))?\)$/.exec(chrome);
+            expect(m, `${t} Chrome's ${chrome}`).not.toBeNull();
+            const c = x.assignments[0]!.nodes.find((n) => n.id === 'h4')?.writes.find((w) => w['kind'] === 'background-color')?.['color'];
+            expect(c, t).toEqual({ r: 10, g: 20, b: 30, alpha: Math.round(255 * a) });
+            // Chrome serializes the alpha byte with the fewest decimals that read back to it.
+            expect([Number(m![1]), Number(m![2]), Number(m![3]), Math.round(255 * Number(m![4] ?? 1))], `${t} Chrome's ${chrome}`).toEqual([10, 20, 30, Math.round(255 * a)]);
+          }
+        } finally {
+          await browser.close();
+        }
+        const want = textDecoration.blendOver({ r: 255, g: 255, b: 255, a: 255 }, { r: 10, g: 20, b: 30, a: Math.round(255 * a) }, 256);
+        for (const dpr of [2, 3]) {
+          const chrome = await launchChrome(dpr);
+          try {
+            const page = await openPage(chrome, marklessDocumentHtml(web, {}), { viewport: concrete.targets.android!.viewport, devicePixelRatio: dpr, direction: 'ltr', rootFont: 'ua-default' });
+            const box = (await page.evaluate(() => (document.querySelector('[data-dragon-id="h4"]') as Element).getBoundingClientRect().toJSON())) as DOMRect;
+            const image = decodePng(await page.screenshot());
+            await page.context().close();
+            const i = (Math.floor((box.y + box.height / 2) * dpr) * image.width + Math.floor((box.x + box.width / 2) * dpr)) * 4;
+            expect([...image.data.subarray(i, i + 3)], `the pixel at DPR ${dpr} over white`).toEqual([want.r, want.g, want.b]);
+          } finally {
+            await chrome.close();
+          }
+        }
+      }, 180_000);
+    }
+
+    it('refuses an alpha a slot reaches inside calc(), by name', () => {
+      // A fitted channel k = 128 would match every sample of this alpha and be wrong at 0.7; the compile refuses calc() there first.
+      const half = { ...input, css: `${input.css}\n.panel { background-color: rgb(10 20 30 / calc(var(--size, 1) * 0.5)); }` };
+      expect(() => marklessStyleExport(JSON.stringify(half), PATH, undefined, 'system', undefined, true)).toThrow(/DRAGON_UNSUPPORTED_VALUE \[all\] background-color: rgb\(10 20 30 \/ calc\(var\(--size, 1\) \* 0\.5\)\) substitutes to "rgb\(10 20 30 \/ calc\(1 \* 0\.5\)\)", and .* is unsupported: unsupported token Function in a colour function/);
+      expect(() => marklessStyleExport(TEXT, PATH, undefined, 'system')).toThrow(/only with the layout plan/);
+    }, 120_000);
+  });
 });
