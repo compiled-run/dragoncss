@@ -270,6 +270,8 @@ describe('clip-path: a shape empty at every size hides the box', () => {
       expect([pointer(`.a { clip-path: ${v}; }`, 'a'), pointer(`.a { clip-path: ${v}; }`, 'b')], v).toEqual(['none', 'none']);
     }
     // A length alone depends on the box's size, a negative length leaves a strip, and a polygon or a keyword radius is the box's.
+    // display: contents generates no box for the clip-path to clip, so its children stay hit (and painted) as Chrome hits them.
+    expect([pointer('.a { display: contents; clip-path: inset(50%); }', 'a'), pointer('.a { display: contents; clip-path: inset(50%); }', 'b')]).toEqual(['auto', 'auto']);
     for (const v of ['inset(50px)', 'inset(49%)', 'inset(50% 0 0)', 'inset(100% 0 -1px)', 'polygon(0 0, 0 0, 0 0)', 'circle(closest-side at 0 0)']) expect(pointer(`.a { clip-path: ${v}; }`, 'a'), v).toBe('auto');
   });
   it('lowers as any shape clip does: the device clips the box view to nothing, and the text inside stays accessible', () => {

@@ -30,8 +30,10 @@ export function shapeClipsEverything(shape: ClipShape): boolean {
   return false;
 }
 
-/** Whether an element's clip-path shape hides it whole; clip-path applies to every box, unlike clip. */
+/** Whether an element's clip-path shape hides it whole; clip-path applies to every box, unlike clip, but display: contents makes none. */
 export function clipPathHidesBox(el: Pick<ResolvedElement, 'props' | 'element'>): boolean {
+  const display = el.props.get('display')?.value;
+  if (display !== undefined && display.kind === 'keyword' && display.value === 'contents') return false;
   const shape = clipPathShape(el);
   return shape !== null && shapeClipsEverything(shape);
 }
