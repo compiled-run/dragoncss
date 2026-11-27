@@ -210,10 +210,8 @@ export function hitRefusal(n: NativeCase): string | null {
   const moved = nodes.filter((x) => x.writes.some((w) => w.kind === 'transform' && hitTransformRefusal(x.id, w.ops) !== null)).map((x) => x.id);
   if (moved.length > 0) return `transform on ${moved.join(', ')}: hit testing through a rotated transform is SELD-R2b (T146)`;
   const facts = hitFacts(n.compiled, n.case.assignment);
-  // MASK-CLIP: Chrome's elementFromPoint passes over a box its empty clip rect hides, and over its descendants, which the hit test
-  // does not model yet.
-  const cut = nodes.filter((x) => x.writes.some((w) => w.kind === 'clip-rect-empty' || w.kind === 'clip-rect-label')).map((x) => x.id);
-  if (cut.length > 0) return `clip on ${cut.join(', ')}: hit testing past a box its clip rect hides is not modelled yet (MASK-CLIP)`;
+  // MASK-CLIP: Chrome's elementFromPoint passes over a box an empty clip rect or clip-path hides, and over its descendants; the hit
+  // facts give each of them pointer-events none (internal.ts hitFacts), so the table passes over them too (MASK-CLIP-path-hidden).
   // MASK-CLIP: Chrome's elementFromPoint passes over the part of a box and its descendants that its clip-path clips away, which the
   // hit test does not model yet.
   const clipped = nodes.filter((x) => x.writes.some((w) => w.kind === 'clip-path-inset' || w.kind === 'clip-path-shape')).map((x) => x.id);

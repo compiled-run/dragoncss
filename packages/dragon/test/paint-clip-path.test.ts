@@ -7,7 +7,7 @@
 import { describe, expect, it } from 'vitest';
 import { emitNativeSupport } from 'dragon';
 import type { Diagnostic } from '../src/index.ts';
-import { createProjectWith, NO_FAULTS, nativePrograms } from '../src/internal.ts';
+import { createProjectWith, hitFacts, NO_FAULTS, nativePrograms } from '../src/internal.ts';
 import { CLIP_PATH_LONGHANDS, insetEdgesOf } from '../src/css/properties/clip-path.ts';
 import { MASK_LONGHANDS } from '../src/css/properties/mask.ts';
 import { CLIP_RECT_LONGHANDS } from '../src/css/properties/clip-rect.ts';
@@ -259,4 +259,54 @@ describe('clip-path: the clip rect and emission', () => {
       expect(clip).toContain(ios ? 'if dragonClipPathPlantIgnored { return }' : 'if (DRAGON_CLIP_PATH_PLANT_IGNORED) return');
     });
   }
+});
+
+// MASK-CLIP-path-hidden: a shape empty at every border-box size hides the box whole, as an empty clip rect does (Chrome 145, F1 to F8).
+describe('clip-path: a shape empty at every size hides the box', () => {
+  const kindsOf = (css: string, body: (r: SourceRef) => TreeNode[] = tree) => {
+    const p = programs(css, body);
+    return [p.uikit, p['android-views']].map((prog) => (id: string) => prog.nodes.find((n) => n.id === id)?.writes.map((w) => w.kind).filter((k) => k.startsWith('clip-')) ?? []);
+  };
+  it('reads inset percentages that meet across an axis, with no negative length, and a zero circle or ellipse radius as empty', () => {
+    for (const v of ['inset(50%)', 'inset(0 50%)', 'inset(50% 0)', 'inset(100%)', 'inset(60% 0 40%)', 'inset(50% 2px)', 'inset(100% 0 0)', 'circle(0)', 'circle(0 at 10% 10%)', 'ellipse(0 10px)', 'ellipse(10px 0)']) {
+      for (const kinds of kindsOf(`.a { clip-path: ${v}; }`)) {
+        expect(kinds('a'), v).toEqual(['clip-rect-empty']);
+        expect(kinds('b'), v).toEqual([]);
+      }
+    }
+    // A length alone depends on the box's size, a negative length leaves a strip, and a polygon or a keyword radius is the box's.
+    for (const v of ['inset(50px)', 'inset(49%)', 'inset(50% 0 0)', 'inset(100% 0 -1px)', 'polygon(0 0, 0 0, 0 0)', 'circle(closest-side at 0 0)']) {
+      for (const kinds of kindsOf(`.a { clip-path: ${v}; }`)) expect(kinds('a'), v).not.toContain('clip-rect-empty');
+    }
+  });
+  it('carries the text of the hidden subtree as one label, and writes no shape and no clip-text', () => {
+    for (const kinds of kindsOf('.a { clip-path: inset(50%); }', textTree)) expect(kinds('a')).toEqual(['clip-rect-label']);
+    const p = programs('.a { clip-path: inset(50%); }', textTree);
+    for (const prog of [p.uikit, p['android-views']]) expect(prog.nodes.find((n) => n.id === 'a')?.writes.find((w) => w.kind === 'clip-rect-label')).toEqual(expect.objectContaining({ label: 'XX YY', css: ['clip', 'clip-path'] }));
+  });
+  it('draws no outline in the hidden subtree, as Chrome draws none (F4, F5, F9), and refuses what else hiding the box view loses', () => {
+    for (const css of ['.a { clip-path: inset(50%); } .b { outline: 1px solid red; }', '.a { clip-path: inset(50%); outline: 2px solid red; }', '.a { position: absolute; clip: rect(0, 0, 0, 0); } .b { outline: 1px solid red; }']) {
+      expect(errors(compile(css, ALL)), css).toEqual([]);
+      const p = programs(css);
+      for (const prog of [p.uikit, p['android-views']]) expect(prog.nodes.flatMap((n) => n.writes.filter((w) => w.kind === 'outline').map(() => n.id)), css).toEqual([]);
+    }
+    // An outline outside the hidden box is still drawn.
+    for (const prog of Object.values(programs('.a { clip-path: inset(50%); } .t { outline: 1px solid red; }'))) expect(prog.nodes.flatMap((n) => n.writes.filter((w) => w.kind === 'outline').map(() => n.id))).toEqual(['t']);
+    const errs = clipErrors(compile('.a { clip-path: inset(50%); box-shadow: 0 0 2px red; }', ALL));
+    expect(errs.map((d) => d.target).sort()).toEqual(['android', 'ios']);
+    expect(errs.find((d) => d.target === 'ios')?.message).toBe('a has clip-path: inset(50%), but it hides the box whole, and it has a box-shadow, drawn by a companion view beside the box view; ios clips the box view and the views inside it only');
+    expectCatalogued(errs);
+    const inline = errors(compileInput(inputFor(`${BASE} .i { clip-path: inset(50%); }`, (r) => [div(r, 'p', ['p'], [{ ...div(r, 'i', ['i'], [text(r, 'i-t', 'XX')]), tag: 'span' } as TreeNode])]), NATIVE)).filter((d) => d.message.startsWith('i has clip-path'));
+    expect(inline.map((d) => d.message)).toEqual(expect.arrayContaining([expect.stringMatching(/it is an inline box/)]));
+  });
+  it('leaves the box and its subtree out of the hit test, so an interaction rule beside it compiles natively', () => {
+    const lanes = createProjectWith({ projectId: 'test', targets: { web: {}, ios: { minimum: '15.0' } } }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr', interactionLanes: true });
+    for (const clip of ['.a { clip-path: inset(50%); }', '.a { position: absolute; clip: rect(0, 0, 0, 0); }']) {
+      const c = lanes.compile(input(`${clip} .b { pointer-events: auto; } .p:hover { background-color: #0c0; }`));
+      expect(errors(c), clip).toEqual([]);
+      const facts = hitFacts(c, []);
+      expect([facts?.get('a')?.pointerEvents, facts?.get('b')?.pointerEvents, facts?.get('b')?.inherited], clip).toEqual(['none', 'none', false]);
+      expect(facts?.get('t')?.pointerEvents, clip).toBe('auto');
+    }
+  });
 });

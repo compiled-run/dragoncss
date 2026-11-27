@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+/* Boxes a clip-path shape empty at every size hides: Chrome paints and hits none of them or their subtrees and keeps their text in
+   its accessibility tree (the visually-hidden pattern, as @markless/ui's base/visually-hidden.tsrx writes it); native boxes draw
+   nothing and carry the text as one accessibility label. */
+body { margin: 0; font-family: Ahem; font-size: 10px; line-height: 10px; }
+.stage { position: relative; height: 150px; padding: 8px 16px; background-color: rgb(236, 240, 244); }
+.row { position: relative; height: 40px; margin-bottom: 6px; background-color: rgb(250, 200, 60); }
+.u { position: absolute; top: 5px; width: 60px; height: 30px; background-color: rgb(40, 90, 200); color: rgb(200, 30, 30); }
+.inset { left: 8px; clip-path: inset(50%); }
+.axis { left: 90px; clip-path: inset(0 50%); }
+.circle { left: 170px; clip-path: circle(0); }
+.flow { clip-path: inset(50% 0); width: 80px; height: 10px; background-color: rgb(200, 30, 30); }
+.sr { clip-path: inset(50%); height: 1px; overflow: hidden; position: absolute; white-space: nowrap; width: 1px; }
+.t { color: rgb(20, 20, 20); }
+.k { width: 20px; height: 10px; background-color: rgb(30, 160, 90); }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="stage" class="stage">
+<div data-dragon-id="row1" class="row">
+<div data-dragon-id="cut-inset" class="u inset"><div data-dragon-id="cut-inset-c1" class="k"></div>Hi</div>
+<div data-dragon-id="cut-axis" class="u axis"><div data-dragon-id="cut-axis-c1" class="k"></div></div>
+<div data-dragon-id="cut-circle" class="u circle">Hello world</div>
+</div>
+<div data-dragon-id="row2" class="row"><div data-dragon-id="t1" class="t">XXXX</div><span data-dragon-id="cut-sr" class="sr">Photo size</span><div data-dragon-id="t2" class="t">XX</div></div>
+<div data-dragon-id="row3" class="row"><div data-dragon-id="cut-flow" class="flow"><div data-dragon-id="cut-flow-c1" class="k"></div></div><div data-dragon-id="t3" class="t">XX</div></div>
+</div>
+</body>
+</html>

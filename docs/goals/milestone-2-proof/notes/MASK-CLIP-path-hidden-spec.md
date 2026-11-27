@@ -72,8 +72,11 @@ pixels at DPR 2.625, where the wider scroll extent changes the scrollbar.
    has text Chrome exposes. The shape clip's refusals don't apply to it. An outline, a box-shadow or a fixed box in the subtree
    is not drawn natively: Chrome draws none of them (F4 to F6). Today the outline refusal names the views outside the box view
    (`outline.ts`, `viewOutsideClip`); for a hidden box, those views are left out instead.
-3. **Hits.** The hit table holds no node of the subtree (F1 to F8). The hit facts already leave out a hidden box; the box carries
-   it.
+3. **Hits.** The hit table holds no node of the subtree (F1 to F8). Neither `clip` nor `clip-path` is in `HIT_MODELLED` today,
+   so a page whose `clip-path` compiles has its interaction rules refused (`hitUnmodelledFact`); the empty clip-path wrapper only
+   escapes that now because its value is refused first. The slice adds a hit fact: a box an empty clip or clip-path hides.
+   `rt-hit.ts` `boxNodes` leaves that box and its subtree out of the table, which `native:gen` translates. `HIT_MODELLED` takes
+   `clip-path` when its shape is empty at every size, and `clip` when its rect is.
 4. **Layout.** When the hidden box has a definite width and height and clips its overflow (`overflow` other than `visible` on both
    axes), its content can't change any layout outside it (F1 to F6 against F7). Its subtree's replaced and form elements are then
    laid out as empty boxes at their UA sizes, without the paint refusals of FORM-b or of the UA border styles. Their pixels are

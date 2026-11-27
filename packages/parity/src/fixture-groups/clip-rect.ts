@@ -14,4 +14,7 @@ export const CLIP_RECT: readonly FixtureSpec[] = [
   both('clip-rect-basic'),
   both('clip-rect-nested'),
   both('clip-rect-sr-only'),
+  // MASK-CLIP-path-hidden: boxes an empty clip-path shape hides (inset(50%), inset(0 50%), circle(0), an in-flow inset(50% 0)), and
+  // @markless/ui's visually-hidden span among text.
+  both('clip-path-sr-only'),
 ];

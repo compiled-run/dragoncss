@@ -24,6 +24,7 @@ import type { ClipShape } from '../../css/properties/clip-path.ts';
 import { clipPathShape, clipShapeOf, mapShapeLengths, shapeLengths, shapeValue } from '../../css/properties/clip-path.ts';
 import type { ClipEdges } from '../../css/properties/clip-rect.ts';
 import { appliedClipEdges, clipEdgesOf, clipHidesBox, clipRectValue } from '../../css/properties/clip-rect.ts';
+import { clipPathHidesBox } from '../../css/properties/clip-hidden.ts';
 import { zIndexOf } from '../../css/properties/effects.ts';
 import { paintsOwn, visibilityOf } from '../../css/properties/visibility.ts';
 import { CANONICAL_LENGTH_UNIT, lengthToPx } from '../../css/units.ts';
@@ -75,7 +76,6 @@ export function viewOutsideClip(el: ResolvedElement): string | null {
   if (shadow !== undefined && !(shadow.kind === 'keyword' && shadow.value === 'none')) return 'it has a box-shadow, drawn by a companion view beside the box view';
   const visit = (e: ResolvedElement, root: boolean, flexOrGrid: boolean): string | null => {
     if (keywordOf(e, 'display') === 'none') return null;
-    if (paintedOutlineStyle(e) !== null) return `${root ? 'it has' : `${e.element.address} has`} an outline, drawn in the root view`;
     if (!root) {
       const z = zIndexOf((e.props.get('z-index') as ResolvedValue).value);
       if (z !== null && z !== 0 && (keywordOf(e, 'position') !== 'static' || flexOrGrid)) return `${e.element.address} has z-index ${z}, and its layer may be hosted under a stacking context outside the box view`;
@@ -146,6 +146,16 @@ function clipPathRefusal(el: ResolvedElement): { readonly fact: string; readonly
   if (tag === 'html' || tag === 'body') return { fact: `it is <${tag}>, whose background is the canvas's, which Chrome does not clip`, manual: `Move the clip-path from <${tag}> to a box inside it.` };
   const display = keywordOf(el, 'display');
   if (display === 'inline') return { fact: 'it is an inline box, whose content the native runtime places beside its view, not in it, until INL1b', manual: `Give ${at} display: inline-block or block, or move the clip-path to a block.` };
+  // A shape empty at every size hides the box whole, lowered as an empty clip rect is (MASK-CLIP-path-hidden): its refusals are those.
+  if (clipPathHidesBox(el)) {
+    if (clipHidesBox(el) === true) return null;
+    const why = viewOutsideClip(el);
+    if (why !== null) return { fact: `it hides the box whole, and ${why}`, manual: `Move what ${at} must not hide out of it, or remove it from ${at}.` };
+    const text = exposedTextInside(el);
+    const unlabelled = text === null ? null : clipLabelRefusal(el);
+    if (unlabelled !== null) return { fact: `it hides the box whole, and its text ${text as string} stays in Chrome's accessibility tree, but ${unlabelled}`, manual: `Keep only plain text in ${at} (div, span, p and inline emphasis, nothing focusable and no accessibility attributes), or move the rest out of it.` };
+    return null;
+  }
   const shadow = el.props.get('box-shadow')?.value;
   if (shadow !== undefined && !(shadow.kind === 'keyword' && shadow.value === 'none')) return { fact: 'it has a box-shadow, drawn by a companion view beside the box view, outside the clip', manual: `Move the box-shadow of ${at} to a wrapper, or remove it.` };
   const outline = (e: ResolvedElement, root: boolean): string | null => {

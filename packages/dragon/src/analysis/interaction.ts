@@ -28,6 +28,7 @@ import { NO_INTERACTION } from './match.ts';
 import { isShared, selectPartOf, textFieldPartOf } from './resolve.ts';
 import { holdsAtomicLine, lineAtomics, propagatedFrom } from './computed-checks.ts';
 import { hitFactContext, hitFactOtherContext } from '../lower/paint/stacking.ts';
+import { emptyClipPathValue, emptyClipRectValue } from '../css/properties/clip-hidden.ts';
 import { matrixParts, TRANSFORM_LIST_TYPE, transformFunctionsOf } from '../css/properties/transform.ts';
 
 /** R7: the distinct reachable interaction states one app assignment compiles; more are refused (package SELD-R2s). */
@@ -663,6 +664,9 @@ export const HIT_MODELLED: ReadonlyMap<Longhand, (v: CssValue) => boolean> = new
   ['outline-style', all],
   ['outline-width', all],
   ['outline-offset', all],
+  // MASK-CLIP-path-hidden: an empty clip or clip-path leaves its box and subtree out of the hit test (internal.ts hitFacts).
+  ['clip-path', (v) => (v.kind === 'keyword' && v.value === 'none') || emptyClipPathValue(v)],
+  ['clip', (v) => (v.kind === 'keyword' && v.value === 'auto') || emptyClipRectValue(v)],
 ]);
 
 /** A select, text field or textarea (textFieldPartOf holds both), whose UA shadow parts Chrome retargets to it, so the hit table holds it as one box (rt-hit.ts hitControlBox). */
