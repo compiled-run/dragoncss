@@ -1,0 +1,178 @@
+{
+ "platform": "darwin-arm64",
+ "devicePixelRatio": 3,
+ "input": [
+  {
+   "id": "html",
+   "parent": null,
+   "x": 0,
+   "y": 0,
+   "width": 76800,
+   "height": 0
+  },
+  {
+   "id": "body",
+   "parent": "html",
+   "x": 0,
+   "y": 0,
+   "width": 76800,
+   "height": 0
+  },
+  {
+   "id": "e1",
+   "parent": "body",
+   "x": 0,
+   "y": 0,
+   "width": 0,
+   "height": 7680
+  },
+  {
+   "id": "e2",
+   "parent": "body",
+   "x": 0,
+   "y": 0,
+   "width": 19200,
+   "height": 0
+  },
+  {
+   "id": "e3",
+   "parent": "body",
+   "x": 0,
+   "y": 0,
+   "width": 48000000,
+   "height": 48
+  },
+  {
+   "id": "e4",
+   "parent": "body",
+   "x": 0,
+   "y": 0,
+   "width": 19200,
+   "height": 19200
+  },
+  {
+   "id": "e5",
+   "parent": "body",
+   "x": 0,
+   "y": 0,
+   "width": 19200,
+   "height": 19200
+  },
+  {
+   "id": "e6",
+   "parent": "body",
+   "x": 0,
+   "y": 0,
+   "width": 19200,
+   "height": 19200
+  },
+  {
+   "id": "iw",
+   "parent": "body",
+   "x": 0,
+   "y": 0,
+   "width": 38400,
+   "height": 11136
+  },
+  {
+   "id": "i",
+   "parent": "iw",
+   "x": 19200,
+   "y": 0,
+   "width": 19200,
+   "height": 11136
+  }
+ ],
+ "output": [
+  {
+   "id": "html",
+   "left": 0,
+   "top": 0,
+   "right": 1200,
+   "bottom": 0,
+   "width": 1200,
+   "height": 0
+  },
+  {
+   "id": "body",
+   "left": 0,
+   "top": 0,
+   "right": 1200,
+   "bottom": 0,
+   "width": 1200,
+   "height": 0
+  },
+  {
+   "id": "e1",
+   "left": 0,
+   "top": 0,
+   "right": 0,
+   "bottom": 120,
+   "width": 0,
+   "height": 120
+  },
+  {
+   "id": "e2",
+   "left": 0,
+   "top": 0,
+   "right": 300,
+   "bottom": 0,
+   "width": 300,
+   "height": 0
+  },
+  {
+   "id": "e3",
+   "left": 0,
+   "top": 0,
+   "right": 750000,
+   "bottom": 1,
+   "width": 750000,
+   "height": 1
+  },
+  {
+   "id": "e4",
+   "left": 0,
+   "top": 0,
+   "right": 300,
+   "bottom": 300,
+   "width": 300,
+   "height": 300
+  },
+  {
+   "id": "e5",
+   "left": 0,
+   "top": 0,
+   "right": 300,
+   "bottom": 300,
+   "width": 300,
+   "height": 300
+  },
+  {
+   "id": "e6",
+   "left": 0,
+   "top": 0,
+   "right": 300,
+   "bottom": 300,
+   "width": 300,
+   "height": 300
+  },
+  {
+   "id": "iw",
+   "left": 0,
+   "top": 0,
+   "right": 600,
+   "bottom": 174,
+   "width": 600,
+   "height": 174
+  },
+  {
+   "id": "i",
+   "left": 300,
+   "top": 0,
+   "right": 600,
+   "bottom": 174,
+   "width": 300,
+   "height": 174
+  }
+ ]
+}

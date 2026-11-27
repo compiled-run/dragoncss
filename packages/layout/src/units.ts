@@ -796,6 +796,16 @@ export function mulDiv(v: LU, m: number, d: number): LU {
   return saturate(negative ? 0 - q : q);
 }
 
+/** Half of a doubled MulDiv result, rounded half up: MulDiv rounding instead of truncating (the ratioRoundedMulDiv fault). */
+export function roundedHalf(doubled: LU): LU {
+  return saturate(Math.floor((doubled + 1) / 2));
+}
+
+/** trunc(size * to / from) in double over the authored parts: css-sizing-4 §5.1's exact quotient (the ratioExactSpec fault). */
+export function truncQuotient(size: LU, to: number, from: number): LU {
+  return saturate(Math.trunc((size * to) / from));
+}
+
 /** A layout ratio: two raw LayoutUnit values, both positive (StyleAspectRatio::GetLayoutRatio). */
 export type LayoutRatio = { readonly width: number; readonly height: number };
 
@@ -803,29 +813,54 @@ function positiveRatio(width: number, height: number): LayoutRatio | null {
   return width > 0 && height > 0 ? { width, height } : null;
 }
 
+/** gfx::SizeF kTrivial, 8 * FLT_EPSILON = 2^-20: SizeF stores a part at or below it as 0 (ui/gfx/geometry/size_f.h). */
+const TRIVIAL_RATIO_PART = 9.5367431640625e-7;
+
 /**
- * Blink LayoutRatioFromSizeF (platform/geometry/physical_size.cc, Chrome 145) for a <ratio> width / height, whose parts Blink
- * stores as float: the layout ratio, or null for a degenerate ratio, which layout treats as auto. Parts that are exact
- * LayoutUnits are kept; equal parts are 1 / 1; anything else is the float continued-fraction convergent that first comes within
- * 1e-6 of width / height, in at most 16 steps, as raw values.
+ * Planted errors in the ratio conversion (EngineFaults ratio*): no SizeF clamp, the continued fraction in double, LayoutUnit(part)
+ * for every ratio, and an 8-step cap.
+ */
+export type RatioFaults = { readonly noTrivialClamp: boolean; readonly doubleFraction: boolean; readonly truncatedParts: boolean; readonly eightSteps: boolean };
+export const NO_RATIO_FAULTS: RatioFaults = { noTrivialClamp: false, doubleFraction: false, truncatedParts: false, eightSteps: false };
+
+/**
+ * Blink LayoutRatioFromSizeF (platform/geometry/physical_size.cc, Chrome 145) for the authored <ratio> parts width / height, which
+ * Blink stores as a gfx::SizeF (each double narrowed to float, a part at or below 2^-20 zeroed): the layout ratio as raw
+ * LayoutUnits, or null for a degenerate ratio, which layout treats as auto. Parts that are exact LayoutUnits are kept; equal
+ * parts are 1 / 1; anything else is the float continued-fraction convergent that first comes within 1e-6 of width / height, in
+ * at most 16 steps, as raw values.
  */
 export function layoutRatio(ratioWidth: number, ratioHeight: number): LayoutRatio | null {
-  const w = clampLengthFloat(ratioWidth);
-  const h = clampLengthFloat(ratioHeight);
+  return layoutRatioWith(ratioWidth, ratioHeight, NO_RATIO_FAULTS);
+}
+
+function sizeFPart(v: number, f: RatioFaults): number {
+  const narrowed = clampLengthFloat(v);
+  return f.noTrivialClamp || narrowed > TRIVIAL_RATIO_PART ? narrowed : 0;
+}
+
+function narrowRatio(f: RatioFaults, v: number): number {
+  return f.doubleFraction ? v : Math.fround(v);
+}
+
+export function layoutRatioWith(ratioWidth: number, ratioHeight: number, f: RatioFaults): LayoutRatio | null {
+  const w = sizeFPart(ratioWidth, f);
+  const h = sizeFPart(ratioHeight, f);
   const rw: number = fromCssPx(w);
   const rh: number = fromCssPx(h);
-  if ((Math.fround(rw / LU_PER_PX) === w && Math.fround(rh / LU_PER_PX) === h) || w === 0 || h === 0) return positiveRatio(rw, rh);
+  if (f.truncatedParts || (Math.fround(rw / LU_PER_PX) === w && Math.fround(rh / LU_PER_PX) === h) || w === 0 || h === 0) return positiveRatio(rw, rh);
   if (w === h) return { width: LU_PER_PX, height: LU_PER_PX };
-  const initial = Math.fround(w / h);
+  const initial = narrowRatio(f, w / h);
   let x = initial;
   let h0 = 0;
   let h1 = 1;
   let k0 = 1;
   let k1 = 0;
-  for (let i = 0; i < 16; i++) {
+  const steps = f.eightSteps ? 8 : 16;
+  for (let i = 0; i < steps; i++) {
     if (!Number.isFinite(x)) break;
-    const error = Math.fround(initial - Math.fround(Math.fround(h1) / Math.fround(k1)));
-    if ((error < 0 ? -error : error) < Math.fround(0.000001)) break;
+    const error = narrowRatio(f, initial - narrowRatio(f, narrowRatio(f, h1) / narrowRatio(f, k1)));
+    if ((error < 0 ? -error : error) < narrowRatio(f, 0.000001)) break;
     const a: number = saturate(Math.floor(x));
     const h2: number = saturate(saturate(h1 * a) + h0);
     const k2: number = saturate(saturate(k1 * a) + k0);
@@ -834,7 +869,7 @@ export function layoutRatio(ratioWidth: number, ratioHeight: number): LayoutRati
     k0 = k1;
     h1 = h2;
     k1 = k2;
-    x = Math.fround(1 / Math.fround(x - Math.fround(a)));
+    x = narrowRatio(f, 1 / narrowRatio(f, x - narrowRatio(f, a)));
   }
   if (h1 === 0 || k1 === 0) return positiveRatio(rw, rh);
   return positiveRatio(h1, k1);

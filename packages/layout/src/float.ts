@@ -73,7 +73,7 @@ export function layoutFloat(ctx: Ctx, node: LayoutBox | ReplacedLeaf, cbInline: 
   if (marginLeft < 0 || marginRight < 0 || marginTop < 0 || marginBottom < 0) unsupported('float', node.id, 'CSS2 §9.5.1', `a negative margin on float ${node.id}`);
   if (node.kind === 'replaced') return { frag: layoutReplacedInFlow(ctx, node, cbInline, basis), marginLeft, marginRight, marginTop, marginBottom };
   // css-sizing-4 §5.1: with an auto width a ratio would transfer a height into the shrink-to-fit width, which floatWidth does not do.
-  if (hasAspectRatio(s) && s.width.kind === 'auto') unsupported('float', node.id, 'css-sizing-4 §5.1', `aspect-ratio with an auto width on float ${node.id}`);
+  if (hasAspectRatio(s, ctx.faults) && s.width.kind === 'auto') unsupported('float', node.id, 'css-sizing-4 §5.1', `aspect-ratio with an auto width on float ${node.id}`);
   const width = floatWidth(ctx, node, cbInline, add(marginLeft, marginRight));
   const r = layoutContents(ctx, node, {
     cbInline,

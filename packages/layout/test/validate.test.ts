@@ -155,8 +155,10 @@ describe('V2 value-model inputs the engine cannot lay out are rejected (validate
     });
 
     it('takes a percentage height beside an aspect-ratio (it resolves its own basis) but still bounds the ratio parts', () => {
-      expect(codes(withLeaf(leaf({}, { height: { kind: 'percent', value: 50 }, aspectRatio: { kind: 'ratio', width: 128, height: 64 } })))).toEqual([]);
-      expect(codes(withLeaf(leaf({}, { aspectRatio: { kind: 'ratio', width: 2147483648, height: 64 } })))).toEqual(['bad-value $.root.children[0].style.aspectRatio.width']);
+      expect(codes(withLeaf(leaf({}, { height: { kind: 'percent', value: 50 }, aspectRatio: { kind: 'ratio', width: 2, height: 1 } })))).toEqual([]);
+      // ARAT: the parts are the authored numbers, any finite non-negative value; a negative part is refused.
+      expect(codes(withLeaf(leaf({}, { aspectRatio: { kind: 'ratio', width: 2147483648, height: 0.0000005 } })))).toEqual([]);
+      expect(codes(withLeaf(leaf({}, { aspectRatio: { kind: 'ratio', width: -1, height: 64 } })))).toEqual(['bad-value $.root.children[0].style.aspectRatio.width']);
     });
 
     it('counts a replaced leaf among a box\'s ids and refuses it beside text', () => {

@@ -123,9 +123,10 @@ export type LineHeightCalc = { readonly kind: 'calc'; readonly expr: CalcExpr; r
 /** line-height (CSS2 §10.8.1): a percentage is of the element's computed font size, truncated to a whole percent (Blink ConvertLineHeight). */
 export type LineHeightValue = NormalValue | NumberValue | Px | Percent | LineHeightCalc;
 /**
- * css-sizing-4 §5.1 aspect-ratio as Blink's layout ratio (StyleAspectRatio::GetLayoutRatio): width and height are raw LayoutUnit
- * values, positive integers, which the compiler derives from the <ratio> as Blink's LayoutRatioFromSizeF does. ratio is
- * `<ratio>`; auto-ratio is `auto && <ratio>`, which sizes the content box whatever box-sizing says. A degenerate ratio is auto.
+ * css-sizing-4 §5.1 aspect-ratio: width and height are the authored <ratio> parts, finite and non-negative, which the engine
+ * converts to Blink's layout ratio as StyleAspectRatio does (gfx::SizeF, then LayoutRatioFromSizeF; units.ts layoutRatio). ratio is
+ * `<ratio>`; auto-ratio is `auto && <ratio>`, which sizes the content box whatever box-sizing says. A ratio the conversion leaves
+ * degenerate lays out as auto.
  */
 export type AspectRatioValue =
   | Auto

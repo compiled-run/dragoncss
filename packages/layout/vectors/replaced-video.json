@@ -1340,8 +1340,8 @@
             "textAlign": "start",
             "aspectRatio": {
              "kind": "auto-ratio",
-             "width": 7680,
-             "height": 3840
+             "width": 120,
+             "height": 60
             },
             "verticalAlign": {
              "kind": "keyword",
