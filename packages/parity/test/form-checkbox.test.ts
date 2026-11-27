@@ -235,11 +235,13 @@ describe('FORM-checkbox: an inline-block checkbox, and a radio inside a box an e
   const ROW = '.row { position: relative; display: flex; align-items: center; gap: 8px; }';
   const theme = /^<input type=radio> r is drawn by Chrome's theme, which Dragon does not draw yet/;
 
-  it('compiles a checkbox at its UA display, inline-block, on a line of text', () => {
+  it('compiles an inline-block checkbox on a line of text, beside a scroll container whose overflow it does not change', () => {
     expect(compile(inline('', '<div data-dragon-id="d">XX <input data-dragon-id="c" type="checkbox"> XX</div>'))).toEqual([]);
+    const scroller = '<div data-dragon-id="s" class="s"><div data-dragon-id="k" class="k"></div></div>';
+    expect(compile(inline('.s { overflow: auto; height: 40px; } .k { height: 80px; }', `${scroller}<div data-dragon-id="d">XX <input data-dragon-id="c" type="checkbox"> XX</div>`))).toEqual([]);
   });
 
-  it("compiles @markless/ui's hidden radio, at its UA display and margins, with no theme, border or outline refusal", () => {
+  it("compiles @markless/ui's hidden radio, at its UA margins, with no theme, border or outline refusal", () => {
     expect(compile(inline(`${SR} ${ROW} :focus-visible { outline: 2px solid #c2410c; }`, RADIO_ROW), true)).toEqual([]);
   });
 
