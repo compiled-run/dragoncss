@@ -32,7 +32,7 @@ This repository is public, and a self-hosted runner must never run pull request 
   commit (`/Users/runner/wpt`, the path the hosted jobs use), and the Android SDK with the system image
   with build-tools 36.0.0 and platform android-36 (`/opt/homebrew/share/android-commandlinetools`). A new WPT pin fails `scripts/fetch-wpt.sh` on a slot until the copy is updated.
 - mini-2 runs 4 slots, each giving vitest 2 workers (`VITEST_MAX_WORKERS`): it has 6 fast and 12 efficiency cores, and 6 slots
-  timed out tests that pass on `macos-26`. With `runner=mini` the chrome files run in `MINI_CHROME_SHARDS` (12) shards.
+  timed out tests that pass on `macos-26`. The chrome files run in 4 shards on both paths, one per slot (balanced by `scripts/test-durations.json`, refreshed from a mini run).
 - Not isolated: the network (jobs reach the LAN), memory (macOS has no per-user cap), world-readable files.
 
 ## What stays hosted, and why
