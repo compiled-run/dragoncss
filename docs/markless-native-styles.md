@@ -236,4 +236,4 @@ A page whose reachable assignments one native table cannot hold (more than 1,024
 - states in groups together with `@for` rows, slots, or transitions and animations;
 - a page linked before its bands are known (a color-scheme preference, `@container` rules) is not factored at all.
 
-Checks: `packages/parity/test/markless-state-groups.test.ts`. For three inputs (`groups`, `arms`, `tabs`), every assignment of the full product and every interaction state are combined from the groups and compared with the product's nodes, and with its plan layout through `runMarklessLayout`, on iOS and Android.
+Checks: `packages/parity/test/markless-state-groups-*.test.ts`. For three inputs (`groups`, `arms`, `tabs`), every assignment of the full product and every interaction state are combined from the groups and compared with the product's nodes, and with its plan layout through `runMarklessLayout`, on iOS and Android.
