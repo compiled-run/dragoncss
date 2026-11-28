@@ -400,6 +400,7 @@ public final class DragonInteractionMachine {
         case let .image(data, width, height, fit, pixelated):
           v.dragonSetImage(data, width: width, height: height, fit: fit)
           if pixelated { v.dragonSetImagePixelated() }
+        case let .visibility(value, canvas): dragonVisibility(v, value, canvas)
         case .text, .syntheticBold: fatalError("dragon: box \(n.id) holds a text write")
         }
       }
@@ -745,6 +746,7 @@ class DragonInteractionMachine(
             v.dragonSetImage(w.data, w.width, w.height, w.fit, w.layer)
             if (w.pixelated) v.dragonSetImagePixelated()
           }
+          is DragonStateWrite.Visibility -> dragonVisibility(v, w.value, w.canvas)
           is DragonStateWrite.Text, is DragonStateWrite.SyntheticBold -> throw IllegalStateException("dragon: box " + n.id + " holds a text write")
         }
       }
