@@ -435,10 +435,21 @@ export function committedFrames(caseId: string, rendering: 'authored' | 'compile
  * is Chrome's matrix of the functions at the element's border box, compared at DPR 1 as PNT2 compares it (pnt2-quads.test.ts);
  * the transformed geometry is compared at every DPR by bounding box.
  */
-const STRING_COMPARED = (p: string): boolean => p === 'color' || p.endsWith('-color') || p.startsWith('margin-') || p === 'transform';
+const STRING_COMPARED = (p: string): boolean => p === 'color' || p.endsWith('-color') || p.startsWith('margin-') || p === 'transform' || p === 'translate';
 
 const multiply = (m1: Matrix2D, m2: Matrix2D): Matrix2D => ({ full: true, a: m1.a * m2.a + m1.c * m2.b, b: m1.b * m2.a + m1.d * m2.b, c: m1.a * m2.c + m1.c * m2.d, d: m1.b * m2.c + m1.d * m2.d, e: m1.a * m2.e + m1.c * m2.f + m1.e, f: m1.b * m2.e + m1.d * m2.f + m1.f });
 const shift = (x: number, y: number): Matrix2D => ({ full: true, a: 1, b: 0, c: 0, d: 1, e: x, f: y });
+
+/** Chrome's computed translate, in px, as the matrix of the one transform it rides (ANIM-b2); a percentage or 3D value throws. */
+function translateMatrix(computed: string | undefined): string {
+  if (computed === undefined || computed === 'none') return 'none';
+  const xy = computed.split(' ').map((part) => {
+    if (!part.endsWith('px') || !Number.isFinite(Number(part.slice(0, -2)))) throw new Error(`translate ${computed} is not one or two px lengths`);
+    return Number(part.slice(0, -2));
+  });
+  if (xy.length > 2) throw new Error(`translate ${computed} is not one or two px lengths`);
+  return rtInterpolate.serializeMatrix({ ...rtInterpolate.IDENTITY_MATRIX, e: xy[0] as number, f: xy[1] ?? 0 });
+}
 
 /** The transform of each node of a dump as the views write it: the animated ones, then every other node's static transform. */
 function dumpTransforms(d: FrameDump): Map<string, { readonly ops: readonly TransformOp[]; readonly origin: TransformOrigin }> {
@@ -507,17 +518,18 @@ export function animCaseReport(c: AnimCase, dprs: readonly number[] = [1, 2, 2.6
       const transforms = dumpTransforms(d);
       for (const t of tracked) {
         if (!STRING_COMPARED(t.property)) continue;
-        if (t.property === 'transform' && dpr !== 1) continue;
+        if ((t.property === 'transform' || t.property === 'translate') && dpr !== 1) continue;
         const node = s.nodes.find((n) => n.id === t.node);
         if (node === undefined || !node.hasBox) continue;
-        const want = (node.computed ?? {})[t.property];
-        if (t.property === 'transform') {
+        const computed = (node.computed ?? {})[t.property];
+        const want = t.property === 'translate' ? translateMatrix(computed) : computed;
+        if (t.property === 'transform' || t.property === 'translate') {
           // The functions' matrix at the engine's border box of this frame (the views resolve percentages against it at use).
           const r = rects.get(t.node);
           const w = transforms.get(t.node);
           values++;
           const got = r === undefined ? 'no box' : w === undefined || w.ops.length === 0 ? 'none' : rtInterpolate.serializeMatrix(transformFunctionsMatrix(w.ops, r.width / scale, r.height / scale, trig));
-          if (got !== want) failures.push(`${c.id} DPR ${dpr} t=${s.at} ${t.node} transform: chrome ${String(want)}, dragon ${got}`);
+          if (got !== want) failures.push(`${c.id} DPR ${dpr} t=${s.at} ${t.node} ${t.property}: chrome ${String(computed)}, dragon ${got}`);
           continue;
         }
         const mine = shown.get(trackKey(t.node, t.property)) ?? staticValue(c, d, t.node, t.property);

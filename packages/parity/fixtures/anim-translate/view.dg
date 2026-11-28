@@ -1,0 +1,7 @@
+<div track
+<div thumb
+{open === true ? 'on' : ''}
+open: [false, true] = false
+component App
+<html>
+<body>

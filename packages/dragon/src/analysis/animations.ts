@@ -32,6 +32,7 @@ import { stackingOf } from '../lower/paint/stacking.ts';
 import type { StackNode } from '../lower/paint/stacking.ts';
 import { propagatedFrom } from './computed-checks.ts';
 import { resolvedStackTree } from './paint-values/stacking.ts';
+import { elementIndividualTransforms } from './paint-values/transform.ts';
 import type { ResolvedElement } from './resolve.ts';
 import { resolvedCustoms } from './resolve.ts';
 import type { CustomProperties } from './variables.ts';
@@ -307,6 +308,19 @@ export function transformPairProblem(a: AnimValue, b: AnimValue): string | null 
   return null;
 }
 
+/**
+ * ANIM-b2: an element's transform as its translate alone, when its transform, rotate and scale are none; else null. There the
+ * transform write is that one function (css-transforms-2 §4), and Chrome's interpolation of translate is that function's, so a
+ * transition of translate rides the transform writer.
+ */
+export function translateAlone(el: ResolvedElement): AnimValue | null {
+  for (const p of ['transform', 'rotate', 'scale'] as const) {
+    const v = valueAt(el, p).value;
+    if (!(v.kind === 'keyword' && v.value === 'none')) return null;
+  }
+  return { kind: 'transform', fns: elementIndividualTransforms(el) };
+}
+
 /** A computed font size: computeLengths makes every font-size px, so anything else is a compiler error, not a default. */
 export function fontPx(v: CssValue): number {
   if (v.kind === 'length' && v.unit === 'px') return v.value;
@@ -564,18 +578,23 @@ export function analyzeAnimations(input: AnimationInput, diagnostics: Diagnostic
           if (inlineBoxAt(eb, [...tb.values()][0] as ResolvedElement) || inlineBoxAt(ea, [...ta.values()][0] as ResolvedElement)) {
             once(`inl-tr|${address}|${p}`, diagnostic('DRAGON_UNSUPPORTED_VALUE', { origin: authored(span), message: `a transition of ${p} on <${eb.element.tag}> ${address} animates an inline box, which Dragon does not animate yet: no frame fixture proves it (INL1a)`, manual: INLINE_ANIM_MANUAL }));
           }
-          if (!admitted(kind)) {
-            once(`tp|${p}|${span.start}`, refuse(span, `${p} cannot be animated yet: a transition on ${address} would start between two reachable states, and Dragon has no ${KIND_LABEL(kind)} animation writer (package ${PACKAGE_OF(p)})`));
+          const riding = p === 'translate' && trees.every((t) => { const e = t.get(address); return e === undefined || translateAlone(e) !== null; });
+          if (!admitted(kind) && !riding) {
+            const message = p === 'translate'
+              ? `translate cannot be animated yet on ${address}: its transform, rotate or scale is not none in a reachable state, and Dragon animates translate only as an element's one transform (package ANIM-b2)`
+              : `${p} cannot be animated yet: a transition on ${address} would start between two reachable states, and Dragon has no ${KIND_LABEL(kind)} animation writer (package ${PACKAGE_OF(p)})`;
+            once(`tp|${p}|${span.start}`, refuse(span, message));
             continue;
           }
+          if (riding && ['transform', 'translate', 'rotate', 'scale'].some((q) => animated.has(`${address}|${q}`))) once(`tra|${address}`, refuse(span, `translate on ${address} is transitioned while an animation of its transform runs: both write its one transform, which is not built yet (package ANIM-b2)`));
           if (fontMetric(valueAt(ea, p).value) || fontMetric(valueAt(eb, p).value)) {
             once(`tfm|${p}|${address}|${span.start}`, refuse(span, `${p} on ${address}: a transition from or to an ex, ch or cap length is unsupported: Dragon's animation writer holds px and percentage endpoints, and does not resolve a font-metric length to one yet`));
             continue;
           }
           if (p === 'background-color' && (foldedOpacity(ea) !== null || foldedOpacity(eb) !== null)) once(`tfold|${address}|${span.start}`, refuse(span, FOLD_ANIMATED(address)));
-          const stacking = p === 'transform' ? (untransformedStacking(ea, [...ta.values()][0] as ResolvedElement) ?? untransformedStacking(eb, [...tb.values()][0] as ResolvedElement)) : null;
-          if (stacking !== null) once(`tcb|${address}`, refuse(span, `a transition of transform on ${address} starts on an element whose transform is none, with ${stacking}: the containing block and stacking context it makes while it animates are not built yet (package ANIM-b2)`));
-          const problem = transformPairProblem(from, to);
+          const stacking = p === 'transform' || riding ? (untransformedStacking(ea, [...ta.values()][0] as ResolvedElement) ?? untransformedStacking(eb, [...tb.values()][0] as ResolvedElement)) : null;
+          if (stacking !== null) once(`tcb|${address}`, refuse(span, `a transition of ${p} on ${address} starts on an element whose transform is none, with ${stacking}: the containing block and stacking context it makes while it animates are not built yet (package ANIM-b2)`));
+          const problem = riding ? transformPairProblem(translateAlone(ea) as AnimValue, translateAlone(eb) as AnimValue) : transformPairProblem(from, to);
           if (problem !== null) once(`tm|${p}|${address}|${span.start}`, refuse(span, `${p} on ${address}: a transition between two reachable states: ${problem}`));
           const cc = (v: AnimValue): boolean => v.kind === 'keyword' && v.value === 'currentcolor';
           if (oklabColor(valueAt(ea, p).value) || oklabColor(valueAt(eb, p).value)) once(`tok|${p}|${span.start}`, refuse(span, `${p} on ${address}: a transition from or to a colour that Chrome mixes in oklab (a non-legacy colour space or a none component) is unsupported, and Dragon's animation writer mixes 8-bit sRGB (COL4)`));
