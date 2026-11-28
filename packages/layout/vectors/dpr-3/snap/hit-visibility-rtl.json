@@ -1,0 +1,280 @@
+{
+ "platform": "darwin-arm64",
+ "devicePixelRatio": 3,
+ "input": [
+  {
+   "id": "html",
+   "parent": null,
+   "x": 0,
+   "y": 0,
+   "width": 76800,
+   "height": 34944
+  },
+  {
+   "id": "body",
+   "parent": "html",
+   "x": 0,
+   "y": 0,
+   "width": 76800,
+   "height": 33024
+  },
+  {
+   "id": "o1",
+   "parent": "body",
+   "x": 52608,
+   "y": 0,
+   "width": 24192,
+   "height": 4608
+  },
+  {
+   "id": "o1-m",
+   "parent": "o1",
+   "x": 20736,
+   "y": 1152,
+   "width": 2304,
+   "height": 2304
+  },
+  {
+   "id": "o1-l",
+   "parent": "o1",
+   "x": 8064,
+   "y": 1152,
+   "width": 11520,
+   "height": 2304
+  },
+  {
+   "id": "o2",
+   "parent": "body",
+   "x": 52608,
+   "y": 6528,
+   "width": 24192,
+   "height": 4608
+  },
+  {
+   "id": "o2-m",
+   "parent": "o2",
+   "x": 20736,
+   "y": 1152,
+   "width": 2304,
+   "height": 2304
+  },
+  {
+   "id": "o2-l",
+   "parent": "o2",
+   "x": 8064,
+   "y": 1152,
+   "width": 11520,
+   "height": 2304
+  },
+  {
+   "id": "l",
+   "parent": "body",
+   "x": 0,
+   "y": 13056,
+   "width": 76800,
+   "height": 3840
+  },
+  {
+   "id": "l-b",
+   "parent": "l",
+   "x": 57600,
+   "y": 0,
+   "width": 19200,
+   "height": 3840
+  },
+  {
+   "id": "p",
+   "parent": "body",
+   "x": 0,
+   "y": 18816,
+   "width": 76800,
+   "height": 6144
+  },
+  {
+   "id": "p-k",
+   "parent": "p",
+   "x": 67968,
+   "y": 1152,
+   "width": 7680,
+   "height": 1920
+  },
+  {
+   "id": "p-h",
+   "parent": "p",
+   "x": 67968,
+   "y": 3072,
+   "width": 7680,
+   "height": 1920
+  },
+  {
+   "id": "c",
+   "parent": "body",
+   "x": 0,
+   "y": 26880,
+   "width": 76800,
+   "height": 6144
+  },
+  {
+   "id": "c-k",
+   "parent": "c",
+   "x": 56448,
+   "y": 1152,
+   "width": 19200,
+   "height": 3840
+  },
+  {
+   "id": "l-o",
+   "parent": "l",
+   "x": 65280,
+   "y": 0,
+   "width": 11520,
+   "height": 5760
+  }
+ ],
+ "output": [
+  {
+   "id": "html",
+   "left": 0,
+   "top": 0,
+   "right": 1200,
+   "bottom": 546,
+   "width": 1200,
+   "height": 546
+  },
+  {
+   "id": "body",
+   "left": 0,
+   "top": 0,
+   "right": 1200,
+   "bottom": 516,
+   "width": 1200,
+   "height": 516
+  },
+  {
+   "id": "o1",
+   "left": 822,
+   "top": 0,
+   "right": 1200,
+   "bottom": 72,
+   "width": 378,
+   "height": 72
+  },
+  {
+   "id": "o1-m",
+   "left": 1146,
+   "top": 18,
+   "right": 1182,
+   "bottom": 54,
+   "width": 36,
+   "height": 36
+  },
+  {
+   "id": "o1-l",
+   "left": 948,
+   "top": 18,
+   "right": 1128,
+   "bottom": 54,
+   "width": 180,
+   "height": 36
+  },
+  {
+   "id": "o2",
+   "left": 822,
+   "top": 102,
+   "right": 1200,
+   "bottom": 174,
+   "width": 378,
+   "height": 72
+  },
+  {
+   "id": "o2-m",
+   "left": 1146,
+   "top": 120,
+   "right": 1182,
+   "bottom": 156,
+   "width": 36,
+   "height": 36
+  },
+  {
+   "id": "o2-l",
+   "left": 948,
+   "top": 120,
+   "right": 1128,
+   "bottom": 156,
+   "width": 180,
+   "height": 36
+  },
+  {
+   "id": "l",
+   "left": 0,
+   "top": 204,
+   "right": 1200,
+   "bottom": 264,
+   "width": 1200,
+   "height": 60
+  },
+  {
+   "id": "l-b",
+   "left": 900,
+   "top": 204,
+   "right": 1200,
+   "bottom": 264,
+   "width": 300,
+   "height": 60
+  },
+  {
+   "id": "p",
+   "left": 0,
+   "top": 294,
+   "right": 1200,
+   "bottom": 390,
+   "width": 1200,
+   "height": 96
+  },
+  {
+   "id": "p-k",
+   "left": 1062,
+   "top": 312,
+   "right": 1182,
+   "bottom": 342,
+   "width": 120,
+   "height": 30
+  },
+  {
+   "id": "p-h",
+   "left": 1062,
+   "top": 342,
+   "right": 1182,
+   "bottom": 372,
+   "width": 120,
+   "height": 30
+  },
+  {
+   "id": "c",
+   "left": 0,
+   "top": 420,
+   "right": 1200,
+   "bottom": 516,
+   "width": 1200,
+   "height": 96
+  },
+  {
+   "id": "c-k",
+   "left": 882,
+   "top": 438,
+   "right": 1182,
+   "bottom": 498,
+   "width": 300,
+   "height": 60
+  },
+  {
+   "id": "l-o",
+   "left": 1020,
+   "top": 204,
+   "right": 1200,
+   "bottom": 294,
+   "width": 180,
+   "height": 90
+  }
+ ]
+}
