@@ -1,7 +1,7 @@
 # One round of regen-on-ci.yml: `pnpm regen <args>` on one runner, starting from the branch commit plus the previous round's
 # outputs and regen cache. Uploads the cumulative patch against the commit, the cache and the step logs as artifact <name>.
 # side chrome (macos-26, where the Chrome captures are byte-identical to the local Mac's): every step except lanes-host.
-# side host (xcode-27 or a dragon-mini slot, Xcode 27.2 and Swift 6.4.2): lanes-host only. The host toolchains must equal the ones
+# side host (xcode-27 or a dragon-mini slot, Xcode 27.2 and Swift 6.4.2): lanes-host, and profile-rows after it. The host toolchains must equal the ones
 # the committed lanes.json records, or the round fails before running anything.
 # seed_run (regen-on-ci.yml's resume, first round only): the regen store comes from that run's chrome-1 artifact instead of the
 # Actions cache, so steps whose inputs this commit leaves alone are skipped or restored. The tree still starts at the commit.
@@ -114,8 +114,8 @@ jobs:
           if [ -s "$RUNNER_TEMP/prev/outputs.patch" ]; then git apply --binary "$RUNNER_TEMP/prev/outputs.patch"; fi
           mkdir -p .git/dragon-regen
           zstd -dcq "$RUNNER_TEMP/prev/store.tar.zst" | tar -xf - -C .git/dragon-regen
-      - name: Chrome side - Playwright 1.58.2 Chromium and the pinned WPT copy
-        if: inputs.side == 'chrome'
+      # The host side needs it too: its rounds also run profile-rows, which reads lanes.json through Chrome.
+      - name: Playwright 1.58.2 Chromium
         run: |
           test "$(pnpm --filter @dragon/parity exec playwright --version)" = "Version 1.58.2"
           pnpm --filter @dragon/parity exec playwright install chromium
