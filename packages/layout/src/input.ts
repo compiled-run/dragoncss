@@ -568,9 +568,10 @@ export type ObjectPositionValue = Px | Percent;
 /**
  * The natural dimensions of a replaced element in CSS px: an image's size (its ratio is the size's), none (an iframe), or runtime:
  * an img whose src the app sets while it runs, whose size the build does not know, so a layout that reads it is refused
- * (runtime-image-size) and paint takes the decoded image's size on the device (paint.ts runtimeImagePaint).
+ * (runtime-image-size) and paint takes the decoded image's size on the device (paint.ts runtimeImagePaint); or followed: such an img
+ * whose height follows its image (REPL-r2a), at the size the device gives, 0 by 0 while it loads, read only by replacedSize's guard.
  */
-export type NaturalSizeValue = { readonly kind: 'image'; readonly width: number; readonly height: number } | { readonly kind: 'none' } | { readonly kind: 'runtime' };
+export type NaturalSizeValue = { readonly kind: 'image'; readonly width: number; readonly height: number } | { readonly kind: 'none' } | { readonly kind: 'runtime' } | { readonly kind: 'followed'; readonly width: number; readonly height: number };
 
 /**
  * A block-level replaced element (CSS 2.2 §10.3.4, §10.6.2; css-sizing-4 §5): a leaf box whose content is an image or a

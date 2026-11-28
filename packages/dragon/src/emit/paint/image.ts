@@ -225,12 +225,17 @@ public let dragonImagePlantDevicePx: Double = 0
 /// lane sees nearest-neighbour sampling.
 public let dragonImagePlantSmooth = false
 
+/// Decoded bitmaps by their PNG bytes: a state rebuild makes new views on every committed setter, and each image decodes once.
+private var dragonDecodedImages: [String: CGImage] = [:]
+
 /// Decodes the PNG bytes once, when the view is built (kCGImageSourceShouldCacheImmediately), so a capture never waits on a decode.
 public func dragonDecodeImage(_ base64: String, _ id: String) -> CGImage {
+  if let cached = dragonDecodedImages[base64] { return cached }
   guard let data = Data(base64Encoded: base64), let source = CGImageSourceCreateWithData(data as CFData, nil),
         let image = CGImageSourceCreateImageAtIndex(source, 0, [kCGImageSourceShouldCacheImmediately: true] as CFDictionary) else {
     fatalError("dragon: \(id): the image bytes do not decode")
   }
+  dragonDecodedImages[base64] = image
   return image
 }
 
@@ -491,8 +496,12 @@ fun dragonAppliedSvg(v: DragonBoxView): List<Pair<String, DumpJson>> {
   return listOf(Pair("dragonSvg", DumpJson.Obj(listOf(Pair("viewBox", if (vb == null) DumpJson.Null else DumpJson.Arr(vb.map { DumpJson.Num(it) })), Pair("shapes", DumpJson.Arr(rows))))))
 }
 
+/** Decoded bitmaps by their PNG bytes: a state rebuild makes new views on every committed setter, and each image decodes once. */
+private val dragonDecodedImages = HashMap<String, Bitmap>()
+
 /** Decodes the PNG bytes once, when the view is built (BitmapFactory is synchronous), so a capture never waits on a decode. */
 fun dragonDecodeImage(base64: String, id: String): Bitmap {
+  dragonDecodedImages[base64]?.let { return it }
   val bytes = Base64.decode(base64, Base64.DEFAULT)
   val options = BitmapFactory.Options()
   options.inPreferredConfig = Bitmap.Config.ARGB_8888
@@ -500,6 +509,7 @@ fun dragonDecodeImage(base64: String, id: String): Bitmap {
   val bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options) ?: throw IllegalStateException("dragon: " + id + ": the image bytes do not decode")
   // Upload the texture now, not on the first draw, so the frame that presents the box already holds the image.
   bitmap.prepareToDraw()
+  dragonDecodedImages[base64] = bitmap
   return bitmap
 }
 
@@ -632,7 +642,7 @@ export const IMAGE_EMITTER: PaintEmitter<'replaced-image' | 'svg-shapes' | 'runt
       return { viewBox: w.viewBox === null ? null : [...w.viewBox], shapes: w.shapes.map((sh) => [rgba(sh.fill), rgba(sh.stroke), sh.width, sh.cap, sh.join, sh.miterLimit, sh.fillRule, [...sh.dashes], sh.dashPhase, sh.strokeFirst, sh.nonScalingStroke]) };
     }
     if (g.replaced === null) throw new Error('an image write on a box that is not replaced');
-    if (w.kind === 'runtime-image') return { fit: w.fit, position: w.position.map(positionText), outline: w.absent === null ? null : [w.absent.color.r, w.absent.color.g, w.absent.color.b, w.absent.color.alpha], dest: backend === 'uikit' ? g.replaced.dest.map((v) => v / dpr) : [...g.replaced.dest] };
+    if (w.kind === 'runtime-image') return { fit: w.fit, position: w.position.map(positionText), outline: w.absent === null ? null : [w.absent.color.r, w.absent.color.g, w.absent.color.b, w.absent.color.alpha], dest: backend === 'uikit' ? g.replaced.dest.map((v) => v / dpr) : [...g.replaced.dest], ...(w.follows ? { follows: true } : {}) };
     return { natural: [w.width, w.height], fit: w.fit, dest: backend === 'uikit' ? g.replaced.dest.map((v) => v / dpr) : [...g.replaced.dest], ...(w.pixelated ? { pixelated: true } : {}) };
   },
   native: {

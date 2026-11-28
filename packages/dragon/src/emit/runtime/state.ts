@@ -109,6 +109,7 @@ public enum DragonStateWrite {
   case radii([RadiusLength])
   case text(String, String, DragonRGBA8)
   case syntheticBold([Double], [Double])
+  case image(String, Double, Double, String, Bool)
 }
 
 /// One node record of a state program.
@@ -288,6 +289,9 @@ public final class DragonStateMachine {
         case .clipText: dragonClipText(v)
         case .paintOrder(let host, let bucket, let rank): dragonSetPaintOrder(t, v, host, bucket, rank)
         case .radii(let lengths): dragonSetRadii(v, lengths)
+        case let .image(data, width, height, fit, pixelated):
+          v.dragonSetImage(data, width: width, height: height, fit: fit)
+          if pixelated { v.dragonSetImagePixelated() }
         case .text, .syntheticBold: fatalError("dragon: box \(n.id) holds a text write")
         }
       }
@@ -519,6 +523,7 @@ sealed class DragonStateWrite {
   class Radii(val lengths: Array<RadiusLength>) : DragonStateWrite()
   class Text(val text: String, val family: String, val color: DragonRGBA8) : DragonStateWrite()
   class SyntheticBold(val keys: DoubleArray, val values: DoubleArray) : DragonStateWrite()
+  class Image(val data: String, val width: Double, val height: Double, val fit: String, val layer: Boolean, val pixelated: Boolean) : DragonStateWrite()
 }
 
 /** One node record of a state program. */
@@ -701,6 +706,10 @@ class DragonStateMachine(
           is DragonStateWrite.ClipText -> dragonClipText(v)
           is DragonStateWrite.PaintOrder -> dragonSetPaintOrder(t, v, w.host, w.bucket, w.rank)
           is DragonStateWrite.Radii -> dragonSetRadii(v, w.lengths)
+          is DragonStateWrite.Image -> {
+            v.dragonSetImage(w.data, w.width, w.height, w.fit, w.layer)
+            if (w.pixelated) v.dragonSetImagePixelated()
+          }
           is DragonStateWrite.Text, is DragonStateWrite.SyntheticBold -> throw IllegalStateException("dragon: box " + n.id + " holds a text write")
         }
       }
@@ -1003,12 +1012,15 @@ export function nodeLit(lang: Lang, n: ProgramNode, moving: ReadonlySet<string> 
         // OVFL-B: the state runtime rebuilds clip views only; a scroll view under component states is refused here, by name.
         throw new StateEmitError(`${n.id}: a scroll container in a state program is not supported yet (OVFL-B scroll views under SELD-R states)`);
       case 'replaced-image':
+        // REPL-a under SELD-R states: the record rebuilds the image as the case emitter writes it (emit/paint/image.ts).
+        writes.push(lang === 'swift' ? `.image(${stringLit(lang, w.data)}, ${doubleLit(w.width)}, ${doubleLit(w.height)}, ${stringLit(lang, w.fit)}, ${w.pixelated})` : `DragonStateWrite.Image(${stringLit(lang, w.data)}, ${doubleLit(w.width)}, ${doubleLit(w.height)}, ${stringLit(lang, w.fit)}, ${w.layer}, ${w.pixelated})`);
+        break;
       case 'foreign-view':
       case 'video-view':
       case 'svg-shapes':
       case 'runtime-image':
-        // REPL-a draws an image or hosts a web view, MEDIA-EL a video player, and SVG-a2 an svg's shapes, from its own paint stage; the state runtime does not rebuild them yet.
-        throw new StateEmitError(`${n.id}: a ${w.kind} write in a state program is not supported yet (REPL-a images and web views under SELD-R states)`);
+        // REPL-a draws a run-time image or hosts a web view, MEDIA-EL a video player, and SVG-a2 an svg's shapes, from its own paint stage; the state runtime does not rebuild them yet.
+        throw new StateEmitError(`${n.id}: a ${w.kind} write in a state program is not supported yet (run-time images, web views, videos and svgs under SELD-R states)`);
       case 'border-radius':
         writes.push(lang === 'swift' ? `.radii([${w.lengths.map((l) => radiusLengthLit('swift', l)).join(', ')}])` : `DragonStateWrite.Radii(arrayOf(${w.lengths.map((l) => radiusLengthLit('kotlin', l)).join(', ')}))`);
         break;

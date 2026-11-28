@@ -397,6 +397,9 @@ public final class DragonInteractionMachine {
         case .clipText: dragonClipText(v)
         case .paintOrder(let host, let bucket, let rank): dragonSetPaintOrder(t, v, host, bucket, rank)
         case .radii(let lengths): dragonSetRadii(v, lengths)
+        case let .image(data, width, height, fit, pixelated):
+          v.dragonSetImage(data, width: width, height: height, fit: fit)
+          if pixelated { v.dragonSetImagePixelated() }
         case .text, .syntheticBold: fatalError("dragon: box \(n.id) holds a text write")
         }
       }
@@ -738,6 +741,10 @@ class DragonInteractionMachine(
           is DragonStateWrite.ClipText -> dragonClipText(v)
           is DragonStateWrite.PaintOrder -> dragonSetPaintOrder(t, v, w.host, w.bucket, w.rank)
           is DragonStateWrite.Radii -> dragonSetRadii(v, w.lengths)
+          is DragonStateWrite.Image -> {
+            v.dragonSetImage(w.data, w.width, w.height, w.fit, w.layer)
+            if (w.pixelated) v.dragonSetImagePixelated()
+          }
           is DragonStateWrite.Text, is DragonStateWrite.SyntheticBold -> throw IllegalStateException("dragon: box " + n.id + " holds a text write")
         }
       }

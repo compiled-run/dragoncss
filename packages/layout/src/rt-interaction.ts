@@ -154,6 +154,8 @@ export function focusTarget(t: InteractionTables, e: number, faults: Interaction
 /** Pointer focus on the nearest focusable inclusive ancestor of hit: focus-visible only where keyboardInput says (a text field, a textarea or a select; R8, P5, P6). */
 function pointerFocus(t: InteractionTables, s: InteractionPointer, hit: number, faults: InteractionFaults): InteractionPointer {
   const f = focusTarget(t, hit, faults);
+  // A press whose focus target is already focused changes no focus state in Chrome (hit-object-fit-rows trace, steps 48 and 57).
+  if (f >= 0 && f === s.focused) return s;
   const visible: boolean = f >= 0 && (faults.focusVisibleOnPointer || (t.keyboardInput[f] as boolean));
   // SetFocused(kMouse) clears the keyboard flag (element.cc:8057-8058, reference).
   return { ...s, focused: f, focusVisible: visible, keyboard: false };

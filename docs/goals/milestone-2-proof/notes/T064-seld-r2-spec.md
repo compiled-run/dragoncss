@@ -269,6 +269,8 @@ measure it.
 - Keyboard focus sets V (P8). A non-meta keydown after pointer focus sets V on the focused element (P9). Both are P6e's
   triggers (R10). The state model carries them now, so P6e adds glue and no compiler change.
 - Pointer focus clears the keyboard flag (element.cc:8057, reference).
+- A press or tap whose focus target is already focused changes neither focus, V nor the keyboard flag: Chrome keeps
+  `:focus-visible` on a link focused by a click and then a key (SELD-R2b, the hit-object-fit-rows trace, 2026-11-26).
 - The rule is implemented from selectors-4 §9.4 and the probes. It is not ported, because selector_checker.cc is LGPL, class A.
 - Plants `focusVisibleOnPointer` and `focusOnNonFocusable` (seld-r2b).
 

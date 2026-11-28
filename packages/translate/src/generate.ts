@@ -74,6 +74,8 @@ export function engineRoots(files: readonly string[]): { file: string; name: str
     { file: at('line-clamp.ts'), name: 'clampedInput' },
     // FORM-checkbox: a themed checkbox's marks, which Dragon's box views and the Markless device layout draw from.
     { file: at('controls.ts'), name: 'checkboxMarks' },
+    // REPL-r2a: the scroll offset a host moves by when an img that follows its image changes height above it.
+    { file: at('replaced.ts'), name: 'runtimeImageScrollShift' },
   ];
   const program = createProgram(files);
   const units = program.getSourceFile(at('units.ts')) as ts.SourceFile;

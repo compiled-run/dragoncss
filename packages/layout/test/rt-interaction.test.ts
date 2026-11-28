@@ -85,7 +85,10 @@ describe('rt-interaction (SELD-R2 PR 3)', () => {
     expect(rt.focusVisibleMatch(keyed)).toBe(3);
     expect(rt.interactionCombo(T, keyed)).toBe(3);
     // Pointer focus clears the keyboard flag (element.cc:8057-8058, reference).
-    expect(rt.mousePressed(T, keyed, 3, OK).keyboard).toBe(false);
+    expect(rt.mousePressed(T, keyed, 5, OK).keyboard).toBe(false);
+    // A press on the element already focused changes no focus state, as Chrome's hit-object-fit-rows trace shows.
+    const again = rt.mousePressed(T, keyed, 3, OK);
+    expect([rt.focusMatch(again), rt.focusVisibleMatch(again), again.keyboard]).toEqual([3, 3, true]);
     expect(rt.focusVisibleMatch(rt.keyboardFocused(T, start(), 5))).toBe(5);
     expect(() => rt.keyboardFocused(T, start(), 7)).toThrow(/not focusable/);
   });
