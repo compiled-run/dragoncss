@@ -5,7 +5,7 @@
 // instance size come from the translated engine; nothing is recomputed from UIFont or FontMetrics.
 import { sha256Hex } from '../digest.ts';
 import type { GeneratedFile } from '../types.ts';
-import type { FontSpec } from '@dragon/layout';
+import type { FontSpec, VariantNumeric } from '@dragon/layout';
 import type { NativeBackend, NativeProgram } from '../lower/native-program.ts';
 import type { PaintPlantName } from './paint/registry.ts';
 import type { MediaPlantName } from './runtime/media.ts';
@@ -3409,6 +3409,11 @@ function lineHeightValue(lang: Lang, v: unknown): string {
 }
 
 /** A text run's font as a constructor call: family, the reference computed size, the specified size expression, absolute or not. */
+function variantNumericValue(lang: Lang, v: VariantNumeric): string {
+  const str = (x: string): string => (lang === 'swift' ? `JsString(${stringLit(lang, x)})` : stringLit(lang, x));
+  return `VariantNumeric(${str(v.figure)}, ${str(v.spacing)}, ${str(v.fraction)}, ${String(v.ordinal)}, ${String(v.slashedZero)})`;
+}
+
 function fontSpecValue(lang: Lang, f: FontSpec): string {
   const str = (x: string): string => (lang === 'swift' ? `JsString(${stringLit(lang, x)})` : stringLit(lang, x));
   return `FontSpec(${str(f.family)}, ${doubleLit(f.size)}, ${engineValue(lang, f.specifiedSize)}, ${String(f.absoluteSize)})`;
@@ -3459,7 +3464,7 @@ export function inputFunctions(lang: Lang, root: import('@dragon/layout').Layout
   };
   const list = (union: string, items: readonly string[]): string => (lang === 'swift' ? `JsArray<any ${union}>([${items.join(', ')}])` : `jsArrayOf<${union}>(${items.join(', ')})`);
   const inline = (c: import('@dragon/layout').InlineChild): string => {
-    if (c.kind === 'text') return `TextLeaf(${str('text')}, ${str(c.id)}, ${str(c.text)}, ${fontSpecValue(lang, c.font)}, ${lineHeightValue(lang, c.lineHeight)}, ${str(c.whiteSpaceCollapse)}, ${str(c.textWrapMode)}, ${engineValue(lang, c.letterSpacing)}, ${engineValue(lang, c.wordSpacing)}, ${str(c.overflowWrap)}, ${str(c.wordBreak)}, ${String(c.smallCaps)})`;
+    if (c.kind === 'text') return `TextLeaf(${str('text')}, ${str(c.id)}, ${str(c.text)}, ${fontSpecValue(lang, c.font)}, ${lineHeightValue(lang, c.lineHeight)}, ${str(c.whiteSpaceCollapse)}, ${str(c.textWrapMode)}, ${engineValue(lang, c.letterSpacing)}, ${engineValue(lang, c.wordSpacing)}, ${str(c.overflowWrap)}, ${str(c.wordBreak)}, ${String(c.smallCaps)}, ${variantNumericValue(lang, c.variantNumeric)})`;
     if (c.kind === 'br') return `LineBreak(${str('br')}, ${str(c.id)}, ${fontSpecValue(lang, c.font)}, ${lineHeightValue(lang, c.lineHeight)})`;
     return `InlineBox(${str('inline')}, ${str(c.id)}, ${styleOf(c.style)}, ${fontSpecValue(lang, c.font)}, ${lineHeightValue(lang, c.lineHeight)}, ${list('U_InlineBox_LineBreak_TextLeaf', c.children.map(inline))})`;
   };

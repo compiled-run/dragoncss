@@ -136,7 +136,7 @@ function controlsAsBoxes(b: LayoutBox): { readonly root: LayoutBox; readonly ref
       // A placeholder, and a text field, textarea or editor that clips on both axes (as the native lowering makes them), add their border box.
       if (k === 'text-placeholder' || k === 'select-menulist' || ((k === 'text-field' || k === 'text-area' || k === 'text-editor') && x.style.overflowX === 'clip' && x.style.overflowY === 'clip')) {
         // Its border box, as a plain box's.
-      } else if (k !== 'button-block' && k !== 'fieldset' && k !== 'legend') refused = new Undecided(x.id, `a ${x.control.kind} form control: its scrollable overflow is not decided here (FORM-a)`);
+      } else if (k !== 'button-block' && k !== 'fieldset' && k !== 'legend' && k !== 'theme-leaf') refused = new Undecided(x.id, `a ${x.control.kind} form control: its scrollable overflow is not decided here (FORM-a)`);
       else if (scrollContainer(x)) refused = new Undecided(x.id, 'a form control that is a scroll container: its scrollable overflow is not decided here (FORM-a)');
     }
     // A clipping textarea's or menulist select's parts are in no box's scrollable overflow, so they are not checked; checkSelect

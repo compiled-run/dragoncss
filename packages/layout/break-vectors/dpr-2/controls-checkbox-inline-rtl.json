@@ -1,0 +1,24 @@
+{
+  "case": "controls-checkbox-inline-rtl",
+  "dpr": 2,
+  "texts": [
+    {"id":"words:text0","lines":[[0,3]]},
+    {"id":"words:text1","lines":[[0,3]]},
+    {"id":"checked:text0","lines":[[0,2]]},
+    {"id":"checked:text1","lines":[[0,2]]},
+    {"id":"size:text0","lines":[[0,3]]},
+    {"id":"size:text1","lines":[[0,3]]},
+    {"id":"tall:text0","lines":[[0,3]]},
+    {"id":"tall:text1","lines":[[0,3]]},
+    {"id":"small:text0","lines":[[0,3]]},
+    {"id":"small:text1","lines":[[0,3]]},
+    {"id":"small:text2","lines":[[0,3]]},
+    {"id":"wrap:text0","lines":[[0,4]]},
+    {"id":"wrap:text1","lines":[[1,5]]},
+    {"id":"wrap:text2","lines":[[0,2]]},
+    {"id":"l1:text0","lines":[[0,5]]},
+    {"id":"l2:text0","lines":[[0,5]]},
+    {"id":"l3:text0","lines":[[0,1]]},
+    {"id":"l4:text0","lines":[[0,3]]}
+  ]
+}

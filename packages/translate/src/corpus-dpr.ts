@@ -436,7 +436,7 @@ export function engineInlineCases(): string[] {
         text += ' ';
         afterSpace = true;
       }
-      return { kind: 'text', id: `t${ids++}`, text, font: inlineFont(size), lineHeight: lh, whiteSpaceCollapse: 'collapse', textWrapMode: wrap, letterSpacing: { kind: 'px', value: 0 }, wordSpacing: { kind: 'px', value: 0 }, overflowWrap: 'normal', wordBreak: 'normal', smallCaps: false };
+      return { kind: 'text', id: `t${ids++}`, text, font: inlineFont(size), lineHeight: lh, whiteSpaceCollapse: 'collapse', textWrapMode: wrap, letterSpacing: { kind: 'px', value: 0 }, wordSpacing: { kind: 'px', value: 0 }, overflowWrap: 'normal', wordBreak: 'normal', smallCaps: false, variantNumeric: { figure: 'normal', spacing: 'normal', fraction: 'normal', ordinal: false, slashedZero: false } };
     };
     const wrap = r.chance(0.9) ? 'wrap' : 'nowrap';
     const content = (depth: number, size: number, lh: Json): Json[] => {
@@ -527,7 +527,7 @@ function atomicInlineCases(): string[] {
         text += ' ';
         afterSpace = true;
       }
-      return { kind: 'text', id: `t${ids++}`, text, font: inlineFont(size), lineHeight: lh, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap', letterSpacing: { kind: 'px', value: 0 }, wordSpacing: { kind: 'px', value: 0 }, overflowWrap: 'normal', wordBreak: 'normal', smallCaps: false };
+      return { kind: 'text', id: `t${ids++}`, text, font: inlineFont(size), lineHeight: lh, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap', letterSpacing: { kind: 'px', value: 0 }, wordSpacing: { kind: 'px', value: 0 }, overflowWrap: 'normal', wordBreak: 'normal', smallCaps: false, variantNumeric: { figure: 'normal', spacing: 'normal', fraction: 'normal', ordinal: false, slashedZero: false } };
     };
     // A box's own inline content, collapsed: it starts a context of its own.
     const ownText = (size: number, lh: Json): Json[] => {
@@ -716,7 +716,7 @@ export function engineOverflowCases(): string[] {
         style['textAlign'] = r.pick(['start', 'end', 'center', 'left', 'right']);
         style['display'] = 'block';
         const strut: Json = { font: font(size), lineHeight: { kind: 'normal' } };
-        return { kind: 'box', id, boxType: 'element', style, strut, marker: null, children: [{ kind: 'text', id: `t${ids++}`, text: words.join(' '), ...strut, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap', letterSpacing: { kind: 'px', value: 0 }, wordSpacing: { kind: 'px', value: 0 }, overflowWrap: 'normal', wordBreak: 'normal', smallCaps: false }] };
+        return { kind: 'box', id, boxType: 'element', style, strut, marker: null, children: [{ kind: 'text', id: `t${ids++}`, text: words.join(' '), ...strut, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap', letterSpacing: { kind: 'px', value: 0 }, wordSpacing: { kind: 'px', value: 0 }, overflowWrap: 'normal', wordBreak: 'normal', smallCaps: false, variantNumeric: { figure: 'normal', spacing: 'normal', fraction: 'normal', ordinal: false, slashedZero: false } }] };
       }
       const kids: Json[] = [];
       const count = r.int(4);
@@ -804,7 +804,7 @@ export function engineWrapStyleCases(): string[] {
     for (let i = 0; i < count; i++) words.push('X'.repeat(1 + (r.chance(0.01) ? 20 + r.int(6) : r.int(6))));
     const font = inlineFont(size);
     const lineHeight = r.chance(0.7) ? { kind: 'normal' } : { kind: 'number', value: r.pick([1, 1.5, 2]) };
-    const leaf: Json = { kind: 'text', id: 't0', text: words.join(' '), font, lineHeight, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap', letterSpacing: { kind: 'px', value: 0 }, wordSpacing: { kind: 'px', value: 0 }, overflowWrap: 'normal', wordBreak: 'normal', smallCaps: false };
+    const leaf: Json = { kind: 'text', id: 't0', text: words.join(' '), font, lineHeight, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap', letterSpacing: { kind: 'px', value: 0 }, wordSpacing: { kind: 'px', value: 0 }, overflowWrap: 'normal', wordBreak: 'normal', smallCaps: false, variantNumeric: { figure: 'normal', spacing: 'normal', fraction: 'normal', ordinal: false, slashedZero: false } };
     const kind = r.chance(0.5) ? 'balance' : 'pretty';
     // 8 to 19 ems wide, so most runs take two to six lines of words up to 6 ems.
     const width = { kind: 'px', value: size * (8 + r.int(12)) + (r.chance(0.2) ? r.pick([0.015625, 0.5, 0.3]) : 0) };

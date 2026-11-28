@@ -5,9 +5,9 @@
 // min-inline-size 0 align-self center border-box, thumb block border-box.
 import { readFileSync } from 'node:fs';
 import { describe, expect, it, vi } from 'vitest';
-import type { ControlBox, LayoutBox, LayoutInput, LayoutRect, LayoutResult, LayoutStyle, TextLeaf, TextMeasurer } from '../src/index.ts';
+import type { ControlBox, EngineFaults, LayoutBox, LayoutInput, LayoutRect, LayoutResult, LayoutStyle, TextLeaf, TextMeasurer } from '../src/index.ts';
 import type { LU } from '../src/units.ts';
-import { absoluteRects, ahemMeasurer, buttonContentShift, fromRaw, layout, sliderIntrinsicInlineSize, sliderThumbInlineOffset, sliderThumbShift, SLIDER_DEFAULT_TRACK_LENGTH, validateLayoutInput } from '../src/index.ts';
+import { absoluteRects, ahemMeasurer, buttonContentShift, fromRaw, layout, layoutWithFaults, NO_ENGINE_FAULTS, sliderIntrinsicInlineSize, sliderThumbInlineOffset, sliderThumbShift, SLIDER_DEFAULT_TRACK_LENGTH, validateLayoutInput } from '../src/index.ts';
 import { ahemFont, anon, box, control, neutralEnvironment, pct, px, span, text } from './helpers.ts';
 
 type Rect = readonly [number, number, number, number];
@@ -545,6 +545,28 @@ describe('FORM-a control boxes: what the engine and the validator refuse', () =>
     expect(codes(input(field('inline-block', { ...editor, style: { ...editor.style, display: 'inline-block' } })))).toEqual(['$.root.children[1].children[0].style.display the parts of a text field are block containers']);
     // A block-level field among inline content is a box beside it, which the compiler wraps in anonymous boxes.
     expect(codes(input(field('block')))).toContain('$.root.children a box has either inline-level children or box children; wrap the inline content in anonymous boxes');
+  });
+
+  it('an inline-block checkbox or radio (a theme leaf) is an atomic inline whose border box block-end edge is its baseline', () => {
+    const env = { viewport: { width: 400, height: 300 }, ...neutralEnvironment({ width: 400, height: 300 }), devicePixelRatio: 1 };
+    const strut = { font: ahemFont(10), lineHeight: { kind: 'normal' } } as const;
+    const leaf = (style: Partial<LayoutStyle> = {}): ControlBox => control('c', { kind: 'theme-leaf' }, { display: 'inline-block', width: px(13), height: px(13), marginTop: px(3), marginRight: px(3), marginBottom: px(3), marginLeft: px(4), ...style });
+    const input = (c: ControlBox): LayoutInput => ({ ...env, root: box('root', {}, [text('root:text0', 'XX '), c, text('root:text1', ' XX')], strut) });
+    const geometry = (c: ControlBox, faults: Partial<EngineFaults> = {}): number[] => {
+      const r = layoutWithFaults(input(c), ahemMeasurer, { ...NO_ENGINE_FAULTS, ...faults });
+      if (r.kind !== 'ok') throw new Error(JSON.stringify(r));
+      const abs = absoluteRects(r.boxes);
+      const at = (id: string): LayoutRect => abs.get(id) as LayoutRect;
+      return [at('c').x / 64, at('c').y / 64, at('root:text0:line0').y / 64, at('root').height / 64];
+    };
+    expect(codes(input(leaf()))).toEqual([]);
+    // Chrome 145 (controls-checkbox-inline c1): the 3px top margin and 13px box put the baseline 16px down, the text's 8px ascent
+    // then starts 8px down, and the line is the 16px above with the 3px bottom margin below (the text's 2px descent is less).
+    expect(geometry(leaf())).toEqual([34, 3, 8, 19]);
+    // Planted fault themeLeafMarginBaseline: an empty inline-block's margin-box baseline moves the text down 3px and deepens the line.
+    expect(geometry(leaf(), { themeLeafMarginBaseline: true })).toEqual([34, 3, 11, 21]);
+    expect(codes(input(leaf({ display: 'block' })))).toContain('$.root.children[1].style.display a theme leaf is an inline-block checkbox or radio');
+    expect(codes(input({ ...leaf(), children: [text('c:t', 'X')] }))).toContain('$.root.children[1].children a theme leaf has no children');
   });
 
   it('the engine throws on a block button control with display flex, which the validator rejects', () => {

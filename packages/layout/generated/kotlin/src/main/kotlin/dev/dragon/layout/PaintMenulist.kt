@@ -30,7 +30,7 @@ fun paintMenulist_collectArrowZooms(b: U_ControlBox_LayoutBox, device: Double, o
   var found: Double = 0.0
   // ts: packages/layout/src/paint-menulist.ts:36
   if (jsStrEq(b.kind, "control")) {
-    val c: U_ControlKind_d084c13b74a53fa6 = (b as ControlBox).control
+    val c: U_ControlKind_57c5cd1a1bb26daa = (b as ControlBox).control
     // ts: packages/layout/src/paint-menulist.ts:38
     if ((jsStrEq(c.kind, "select-menulist") && ((c as ControlKind_selectMenulist).arrowWidth > 0.0))) {
       out.set((b as ControlBox).id, units_effectiveZoom(device, (b as ControlBox).style.zoom))
@@ -57,7 +57,7 @@ fun paintMenulist_collectArrowZooms(b: U_ControlBox_LayoutBox, device: Double, o
 fun paintMenulist_collectArrows(b: U_ControlBox_LayoutBox, zoomedRatio: Double, device: Double, zooms: JsStringMap<Double>, abs: JsStringMap<LayoutRect>, out: JsArray<MenuListArrowPaint>): Unit {
   // ts: packages/layout/src/paint-menulist.ts:51
   if (jsStrEq(b.kind, "control")) {
-    val c: U_ControlKind_d084c13b74a53fa6 = (b as ControlBox).control
+    val c: U_ControlKind_57c5cd1a1bb26daa = (b as ControlBox).control
     val zoom: Double? = zooms.get((b as ControlBox).id)
     // ts: packages/layout/src/paint-menulist.ts:54
     if ((jsStrEq(c.kind, "select-menulist") && (zoom != null))) {

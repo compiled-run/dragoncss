@@ -242,7 +242,7 @@ type IosFixture = { readonly fonts: readonly { readonly id: string; readonly wei
 type AndroidFixture = { readonly how: { readonly density: number }; readonly entries: readonly { readonly id: string; readonly weight: number; readonly cssPx: number; readonly devicePx: number; readonly chromeFamilies: readonly string[]; readonly font: { readonly file: string; readonly axes: readonly string[] }; readonly blinkWidthsCss: readonly { readonly text: string; readonly chrome: Readonly<Record<string, number>>; readonly webview: Readonly<Record<string, number>> }[]; readonly blinkLineHeightCss: number; readonly linear: { readonly fontMetrics: { readonly ascent: number; readonly descent: number; readonly leading: number }; readonly lines: readonly { readonly text: string; readonly runAdvance: number; readonly glyphIds: readonly number[]; readonly x: readonly number[] }[] } }[] };
 
 const ROLE_OF_SAFARI: Readonly<Record<string, 'system-ui' | 'sans-serif' | 'serif' | 'monospace'>> = { 'system-ui': 'system-ui', 'sans-serif': 'sans-serif', serif: 'serif', monospace: 'monospace' };
-const font = (family: string, size: number): TextFont => ({ family, size, letterSpacing: 0, wordSpacing: 0, smallCaps: false }) as unknown as TextFont;
+const font = (family: string, size: number): TextFont => ({ family, size, letterSpacing: 0, wordSpacing: 0, smallCaps: false, variantNumeric: { figure: 'normal', spacing: 'normal', fraction: 'normal', ordinal: false, slashedZero: false } }) as unknown as TextFont;
 const shaped = (g: readonly number[]): { glyphs: number[]; xs: number[]; width: number } => {
   const glyphs: number[] = [];
   const xs: number[] = [];

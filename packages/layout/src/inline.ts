@@ -15,7 +15,7 @@ import { directionOf } from './block.ts';
 import type { LineBreakFaults } from './linebreak.ts';
 import { asciiPairBreaks } from './linebreak.ts';
 import type { FontMetrics } from './text.ts';
-import { AHEM_FACE_ID, AHEM_FONT_DATA, coveredIndex } from './text.ts';
+import { AHEM_FACE_ID, AHEM_FONT_DATA, coveredIndex, NORMAL_NUMERIC, sameNumeric } from './text.ts';
 import { scriptCode, scriptExtensions, USCRIPT_COMMON, USCRIPT_INHERITED, USCRIPT_LATIN } from './script-data.ts';
 import type { AnywhereBreak, BreakItem, BreakResult, BrokenLine, LineView, ShapeItem } from './shaping.ts';
 import { breakItemLines, justifiedViewWidth, subView } from './shaping.ts';
@@ -335,7 +335,7 @@ function inlineChildren(box: LayoutBox): (InlineChild | LayoutNode)[] {
 
 /** A font as the measurer reads it: the family and the computed size the environment pass wrote (environment.ts), unspaced. */
 export function fontOf(f: FontSpec): TextFont {
-  return { family: f.family, size: f.size, letterSpacing: 0, wordSpacing: 0, smallCaps: false };
+  return { family: f.family, size: f.size, letterSpacing: 0, wordSpacing: 0, smallCaps: false, variantNumeric: NORMAL_NUMERIC };
 }
 
 /** A text leaf's font as the measurer reads it: its font with its letter-spacing and word-spacing in px, which the environment pass resolved, and its small caps. */
@@ -344,7 +344,7 @@ export function leafFontOf(t: TextLeaf): TextFont {
   if (ls.kind !== 'px') throw new Error(`${t.id}: a ${ls.kind} letter-spacing reached layout; the environment pass resolves it`);
   const ws = t.wordSpacing;
   if (ws.kind !== 'px') throw new Error(`${t.id}: a ${ws.kind} word-spacing reached layout; the environment pass resolves it`);
-  return { family: t.font.family, size: t.font.size, letterSpacing: ls.value, wordSpacing: ws.value, smallCaps: t.smallCaps };
+  return { family: t.font.family, size: t.font.size, letterSpacing: ls.value, wordSpacing: ws.value, smallCaps: t.smallCaps, variantNumeric: t.variantNumeric };
 }
 
 /** A line height after the environment pass, which resolves percentages and calculations to px. */
@@ -746,10 +746,10 @@ function checkShapedText(ctx: Ctx, box: LayoutBox, leaves: readonly TextLeaf[], 
     const prev = last < 0 ? null : (leaves[last] as TextLeaf);
     const t = leaves[it.leaf] as TextLeaf;
     // ShouldBreakShapingBeforeText (inline_node.cc) breaks the run where the Font differs, and FontDescription's == compares letter
-    // and word spacing and the variant caps, so a span with other spacing or caps is its own run.
+    // and word spacing and the variants, so a span with other spacing, caps or numeric variant is its own run.
     const pf = prev === null ? null : leafFontOf(prev);
     const tf = leafFontOf(t);
-    if (prev !== null && pf !== null && prev.font.family === t.font.family && prev.font.size === t.font.size && pf.letterSpacing === tf.letterSpacing && pf.wordSpacing === tf.wordSpacing && pf.smallCaps === tf.smallCaps) {
+    if (prev !== null && pf !== null && prev.font.family === t.font.family && prev.font.size === t.font.size && pf.letterSpacing === tf.letterSpacing && pf.wordSpacing === tf.wordSpacing && pf.smallCaps === tf.smallCaps && sameNumeric(pf.variantNumeric, tf.variantNumeric)) {
       unsupported('text-shaping-run', t.id, 'css-text-3 §7.3 (boundary shaping)', `${prev.id} and ${t.id} are adjacent text in one face and size, which Blink shapes as one run`);
     }
     last = it.leaf;

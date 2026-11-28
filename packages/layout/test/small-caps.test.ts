@@ -3,7 +3,7 @@
 // size is lroundf(computed size * 0.7f); line metrics stay the primary font's. The Ahem measurer and the shaped measurer both do so,
 // and the shaped path tells the device each glyph's size (pieceGlyphs). The Chrome checks are packages/parity/test/text-font-variant-caps-ahem.test.ts.
 import { describe, expect, it } from 'vitest';
-import { absoluteRects, ahemMeasurer, layout, pieceGlyphs, smallCapsCodePoint, smallCapsFontSize } from '../src/index.ts';
+import { absoluteRects, ahemMeasurer, layout, NORMAL_NUMERIC, pieceGlyphs, smallCapsCodePoint, smallCapsFontSize } from '../src/index.ts';
 import type { LayoutBox, LayoutRect, TextFont, TextLeaf } from '../src/index.ts';
 import type { GlyphShaper } from '../src/shaping.ts';
 import { GLYPH_STRIDE, NO_HAN_KERNING, NO_SHAPING_FAULTS, shapedMeasurer } from '../src/shaping.ts';
@@ -11,7 +11,7 @@ import { AHEM_FONT_DATA } from '../src/text.ts';
 import { box, neutralEnvironment, px, text } from './helpers.ts';
 
 const LU = 64;
-const font = (size: number, smallCaps = true): TextFont => ({ family: 'Ahem', size, letterSpacing: 0, wordSpacing: 0, smallCaps });
+const font = (size: number, smallCaps = true): TextFont => ({ family: 'Ahem', size, letterSpacing: 0, wordSpacing: 0, smallCaps, variantNumeric: NORMAL_NUMERIC });
 
 function run(root: LayoutBox, zoom = 1) {
   return layout({ viewport: { width: 400, height: 300 }, devicePixelRatio: zoom, ...neutralEnvironment({ width: 400, height: 300 }), root }, ahemMeasurer);

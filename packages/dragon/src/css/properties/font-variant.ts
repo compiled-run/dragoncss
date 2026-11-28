@@ -7,6 +7,7 @@
 // over a real face (analysis/small-caps.ts). The other caps values, position and emoji make Chrome draw other capitals, move glyphs or pick an emoji face;
 // Dragon draws none of that, so they are refused on every target, as are the alternates functions, which name
 // @font-feature-values Dragon does not read.
+import type { VariantNumeric } from '@dragon/layout';
 import type { CssNode } from 'css-tree';
 import { authored, diagnostic } from '../../diagnostics/catalogue.ts';
 import type { Span } from '../../types.ts';
@@ -41,6 +42,29 @@ export const FEATURE_VARIANTS: readonly FontVariantLonghand[] = ['font-variant-l
 
 /** The CssValue type of a multi-keyword variant value; its text is the keywords as Chrome serializes them. */
 export const VARIANT_LIST = 'font-variant-list';
+
+/** A feature longhand's computed keywords (variantValue's), none for normal. */
+export function variantKeywordsOf(v: CssValue): readonly string[] {
+  if (v.kind === 'keyword') return v.value === 'normal' ? [] : [v.value];
+  if (v.kind === 'other' && v.type === VARIANT_LIST) return v.text.split(' ');
+  throw new Error(`a font-variant value of kind ${v.kind} reached the lowering`);
+}
+
+/** A computed font-variant-numeric as the engine reads it (layout input.ts VariantNumeric): its keyword of each group. */
+export function variantNumericOf(v: CssValue): VariantNumeric {
+  const ks = variantKeywordsOf(v);
+  const pick = <K extends string>(of: readonly K[]): K | 'normal' => of.find((k) => ks.includes(k)) ?? 'normal';
+  return {
+    figure: pick(['lining-nums', 'oldstyle-nums'] as const),
+    spacing: pick(['proportional-nums', 'tabular-nums'] as const),
+    fraction: pick(['diagonal-fractions', 'stacked-fractions'] as const),
+    ordinal: ks.includes('ordinal'),
+    slashedZero: ks.includes('slashed-zero'),
+  };
+}
+
+/** font-variant-numeric: normal as the engine reads it. */
+export const NORMAL_VARIANT_NUMERIC: VariantNumeric = variantNumericOf({ kind: 'keyword', value: 'normal' });
 
 /** Each feature longhand's keyword groups, in the order Chrome serializes them; a value takes at most one keyword of each group. */
 const GROUPS: { readonly [P in FontVariantLonghand]?: readonly (readonly string[])[] } = {

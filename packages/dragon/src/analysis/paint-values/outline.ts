@@ -13,7 +13,7 @@ import { OUTLINE_WIDTH_KEYWORDS } from '../../css/properties/outline.ts';
 import { paintsOwn, visibilityOf } from '../../css/properties/visibility.ts';
 import { colorChannels } from '../../lower/paint/colors.ts';
 import { cornerComponents, RADIUS_LONGHANDS } from '../../css/properties/radius.ts';
-import { clipHidesBox } from '../../css/properties/clip-rect.ts';
+import { clipHidesWhole } from '../../css/properties/clip-hidden.ts';
 import { authored, diagnostic } from '../../diagnostics/catalogue.ts';
 import type { Diagnostic } from '../../types.ts';
 import type { ResolvedValue } from '../computed.ts';
@@ -151,6 +151,8 @@ export function checkOutlinePlacement(root: ResolvedElement, propagated: Resolve
   const outlined: { readonly el: ResolvedElement; readonly clip: ResolvedElement | null; readonly ancestors: readonly ResolvedElement[] }[] = [];
   const walk = (el: ResolvedElement, clip: ResolvedElement | null, ancestors: readonly ResolvedElement[]): void => {
     if (keywordOf(el, 'display') === 'none') return;
+    // A box an empty clip hides draws no outline in its subtree, natively as in Chrome (lower/paint/outline.ts clipHidden).
+    if (clipHidesWhole(el)) return;
     const style = paintedOutlineStyle(el);
     // An outline refused by its style (checkOutline) is not placed: auto, and a rounded one in a style other than solid or double.
     if (style !== null && style !== 'auto' && (style === 'solid' || style === 'double' || !rounds(el))) outlined.push({ el, clip, ancestors });
@@ -190,13 +192,6 @@ export function checkOutlinePlacement(root: ResolvedElement, propagated: Resolve
     if (moved !== undefined && style !== 'solid' && style !== 'double') {
       const where = moved === el ? 'and has' : `inside ${moved.element.address}, which has`;
       refuse(el, 'stacking', `has a ${style} outline ${where} ${transformWord(moved)}, and Dragon draws only solid and double outlines inside a transformed layer`, `Use a solid or double outline, or outline: none.`, targets, diagnostics, reported);
-      continue;
-    }
-    // A clip: rect() that hides its box hides the box view, and every view inside it (lower/paint/clip.ts clip-rect-empty and -label).
-    const hidden = [...ancestors, el].reverse().find((a) => clipHidesBox(a) === true);
-    if (hidden !== undefined) {
-      const where = hidden === el ? 'and has' : `inside ${hidden.element.address}, which has`;
-      refuse(el, 'stacking', `has an outline ${where} a clip: rect() that hides its box, and the native targets hide that box's view, with the outline view inside it`, `Outline a box outside the clipped box, or outline: none.`, targets, diagnostics, reported);
       continue;
     }
     if (kept !== undefined) {

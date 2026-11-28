@@ -1,7 +1,7 @@
 // TXT-FONTFEAT (css-fonts-4 §6.4-§6.10): the font-variant feature longhands (ligatures, alternates, numeric, east-asian) select
-// OpenType features, which Dragon does not apply; Chrome's glyphs are then the same only in a face that has none (Ahem). A non-normal
-// value of any of them over text in a real face is refused on every target, once per text. Planted fault fontVariantOnRealFaceAccepted
-// accepts it.
+// OpenType features. The engine shapes font-variant-numeric's (layout shaping.ts numericFeatures); the others it does not apply,
+// so Chrome's glyphs are then the same only in a face that has none (Ahem), and a non-normal value of any of them over text in a
+// real face is refused on every target, once per text. Planted fault fontVariantOnRealFaceAccepted accepts it.
 import { diagnostic } from '../diagnostics/catalogue.ts';
 import { FEATURE_VARIANTS } from '../css/properties/font-variant.ts';
 import type { TxtFvFaults } from '../faults/txt-fv.ts';
@@ -11,7 +11,7 @@ import { valueToString } from './resolve.ts';
 
 export function checkFontVariant(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>, shapedAt: (address: string) => boolean, faults: TxtFvFaults): void {
   if (faults.fontVariantOnRealFaceAccepted) return;
-  const set = FEATURE_VARIANTS.filter((p) => {
+  const set = FEATURE_VARIANTS.filter((p) => p !== 'font-variant-numeric').filter((p) => {
     const v = el.props.get(p) as ResolvedValue | undefined;
     return v !== undefined && !(v.value.kind === 'keyword' && v.value.value === 'normal');
   });

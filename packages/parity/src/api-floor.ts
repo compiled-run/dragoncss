@@ -54,6 +54,14 @@ const internal = (desc: string): string => desc.replace(/^L/, '').replace(/;$/, 
 export function parseDexdump(text: string | Iterable<string>): { classes: Map<string, DexClass>; refs: DexRef[]; methods: Map<string, MethodFacts> } {
   const classes = new Map<string, DexClass>();
   const refs: DexRef[] = [];
+  // A whole app's code repeats each reference about 3.5 times (3.75M refs, 1.07M distinct, 2026-11-26); checkFloor reads each once.
+  const kept = new Set<string>();
+  const ref = (r: DexRef): void => {
+    const key = `${r.owner} ${r.kind} ${r.member ?? ''} ${r.from ?? ''}`;
+    if (kept.has(key)) return;
+    kept.add(key);
+    refs.push(r);
+  };
   const methods = new Map<string, MethodFacts>();
   let method: string | null = null;
   let current: { name: string; superclass: string | null; interfaces: string[]; methods: Set<string>; fields: Set<string> } | null = null;
@@ -74,7 +82,7 @@ export function parseDexdump(text: string | Iterable<string>): { classes: Map<st
     const sup = /^\s*Superclass\s*:\s*'([^']+)'/.exec(line);
     if (sup !== null) {
       current.superclass = internal(sup[1] as string);
-      refs.push({ owner: current.superclass, kind: 'class', member: null, from: null });
+      ref({ owner: current.superclass, kind: 'class', member: null, from: null });
       continue;
     }
     if (/^\s*Interfaces\s*-/.test(line)) section = 'interfaces';
@@ -83,7 +91,7 @@ export function parseDexdump(text: string | Iterable<string>): { classes: Map<st
     const iface = /^\s*#\d+\s*:\s*'(L[^']+;)'/.exec(line);
     if (section === 'interfaces' && iface !== null) {
       current.interfaces.push(internal(iface[1] as string));
-      refs.push({ owner: internal(iface[1] as string), kind: 'class', member: null, from: null });
+      ref({ owner: internal(iface[1] as string), kind: 'class', member: null, from: null });
     }
     const name = /^\s*name\s*:\s*'([^']+)'/.exec(line);
     if (name !== null) pendingName = name[1] as string;
@@ -110,10 +118,10 @@ export function parseDexdump(text: string | Iterable<string>): { classes: Map<st
     for (const x of line.matchAll(/(L[\w/$]+;)\.([\w$<>-]+):(\S+)/g)) {
       const owner = internal(x[1] as string);
       const sig = x[3] as string;
-      refs.push(sig.startsWith('(') ? { owner, kind: 'method', member: `${x[2]}${sig}`, from: method } : { owner, kind: 'field', member: x[2] as string, from: method });
+      ref(sig.startsWith('(') ? { owner, kind: 'method', member: `${x[2]}${sig}`, from: method } : { owner, kind: 'field', member: x[2] as string, from: method });
     }
     const op = /\b(?:new-instance|const-class|check-cast|instance-of|new-array|filled-new-array)\b[^,]*,\s*\[*(L[\w/$]+;)/.exec(line);
-    if (op !== null) refs.push({ owner: internal(op[1] as string), kind: 'class', member: null, from: method });
+    if (op !== null) ref({ owner: internal(op[1] as string), kind: 'class', member: null, from: method });
   }
   flush();
   return { classes, refs, methods };

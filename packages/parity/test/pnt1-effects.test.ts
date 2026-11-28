@@ -28,6 +28,8 @@ import { radiusFacts } from '../src/paint-samples/radius.ts';
 import { shapedCaseIds } from '../src/text-latin-run.ts';
 import type { Rings } from './outline-model.ts';
 import { opsOver, outlines } from './outline-model.ts';
+import type { Clip } from './clip-path-model.ts';
+import { clipRects } from './clip-path-model.ts';
 import { insideRounded } from './paint-model.ts';
 
 type Px = [number, number, number, number];
@@ -89,7 +91,7 @@ describe('Chrome 145 composites opacity with Skia\'s getAlpha byte and the Color
 // ---------------------------------------------------------------- the model
 
 /** radii: the outer then padding-edge corner radii (16, device px, paint-radius.ts roundedShape), or null for square corners. */
-type Box = { readonly node: ProgramNode; readonly l: number; readonly t: number; readonly r: number; readonly b: number; readonly border: readonly number[]; readonly radii: readonly number[] | null };
+type Box = { readonly node: ProgramNode; readonly l: number; readonly t: number; readonly r: number; readonly b: number; readonly border: readonly number[]; readonly radii: readonly number[] | null; readonly size: readonly [number, number]; readonly clipPath: Clip | null };
 
 type TransformFacts = { readonly ops: readonly TransformOp[]; readonly origin: TransformOrigin };
 
@@ -154,9 +156,10 @@ function boxes(p: NativeProgram, viewport: { width: number; height: number }, dp
     const f = squareCorners ? null : radiusFacts(p, n.id);
     const shape = f === null ? null : roundedShape(s.left + dx, s.top + dy, s.right + dx, s.bottom + dy, r.width / LU_PER_PX, r.height / LU_PER_PX, border, f.lengths, dpr, NO_RADIUS_FAULTS);
     const radii = shape !== null && hasRoundedCorner(shape.slice(0, 8)) ? shape : null;
-    list.push({ node: n, l: s.left + dx, t: s.top + dy, r: s.right + dx, b: s.bottom + dy, border, radii });
+    list.push({ node: n, l: s.left + dx, t: s.top + dy, r: s.right + dx, b: s.bottom + dy, border, radii, size: [r.width / LU_PER_PX, r.height / LU_PER_PX], clipPath: null });
   });
-  return list;
+  const clips = clipRects(list, dpr);
+  return list.map((b) => ({ ...b, clipPath: clips.get(b.node.id) ?? null }));
 }
 
 /**
@@ -371,6 +374,10 @@ function clippedOut(n: ProgramNode, byId: ReadonlyMap<string, Box>, cx: number, 
   for (const id of chain) {
     const a = byId.get(id) as Box;
     if (!inside(cx, cy, a.l + (a.border[3] as number), a.t + (a.border[0] as number), a.r - (a.border[1] as number), a.b - (a.border[2] as number))) return true;
+  }
+  // A clip-path clips its box and every box and line in its subtree, whatever their containing blocks.
+  for (let a = n.kind === 'text' ? parent : byId.get(n.id); a !== undefined; a = a.node.parent === null ? undefined : byId.get(a.node.parent)) {
+    if (a.clipPath !== null && !a.clipPath(cx, cy)) return true;
   }
   return false;
 }
@@ -1128,7 +1135,8 @@ describe('PNT1-opacity-d: groups over the platform-drawn backdrop, scaled or tra
 function modelOut(p: NativeProgram, viewport: { width: number; height: number }): string | null {
   for (const n of p.nodes) {
     for (const w of n.writes) {
-      if (w.kind === 'replaced-image' || w.kind === 'foreign-view' || w.kind === 'video-view' || w.kind === 'background-layers' || w.kind === 'background-image') return `${n.id} draws ${w.kind}`;
+      // A themed checkbox's drawing (lower/paint/control.ts) is the pixel lane's to prove; the model draws CSS boxes only.
+      if (w.kind === 'replaced-image' || w.kind === 'foreign-view' || w.kind === 'video-view' || w.kind === 'background-layers' || w.kind === 'background-image' || w.kind === 'checkbox') return `${n.id} draws ${w.kind}`;
       if (w.kind === 'border-styles' && w.styles.some((x) => x !== 'solid' && x !== 'none' && x !== 'hidden')) return `${n.id} has a ${w.styles.join(' ')} border`;
     }
   }
@@ -1157,7 +1165,7 @@ function modelOut(p: NativeProgram, viewport: { width: number; height: number })
 
 /** The corpus cases outside the model (modelOut), pinned: a change here is a decision, not drift. */
 const OUT = [
-  'alias-paint', 'backface-values', 'backface-values-rtl', 'gradient-abspos', 'gradient-abspos-rtl', 'gradient-north-star', 'hit-order', 'hit-order-rtl', 'outline-transform', 'outline-transform-rtl', 'overflow-replaced', 'overflow-replaced-rtl', 'replaced-block', 'replaced-block-rtl', 'replaced-demo', 'replaced-demo-rtl', 'replaced-intrinsic', 'replaced-intrinsic-rtl',
+  'alias-paint', 'backface-values', 'backface-values-rtl', 'controls-checkbox-inline', 'controls-checkbox-inline-rtl', 'gradient-abspos', 'gradient-abspos-rtl', 'gradient-north-star', 'hit-order', 'hit-order-rtl', 'outline-transform', 'outline-transform-rtl', 'overflow-replaced', 'overflow-replaced-rtl', 'replaced-block', 'replaced-block-rtl', 'replaced-demo', 'replaced-demo-rtl', 'replaced-intrinsic', 'replaced-intrinsic-rtl',
   'transform-clip', 'transform-demo', 'transform-direction', 'transform-direction-rtl', 'transform-flex', 'transform-indiv-compose', 'transform-indiv-values', 'transform-indiv-values-rtl', 'transform-matrix', 'transform-nested',
   'transform-origin', 'transform-perspective', 'transform-perspective-rtl', 'transform-rotate', 'transform-scale', 'transform-text', 'transform-translate', 'transform-will-change', 'var-logical',
   'var-logical-rtl',

@@ -119,6 +119,7 @@ describe('INL2a and G-INL engine plants fail a named atomic-inline case at every
     { fault: 'atomicMarginExcluded', fixture: 'atomic-inline-shrink' },
     { fault: 'noBreakAroundAtomic', fixture: 'atomic-inline-breaks' },
     { fault: 'atomicShrinkToFitIgnored', fixture: 'atomic-inline-shrink' },
+    { fault: 'themeLeafMarginBaseline', fixture: 'controls-checkbox-inline' },
   ];
   it.each(PLANTS)('$fault fails $fixture at DPR 1, 2, 3 and 2.625 in each direction; unfaulted it passes', (p) => {
     const spec = FIXTURES.find((x) => x.id === p.fixture);

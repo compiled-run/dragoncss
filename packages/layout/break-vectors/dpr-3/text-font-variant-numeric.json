@@ -1,0 +1,20 @@
+{
+  "case": "text-font-variant-numeric",
+  "dpr": 3,
+  "texts": [
+    {"id":"pn:text0","lines":[[0,10],[10,14],[14,24]]},
+    {"id":"on:text0","lines":[[0,24]]},
+    {"id":"df:text0","lines":[[0,16]]},
+    {"id":"ord:text0","lines":[[0,15]]},
+    {"id":"all:text0","lines":[[0,16],[16,18]]},
+    {"id":"sh:text0","lines":[[0,10]]},
+    {"id":"tn:text0","lines":[[0,10],[10,15],[15,20]]},
+    {"id":"tz:text0","lines":[[0,18]]},
+    {"id":"mixed:text0","lines":[[0,9]]},
+    {"id":"mixed1:text0","lines":[[0,6]]},
+    {"id":"mixed:text1","lines":[[0,4],[4,9]]},
+    {"id":"r1:text0","lines":[[0,5]]},
+    {"id":"r2:text0","lines":[[0,5]]},
+    {"id":"plain:text0","lines":[[0,13]]}
+  ]
+}
