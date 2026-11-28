@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+/* The individual translate property as Chrome 145 hits it: a switch's thumb moved along its track (check-in /settings), a translate
+   in px and in %, negative, past its parent's box, and before a transform's scale. */
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.cols { display: flex; }
+.col { width: 120px; height: 200px; background-color: rgb(246, 248, 250); }
+.track { position: relative; width: 52px; height: 32px; margin: 10px; border-radius: 999px; background-color: rgb(210, 215, 220); }
+.on { background-color: rgb(31, 122, 77); }
+.thumb { position: absolute; top: 3px; left: 3px; width: 26px; height: 26px; border-radius: 50%; background-color: rgb(255, 255, 255); }
+.on .thumb { translate: 20px 0; }
+.box { width: 60px; height: 20px; margin: 10px; background-color: rgb(9, 105, 218); }
+.px { translate: 7.5px 3.25px; }
+.pct { translate: -25% 50%; }
+.far { translate: 70px 0; background-color: rgb(207, 34, 46); }
+.both { translate: 10px 0; transform: scale(0.8); background-color: rgb(130, 80, 223); }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="cols" class="cols">
+<div data-dragon-id="ca" class="col"><div data-dragon-id="t1" class="track"><span data-dragon-id="t1-thumb" class="thumb"></span></div><div data-dragon-id="t2" class="track on"><span data-dragon-id="t2-thumb" class="thumb"></span></div></div>
+<div data-dragon-id="cb" class="col"><div data-dragon-id="b1" class="box px"></div><div data-dragon-id="b2" class="box pct"></div><div data-dragon-id="b3" class="box far"></div><div data-dragon-id="b4" class="box both"></div><div data-dragon-id="b5" class="box"></div></div>
+</div>
+</body>
+</html>
