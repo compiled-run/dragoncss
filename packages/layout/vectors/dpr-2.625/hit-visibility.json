@@ -1208,7 +1208,7 @@
        "boxType": "element",
        "style": {
         "display": "block",
-        "position": "relative",
+        "position": "static",
         "float": "none",
         "top": {
          "kind": "auto"
@@ -1499,11 +1499,10 @@
          "boxType": "element",
          "style": {
           "display": "block",
-          "position": "absolute",
+          "position": "static",
           "float": "none",
           "top": {
-           "kind": "px",
-           "value": 0
+           "kind": "auto"
           },
           "right": {
            "kind": "auto"
@@ -1512,8 +1511,7 @@
            "kind": "auto"
           },
           "left": {
-           "kind": "px",
-           "value": 0
+           "kind": "auto"
           },
           "overflowX": "visible",
           "overflowY": "visible",
@@ -1541,7 +1539,7 @@
           },
           "marginTop": {
            "kind": "px",
-           "value": 0
+           "value": -10
           },
           "marginRight": {
            "kind": "px",
@@ -2389,7 +2387,7 @@
    "x": 0,
    "y": 0,
    "width": 67200,
-   "height": 30576
+   "height": 33936
   },
   {
    "id": "body",
@@ -2397,7 +2395,7 @@
    "x": 0,
    "y": 0,
    "width": 67200,
-   "height": 28896
+   "height": 32256
   },
   {
    "id": "o1",
@@ -2453,7 +2451,7 @@
    "x": 0,
    "y": 11424,
    "width": 67200,
-   "height": 3360
+   "height": 6720
   },
   {
    "id": "l-b",
@@ -2464,10 +2462,18 @@
    "height": 3360
   },
   {
+   "id": "l-o",
+   "parent": "l",
+   "x": 0,
+   "y": 1680,
+   "width": 10080,
+   "height": 5040
+  },
+  {
    "id": "p",
    "parent": "body",
    "x": 0,
-   "y": 16464,
+   "y": 19824,
    "width": 67200,
    "height": 5376
   },
@@ -2491,7 +2497,7 @@
    "id": "c",
    "parent": "body",
    "x": 0,
-   "y": 23520,
+   "y": 26880,
    "width": 67200,
    "height": 5376
   },
@@ -2502,14 +2508,6 @@
    "y": 1008,
    "width": 16800,
    "height": 3360
-  },
-  {
-   "id": "l-o",
-   "parent": "l",
-   "x": 0,
-   "y": 0,
-   "width": 10080,
-   "height": 5040
   }
  ]
 }

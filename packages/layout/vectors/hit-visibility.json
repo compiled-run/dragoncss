@@ -1208,7 +1208,7 @@
        "boxType": "element",
        "style": {
         "display": "block",
-        "position": "relative",
+        "position": "static",
         "float": "none",
         "top": {
          "kind": "auto"
@@ -1499,11 +1499,10 @@
          "boxType": "element",
          "style": {
           "display": "block",
-          "position": "absolute",
+          "position": "static",
           "float": "none",
           "top": {
-           "kind": "px",
-           "value": 0
+           "kind": "auto"
           },
           "right": {
            "kind": "auto"
@@ -1512,8 +1511,7 @@
            "kind": "auto"
           },
           "left": {
-           "kind": "px",
-           "value": 0
+           "kind": "auto"
           },
           "overflowX": "visible",
           "overflowY": "visible",
@@ -1541,7 +1539,7 @@
           },
           "marginTop": {
            "kind": "px",
-           "value": 0
+           "value": -10
           },
           "marginRight": {
            "kind": "px",
@@ -2389,7 +2387,7 @@
    "x": 0,
    "y": 0,
    "width": 25600,
-   "height": 11648
+   "height": 12928
   },
   {
    "id": "body",
@@ -2397,7 +2395,7 @@
    "x": 0,
    "y": 0,
    "width": 25600,
-   "height": 11008
+   "height": 12288
   },
   {
    "id": "o1",
@@ -2453,7 +2451,7 @@
    "x": 0,
    "y": 4352,
    "width": 25600,
-   "height": 1280
+   "height": 2560
   },
   {
    "id": "l-b",
@@ -2464,10 +2462,18 @@
    "height": 1280
   },
   {
+   "id": "l-o",
+   "parent": "l",
+   "x": 0,
+   "y": 640,
+   "width": 3840,
+   "height": 1920
+  },
+  {
    "id": "p",
    "parent": "body",
    "x": 0,
-   "y": 6272,
+   "y": 7552,
    "width": 25600,
    "height": 2048
   },
@@ -2491,7 +2497,7 @@
    "id": "c",
    "parent": "body",
    "x": 0,
-   "y": 8960,
+   "y": 10240,
    "width": 25600,
    "height": 2048
   },
@@ -2502,14 +2508,6 @@
    "y": 384,
    "width": 6400,
    "height": 1280
-  },
-  {
-   "id": "l-o",
-   "parent": "l",
-   "x": 0,
-   "y": 0,
-   "width": 3840,
-   "height": 1920
   }
  ]
 }

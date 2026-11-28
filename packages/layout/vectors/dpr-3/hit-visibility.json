@@ -1208,7 +1208,7 @@
        "boxType": "element",
        "style": {
         "display": "block",
-        "position": "relative",
+        "position": "static",
         "float": "none",
         "top": {
          "kind": "auto"
@@ -1499,11 +1499,10 @@
          "boxType": "element",
          "style": {
           "display": "block",
-          "position": "absolute",
+          "position": "static",
           "float": "none",
           "top": {
-           "kind": "px",
-           "value": 0
+           "kind": "auto"
           },
           "right": {
            "kind": "auto"
@@ -1512,8 +1511,7 @@
            "kind": "auto"
           },
           "left": {
-           "kind": "px",
-           "value": 0
+           "kind": "auto"
           },
           "overflowX": "visible",
           "overflowY": "visible",
@@ -1541,7 +1539,7 @@
           },
           "marginTop": {
            "kind": "px",
-           "value": 0
+           "value": -10
           },
           "marginRight": {
            "kind": "px",
@@ -2389,7 +2387,7 @@
    "x": 0,
    "y": 0,
    "width": 76800,
-   "height": 34944
+   "height": 38784
   },
   {
    "id": "body",
@@ -2397,7 +2395,7 @@
    "x": 0,
    "y": 0,
    "width": 76800,
-   "height": 33024
+   "height": 36864
   },
   {
    "id": "o1",
@@ -2453,7 +2451,7 @@
    "x": 0,
    "y": 13056,
    "width": 76800,
-   "height": 3840
+   "height": 7680
   },
   {
    "id": "l-b",
@@ -2464,10 +2462,18 @@
    "height": 3840
   },
   {
+   "id": "l-o",
+   "parent": "l",
+   "x": 0,
+   "y": 1920,
+   "width": 11520,
+   "height": 5760
+  },
+  {
    "id": "p",
    "parent": "body",
    "x": 0,
-   "y": 18816,
+   "y": 22656,
    "width": 76800,
    "height": 6144
   },
@@ -2491,7 +2497,7 @@
    "id": "c",
    "parent": "body",
    "x": 0,
-   "y": 26880,
+   "y": 30720,
    "width": 76800,
    "height": 6144
   },
@@ -2502,14 +2508,6 @@
    "y": 1152,
    "width": 19200,
    "height": 3840
-  },
-  {
-   "id": "l-o",
-   "parent": "l",
-   "x": 0,
-   "y": 0,
-   "width": 11520,
-   "height": 5760
   }
  ]
 }

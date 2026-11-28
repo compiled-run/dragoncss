@@ -150,16 +150,11 @@ describe('visibility: native views the paint gate does not reach', () => {
   });
 });
 
-describe('visibility: hit testing (R13; the hit lane refuses the visibility fixtures by name, hit-capture.ts hitRefusal)', () => {
+describe('visibility: hit testing (R13; internal.ts hitFacts reads a box that is not visible as pointer-events none)', () => {
   const lanes = (css: string) => createProjectWith({ projectId: 'test', targets: { web: {}, ios: { minimum: '15.0' }, android: { minSdk: 31 } } }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr', interactionLanes: true })
     .compile(inputFor(`body { margin: 0; font-family: Ahem; font-size: 10px; } .a, .k { height: 10px; } ${css}`, (r) => [div(r, 'a', ['a']), div(r, 'k', ['k'])]));
-  it('refuses an interaction rule on native beside a hidden box, since the hit test would hit the hidden box; not on web, not when visible', () => {
-    const found = errors(lanes('.a { visibility: hidden; } .k:hover { background-color: #0c0; }')).map((d) => `${d.code} [${d.target}] ${d.message}`);
-    expect(found).toEqual([
-      'DRAGON_UNSUPPORTED_SELECTOR [ios] :hover needs Dragon hit testing through visibility on a, which is not built yet (package SELD-R2b)',
-      'DRAGON_UNSUPPORTED_SELECTOR [android] :hover needs Dragon hit testing through visibility on a, which is not built yet (package SELD-R2b)',
-    ]);
-    expect(errors(lanes('.a { visibility: visible; } .k:hover { background-color: #0c0; }'))).toEqual([]);
+  it('compiles an interaction rule beside a box that is not visible, on every target', () => {
+    for (const v of ['hidden', 'collapse', 'visible']) expect(errors(lanes(`.a { visibility: ${v}; } .k:hover { background-color: #0c0; }`)), v).toEqual([]);
   });
 });
 
@@ -248,11 +243,16 @@ describe('visibility: emission', () => {
   }
 });
 
-describe('visibility: state programs (T150b lifts this)', () => {
-  it('refuses a visibility write in a state program by name', () => {
-    const p = programs(inputFor('body { margin: 0; } .a { height: 10px; visibility: hidden; }', (r) => [div(r, 'a', ['a'])]));
-    const sp = deriveStateProgram('uikit', [{ assignment: [], isInitial: true, program: p.uikit }]);
-    const emit: StateEmit = { id: 'v', fixture: 'v', direction: 'ltr', compilerDigest: 'sha256:0', viewport: { width: 400, height: 300 }, program: sp, scripts: [] };
-    expect(() => emitStatePrograms('uikit', [emit])).toThrow('a: visibility hidden in a state program has no state-node write (T150b adds it)');
+describe('visibility: state programs', () => {
+  it('writes a box that is not visible through dragonVisibility, as the case emitter does', () => {
+    const p = programs(inputFor('body { margin: 0; } .a { height: 10px; visibility: hidden; } .c { height: 10px; visibility: collapse; }', (r) => [div(r, 'a', ['a']), div(r, 'c', ['c'])]));
+    for (const [backend, lit] of [['uikit', ['.visibility("hidden", false)', '.visibility("collapse", false)']], ['android-views', ['DragonStateWrite.Visibility("hidden", false)', 'DragonStateWrite.Visibility("collapse", false)']]] as const) {
+      const sp = deriveStateProgram(backend, [{ assignment: [], isInitial: true, program: p[backend] }]);
+      const emit: StateEmit = { id: 'v', fixture: 'v', direction: 'ltr', compilerDigest: 'sha256:0', viewport: { width: 400, height: 300 }, program: sp, scripts: [] };
+      const text = emitStatePrograms(backend, [emit]).map((f) => f.text).join('\n');
+      for (const l of lit) expect(text, backend).toContain(l);
+    }
+    expect(emitNativeSupport('uikit').map((f) => f.text).join('\n')).toContain('case let .visibility(value, canvas): dragonVisibility(v, value, canvas)');
+    expect(emitNativeSupport('android-views').map((f) => f.text).join('\n')).toContain('is DragonStateWrite.Visibility -> dragonVisibility(v, w.value, w.canvas)');
   });
 });

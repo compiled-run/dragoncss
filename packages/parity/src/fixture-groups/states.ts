@@ -2,7 +2,7 @@
 // the T063J probe table (text overflowing a fixed-height block with a tall line-height); hit-order covers paint order, flex order
 // and atomic items, positioned layers, overflow clips along the containing-block chain and fractional edges; hit-pointer-events
 // covers none over a hittable sibling, none with an auto child, inherited none and none on flex items and layers; hit-visibility
-// covers boxes that are not visible under :active rules (a hidden flex item in a row, a hidden layer over a box, a hidden box with a
+// covers boxes that are not visible under :active rules (a hidden flex item in a row, a hidden block pulled over an earlier one, a hidden box with a
 // visible child, collapse on a block). The state
 // cases themselves are the tree fixtures with free states (packages/parity/src/state-cases.ts). SVG pointer-events values are
 // refused.
