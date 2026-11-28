@@ -70,7 +70,7 @@ jobs:
     runs-on: xcode-27
     # Above setup, build and boot plus the longest launch limit (device-run.ts launchLimitMs: 966 frame samples, about 51 min), so
     # a hung case ends in its launch's verdict, and only a hung runner meets this limit (land-devices-ci.ts DEVICE_RUN_STEP).
-    timeout-minutes: 75
+    timeout-minutes: 80
     steps:
       - uses: actions/checkout@v4
         with:
@@ -216,7 +216,7 @@ jobs:
         include: ${{ fromJSON(inputs.plant && '[{"device":"dragon-smoke","parts":"plant"}]' || '[{"device":"dragon-320","parts":"cases"},{"device":"dragon-320","parts":"anim"},{"device":"dragon-smoke","parts":"cases"},{"device":"dragon-smoke","parts":"anim"},{"device":"dragon-smoke","parts":"vectors"},{"device":"dragon-480","parts":"cases"},{"device":"dragon-480","parts":"anim"}]') }}
     runs-on: ubuntu-latest
     # As the iOS jobs': above setup, build and boot plus the longest launch limit.
-    timeout-minutes: 75
+    timeout-minutes: 80
     env:
       # device-run.ts reads and pins each AVD's config.ini under ~/.android/avd; newer avdmanager defaults elsewhere.
       ANDROID_AVD_HOME: /home/runner/.android/avd

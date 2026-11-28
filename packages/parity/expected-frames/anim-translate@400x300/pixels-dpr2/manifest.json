@@ -1,0 +1,22 @@
+{
+ "schema": "dragon-frame-pixels/1",
+ "case": "anim-translate@400x300",
+ "chrome": "145.0.7632.6",
+ "capture": "CDP Page.captureScreenshot {format: png}, the viewport at the forced device scale factor",
+ "rasterRule": "ceil(viewport css px x DPR) in each dimension; 400x300 at 2.625 is 1050x788",
+ "dpr": 2,
+ "flags": ["--force-device-scale-factor=2","--force-color-profile=srgb","--font-render-hinting=none","--disable-lcd-text","--hide-scrollbars"],
+ "raster": {"rasterization":"disabled_software","gpu_compositing":"disabled_software"},
+ "samples": [
+  {"k":0,"at":0,"width":800,"height":600,"sha256":"68856c0f2a50d338e8c7cd1239bc94e11e4431eef953e59c9ca8b1ae231fb567"},
+  {"k":2,"at":100,"width":800,"height":600,"sha256":"68856c0f2a50d338e8c7cd1239bc94e11e4431eef953e59c9ca8b1ae231fb567"},
+  {"k":4,"at":101,"width":800,"height":600,"sha256":"c241e5e2b9b935e0433db4fc329c8ca7d1b508ea9c6d0fb869b4c16379ae7c7a"},
+  {"k":5,"at":160,"width":800,"height":600,"sha256":"8720dc9701664e53135f4d63bbfd37faa873927054d6e1ed0b31c9976b4a1ac4"},
+  {"k":8,"at":221,"width":800,"height":600,"sha256":"6caf5dd7daa7a6816e5cbeb3418058c1112026b903bf953a5ec4d04f10ed57c5"},
+  {"k":10,"at":350,"width":800,"height":600,"sha256":"6caf5dd7daa7a6816e5cbeb3418058c1112026b903bf953a5ec4d04f10ed57c5"},
+  {"k":12,"at":351,"width":800,"height":600,"sha256":"67faef628e59c82cc2dec9567e2e933158511834891f9efa63b741e3a88f9eb6"},
+  {"k":13,"at":410,"width":800,"height":600,"sha256":"bb19c75ec449bb3259e78351d61ae463a3b9bb2493503a22ff08df3283842f08"},
+  {"k":16,"at":471,"width":800,"height":600,"sha256":"68856c0f2a50d338e8c7cd1239bc94e11e4431eef953e59c9ca8b1ae231fb567"},
+  {"k":18,"at":951,"width":800,"height":600,"sha256":"68856c0f2a50d338e8c7cd1239bc94e11e4431eef953e59c9ca8b1ae231fb567"}
+ ]
+}
