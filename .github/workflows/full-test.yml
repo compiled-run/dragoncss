@@ -15,7 +15,7 @@
 # The summary job merges the shards' JSON reports into full-test-results (every test's state) and fails on any failure.
 # Trigger: workflow_dispatch with a commit sha (the landing driver), or the `fulltest` label on a pull request.
 # runner (workflow_dispatch only): mini (the default), the owner's Mac mini slots (label dragon-mini;
-#   setup in docs/self-hosted-runners.md), where the 4 chrome shards run one per slot, or hosted, the
+#   setup in docs/self-hosted-runners.md), where the chrome files run in MINI_CHROME_SHARDS (12) shards, or hosted, the
 #   macos-26 path above, the fallback when no slot is up. A self-hosted
 #   runner on this public repository must never run pull request or fork code, so: every runs-on that names dragon-mini is
 #   `github.event_name == 'workflow_dispatch' && inputs.runner == 'mini' && 'dragon-mini' || <hosted image>`; resolve refuses
@@ -64,6 +64,7 @@ jobs:
           SHA: ${{ inputs.sha || github.event.pull_request.head.sha }}
           MINI: ${{ github.event_name == 'workflow_dispatch' && inputs.runner == 'mini' }}
           REPO: ${{ github.repository }}
+          MINI_CHROME_SHARDS: 12
         run: |
           [[ "$SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::not a full commit sha: $SHA"; exit 1; }
           count=4
@@ -74,6 +75,7 @@ jobs:
             on=$(git for-each-ref --contains "$SHA" --count=1 --format='%(refname:lstrip=3)' refs/remotes/origin 2>/dev/null || true)
             [ -n "$on" ] || { echo "::error::$SHA is on no branch of $REPO; runner=mini runs only commits of this repository's branches"; exit 1; }
             echo "$SHA is on branch $on" >> "$GITHUB_STEP_SUMMARY"
+            count=$MINI_CHROME_SHARDS
           fi
           echo "sha=$SHA" >> "$GITHUB_OUTPUT"
           echo "chrome_count=$count" >> "$GITHUB_OUTPUT"
