@@ -34,6 +34,8 @@ export type TransitionSlot = {
   /** Per assignment, in the program's assignment order: the base value (null where the node is absent) and the listing. */
   readonly values: readonly (AnimValue | null)[];
   readonly listings: readonly (SlotListing | null)[];
+  /** The property the page transitions when it is not property: a translate riding the transform writer (ANIM-b2). */
+  readonly authored?: 'translate';
 };
 
 export type KeyframeTable = {
@@ -106,7 +108,7 @@ export function lowerAnimProgram(analysis: AnimationAnalysis, cases: readonly { 
         const l = ea.listings.get(property);
         return l === undefined ? { mode: ea.otherwise, delay: 0, duration: 0, easing: { kind: 'linear', x1: 0, y1: 0, x2: 0, y2: 0, steps: 0, position: 'end', text: 'linear' } as EasingValue } : l;
       });
-      slots.push({ node, property: riding ? 'transform' : property, kind: kind.kind, range: kind.kind === 'length' ? kind.range : 'all', values, listings });
+      slots.push({ node, property: riding ? 'transform' : property, kind: kind.kind, range: kind.kind === 'length' ? kind.range : 'all', values, listings, ...(riding ? { authored: 'translate' as const } : {}) });
     }
   }
   if (slots.length > MAX_TRANSITION_SLOTS) throw new AnimProgramError(`${slots.length} transition slots exceed the ${MAX_TRANSITION_SLOTS} a program holds`);
