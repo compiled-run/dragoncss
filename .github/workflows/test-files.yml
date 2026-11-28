@@ -133,6 +133,7 @@ jobs:
         run: |
           set -o pipefail
           mkdir -p "$RUNNER_TEMP/report"
+          [ "$RUNNER_ENVIRONMENT" != self-hosted ] || export VITEST_MAX_WORKERS=2
           read -ra files <<< "$FILES"
           npx vitest run "${files[@]}" --reporter=default --reporter=json --outputFile="$RUNNER_TEMP/report/$GITHUB_JOB.json" 2>&1 | tee "$RUNNER_TEMP/shard.log"
       - &blocked
@@ -279,7 +280,7 @@ jobs:
     concurrency:
       group: test-files-${{ inputs.ref }}-${{ needs.resolve.outputs.key }}-chrome
       cancel-in-progress: false
-    runs-on: macos-26
+    runs-on: ${{ github.event_name == 'workflow_dispatch' && inputs.runner == 'mini' && 'dragon-mini' || 'macos-26' }}
     timeout-minutes: 120
     # android-profile.test.ts holds every fixture's native and enforced compiles (about 3 GB at its peak); macOS sizes the default heap near 2 GB.
     env:
@@ -303,7 +304,9 @@ jobs:
         with:
           path: ~/Library/Caches/ms-playwright
           key: playwright-1.58.2-macos-${{ runner.arch }}
-      - uses: actions/cache/restore@v4
+      # A slot's /Users/runner/wpt is a read-only copy at the pinned commit (fetch-wpt.sh below checks it).
+      - if: runner.environment == 'github-hosted'
+        uses: actions/cache/restore@v4
         with:
           path: /Users/runner/wpt
           key: wpt-${{ hashFiles('packages/wpt/wpt.lock') }}
