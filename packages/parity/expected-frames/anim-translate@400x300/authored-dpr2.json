@@ -1,0 +1,927 @@
+{
+ "schema": "dragon-frames-capture/1",
+ "case": "anim-translate@400x300",
+ "chrome": "145.0.7632.6",
+ "rendering": "authored",
+ "devicePixelRatio": 2,
+ "direction": "ltr",
+ "viewport": {
+  "width": 400,
+  "height": 300
+ },
+ "steps": 37,
+ "samples": [
+  {
+   "at": 0,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 30,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 30,
+     "computed": {}
+    },
+    {
+     "id": "track",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 60,
+     "height": 30,
+     "computed": {}
+    },
+    {
+     "id": "thumb",
+     "kind": "element",
+     "hasBox": true,
+     "x": 5,
+     "y": 5,
+     "width": 20,
+     "height": 20,
+     "computed": {
+      "transform": "none"
+     }
+    }
+   ]
+  },
+  {
+   "at": 100,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 30,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 30,
+     "computed": {}
+    },
+    {
+     "id": "track",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 60,
+     "height": 30,
+     "computed": {}
+    },
+    {
+     "id": "thumb",
+     "kind": "element",
+     "hasBox": true,
+     "x": 5,
+     "y": 5,
+     "width": 20,
+     "height": 20,
+     "computed": {
+      "transform": "none"
+     }
+    }
+   ]
+  },
+  {
+   "at": 100,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 30,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 30,
+     "computed": {}
+    },
+    {
+     "id": "track",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 60,
+     "height": 30,
+     "computed": {}
+    },
+    {
+     "id": "thumb",
+     "kind": "element",
+     "hasBox": true,
+     "x": 5,
+     "y": 5,
+     "width": 20,
+     "height": 20,
+     "computed": {
+      "transform": "none"
+     }
+    }
+   ]
+  },
+  {
+   "at": 100.0002087112,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 30,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 30,
+     "computed": {}
+    },
+    {
+     "id": "track",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 60,
+     "height": 30,
+     "computed": {}
+    },
+    {
+     "id": "thumb",
+     "kind": "element",
+     "hasBox": true,
+     "x": 5,
+     "y": 5,
+     "width": 20,
+     "height": 20,
+     "computed": {
+      "transform": "none"
+     }
+    }
+   ]
+  },
+  {
+   "at": 101,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 30,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 30,
+     "computed": {}
+    },
+    {
+     "id": "track",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 60,
+     "height": 30,
+     "computed": {}
+    },
+    {
+     "id": "thumb",
+     "kind": "element",
+     "hasBox": true,
+     "x": 5.423499584197998,
+     "y": 5,
+     "width": 20,
+     "height": 20,
+     "computed": {
+      "transform": "none"
+     }
+    }
+   ]
+  },
+  {
+   "at": 160,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 30,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 30,
+     "computed": {}
+    },
+    {
+     "id": "track",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 60,
+     "height": 30,
+     "computed": {}
+    },
+    {
+     "id": "thumb",
+     "kind": "element",
+     "hasBox": true,
+     "x": 25.539297103881836,
+     "y": 5,
+     "width": 20.000001907348633,
+     "height": 20,
+     "computed": {
+      "transform": "none"
+     }
+    }
+   ]
+  },
+  {
+   "at": 219,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 30,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 30,
+     "computed": {}
+    },
+    {
+     "id": "track",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 60,
+     "height": 30,
+     "computed": {}
+    },
+    {
+     "id": "thumb",
+     "kind": "element",
+     "hasBox": true,
+     "x": 34.99610137939453,
+     "y": 5,
+     "width": 20,
+     "height": 20,
+     "computed": {
+      "transform": "none"
+     }
+    }
+   ]
+  },
+  {
+   "at": 220,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 30,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 30,
+     "computed": {}
+    },
+    {
+     "id": "track",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 60,
+     "height": 30,
+     "computed": {}
+    },
+    {
+     "id": "thumb",
+     "kind": "element",
+     "hasBox": true,
+     "x": 35,
+     "y": 5,
+     "width": 20,
+     "height": 20,
+     "computed": {
+      "transform": "none"
+     }
+    }
+   ]
+  },
+  {
+   "at": 221,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 30,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 30,
+     "computed": {}
+    },
+    {
+     "id": "track",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 60,
+     "height": 30,
+     "computed": {}
+    },
+    {
+     "id": "thumb",
+     "kind": "element",
+     "hasBox": true,
+     "x": 35,
+     "y": 5,
+     "width": 20,
+     "height": 20,
+     "computed": {
+      "transform": "none"
+     }
+    }
+   ]
+  },
+  {
+   "at": 350,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 30,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 30,
+     "computed": {}
+    },
+    {
+     "id": "track",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 60,
+     "height": 30,
+     "computed": {}
+    },
+    {
+     "id": "thumb",
+     "kind": "element",
+     "hasBox": true,
+     "x": 35,
+     "y": 5,
+     "width": 20,
+     "height": 20,
+     "computed": {
+      "transform": "none"
+     }
+    }
+   ]
+  },
+  {
+   "at": 350,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 30,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 30,
+     "computed": {}
+    },
+    {
+     "id": "track",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 60,
+     "height": 30,
+     "computed": {}
+    },
+    {
+     "id": "thumb",
+     "kind": "element",
+     "hasBox": true,
+     "x": 35,
+     "y": 5,
+     "width": 20,
+     "height": 20,
+     "computed": {
+      "transform": "none"
+     }
+    }
+   ]
+  },
+  {
+   "at": 350.0002087112,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 30,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 30,
+     "computed": {}
+    },
+    {
+     "id": "track",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 60,
+     "height": 30,
+     "computed": {}
+    },
+    {
+     "id": "thumb",
+     "kind": "element",
+     "hasBox": true,
+     "x": 35,
+     "y": 5,
+     "width": 20,
+     "height": 20,
+     "computed": {
+      "transform": "none"
+     }
+    }
+   ]
+  },
+  {
+   "at": 351,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 30,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 30,
+     "computed": {}
+    },
+    {
+     "id": "track",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 60,
+     "height": 30,
+     "computed": {}
+    },
+    {
+     "id": "thumb",
+     "kind": "element",
+     "hasBox": true,
+     "x": 34.576499938964844,
+     "y": 5,
+     "width": 20,
+     "height": 20,
+     "computed": {
+      "transform": "none"
+     }
+    }
+   ]
+  },
+  {
+   "at": 410,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 30,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 30,
+     "computed": {}
+    },
+    {
+     "id": "track",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 60,
+     "height": 30,
+     "computed": {}
+    },
+    {
+     "id": "thumb",
+     "kind": "element",
+     "hasBox": true,
+     "x": 14.460701942443848,
+     "y": 5,
+     "width": 20,
+     "height": 20,
+     "computed": {
+      "transform": "none"
+     }
+    }
+   ]
+  },
+  {
+   "at": 469,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 30,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 30,
+     "computed": {}
+    },
+    {
+     "id": "track",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 60,
+     "height": 30,
+     "computed": {}
+    },
+    {
+     "id": "thumb",
+     "kind": "element",
+     "hasBox": true,
+     "x": 5.003900051116943,
+     "y": 5,
+     "width": 20,
+     "height": 20,
+     "computed": {
+      "transform": "none"
+     }
+    }
+   ]
+  },
+  {
+   "at": 470,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 30,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 30,
+     "computed": {}
+    },
+    {
+     "id": "track",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 60,
+     "height": 30,
+     "computed": {}
+    },
+    {
+     "id": "thumb",
+     "kind": "element",
+     "hasBox": true,
+     "x": 5,
+     "y": 5,
+     "width": 20,
+     "height": 20,
+     "computed": {
+      "transform": "none"
+     }
+    }
+   ]
+  },
+  {
+   "at": 471,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 30,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 30,
+     "computed": {}
+    },
+    {
+     "id": "track",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 60,
+     "height": 30,
+     "computed": {}
+    },
+    {
+     "id": "thumb",
+     "kind": "element",
+     "hasBox": true,
+     "x": 5,
+     "y": 5,
+     "width": 20,
+     "height": 20,
+     "computed": {
+      "transform": "none"
+     }
+    }
+   ]
+  },
+  {
+   "at": 950,
+   "settle": false,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 30,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 30,
+     "computed": {}
+    },
+    {
+     "id": "track",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 60,
+     "height": 30,
+     "computed": {}
+    },
+    {
+     "id": "thumb",
+     "kind": "element",
+     "hasBox": true,
+     "x": 5,
+     "y": 5,
+     "width": 20,
+     "height": 20,
+     "computed": {
+      "transform": "none"
+     }
+    }
+   ]
+  },
+  {
+   "at": 951,
+   "settle": true,
+   "nodes": [
+    {
+     "id": "html",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 30,
+     "computed": {}
+    },
+    {
+     "id": "body",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 400,
+     "height": 30,
+     "computed": {}
+    },
+    {
+     "id": "track",
+     "kind": "element",
+     "hasBox": true,
+     "x": 0,
+     "y": 0,
+     "width": 60,
+     "height": 30,
+     "computed": {}
+    },
+    {
+     "id": "thumb",
+     "kind": "element",
+     "hasBox": true,
+     "x": 5,
+     "y": 5,
+     "width": 20,
+     "height": 20,
+     "computed": {
+      "transform": "none"
+     }
+    }
+   ]
+  }
+ ]
+}

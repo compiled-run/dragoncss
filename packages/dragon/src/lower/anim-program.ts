@@ -4,7 +4,7 @@
 // resolution per name); and the closure of writes an animated colour reaches each frame (R9: inheriting descendants and
 // currentcolor users). Records are per animation and slot, never per assignment pair (R20).
 import type { AnimationAnalysis, AnimationEntry, AnimValue, Listing } from '../analysis/animations.ts';
-import { endpointOf, fontPx, keyframeValueOf, MAX_CLOSURE_WRITES, MAX_TRANSITION_SLOTS, transformValueOf } from '../analysis/animations.ts';
+import { endpointOf, fontPx, keyframeValueOf, MAX_CLOSURE_WRITES, MAX_TRANSITION_SLOTS, transformValueOf, translateAlone } from '../analysis/animations.ts';
 import { elementTransformOrigin } from '../analysis/paint-values/transform.ts';
 import type { ResolvedValue } from '../analysis/computed.ts';
 import type { ResolvedElement } from '../analysis/resolve.ts';
@@ -90,11 +90,13 @@ export function lowerAnimProgram(analysis: AnimationAnalysis, cases: readonly { 
   for (const node of nodes) {
     const listed = new Set(anims.flatMap((a) => [...(a.elements.get(node)?.listings.keys() ?? [])]));
     for (const property of listed) {
-      const kind = animationKind(property);
+      // ANIM-b2: a translate whose element has no other transform in any assignment transitions as its transform (translateAlone).
+      const riding = property === 'translate' && trees.every((t) => { const at = t.get(node); return at === undefined || translateAlone(at.el) !== null; });
+      const kind = riding ? animationKind('transform') : animationKind(property);
       if (!admitted(kind) || (kind.kind !== 'length' && kind.kind !== 'color' && kind.kind !== 'transform')) continue;
       const values = trees.map((t) => {
         const at = t.get(node);
-        return at === undefined ? null : endpointOf(property, (at.el.props.get(property) as ResolvedValue).value);
+        return at === undefined ? null : riding ? translateAlone(at.el) : endpointOf(property, (at.el.props.get(property) as ResolvedValue).value);
       });
       const present = values.filter((v) => v !== null);
       if (present.every((v) => same(v, present[0] ?? null))) continue;
@@ -104,7 +106,7 @@ export function lowerAnimProgram(analysis: AnimationAnalysis, cases: readonly { 
         const l = ea.listings.get(property);
         return l === undefined ? { mode: ea.otherwise, delay: 0, duration: 0, easing: { kind: 'linear', x1: 0, y1: 0, x2: 0, y2: 0, steps: 0, position: 'end', text: 'linear' } as EasingValue } : l;
       });
-      slots.push({ node, property, kind: kind.kind, range: kind.kind === 'length' ? kind.range : 'all', values, listings });
+      slots.push({ node, property: riding ? 'transform' : property, kind: kind.kind, range: kind.kind === 'length' ? kind.range : 'all', values, listings });
     }
   }
   if (slots.length > MAX_TRANSITION_SLOTS) throw new AnimProgramError(`${slots.length} transition slots exceed the ${MAX_TRANSITION_SLOTS} a program holds`);

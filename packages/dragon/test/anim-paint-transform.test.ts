@@ -150,6 +150,28 @@ describe('ANIM-b2: transform animations', () => {
     expect(a.writes()[0]?.origin).toEqual({ x: { kind: 'percent', px: 0, percent: 50 }, y: { kind: 'percent', px: 0, percent: 50 } });
   });
 
+  it('a translate transition rides the transform writer: none to 100px 0 with ease is the transform transition from none at 250 ms', () => {
+    const a = animate('.a { width: 200px; height: 10px; transition: translate 0.5s ease; } .a.on { translate: 100px 0; }');
+    expect(a.ap.slots.map((x) => [x.node, x.property])).toEqual([['a', 'transform']]);
+    expect(a.matrix(200, 10)).toBe('none');
+    a.open();
+    a.advance(250);
+    expect(a.matrix(200, 10)).toBe('matrix(1, 0, 0, 1, 80.2403, 0)');
+    a.advance(300);
+    expect(a.matrix(200, 10)).toBe('matrix(1, 0, 0, 1, 100, 0)');
+  });
+
+  it('admits a translate transition only where its element has no other transform, rotate or scale in any state', () => {
+    expect(compile('.a { transition: translate 1s; } .a.on { translate: 20px 0; }')).toEqual([]);
+    expect(compile('.a { translate: 10% 5px; transition: translate 1s; } .a.on { translate: 50% 0; }')).toEqual([]);
+    const refused = "translate cannot be animated yet on a: its transform, rotate or scale is not none in a reachable state, and Dragon animates translate only as an element's one transform (package ANIM-b2)";
+    for (const other of ['transform: rotate(10deg)', 'rotate: 10deg', 'scale: 2']) {
+      expect(refusals(`.a { ${other}; transition: translate 1s; } .a.on { translate: 20px 0; }`), other).toContain(refused);
+      expect(refusals(`.a { transition: translate 1s; } .a.on { translate: 20px 0; ${other}; }`), other).toContain(refused);
+    }
+    expect(refusals('.a { transition: translate 1s; animation: k 1s infinite; } .a.on { translate: 20px 0; } @keyframes k { to { transform: translateX(5px) } }')).toContain('translate on a is transitioned while an animation of its transform runs: both write its one transform, which is not built yet (package ANIM-b2)');
+  });
+
   it('anim-slide: translateX(100%) to 0% with ease is M5 at 250 ms, resolved against the border box at use, and the static value after', () => {
     const a = animate(SLIDE);
     // Before the transition the state program holds no transform write of a: the animator writes the static value.
