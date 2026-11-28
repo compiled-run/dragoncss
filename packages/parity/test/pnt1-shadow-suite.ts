@@ -30,8 +30,8 @@ import { boxes, modelAt } from './paint-model.ts';
 const I = SAMPLE_INSET_DEVICE_PX;
 /** The measured maximum per-channel difference over the shadow fixtures and the calibration set at DPR 2, 3 and 2.625. */
 const SHADOW_MEASURED_MAX = 0;
-/** The same measure of the plain layers, composited onto transparent and then once over the backdrop (the 32ab282a device). */
-const PLAIN_MEASURED_MAX = 2;
+/** The same measure of the plain layers per fixture, composited onto transparent and then once over the backdrop (the 32ab282a device); 2 at most. */
+const PLAIN_MEASURED_MAX: Readonly<Record<string, number>> = { 'shadow-basic': 1, 'shadow-rounded': 2, 'shadow-inset': 1, 'shadow-cascade': 1, 'shadow-webkit-alias': 1, 'shadow-transform': 1, 'shadow-transform-order': 1, 'calib-shadow-blur': 0, 'calib-shadow-colors': 1 };
 const SHADOW_FIXTURES = (FIXTURE_GROUPS.find((g) => g.id === 'shadow')?.fixtures ?? []).filter((f) => f.kind === 'layout');
 
 function alphaAt(l: ShadowLayer, x: number, y: number): number {
@@ -209,79 +209,84 @@ function measure(caseId: string, given: readonly Box[], p: import('dragon').Nati
   return { over: m, plain: mp };
 }
 
-describe('PNT1 shadow: the TS reference against Chrome at every clear shadow pixel (the measured allowance)', () => {
-  it('covers the shadow fixtures and the calibration set in both directions', () => {
-    expect(SHADOW_FIXTURES.map((f) => f.id)).toEqual(['shadow-basic', 'shadow-rounded', 'shadow-inset', 'shadow-cascade', 'shadow-webkit-alias', 'shadow-transform', 'shadow-transform-order', 'calib-shadow-blur', 'calib-shadow-colors']);
-  });
-  const all: Measure = { max: 0, pixels: 0, worst: '' };
-  const plainAll: Measure = { max: 0, pixels: 0, worst: '' };
-  for (const spec of SHADOW_FIXTURES) {
-    for (const c of casesOf(spec, fixtureInput(spec))) {
-      it(`${c.id} at ${DPRS.join(', ')}: within the shadow allowance, and every shadow sample point on a clear pixel`, () => {
-        const programs = nativePrograms(nativeCompile(spec, c.environment.direction), c.assignment);
+/** One shadow fixture's tests (a file per fixture runs them side by side); the first fixture's file also checks the fixture list. */
+export function shadowSuite(id: string): void {
+  const spec = SHADOW_FIXTURES.find((f) => f.id === id);
+  if (spec === undefined) throw new Error(`no ${id} shadow fixture`);
+  const plainMax = PLAIN_MEASURED_MAX[id];
+  if (plainMax === undefined) throw new Error(`no plain layer measure for ${id}`);
+  describe('PNT1 shadow: the TS reference against Chrome at every clear shadow pixel (the measured allowance)', () => {
+    if (id === SHADOW_FIXTURES[0]?.id) it('covers the shadow fixtures and the calibration set in both directions', () => {
+      expect(SHADOW_FIXTURES.map((f) => f.id)).toEqual(['shadow-basic', 'shadow-rounded', 'shadow-inset', 'shadow-cascade', 'shadow-webkit-alias', 'shadow-transform', 'shadow-transform-order', 'calib-shadow-blur', 'calib-shadow-colors']);
+    });
+    const all: Measure = { max: 0, pixels: 0, worst: '' };
+    const plainAll: Measure = { max: 0, pixels: 0, worst: '' };
+    {
+      for (const c of casesOf(spec, fixtureInput(spec))) {
+        it(`${c.id} at ${DPRS.join(', ')}: within the shadow allowance, and every shadow sample point on a clear pixel`, () => {
+          const programs = nativePrograms(nativeCompile(spec, c.environment.direction), c.assignment);
+          if (programs.kind !== 'ready') throw new Error(programs.reason);
+          const p = programs.programs.uikit;
+          const problems: string[] = [];
+          for (const dpr of DPRS) {
+            const list = boxes(p, c.environment.viewport, dpr);
+            const { over: m, plain } = measure(c.id, list, p, dpr);
+            console.log(`pnt1-shadow ${c.id}@${dpr}: ${m.pixels} shadow pixels, max channel difference ${m.max}${m.max > 0 ? ` (${m.worst})` : ''}; plain layers ${plain.max}`);
+            if (m.pixels === 0) problems.push(`${c.id}@${dpr}: no clear shadow pixel`);
+            if (m.max > SHADOW_MEASURED_MAX) problems.push(`${c.id}@${dpr}: ${m.max} > ${SHADOW_MEASURED_MAX} at ${m.worst}`);
+            all.max = Math.max(all.max, m.max);
+            plainAll.max = Math.max(plainAll.max, plain.max);
+            all.pixels += m.pixels;
+            const points = casePoints(p, c.environment.viewport, dpr).filter((q) => q.rule.startsWith('shadow:'));
+            if (points.length === 0) problems.push(`${c.id}@${dpr}: no shadow sample point`);
+          }
+          expect(problems).toEqual([]);
+        }, 600_000);
+      }
+    }
+    const transformed = spec;
+    if (id === 'shadow-transform') for (const c of casesOf(transformed, fixtureInput(transformed))) {
+      it(`${c.id}: the shadow drawn untransformed, and drawn with its blur left unscaled, each differ from Chrome at a clear pixel at every DPR`, () => {
+        const programs = nativePrograms(nativeCompile(transformed, c.environment.direction), c.assignment);
         if (programs.kind !== 'ready') throw new Error(programs.reason);
         const p = programs.programs.uikit;
-        const problems: string[] = [];
+        const missed: string[] = [];
         for (const dpr of DPRS) {
           const list = boxes(p, c.environment.viewport, dpr);
-          const { over: m, plain } = measure(c.id, list, p, dpr);
-          console.log(`pnt1-shadow ${c.id}@${dpr}: ${m.pixels} shadow pixels, max channel difference ${m.max}${m.max > 0 ? ` (${m.worst})` : ''}; plain layers ${plain.max}`);
-          if (m.pixels === 0) problems.push(`${c.id}@${dpr}: no clear shadow pixel`);
-          if (m.max > SHADOW_MEASURED_MAX) problems.push(`${c.id}@${dpr}: ${m.max} > ${SHADOW_MEASURED_MAX} at ${m.worst}`);
-          all.max = Math.max(all.max, m.max);
-          plainAll.max = Math.max(plainAll.max, plain.max);
-          all.pixels += m.pixels;
-          const points = casePoints(p, c.environment.viewport, dpr).filter((q) => q.rule.startsWith('shadow:'));
-          if (points.length === 0) problems.push(`${c.id}@${dpr}: no shadow sample point`);
+          for (const plant of ['untransformed', 'blur-unscaled'] as const) {
+            const { over: m } = measure(c.id, list, p, dpr, plant);
+            console.log(`pnt1-shadow ${c.id}@${dpr} plant ${plant}: ${m.pixels} pixels, max channel difference ${m.max}`);
+            if (!(m.max > SHADOW_MEASURED_MAX)) missed.push(`${plant}@${dpr}`);
+          }
         }
-        expect(problems).toEqual([]);
+        expect(missed).toEqual([]);
       }, 600_000);
     }
-  }
-  const transformed = SHADOW_FIXTURES.find((f) => f.id === 'shadow-transform');
-  if (transformed === undefined) throw new Error('no shadow-transform fixture');
-  for (const c of casesOf(transformed, fixtureInput(transformed))) {
-    it(`${c.id}: the shadow drawn untransformed, and drawn with its blur left unscaled, each differ from Chrome at a clear pixel at every DPR`, () => {
-      const programs = nativePrograms(nativeCompile(transformed, c.environment.direction), c.assignment);
-      if (programs.kind !== 'ready') throw new Error(programs.reason);
-      const p = programs.programs.uikit;
-      const missed: string[] = [];
-      for (const dpr of DPRS) {
-        const list = boxes(p, c.environment.viewport, dpr);
-        for (const plant of ['untransformed', 'blur-unscaled'] as const) {
-          const { over: m } = measure(c.id, list, p, dpr, plant);
-          console.log(`pnt1-shadow ${c.id}@${dpr} plant ${plant}: ${m.pixels} pixels, max channel difference ${m.max}`);
-          if (!(m.max > SHADOW_MEASURED_MAX)) missed.push(`${plant}@${dpr}`);
+    const ordered = spec;
+    if (id === 'shadow-transform-order') for (const c of casesOf(ordered, fixtureInput(ordered))) {
+      it(`${c.id}: the shadow left at its box's tree place, and drawn over its ancestors' fills alone, each differ from Chrome at a clear pixel at every DPR`, () => {
+        const programs = nativePrograms(nativeCompile(ordered, c.environment.direction), c.assignment);
+        if (programs.kind !== 'ready') throw new Error(programs.reason);
+        const p = programs.programs.uikit;
+        const missed: string[] = [];
+        for (const dpr of DPRS) {
+          const list = boxes(p, c.environment.viewport, dpr);
+          for (const plant of ['tree-order', 'backdrop-ancestors'] as const) {
+            const { over: m } = measure(c.id, list, p, dpr, plant);
+            console.log(`pnt1-shadow ${c.id}@${dpr} plant ${plant}: ${m.pixels} pixels, max channel difference ${m.max}`);
+            if (!(m.max > SHADOW_MEASURED_MAX)) missed.push(`${plant}@${dpr}`);
+          }
         }
-      }
-      expect(missed).toEqual([]);
-    }, 600_000);
-  }
-  const ordered = SHADOW_FIXTURES.find((f) => f.id === 'shadow-transform-order');
-  if (ordered === undefined) throw new Error('no shadow-transform-order fixture');
-  for (const c of casesOf(ordered, fixtureInput(ordered))) {
-    it(`${c.id}: the shadow left at its box's tree place, and drawn over its ancestors' fills alone, each differ from Chrome at a clear pixel at every DPR`, () => {
-      const programs = nativePrograms(nativeCompile(ordered, c.environment.direction), c.assignment);
-      if (programs.kind !== 'ready') throw new Error(programs.reason);
-      const p = programs.programs.uikit;
-      const missed: string[] = [];
-      for (const dpr of DPRS) {
-        const list = boxes(p, c.environment.viewport, dpr);
-        for (const plant of ['tree-order', 'backdrop-ancestors'] as const) {
-          const { over: m } = measure(c.id, list, p, dpr, plant);
-          console.log(`pnt1-shadow ${c.id}@${dpr} plant ${plant}: ${m.pixels} pixels, max channel difference ${m.max}`);
-          if (!(m.max > SHADOW_MEASURED_MAX)) missed.push(`${plant}@${dpr}`);
-        }
-      }
-      expect(missed).toEqual([]);
-    }, 600_000);
-  }
-  it('the device layers measure 0 (the plain layers, one platform composite, measure 2); the allowance is GATE_CHANNEL_DELTA (decisions.md)', () => {
-    console.log(`pnt1-shadow: ${all.pixels} shadow pixels over the shadow fixtures and the calibration set, max channel difference ${all.max}; plain layers ${plainAll.max}`);
-    expect(all.pixels).toBeGreaterThan(0);
-    expect(all.max).toBe(SHADOW_MEASURED_MAX);
-    expect(SHADOW_MEASURED_MAX).toBe(0);
-    expect(plainAll.max).toBe(PLAIN_MEASURED_MAX);
-    expect(SHADOW_CHANNEL_DELTA).toBe(GATE_CHANNEL_DELTA);
+        expect(missed).toEqual([]);
+      }, 600_000);
+    }
+    it(`the device layers measure 0 (the plain layers, one platform composite, measure ${plainMax}); the allowance is GATE_CHANNEL_DELTA (decisions.md)`, () => {
+      console.log(`pnt1-shadow: ${all.pixels} shadow pixels over ${id}, max channel difference ${all.max}; plain layers ${plainAll.max}`);
+      expect(all.pixels).toBeGreaterThan(0);
+      expect(all.max).toBe(SHADOW_MEASURED_MAX);
+      expect(SHADOW_MEASURED_MAX).toBe(0);
+      expect(plainAll.max).toBe(plainMax);
+      expect(SHADOW_CHANNEL_DELTA).toBe(GATE_CHANNEL_DELTA);
+    });
   });
-});
+}
