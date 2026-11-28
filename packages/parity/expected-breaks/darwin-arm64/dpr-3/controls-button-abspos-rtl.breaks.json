@@ -1,0 +1,10 @@
+{
+  "case": "controls-button-abspos-rtl",
+  "chrome": "145.0.7632.6",
+  "dpr": 3,
+  "texts": [
+    {"id":"label1:text0","data":"XXXX","lines":1,"units":[0,0,0,0],"blank":[]},
+    {"id":"b2-in:text0","data":"YY","lines":1,"units":[0,0],"blank":[]},
+    {"id":"b4-in:text0","data":"YY","lines":1,"units":[0,0],"blank":[]}
+  ]
+}

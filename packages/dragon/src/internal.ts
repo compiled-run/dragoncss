@@ -146,12 +146,15 @@ export function laneOnlyNative(compiled: object, target: 'ios' | 'android'): boo
   return internalRecord(compiled)?.laneOnlyNative.includes(target) === true;
 }
 
-/** The factored groups (analysis/link.ts StateGroup) with their cases' assignments, the initial first; null when cases are every assignment. */
-export function stateGroupsIn(compiled: object): readonly { readonly states: readonly number[]; readonly bandFree: boolean; readonly cases: readonly { readonly assignment: Assignment; readonly isInitial: boolean }[] }[] | null {
+/**
+ * The factored groups (analysis/link.ts StateGroup) with their cases' assignments, the initial first, and with @media bands per band
+ * the band whose rows the group's table holds for it (null without bands); null when cases are every assignment.
+ */
+export function stateGroupsIn(compiled: object): readonly { readonly states: readonly number[]; readonly bandClasses: readonly number[] | null; readonly cases: readonly { readonly assignment: Assignment; readonly isInitial: boolean }[] }[] | null {
   const record = internalRecord(compiled);
   const groups = record?.linked?.groups ?? null;
   if (record === undefined || groups === null) return null;
-  return groups.map((g, k) => ({ states: g.states, bandFree: record.groupBandFree?.[k] === true, cases: g.cases.map((i) => ({ assignment: (record.cases[i] as InternalCase).assignment, isInitial: (record.cases[i] as InternalCase).isInitial })) }));
+  return groups.map((g, k) => ({ states: g.states, bandClasses: record.groupBandClasses?.[k] ?? null, cases: g.cases.map((i) => ({ assignment: (record.cases[i] as InternalCase).assignment, isInitial: (record.cases[i] as InternalCase).isInitial })) }));
 }
 
 /** Dragon's reachable assignments, in its enumeration order, with the initial case marked. */

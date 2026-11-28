@@ -444,8 +444,9 @@ function layoutOwnContents(ctx: Ctx, node: LayoutBox | ControlBox, a: ContentsAr
     unsupported('size-containment', box.id, 'css-contain-2 §3.1', `size containment on ${box.id} (${s.display}${s.containLayout ? '' : ', without layout containment'}) is not laid out yet`);
   }
   checkOutOfFlowSiblings(ctx, box);
-  // A fieldset and its legend lay out positioned descendants as any block container does (LayoutFieldset); other controls do not yet.
-  if (control !== null && control.kind !== 'fieldset' && control.kind !== 'legend') checkControlSubtree(ctx, box);
+  // A fieldset and its legend (LayoutFieldset) and a block button lay out positioned descendants as any block container does;
+  // other controls do not yet.
+  if (control !== null && control.kind !== 'fieldset' && control.kind !== 'legend' && control.kind !== 'button-block') checkControlSubtree(ctx, box);
   const pad = resolvePaddingWith(s, a.cbInline, ctx.faults);
   const bor = resolveBorder(s, ctx.devicePixelRatio);
   const hbp = sumEdges(bor.left, bor.right, pad.left, pad.right);

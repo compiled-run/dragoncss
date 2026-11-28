@@ -144,6 +144,11 @@ export type NativeStateGroup = {
   readonly schemes: NativeStyleOutput['schemes'];
   readonly interaction?: InteractionProgram;
   readonly interactionValues?: readonly (readonly InteractionValue[])[];
+  /**
+   * When two @media bands, but not all, share the group's rows: per band, the band whose rows it reads, the only values its band
+   * state takes; the band state of a combined page takes that band's value in this group.
+   */
+  readonly bandClasses?: readonly number[];
 };
 
 export type NativeStyleBlocked = { readonly kind: 'blocked'; readonly reason: string };
@@ -241,13 +246,16 @@ function targetOutput(compiled: Compiled<NativeStyleTarget>, t: NativeStyleTarge
   const groups = stateGroupsIn(compiled);
   if (groups !== null && animated) return { kind: 'blocked', reason: `the ${t} output has transitions or animations and states in groups, which a host does not run yet` };
   let interactive = false;
-  // One table's per-case programs over the given cases in every band; oneBand: a group whose elements style alike in every band
-  // (analysis bandFree) is laid out in the initial band alone, with no band state.
+  // One table's per-case programs over the given cases in the bands it holds: every band, or a group's band classes (analysis
+  // bandClasses), the band each class reads; a group whose elements style alike in every band is laid out in the initial band alone,
+  // with no band state.
   type TableCase = { readonly assignment: Assignment; readonly isInitial: boolean; readonly band: number; readonly program: NativeProgram };
-  const casesOf = (given: readonly { readonly assignment: Assignment; readonly isInitial: boolean }[], oneBand = false): TableCase[] | string => {
+  const heldBands = (classes: readonly number[] | null): readonly number[] => (classes === null ? [...Array(count).keys()] : [...new Set(classes)].sort((x, y) => x - y));
+  const oneBandOf = (classes: readonly number[] | null): boolean => bands !== null && classes !== null && heldBands(classes).length === 1;
+  const casesOf = (given: readonly { readonly assignment: Assignment; readonly isInitial: boolean }[], classes: readonly number[] | null = null): TableCase[] | string => {
     const cases: TableCase[] = [];
     for (const c of given) {
-      for (let band = oneBand && bands !== null ? bands.initial : 0; band < (oneBand && bands !== null ? bands.initial + 1 : count); band++) {
+      for (const band of heldBands(classes)) {
         const partition = interactionPartitionIn(compiled, c.assignment, band);
         if (partition !== null && partition.states.length > 0) {
           // A host that runs Dragon's interaction runtime itself (support 'lanes', program only) gets the interaction program.
@@ -262,8 +270,9 @@ function targetOutput(compiled: Compiled<NativeStyleTarget>, t: NativeStyleTarge
     return cases;
   };
   // Its program and each assignment's colour scheme.
-  const tableOf = (cases: readonly TableCase[], oneBand = false) => {
-    const program = bands === null || oneBand ? deriveStateProgram(backend, cases) : bandStateProgram(backend, cases, count, bands.initial);
+  const tableOf = (cases: readonly TableCase[], classes: readonly number[] | null = null) => {
+    const oneBand = oneBandOf(classes);
+    const program = bands === null || oneBand ? deriveStateProgram(backend, cases) : bandStateProgram(backend, cases, count, bands.initial, undefined, undefined, heldBands(classes));
     const schemes = program.assignments.map(({ assignment }) => {
       const isBand = (x: (typeof assignment)[number]): boolean => x.state.instance === ENV_INSTANCE && x.state.state === BAND_STATE;
       const band = assignment.find(isBand)?.value ?? (oneBand && bands !== null ? bands.initial : 0);
@@ -275,7 +284,7 @@ function targetOutput(compiled: Compiled<NativeStyleTarget>, t: NativeStyleTarge
   };
   const pageCases = casesOf(groups === null ? all : all.filter((c) => c.isInitial));
   if (typeof pageCases === 'string') return { kind: 'blocked', reason: pageCases };
-  const groupCases = (groups ?? []).map((g) => casesOf(g.cases, g.bandFree));
+  const groupCases = (groups ?? []).map((g) => casesOf(g.cases, g.bandClasses));
   const groupRefused = groupCases.find((c): c is string => typeof c === 'string');
   if (groupRefused !== undefined) return { kind: 'blocked', reason: groupRefused };
   try {
@@ -283,13 +292,13 @@ function targetOutput(compiled: Compiled<NativeStyleTarget>, t: NativeStyleTarge
     let factored: NativeStateGroup[] | null = null;
     if (groups !== null) {
       const tables = groups.map((g, k) => {
-        const table = tableOf(groupCases[k] as TableCase[], g.bandFree);
+        const table = tableOf(groupCases[k] as TableCase[], g.bandClasses);
         const interaction = interactive ? interactionProgramOf(compiled, table.program, backend, bands === null ? 0 : bands.initial) : null;
         return { table, interaction };
       });
       const refused = tables.find((x) => typeof x.interaction === 'string');
       if (refused !== undefined) return { kind: 'blocked', reason: refused.interaction as string };
-      const built = groupTables(tables.map(({ table, interaction }) => ({ ...table, interaction: interaction as Exclude<typeof interaction, string> })), program);
+      const built = groupTables(tables.map(({ table, interaction }, k) => ({ ...table, interaction: interaction as Exclude<typeof interaction, string>, bandClasses: (groups[k] as { readonly bandClasses: readonly number[] | null }).bandClasses })), program);
       if (typeof built === 'string') return { kind: 'blocked', reason: built };
       factored = built;
     }
@@ -317,12 +326,12 @@ function targetOutput(compiled: Compiled<NativeStyleTarget>, t: NativeStyleTarge
  * initial assignment in the same band. An id two groups change, or a paragraph two groups' texts share, is the analysis's error
  * (analysis/link.ts groups states that read one element), reported as the reason.
  */
-function groupTables(tables: readonly { readonly program: StateProgram; readonly schemes: NativeStyleOutput['schemes']; readonly interaction: { readonly program: InteractionProgram; readonly values: readonly (readonly InteractionValue[])[] } | null }[], page: StateProgram): NativeStateGroup[] | string {
+function groupTables(tables: readonly { readonly program: StateProgram; readonly schemes: NativeStyleOutput['schemes']; readonly interaction: { readonly program: InteractionProgram; readonly values: readonly (readonly InteractionValue[])[] } | null; readonly bandClasses: readonly number[] | null }[], page: StateProgram): NativeStateGroup[] | string {
   const owner = new Map<string, number>();
   const out: NativeStateGroup[] = [];
   const pageInitial = page.assignments[page.initial]?.assignment ?? [];
   const valueOf = (a: Assignment, key: string): unknown => a.find((x) => stateKey(x.state.instance, x.state.state) === key)?.value;
-  for (const [k, { program, schemes, interaction }] of tables.entries()) {
+  for (const [k, { program, schemes, interaction, bandClasses }] of tables.entries()) {
     const states = program.states.filter((v) => v.domain.length > 1 && v.key !== BAND_KEY).map((v) => v.key);
     const initialIn = (a: Assignment): number => program.assignments.findIndex((x) => valueOf(x.assignment, BAND_KEY) === valueOf(a, BAND_KEY) && states.every((s) => valueOf(x.assignment, s) === valueOf(pageInitial, s)));
     const owned = new Set<string>();
@@ -339,7 +348,9 @@ function groupTables(tables: readonly { readonly program: StateProgram; readonly
       if (other !== undefined) return `${id} changes with the states of two groups (${(out[other] as NativeStateGroup).states.join(', ')}; ${states.join(', ')}), so their tables cannot be combined`;
       owner.set(id, k);
     }
-    out.push({ states, program, owned: [...owned].sort(), schemes, ...(interaction === null ? {} : { interaction: interaction.program, interactionValues: interaction.values }) });
+    // Its band state holds only the bands its classes read when two bands share one (and none when every band does).
+    const classed = bandClasses !== null && new Set(bandClasses).size > 1 && new Set(bandClasses).size < bandClasses.length;
+    out.push({ states, program, owned: [...owned].sort(), schemes, ...(interaction === null ? {} : { interaction: interaction.program, interactionValues: interaction.values }), ...(classed ? { bandClasses } : {}) });
   }
   // A phone shapes a paragraph's text only as Dragon laid it out, a whole font run at a time: at most one group may change it.
   const ownerOf = (id: string): number => owner.get(`box:${id}`) ?? -1;

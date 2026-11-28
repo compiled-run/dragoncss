@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+/* Empty inline boxes Chrome 145 hits nothing of: each fragment is 0 wide, so a point over one names its block container (the dot of
+   @markless/ui's radio group, whose row is pressable). Every edge is a multiple of 8 CSS px, a whole device px at every lane DPR,
+   as the trace lane needs. */
+body { margin: 0; font-family: Ahem; font-size: 16px; }
+.choice { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 32px; width: 200px; margin-bottom: 8px; background-color: rgb(250, 250, 250); }
+.choice:active { border-color: rgb(31, 122, 77); }
+.mark { width: 16px; height: 16px; background-color: rgb(236, 240, 244); }
+.dot { border-radius: 50%; background-color: rgb(31, 122, 77); }
+.c { width: 200px; margin-bottom: 4px; background-color: rgb(236, 240, 244); }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="choice1" class="choice"><div data-dragon-id="mark1" class="mark"><span data-dragon-id="dot1" class="dot"></span></div><div data-dragon-id="l1">XXXX</div></div>
+<div data-dragon-id="choice2" class="choice"><div data-dragon-id="mark2" class="mark"><span data-dragon-id="dot2" class="dot"></span></div><div data-dragon-id="l2">XX</div></div>
+</body>
+</html>
