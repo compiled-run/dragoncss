@@ -194,7 +194,7 @@
           "caseListSha256": "4c4f44827044612b6fecc52b59af8941ae3dfd5ec8f0c6e81a7a7248e6864388",
           "totalCases": 680026,
           "run": {
-            "toolchain": "Apple Swift version 6.4 (swiftlang-6.4.0.34.1 clang-2100.3.34.1)",
+            "toolchain": "Apple Swift version 6.4.2 (swiftlang-6.4.2.1.9 clang-2100.4.1.1)",
             "suites": [
               {
                 "corpus": "p1",

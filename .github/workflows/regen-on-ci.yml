@@ -7,7 +7,7 @@
 # (the regen and WPT caches are restored only, the pnpm store is not cached), since a dispatched run regenerates an unreviewed
 # tree at master's cache scope.
 # The chain is split by machine (regen-on-ci-round.yml): the Chrome steps on macos-26, whose captures are byte-identical to the
-# local Mac's (capture-proof.yml), and lanes-host on xcode-27, the image with the local Mac's Xcode 27.0. Rounds alternate until
+# local Mac's (capture-proof.yml), and lanes-host on xcode-27 or a dragon-mini slot with the pinned Xcode 27.2. Rounds alternate until
 # one changes nothing (at most 5), and the last round's tree is committed. tw-sweep, which no other step reads, runs in the
 # Chrome rounds with the rest: its Chrome memo made it a few minutes, so a round of its own after them only added a runner's
 # setup. Never pushes master, a protected branch, the default branch or a fork; never force-pushes (a branch that moved
@@ -15,6 +15,11 @@
 # resume (either dispatch mode; a label run or a branch dispatch finds one by itself on its branch): an earlier run's id. When its chrome-1 tree, applied to this commit, leaves every Chrome step
 # skipped (a fix that touched only host code, say), the chain starts at host-1; otherwise chrome-1 runs seeded with its store.
 # Either way the outputs equal a run from scratch, since cache entries are keyed by content. A run given resume saves no cache.
+# host_runner (workflow_dispatch only): mini (the default), the owner's Mac mini slots (label dragon-mini, docs/self-hosted-runners.md),
+# or hosted, xcode-27, the fallback. A self-hosted runner on this public repository must never run pull request or fork code, so
+# the host rounds' runner is `github.event_name == 'workflow_dispatch' && inputs.host_runner == 'mini' && 'dragon-mini' || 'xcode-27'`,
+# resolve refuses such a run for a sha no branch of this repository contains, and the slot's job-started hook (outside the
+# repository) fails before any step every job that is not a workflow_dispatch of this repository's regen-on-ci.yml or full-test.yml.
 # A push made with GITHUB_TOKEN starts no workflow, so the push job dispatches ci.yml on the branch for the new commit's checks.
 # Every push to master runs the same chain without pushing ("warm"): Actions caches made in a pull request are visible only to
 # that pull request, while master's are visible to every branch, so master's run keeps the regen cache warm for all of them.
@@ -43,6 +48,12 @@ on:
         description: Id of an earlier regen-on-ci run to take chrome-1 from when this commit changes no Chrome-step input; saves no cache
         required: false
         type: string
+      host_runner:
+        description: Where the host rounds run - mini (the owner's Mac mini slots, label dragon-mini) or hosted (GitHub's xcode-27)
+        required: false
+        default: mini
+        type: choice
+        options: [mini, hosted]
   pull_request:
     types: [labeled]
   push:
@@ -196,6 +207,17 @@ jobs:
       # scratch, as without it. A regen label run, or a branch dispatch without resume, takes the newest earlier run of the same
       # branch that qualifies, so the landing's fix rounds resume by themselves. A store from another run never goes into the
       # shared cache: a run that resumes saves none.
+      - name: A self-hosted host round runs only commits on this repository's branches
+        if: github.event_name == 'workflow_dispatch' && inputs.host_runner == 'mini'
+        env:
+          SHA: ${{ steps.r.outputs.sha }}
+          REPO: ${{ github.repository }}
+        run: |
+          git init -q "$RUNNER_TEMP/refs" && cd "$RUNNER_TEMP/refs"
+          git fetch -q --filter=tree:0 --no-tags "https://github.com/$REPO.git" '+refs/heads/*:refs/remotes/origin/*'
+          on=$(git for-each-ref --contains "$SHA" --count=1 --format='%(refname:lstrip=3)' refs/remotes/origin 2>/dev/null || true)
+          [ -n "$on" ] || { echo "::error::$SHA is on no branch of $REPO; host_runner=mini runs only commits of this repository's branches"; exit 1; }
+          echo "$SHA is on branch $on; host rounds on dragon-mini" >> "$GITHUB_STEP_SUMMARY"
       - name: Check the run to resume from
         id: resume
         env:
@@ -465,7 +487,7 @@ jobs:
     needs: [resolve, resume-chrome-1, chrome-1]
     if: ${{ !cancelled() && needs.resolve.result == 'success' && (needs.chrome-1.result == 'success' || needs.resume-chrome-1.outputs.resumed == 'true') && (needs.resume-chrome-1.outputs.resumed == 'true' && needs.resume-chrome-1.outputs.next || needs.chrome-1.outputs.next) != 'false' }}
     uses: ./.github/workflows/regen-on-ci-round.yml
-    with: { runner: xcode-27, side: host, args: '--only lanes-host', sha: '${{ needs.resolve.outputs.sha }}', prev: chrome-1, name: host-1, save_cache: "${{ needs.resolve.outputs.save == 'true' }}" }
+    with: { runner: "${{ github.event_name == 'workflow_dispatch' && inputs.host_runner == 'mini' && 'dragon-mini' || 'xcode-27' }}", side: host, args: '--only lanes-host', sha: '${{ needs.resolve.outputs.sha }}', prev: chrome-1, name: host-1, save_cache: "${{ needs.resolve.outputs.save == 'true' }}" }
   chrome-2:
     needs: [resolve, host-1]
     if: ${{ !cancelled() && needs.host-1.result == 'success' && needs.host-1.outputs.changed == 'true' && needs.host-1.outputs.next != 'false' }}
@@ -475,7 +497,7 @@ jobs:
     needs: [resolve, chrome-2]
     if: ${{ !cancelled() && needs.chrome-2.result == 'success' && needs.chrome-2.outputs.changed == 'true' && needs.chrome-2.outputs.next != 'false' }}
     uses: ./.github/workflows/regen-on-ci-round.yml
-    with: { runner: xcode-27, side: host, args: '--only lanes-host', sha: '${{ needs.resolve.outputs.sha }}', prev: chrome-2, name: host-2, save_cache: "${{ needs.resolve.outputs.save == 'true' }}" }
+    with: { runner: "${{ github.event_name == 'workflow_dispatch' && inputs.host_runner == 'mini' && 'dragon-mini' || 'xcode-27' }}", side: host, args: '--only lanes-host', sha: '${{ needs.resolve.outputs.sha }}', prev: chrome-2, name: host-2, save_cache: "${{ needs.resolve.outputs.save == 'true' }}" }
   chrome-3:
     needs: [resolve, host-2]
     if: ${{ !cancelled() && needs.host-2.result == 'success' && needs.host-2.outputs.changed == 'true' && needs.host-2.outputs.next != 'false' }}

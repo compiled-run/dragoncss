@@ -1,6 +1,8 @@
 # Self-hosted runners (label `dragon-mini`)
 
-A dispatched `full-test.yml` runs its chrome shards on the owner's Mac mini slots (`runner=mini`, the default) instead of GitHub's
+A dispatched `regen-on-ci.yml` runs its host rounds (lanes-host) on the same slots (`host_runner=mini`, the default; `hosted` is
+GitHub's `xcode-27`), with the pinned Xcode 27.2 (`scripts/select-xcode27.sh`), JDK 17.0.21 (Homebrew `openjdk@17`) and the
+kotlinc the round downloads. A dispatched `full-test.yml` runs its chrome shards on the owner's Mac mini slots (`runner=mini`, the default) instead of GitHub's
 `macos-26` runners. `runner=hosted` is GitHub's runners, unchanged: the fallback when no slot is up. A pull request's
 `fulltest` label always runs hosted.
 
@@ -37,11 +39,10 @@ This repository is public, and a self-hosted runner must never run pull request 
 
 ## What stays hosted, and why
 
-- The regeneration rounds: the mini runs macOS 27, and its Chrome text rasterization differs from `macos-26`'s. Locally on
+- The regeneration's Chrome rounds: the mini runs macOS 27, and its Chrome text rasterization differs from `macos-26`'s. Locally on
   2026-11-28, `parity:capture` and `parity:dpr-capture` matched the committed outputs byte for byte, but `parity:pixel-capture`
   rewrote 193 of 4368 PNGs (text glyph edges, largest channel delta 125), as `capture-proof.yml` found for `xcode-27`. The host
-  round pins Xcode 27.0 (27A266a); the mini has 27.2, which on landed batch 31 changed only the Swift version string in
-  `lanes.json` (a separate change).
+  rounds run on the mini (above).
 - The native shards (`ubuntu-24.04-arm`) and `platform-free`: Linux, off the critical path.
 
 If no slot is up, a `runner=mini` job waits for one (up to 24 hours): cancel the run and dispatch again with `runner=hosted`.
