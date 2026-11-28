@@ -149,7 +149,7 @@ describe('refusals', () => {
     expect(errors(['dot', 'off'], (r) => [text(r, 't0', 'b')])).toContainEqual(expect.stringMatching(/^the inline box s has visibility hidden and its block container d does not paint alike/));
   });
 
-  it("an empty inline box is never hit, so its visibility refuses no interaction rule, unlike a block's", () => {
+  it('a box that is not visible refuses no interaction rule: an empty inline box is never hit, and the hit facts pass over a block', () => {
     const css = 'body { font-family: Ahem; font-size: 10px; } .d { height: 20px; } .off { visibility: hidden; } .d:active { background-color: red; }';
     const hitRefusals = (inner: (r: SourceRef) => TreeNode): string[] =>
       createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' } } }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr', interactionLanes: true })
@@ -157,8 +157,7 @@ describe('refusals', () => {
         .diagnostics.filter((d) => d.severity === 'error' && d.message.includes('needs Dragon hit testing'))
         .map((d) => d.message);
     expect(hitRefusals((r) => el(r, 's', 'span', ['off']))).toEqual([]);
-    // A block is hit, so its visibility is a fact the hit test does not model yet.
-    expect(hitRefusals((r) => el(r, 's', 'div', ['off']))).toContainEqual(expect.stringMatching(/hit testing through visibility on s/));
+    expect(hitRefusals((r) => el(r, 's', 'div', ['off']))).toEqual([]);
   });
 
   const refused = (tree: (r: SourceRef) => TreeNode[]) => compile(tree).diagnostics.map((d) => `${d.code} ${String(d.target)}`);
