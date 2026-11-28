@@ -3,6 +3,7 @@
 // ever tested against, to a fixed point), builds the four dimensions (hover chains, active chains, focus with or without
 // focus-visible), resolves every combination of them and stores each distinct resolution once. The combinations are a second
 // level under the case's app assignment, so case keys and counts do not change; each dimension is linear in the elements.
+import { emptyInlineBox } from './paint-values/empty-inline.ts';
 import { GENERATED_TAGS, MARKER_TAG } from './elements.ts';
 import { inputTypeState, isCheckboxType, isControlTag, isTextFieldType } from './elements/controls.ts';
 import { isReplacedTag } from './elements/replaced.ts';
@@ -755,6 +756,7 @@ export function hitUnmodelledFact(root: ResolvedElement, ua: UaDataset, compiles
   const propagated = propagatedFrom(root);
   const visit = (el: ResolvedElement): { property: Longhand; address: string } | null => {
     if (el.element.tag === 'svg') return { property: 'fill', address: el.element.address };
+    if (emptyInlineBox(el)) return null;
     // An overflow value computed from its partner (computeOverflowPair) has no declaration: it compiles only when the partner does.
     const partner = (p: Longhand): ResolvedValue | undefined => (p === 'overflow-x' ? el.props.get('overflow-y') : p === 'overflow-y' ? el.props.get('overflow-x') : undefined);
     const oneBox = hitRetargetsParts(el);

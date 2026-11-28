@@ -1,0 +1,10 @@
+{
+  "case": "inline-box-empty-paint-rtl",
+  "dpr": 2,
+  "texts": [
+    {"id":"l1:text0","lines":[[0,4]]},
+    {"id":"l2:text0","lines":[[0,2]]},
+    {"id":"line1:text0","lines":[[0,2]]},
+    {"id":"line1:text1","lines":[[0,2]]}
+  ]
+}

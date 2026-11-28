@@ -118,6 +118,7 @@ import type { Rgba8 } from '../css/color.ts';
 import { parseComputedColor, serializeColor } from '../css/color.ts';
 import { markerTypeOf } from './markers.ts';
 import { glyphFill, usedColors } from '../lower/paint/colors.ts';
+import { emptyInlineBox } from './paint-values/empty-inline.ts';
 import { checkOutlinePlacement } from './paint-values/outline.ts';
 import { checkTransformContexts, elementWillChange } from './paint-values/transform.ts';
 import { opacityOf } from '../css/properties/effects.ts';
@@ -602,7 +603,7 @@ function checkInline(el: ResolvedElement, targets: readonly string[], diagnostic
       // The native runtime places inline box views unpainted (their decorations are INL1b), so a paint an inline box would draw
       // is refused on native rather than dropped. Of the paint longhands, only background-color paints an inline box without a
       // border width (which the inline/ltr context refuses); transform, overflow and will-change do not apply to inline boxes.
-      if (it.kind === 'open' && usedColors(it.el)['background-color'].alpha !== 0) {
+      if (it.kind === 'open' && usedColors(it.el)['background-color'].alpha !== 0 && !emptyInlineBox(it.el)) {
         const bg = valueToString((it.el.props.get('background-color') as ResolvedValue).value);
         refuseNative(it.el, 'background', `background-color: ${bg} on the inline box <${it.el.element.tag}> ${it.el.element.address}: the native runtime does not paint inline boxes until INL1b (inline box decorations), so the background would be dropped`, `Move the background to a block, or remove it from <${it.el.element.tag}> ${it.el.element.address}, until INL1b.`);
       }
