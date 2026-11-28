@@ -26,12 +26,12 @@ This repository is public, and a self-hosted runner must never run pull request 
 - One non-admin macOS user per slot (`dragonrunner1`..`6`, group `dragonrunner`, not `staff` or `admin`), so a job cannot read
   the admin user's home. Before every job a root launchd daemon (`com.compiled-run.dragon-runner.slotN`) stops the user's
   processes by PID, clears its crontab and temporary files and recreates its home, so test temp folders never accumulate.
-  Jobs run under `nice -n 10`, with `TMPDIR` in the slot's home.
+  Jobs run under `nice -n 10`, with the user's own `/var/folders` temporary directory, as on a hosted runner.
 - Shared, root-owned and read-only: the runner tarball and hook (`/opt/dragon-runner`), the WPT copy at `packages/wpt/wpt.lock`'s
   commit (`/Users/runner/wpt`, the path the hosted jobs use), and the Android SDK with the system image
-  (`/opt/homebrew/share/android-commandlinetools`). A new WPT pin fails `scripts/fetch-wpt.sh` on a slot until the copy is updated.
-- A slot gives vitest 3 workers (`VITEST_MAX_WORKERS`), as a `macos-26` runner has 3 cores; with `runner=mini` the chrome files
-  run in `MINI_CHROME_SHARDS` shards.
+  with build-tools 36.0.0 and platform android-36 (`/opt/homebrew/share/android-commandlinetools`). A new WPT pin fails `scripts/fetch-wpt.sh` on a slot until the copy is updated.
+- A slot gives vitest 2 workers (`VITEST_MAX_WORKERS`): six slots share mini-2's 6 fast and 12 efficiency cores. With
+  `runner=mini` the chrome files run in `MINI_CHROME_SHARDS` shards.
 - Not isolated: the network (jobs reach the LAN), memory (macOS has no per-user cap), world-readable files.
 
 ## What stays hosted, and why

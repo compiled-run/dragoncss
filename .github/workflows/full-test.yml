@@ -239,8 +239,9 @@ jobs:
         run: |
           set -o pipefail
           mkdir -p "$RUNNER_TEMP/report"
-          # A slot has 3 of the mini's cores, as a macos-26 runner has 3.
-          [ "$RUNNER_ENVIRONMENT" != self-hosted ] || export VITEST_MAX_WORKERS=3
+          # Six slots share mini-2's 6 fast and 12 efficiency cores; at 3 workers each, run 46104498963 ran at load 50 and
+          # dist.test (d) took 135 s against its 120 s timeout (87 s on macos-26).
+          [ "$RUNNER_ENVIRONMENT" != self-hosted ] || export VITEST_MAX_WORKERS=2
           list=$(node scripts/test-shards.ts plan chrome ${{ matrix.shard }} ${{ needs.resolve.outputs.chrome_count }}) || { echo "::error::the shard planner failed"; exit 1; }
           files=(); while IFS= read -r f; do files+=("$f"); done <<< "$list"
           npx vitest run "${files[@]}" --reporter=default --reporter=json --outputFile="$RUNNER_TEMP/report/chrome-${{ matrix.shard }}.json" 2>&1 | tee "$RUNNER_TEMP/shard.log"
