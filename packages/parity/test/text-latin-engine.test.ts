@@ -8,7 +8,7 @@ import type { EngineFaults, FontSpec, GlyphShaper, InlineBox, InlineChild, Layou
 import { intrinsicContentInlineSize } from '../../layout/src/intrinsic.ts';
 import { scrollMetrics, scrollRanges } from '../../layout/src/overflow.ts';
 import { HitError, hitTableOf, NO_HIT_TABLE_FAULTS } from '../../layout/src/rt-hit.ts';
-import { layout, layoutWithFaults, measurerFor, NO_ENGINE_FAULTS, NO_GRID_FAULTS, shapedMeasurerFor, validateLayoutInput } from '@dragon/layout';
+import { layout, layoutWithFaults, measurerFor, NO_ENGINE_FAULTS, NO_GRID_FAULTS, NORMAL_NUMERIC, shapedMeasurerFor, validateLayoutInput } from '@dragon/layout';
 import { engineTextLines } from '../src/line-breaks.ts';
 import { repoPath } from '../src/paths.ts';
 import { launchChrome } from '../src/chrome.ts';
@@ -63,7 +63,7 @@ const style = {
 } as const;
 
 const fontOf = (family: string, size: number): FontSpec => ({ family, size, specifiedSize: { kind: 'px', value: size }, absoluteSize: true });
-const leaf = (id: string, text: string, family: string, size: number): TextLeaf => ({ kind: 'text', id, text, font: fontOf(family, size), lineHeight: { kind: 'normal' }, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap', letterSpacing: { kind: 'px', value: 0 }, wordSpacing: { kind: 'px', value: 0 }, overflowWrap: 'normal', wordBreak: 'normal', smallCaps: false });
+const leaf = (id: string, text: string, family: string, size: number): TextLeaf => ({ kind: 'text', id, text, font: fontOf(family, size), lineHeight: { kind: 'normal' }, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap', letterSpacing: { kind: 'px', value: 0 }, wordSpacing: { kind: 'px', value: 0 }, overflowWrap: 'normal', wordBreak: 'normal', smallCaps: false, variantNumeric: NORMAL_NUMERIC });
 
 const span = (id: string, child: TextLeaf): InlineBox => ({ kind: 'inline', id, style: { ...style, display: 'inline' }, font: child.font, lineHeight: child.lineHeight, children: [child] });
 
@@ -145,7 +145,7 @@ describe('TXT1a-1 phase B: R4 and the run refusal on the real-font path', () => 
   });
 
   it("the shaped measurer's shaped item, which real-font line breaking reads, refuses with text-script too (R4)", () => {
-    const font = { family: latoId, size: 16, letterSpacing: 0, wordSpacing: 0, smallCaps: false };
+    const font = { family: latoId, size: 16, letterSpacing: 0, wordSpacing: 0, smallCaps: false, variantNumeric: NORMAL_NUMERIC };
     expect(referenceShapedMeasurer(NO_ENGINE_FAULTS, [lato]).shaped('A\u03a9', font)).toEqual({ ok: false, code: 'text-script', reason: 'U+3A9 is outside Latin, Common and Inherited (R4)' });
     expect(referenceShapedMeasurer(NO_ENGINE_FAULTS, [lato]).shaped('Ahem text', font).ok).toBe(true);
     expect(referenceShapedMeasurer({ ...NO_ENGINE_FAULTS, latinCheckSkipped: true }, [lato]).shaped('A\u03a9', font).ok).toBe(true);
@@ -163,7 +163,7 @@ function ahemRunsChangedBy(faults: EngineFaults): { readonly text: string; reado
   const m = referenceShapedMeasurer(faults);
   return Object.entries(cap.widthsLayoutUnits).flatMap(([size, widths]) =>
     widths.flatMap((lu, i) => {
-      const got = m.measure('X'.repeat(i + 1), { family: 'Ahem', size: Number(size), letterSpacing: 0, wordSpacing: 0, smallCaps: false });
+      const got = m.measure('X'.repeat(i + 1), { family: 'Ahem', size: Number(size), letterSpacing: 0, wordSpacing: 0, smallCaps: false, variantNumeric: NORMAL_NUMERIC });
       return got.ok && got.measure.width === lu ? [] : [{ text: 'X'.repeat(i + 1), size: Number(size) }];
     }),
   );

@@ -396,7 +396,14 @@ Input:
       },
       "overflowWrap": "normal",
       "wordBreak": "normal",
-      "smallCaps": false
+      "smallCaps": false,
+      "variantNumeric": {
+       "figure": "normal",
+       "spacing": "normal",
+       "fraction": "normal",
+       "ordinal": false,
+       "slashedZero": false
+      }
      }
     ]
    }
