@@ -6,7 +6,8 @@
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import type { Browser } from 'playwright';
-import { hitFacts, programInput, svgScenes } from 'dragon';
+import { hitFacts, NO_HIT_FACT_FAULTS, programInput, svgScenes } from 'dragon';
+import type { HitFactFaults } from 'dragon';
 import type { ControlBox, LayoutBox } from '../../layout/src/input.ts';
 import type { HitFaults, HitTable, HitTableFaults } from '../../layout/src/rt-hit.ts';
 import { activationTarget, hitAt, hitGrid as rtHitGrid, hitFactsRefusal, hitRefusal as inputHitRefusal, hitRuns, hitTableOf, hitTest, hitTransformRefusal, NO_HIT_FAULTS, NO_HIT_TABLE_FAULTS, prepareHit } from '../../layout/src/rt-hit.ts';
@@ -50,8 +51,8 @@ export function programHitTable(program: NativeCase['programs']['uikit'], facts:
 }
 
 /** A case's hit table at DPR 1 (the Chrome captures' ratio), from its uikit program and its compile's hit facts. */
-export function caseHitTable(n: NativeCase, faults: HitTableFaults = NO_HIT_TABLE_FAULTS, dpr = 1): HitTable {
-  const facts = hitFacts(n.compiled, n.case.assignment);
+export function caseHitTable(n: NativeCase, faults: HitTableFaults = NO_HIT_TABLE_FAULTS, dpr = 1, factFaults: HitFactFaults = NO_HIT_FACT_FAULTS): HitTable {
+  const facts = hitFacts(n.compiled, n.case.assignment, null, factFaults);
   if (facts === null) throw new Error(`${n.case.id}: no hit facts`);
   return programHitTable(n.programs.uikit, facts, n.case.environment.viewport, dpr, faults);
 }
@@ -157,8 +158,8 @@ export function capturedIds(c: HitCapture): string[] {
 export type HitMismatch = { readonly case: string; readonly x: number; readonly y: number; readonly chrome: string; readonly dragon: string };
 
 /** The TS hit test against a capture at every captured point; the grid must be the one the table derives now. */
-export function compareHits(n: NativeCase, c: HitCapture, faults: HitFaults = NO_HIT_FAULTS, tableFaults: HitTableFaults = NO_HIT_TABLE_FAULTS): { readonly points: number; readonly mismatches: readonly HitMismatch[]; readonly stale: boolean } {
-  return compareHitsAt(n, c, 1, faults, tableFaults);
+export function compareHits(n: NativeCase, c: HitCapture, faults: HitFaults = NO_HIT_FAULTS, tableFaults: HitTableFaults = NO_HIT_TABLE_FAULTS, factFaults: HitFactFaults = NO_HIT_FACT_FAULTS): { readonly points: number; readonly mismatches: readonly HitMismatch[]; readonly stale: boolean } {
+  return compareHitsAt(n, c, 1, faults, tableFaults, factFaults);
 }
 
 /**
@@ -171,9 +172,9 @@ export function chromeHitPoint(v: number, dpr: number): number {
 }
 
 /** compareHits at the capture's DPR: the TS hit test of the case laid out at that DPR, at every grid point in device LU. */
-export function compareHitsAt(n: NativeCase, c: HitCapture, dpr: number, faults: HitFaults = NO_HIT_FAULTS, tableFaults: HitTableFaults = NO_HIT_TABLE_FAULTS): { readonly points: number; readonly mismatches: readonly HitMismatch[]; readonly stale: boolean } {
+export function compareHitsAt(n: NativeCase, c: HitCapture, dpr: number, faults: HitFaults = NO_HIT_FAULTS, tableFaults: HitTableFaults = NO_HIT_TABLE_FAULTS, factFaults: HitFactFaults = NO_HIT_FACT_FAULTS): { readonly points: number; readonly mismatches: readonly HitMismatch[]; readonly stale: boolean } {
   if ((c.dpr ?? 1) !== dpr) throw new Error(`${n.case.id}: a capture at DPR ${c.dpr ?? 1} compared at DPR ${dpr}`);
-  const t = caseHitTable(n, tableFaults, dpr);
+  const t = caseHitTable(n, tableFaults, dpr, factFaults);
   const grid = hitGridAt(caseHitTable(n, NO_HIT_TABLE_FAULTS, dpr), n.case.environment.viewport, dpr);
   const stale = grid.length !== c.points || gridSha256(grid) !== c.gridSha256;
   const mismatches: HitMismatch[] = [];
@@ -224,10 +225,6 @@ export function hitRefusal(n: NativeCase): string | null {
   const ordered = (id: string, f: { readonly createsContext?: boolean; readonly layer?: string }): boolean => f.layer === 'positioned' && facts?.get(id)?.context === true;
   const contexts = nodes.filter((x) => x.parent !== null && ((f) => f !== undefined && ((f.createsContext === true && !ordered(x.id, f)) || f.layer === 'normal-flow'))(x.facts['stacking'] as { readonly createsContext?: boolean; readonly layer?: string } | undefined)).map((x) => x.id);
   if (contexts.length > 0) return `stacking context on ${contexts.join(', ')}: hit testing through z-index layers and stacking contexts in the normal flow is not modelled yet (rt-hit.ts orders z-index 0 contexts and positioned boxes as z-index auto)`;
-  // T150a: Chrome's elementFromPoint passes over a box that is not visible (its visible descendants still hit), which the hit test
-  // does not model yet.
-  const hidden = nodes.filter((x) => x.writes.some((w) => w.kind === 'visibility')).map((x) => x.id);
-  if (hidden.length > 0) return `visibility on ${hidden.join(', ')}: hit testing past a box that is not visible is not modelled yet (T150b)`;
   // SVG-a1: Chrome hits an svg's painted shapes (pointer-events: visiblePainted), which the hit test models with SVG-a2.
   const svgs = (svgScenes(n.compiled, n.case.assignment) ?? []).map((s) => s.address);
   if (svgs.length > 0) return `<svg> ${svgs.join(', ')}: hit testing an svg's shapes comes with SVG-a2`;

@@ -91,4 +91,13 @@ describe('pointer-events: compile and hit facts', () => {
     expect([...ACTIVATION_TAGS]).toEqual(['a', 'button']);
     expect(hitFacts({}, [])).toBeNull();
   });
+
+  it('reads a box that is not visible as pointer-events none, and a visible child under it as auto (Blink VisibleToHitTestRequest)', () => {
+    const c = project().compile(inputFor('.a { visibility: hidden; } .b { visibility: visible; }', tree));
+    const facts = hitFacts(c, []);
+    expect([facts?.get('a')?.pointerEvents, facts?.get('a')?.inherited, facts?.get('b')?.pointerEvents]).toEqual(['none', false, 'auto']);
+    const collapsed = hitFacts(project().compile(inputFor('.a { visibility: collapse; }', tree)), []);
+    expect([collapsed?.get('a')?.pointerEvents, collapsed?.get('b')?.pointerEvents, collapsed?.get('b')?.inherited]).toEqual(['none', 'none', false]);
+    expect(hitFacts(c, [], null, { visibilityIgnored: true })?.get('a')?.pointerEvents).toBe('auto');
+  });
 });

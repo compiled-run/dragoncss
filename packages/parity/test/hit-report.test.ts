@@ -14,7 +14,6 @@ import { CLAMP_OUT, CLAMP_REASON, FLOAT_OUT, FLOAT_REASON, INLINE_OUT, INLINE_RE
 import { shapedCaseIds } from '../src/text-latin-run.ts';
 import { GRID_OUT, GRID_REASON } from './hit-refusals-grid.ts';
 import { CONTROLS_OUT, CONTROLS_REASON } from './hit-refusals-controls.ts';
-import { VISIBILITY_OUT, VISIBILITY_REASON } from './hit-refusals-visibility.ts';
 import { CLIP_PATH_OUT, CLIP_PATH_REASON, CLIP_RECT_OUT, CLIP_RECT_REASON } from './hit-refusals-clip-rect.ts';
 
 const cases = hitCases();
@@ -22,10 +21,10 @@ const cases = hitCases();
 describe('the host hit lane', () => {
   // The hit lane leaves out the union of the refusals in hit-refusals*.ts; taking any alone would bring the others' cases back.
   const transformed = (): string[] => nativeCases().filter((n) => n.programs.uikit.nodes.some((x) => x.writes.some((w) => w.kind === 'transform' && hitTransformRefusal(x.id, w.ops) !== null))).map((n) => n.case.id);
-  it('leaves out exactly the union of the rotated transform cases, the PNT1 stacking cases, the INL1a inline-box and <br> fixtures, the GRID fixtures, the T150a visibility fixtures, the MASK-CLIP clip and clip-path fixtures, the svg fixtures, the TXT2-g line-clamp fixtures, the FORM-a controls fixtures, the FLT float fixtures and the TXT1a-2 shaped cases, each with a named reason', () => {
+  it('leaves out exactly the union of the rotated transform cases, the PNT1 stacking cases, the INL1a inline-box and <br> fixtures, the GRID fixtures, the MASK-CLIP clip and clip-path fixtures, the svg fixtures, the TXT2-g line-clamp fixtures, the FORM-a controls fixtures, the FLT float fixtures and the TXT1a-2 shaped cases, each with a named reason', () => {
     const hit = new Set(cases.map((n) => n.case.id));
     const out = nativeCases().filter((n) => !hit.has(n.case.id));
-    const union = new Set([...shapedCaseIds(), ...transformed(), ...STACKING_OUT, ...INLINE_OUT, ...GRID_OUT, ...VISIBILITY_OUT, ...CLIP_RECT_OUT, ...CLIP_PATH_OUT, ...SVG_OUT, ...CLAMP_OUT, ...MARKER_OUT, ...CONTROLS_OUT, ...FLOAT_OUT]);
+    const union = new Set([...shapedCaseIds(), ...transformed(), ...STACKING_OUT, ...INLINE_OUT, ...GRID_OUT, ...CLIP_RECT_OUT, ...CLIP_PATH_OUT, ...SVG_OUT, ...CLAMP_OUT, ...MARKER_OUT, ...CONTROLS_OUT, ...FLOAT_OUT]);
     expect(out.map((n) => n.case.id)).toEqual(nativeCases().map((n) => n.case.id).filter((id) => union.has(id)));
     for (const n of out.filter((x) => INLINE_OUT.includes(x.case.id))) expect(() => caseHitTable(n), n.case.id).toThrow(INLINE_REASON);
     for (const n of out.filter((x) => CLAMP_OUT.includes(x.case.id))) expect(() => caseHitTable(n), n.case.id).toThrow(CLAMP_REASON);
@@ -41,7 +40,7 @@ describe('the host hit lane', () => {
 
   it('has a capture of every layout case, on the grid its hit table derives', () => {
     // Derived-count pin: every layout case, including the 10 hit-* cases.
-    expect(cases.filter((n) => n.case.id.startsWith('hit-')).map((n) => n.case.id)).toEqual(['hit-line-strip-a', 'hit-line-strip-a-rtl', 'hit-line-strip-b', 'hit-line-strip-b-rtl', 'hit-order', 'hit-order-rtl', 'hit-pointer-events', 'hit-pointer-events-rtl', 'hit-atomic-inline', 'hit-atomic-inline-rtl', 'hit-atomic-inline-context', 'hit-atomic-inline-context-rtl', 'hit-atomic-inline-context-nest', 'hit-atomic-inline-context-nest-rtl', 'hit-atomic-inline-notes', 'hit-atomic-inline-notes-rtl', 'hit-object-fit-rows', 'hit-object-fit-rows-rtl']);
+    expect(cases.filter((n) => n.case.id.startsWith('hit-')).map((n) => n.case.id)).toEqual(['hit-line-strip-a', 'hit-line-strip-a-rtl', 'hit-line-strip-b', 'hit-line-strip-b-rtl', 'hit-order', 'hit-order-rtl', 'hit-pointer-events', 'hit-pointer-events-rtl', 'hit-visibility', 'hit-visibility-rtl', 'hit-atomic-inline', 'hit-atomic-inline-rtl', 'hit-atomic-inline-context', 'hit-atomic-inline-context-rtl', 'hit-atomic-inline-context-nest', 'hit-atomic-inline-context-nest-rtl', 'hit-atomic-inline-notes', 'hit-atomic-inline-notes-rtl', 'hit-object-fit-rows', 'hit-object-fit-rows-rtl']);
     for (const n of cases) {
       const c = committedHits(n.case.id);
       const grid = hitGrid(caseHitTable(n), n.case.environment.viewport);
@@ -49,12 +48,11 @@ describe('the host hit lane', () => {
     }
   });
 
-  it('refuses by name every case whose program writes a rotated transform (T064 R13; SELD-R2b T146 lifts it), and the PNT1 stacking, INL1a inline, GRID, T150a visibility, MASK-CLIP clip and clip-path, svg (SVG-a2 lifts it), FORM-a controls, FLT float and shaped cases (TXT1a-2 phase R) with their own reasons', () => {
+  it('refuses by name every case whose program writes a rotated transform (T064 R13; SELD-R2b T146 lifts it), and the PNT1 stacking, INL1a inline, GRID, MASK-CLIP clip and clip-path, svg (SVG-a2 lifts it), FORM-a controls, FLT float and shaped cases (TXT1a-2 phase R) with their own reasons', () => {
     const refused = hitRefusedCases();
     const moved = new Set(transformed());
     expect(refused.filter((r) => moved.has(r.id)).map((r) => r.id)).toEqual(transformed());
     expect(refused.filter((r) => GRID_OUT.includes(r.id)).map((r) => r.id).sort()).toEqual([...GRID_OUT].sort());
-    expect(refused.filter((r) => VISIBILITY_OUT.includes(r.id)).map((r) => r.id).sort()).toEqual([...VISIBILITY_OUT].sort());
     expect(refused.filter((r) => CLIP_RECT_OUT.includes(r.id)).map((r) => r.id).sort()).toEqual([...CLIP_RECT_OUT].sort());
     expect(refused.filter((r) => CLIP_PATH_OUT.includes(r.id)).map((r) => r.id).sort()).toEqual([...CLIP_PATH_OUT].sort());
     expect(refused.filter((r) => CLAMP_OUT.includes(r.id)).map((r) => r.id).sort()).toEqual([...CLAMP_OUT].sort());
@@ -71,7 +69,6 @@ describe('the host hit lane', () => {
       else if (SVG_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(SVG_REASON);
       else if (CLAMP_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(CLAMP_REASON);
       else if (GRID_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(GRID_REASON);
-      else if (VISIBILITY_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(VISIBILITY_REASON);
       else if (CLIP_RECT_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(CLIP_RECT_REASON);
       else if (CLIP_PATH_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(CLIP_PATH_REASON);
       else if (MARKER_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(MARKER_REASON);
@@ -190,6 +187,10 @@ describe('planted hit faults (T047 §3.3 item 12, host half)', () => {
   it('pointerEventsNotInherited fails the inherited none cases', () => {
     const f = failing((n) => compareHits(n, committedHits(n.case.id), NO_HIT_FAULTS, { ...NO_HIT_TABLE_FAULTS, pointerEventsNotInherited: true }).mismatches.length);
     expect(f).toEqual(['hit-pointer-events', 'hit-pointer-events-rtl']);
+  });
+  it('visibilityIgnored fails exactly the cases where a box that is not visible covers a point', () => {
+    const count = (n: (typeof cases)[number], visibilityIgnored: boolean): number => compareHits(n, committedHits(n.case.id), NO_HIT_FAULTS, NO_HIT_TABLE_FAULTS, { visibilityIgnored }).mismatches.length;
+    expect(cases.filter((n) => count(n, true) > count(n, false)).map((n) => n.case.id)).toEqual(['hit-visibility', 'hit-visibility-rtl', 'visibility-basic', 'visibility-basic-rtl', 'visibility-paint', 'visibility-paint-rtl', 'visibility-flex', 'visibility-flex-rtl', 'visibility-text', 'visibility-text-rtl', 'visibility-root', 'visibility-root-rtl', 'visibility-outline', 'visibility-outline-rtl']);
   });
   // Each table plant is judged by the cases it fails beyond those the clean table fails.
   const beyondClean = (tableFaults: Partial<typeof NO_HIT_TABLE_FAULTS>): string[] => {

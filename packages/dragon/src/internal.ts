@@ -457,6 +457,7 @@ export function engineLayoutProjection(compiled: object, environment: Environmen
 // SELD-R1b (notes/T047-runtime-spec.md RT-9): the hit table and each element's hit facts.
 import { elementTransformWrite } from './lower/paint/transform.ts';
 import { hitFactContext, hitFactOtherContext } from './lower/paint/stacking.ts';
+import { visibilityOf } from './css/properties/visibility.ts';
 export type { HitFact } from './emit/runtime/hit.ts';
 export { HIT_FACTS_VERSION } from './emit/runtime/hit.ts';
 
@@ -466,18 +467,30 @@ const activates = (tag: string, attributes: ReadonlyMap<string, string>): boolea
 
 const NO_ORIGIN: import('@dragon/layout').TransformOrigin = { x: { kind: 'px', px: 0, percent: 0 }, y: { kind: 'px', px: 0, percent: 0 } };
 
-/** Every element's hit facts in one case: computed pointer-events, whether it was inherited, and whether it has a handler. */
-export function hitFacts(compiled: object, assignment: Assignment, state: string | null = null): ReadonlyMap<string, import('./emit/runtime/hit.ts').HitFact> | null {
+/** Fact plant: a box that is not visible keeps the pointer-events it computes, so the hit table hits it. */
+export type HitFactFaults = { readonly visibilityIgnored: boolean };
+export const NO_HIT_FACT_FAULTS: HitFactFaults = { visibilityIgnored: false };
+
+/**
+ * Every element's hit facts in one case: pointer-events as hit testing reads it, whether it was inherited, and whether it has a
+ * handler. Blink hit tests a box only when its visibility is visible and its pointer-events is not none (LayoutObject
+ * VisibleToHitTestRequest), and both inherit, so a box that is not visible is none here and its visible descendants still hit.
+ */
+export function hitFacts(compiled: object, assignment: Assignment, state: string | null = null, faults: HitFactFaults = NO_HIT_FACT_FAULTS): ReadonlyMap<string, import('./emit/runtime/hit.ts').HitFact> | null {
   const c = caseOf(compiled, assignment, state);
   if (typeof c === 'string' || c.resolved === null) return null;
   const out = new Map<string, import('./emit/runtime/hit.ts').HitFact>();
   const walk = (el: ResolvedElement): void => {
     const v = el.props.get('pointer-events');
     if (v === undefined || v.value.kind !== 'keyword' || (v.value.value !== 'auto' && v.value.value !== 'none')) throw new Error(`${el.element.address}: pointer-events did not resolve to auto or none`);
+    const vis = el.props.get('visibility');
+    if (vis === undefined) throw new Error(`${el.element.address}: visibility did not resolve`);
+    const hidden = !faults.visibilityIgnored && visibilityOf(vis.value) !== 'visible';
+    const none = v.value.value === 'none';
     const lengths = radiusLengths(el.props, el.element.address);
     const transform = elementTransformWrite(el);
     const context = hitFactContext(el);
-    out.set(el.element.address, { pointerEvents: v.value.value, inherited: v.origin === 'inherited', activation: activates(el.element.tag, el.element.attributes), radii: roundsAnyCorner(lengths) ? lengths : [], context, otherContext: context ? hitFactOtherContext(el) : '', transform: transform === null ? [] : transform.ops, origin: transform === null ? NO_ORIGIN : transform.origin });
+    out.set(el.element.address, { pointerEvents: none || hidden ? 'none' : 'auto', inherited: v.origin === 'inherited' && (none || !hidden), activation: activates(el.element.tag, el.element.attributes), radii: roundsAnyCorner(lengths) ? lengths : [], context, otherContext: context ? hitFactOtherContext(el) : '', transform: transform === null ? [] : transform.ops, origin: transform === null ? NO_ORIGIN : transform.origin });
     for (const ch of el.children) if (ch.kind === 'element') walk(ch);
   };
   walk(c.resolved);
