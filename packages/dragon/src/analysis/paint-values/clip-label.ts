@@ -4,7 +4,7 @@
 // box view then takes the clip label write (lower/paint/clip.ts): it draws nothing and is one accessibility element whose label is
 // the subtree's text that Chrome exposes (text under visibility: hidden is not). That stands for Chrome's tree only when the text is
 // plain: the refusals below name what one label would lose.
-import { clipHidesBox } from '../../css/properties/clip-rect.ts';
+import { clipHidesWhole } from '../../css/properties/clip-hidden.ts';
 import { valueToString } from '../computed.ts';
 import { GENERATED_TAGS } from '../elements.ts';
 import { isFocusable } from '../interaction.ts';
@@ -47,7 +47,7 @@ export function clipLabelRefusal(box: ResolvedElement): string | null {
     if (attribute !== undefined) return `${who} has the ${attribute} attribute, which changes what Chrome exposes beyond its text`;
     if (!root) {
       if (keywordOf(e, 'position') === 'fixed') return `${who} is fixed, and its view may be hosted outside the box view`;
-      if (clipHidesBox(e) === true) return `${who} is hidden by its own clip too, and nested labels are not proven`;
+      if (clipHidesWhole(e)) return `${who} is hidden by its own clip too, and nested labels are not proven`;
     }
     for (const c of e.children) {
       if (c.kind !== 'element') continue;

@@ -22,12 +22,12 @@ export type AtomicNode = LayoutBox | ControlBox | ReplacedLeaf;
 /**
  * Whether a node is an atomic inline: a box with display inline-block, inline-flex or inline-grid, a replaced leaf with an
  * inline-level display (inline, inline-block or inline-flex; css-display-3 §2.4: a replaced element is always atomic), or a
- * text field or block button control with display inline-block.
+ * text field, block button or theme leaf control with display inline-block.
  */
 export function isAtomicInline(node: LayoutNode): boolean {
   const d = node.style.display;
   if (node.kind === 'replaced') return d === 'inline' || d === 'inline-block' || d === 'inline-flex';
-  if (node.kind === 'control') return (node.control.kind === 'text-field' || node.control.kind === 'button-block') && d === 'inline-block';
+  if (node.kind === 'control') return (node.control.kind === 'text-field' || node.control.kind === 'button-block' || node.control.kind === 'theme-leaf') && d === 'inline-block';
   return d === 'inline-block' || d === 'inline-flex' || d === 'inline-grid';
 }
 
@@ -109,7 +109,8 @@ function atomicBaseline(ctx: Ctx, box: LayoutBox, frag: Frag, last: LU | null, l
 }
 
 /**
- * An inline-block control's baseline from its border-box top. A text field's is its editor line's whatever its overflow
+ * An inline-block control's baseline from its border-box top. A theme leaf's is its border box's block-end edge (planted fault
+ * themeLeafMarginBaseline: none, so its margin box's, as an empty inline-block's). A text field's is its editor line's whatever its overflow
  * (TextFieldInputType::AdjustStyle). A button is laid out by BlockLayoutAlgorithm like any inline-block (html_button_element.cc
  * :59-74), so it takes its last line box's baseline, moved down with its centred contents (block_layout_algorithm.cc:1442-1451,
  * box_fragment_builder.cc:402-410). Without one it synthesizes the baseline at its content box's block-end edge
@@ -117,6 +118,7 @@ function atomicBaseline(ctx: Ctx, box: LayoutBox, frag: Frag, last: LU | null, l
  * scroll container button clamps its last baseline to [0, its border-box height] (logical_box_fragment.h:61-70).
  */
 function controlBaseline(ctx: Ctx, box: ControlBox, frag: Frag, last: LU | null, lastFlex: string, cbInline: LU): LU | null {
+  if (box.control.kind === 'theme-leaf') return ctx.faults.themeLeafMarginBaseline ? null : frag.height;
   if (box.control.kind !== 'button-block') return last;
   if (lastFlex !== '') unsupported('flex-baseline', lastFlex, 'CSS2 §10.8.1, css-flexbox-1 §8.5', `the last baseline of flex container ${lastFlex} would give the baseline of inline-block button ${box.id}`);
   if (last === null) {

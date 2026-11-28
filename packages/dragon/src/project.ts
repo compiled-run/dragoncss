@@ -244,8 +244,11 @@ export type InternalRecord = {
   readonly hostImages: boolean;
   /** TXT-W: the synthetic bold and oblique plants, which the native lowering reads (native-program.ts textPaint). */
   readonly textPlants: TextPlants;
-  /** Factored states with @media bands: per group, whether no element it changes is styled differently in another band (bandFree). */
-  readonly groupBandFree: readonly boolean[] | null;
+  /**
+   * Factored states with @media bands: per group, per band, the band whose rows it reads (bandClasses): bands in which every element
+   * the group changes styles alike share one, the initial band's class reading the initial band.
+   */
+  readonly groupBandClasses: readonly (readonly number[])[] | null;
 };
 
 /**
@@ -1335,7 +1338,7 @@ function hitModelRefusals(cases: readonly CaseResult[], rules: readonly Rule[], 
         if (pseudo === null) continue;
         const origin = interactionRuleOrigin(r, c.resolved.element.node.origin);
         const message = fact !== null
-          ? `:${pseudo} needs Dragon hit testing through ${fact.property} on ${fact.address}, which is not built yet (package SELD-R2b)`
+          ? `:${pseudo} needs Dragon hit testing through ${fact.property === 'z-index' ? 'the negative z-index' : fact.property} on ${fact.address}, which is not built yet (package SELD-R2b)`
           : control !== null
             ? `:${pseudo} needs Dragon hit testing through the form control ${control}, which is not built yet (FORM-a)`
             : `:${pseudo} needs Dragon hit testing through the ${unmodelled?.kind} ${unmodelled?.address}${unmodelled?.reason === undefined ? '' : ` (${unmodelled.reason})`}, which is not built yet (package ${unmodelled?.pkg} hit model)`;
@@ -1343,7 +1346,9 @@ function hitModelRefusals(cases: readonly CaseResult[], rules: readonly Rule[], 
         if (seen.has(id)) continue;
         seen.add(id);
         const manual = fact !== null
-          ? `Keep ${fact.property} at its initial value in a document with :${pseudo} rules, or style the state with a component state until SELD-R2b.`
+          ? fact.property === 'z-index'
+            ? `Give ${fact.address} z-index auto, 0 or a positive integer in a document with :${pseudo} rules, or style the state with a component state until SELD-R2b.`
+            : `Keep ${fact.property} at its initial value in a document with :${pseudo} rules, or style the state with a component state until SELD-R2b.`
           : control !== null
             ? `Style the state with a component state in a document with a form control until control hit testing is built.`
             : unmodelled?.pkg === 'INL2a'
@@ -1589,7 +1594,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
   let images: CompiledImages | null = null;
   // MQ-a: every band's cases, band 0 first (one entry for a sheet without @media), and the band the native output comes from.
   let bandCases: { readonly band: Band | null; readonly cases: CaseResult[] }[] = [];
-  let groupBandFree: readonly boolean[] | null = null;
+  let groupBandClasses: readonly (readonly number[])[] | null = null;
   let animation: AnimationAnalysis | null = null;
   let laneOnlyNative: ('ios' | 'android')[] = [];
   let focusable = true;
@@ -1823,12 +1828,13 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
         : bands !== null && bands.partition.bands.length > 1 ? 'media bands' : null;
       refuseStatefulStrokes(stateful, bandCases.flatMap((r) => r.cases.flatMap((c) => [...(c.resolved === null ? [] : [c.resolved]), ...c.interaction.map((i) => i.native)])), nativeTargets, diagnostics, options.faults);
       // MQ-R1: the (assignment, band) pairs of a native state table count against its 64-assignment limit.
-      groupBandFree = linked?.groups == null || bands === null ? null : linked.groups.map((g) => bandFree(g.cases, bandCases));
+      groupBandClasses = linked?.groups == null || bands === null ? null : linked.groups.map((g) => bandClasses(g.cases, bandCases, nativeBand));
       if (bands !== null) {
         const count = bands.partition.bands.length;
-        // A group whose elements style alike in every band holds one row per assignment; the others one per (assignment, band).
-        const rows = linked?.groups == null ? cases.length * count : Math.max(...linked.groups.map((g, k) => g.cases.length * (groupBandFree?.[k] === true ? 1 : count)));
-        refuseBandedStateSpace(rows / count, count, bands.conditions, nativeTargets, diagnostics);
+        // A group holds one row per (assignment, band class): one per assignment when its elements style alike in every band.
+        const tables = linked?.groups == null ? [{ assignments: cases.length, rows: count }] : linked.groups.map((g, k) => ({ assignments: g.cases.length, rows: new Set(groupBandClasses?.[k] ?? []).size }));
+        const widest = tables.reduce((a, b) => (b.assignments * b.rows > a.assignments * a.rows ? b : a));
+        refuseBandedStateSpace(widest.assignments, count, widest.rows, bands.conditions, nativeTargets, diagnostics);
       }
       // MQ-R1 R8: on native, a transition a size change would start is refused until MQ-Rt; each band's listings are analysed apart.
       // Like the animation support gate, it is a support fact: derive mode (the lanes that find what passes) does not apply it.
@@ -2075,7 +2081,7 @@ function analyze<K extends string>(config: { projectId: string; targets: object;
       images: images === null ? new Map() : images.bytes,
       hostImages: options.hostImages === true,
       textPlants: { ahemSyntheticBoldFrom700: options.faults.ahemSyntheticBoldFrom700, ahemBoldUnstroked: options.faults.ahemBoldUnstroked, ahemObliqueUnsheared: options.faults.ahemObliqueUnsheared, textFillIgnored: options.faults.textFillIgnored, textStrokeAccepted: options.faults.textStrokeAccepted },
-      groupBandFree,
+      groupBandClasses,
       cases: cases.map((c) => ({
         key: c.key,
         assignment: c.assignment,
@@ -2260,10 +2266,11 @@ export function caseByAssignment(record: InternalRecord, assignment: Assignment)
 }
 
 /**
- * Whether a group's elements style alike in every @media band: each element one of its cases resolves differently from the initial
- * case, in that case and the initial one, in every interaction state, has one print in every band. Its table then needs no band.
+ * A group's band classes: per @media band, the band whose rows the group's table holds for it. Two bands share a class when each
+ * element one of its cases resolves differently from the initial case, in each case of the group and in every interaction state, has
+ * the same print in both. A class reads the initial band when it holds it, else its first band. One class: the table needs no band.
  */
-function bandFree(group: readonly number[], bandCases: readonly { readonly cases: readonly CaseResult[] }[]): boolean {
+function bandClasses(group: readonly number[], bandCases: readonly { readonly cases: readonly CaseResult[] }[], initialBand: number): number[] {
   const prints = new WeakMap<ReadonlyMap<Longhand, ResolvedValue>, string>();
   const printOf = (props: ReadonlyMap<Longhand, ResolvedValue>): string => {
     const known = prints.get(props);
@@ -2272,10 +2279,12 @@ function bandFree(group: readonly number[], bandCases: readonly { readonly cases
     prints.set(props, made);
     return made;
   };
+  // An element's print holds its text children's content too: a group that changes only a text changes the text's parent, whose
+  // styles the text's font and colour come from.
   const byAddress = (root: ResolvedElement | null, only: ReadonlySet<string> | null): Map<string, string> => {
     const out = new Map<string, string>();
     const walk = (el: ResolvedElement): void => {
-      if (only === null || only.has(el.element.address)) out.set(el.element.address, printOf(el.props));
+      if (only === null || only.has(el.element.address)) out.set(el.element.address, `${printOf(el.props)}\u0001${el.children.map((c) => (c.kind === 'text' ? c.text : '\u0002')).join('\u0003')}`);
       for (const c of el.children) if (c.kind === 'element') walk(c);
     };
     if (root !== null) walk(root);
@@ -2307,11 +2316,16 @@ function bandFree(group: readonly number[], bandCases: readonly { readonly cases
   }
   const treesOf = (c: CaseResult): Map<string, string>[] => [byAddress(c.resolved, touched), ...c.interaction.map((i) => byAddress(i.resolved, touched))];
   const same = (x: Map<string, string>, y: Map<string, string>): boolean => x.size === y.size && [...x].every(([a, p]) => y.get(a) === p);
-  return group.every((i) => {
-    const first = treesOf((bandCases[0] as { cases: readonly CaseResult[] }).cases[i] as CaseResult);
-    return bandCases.slice(1).every((b) => {
-      const trees = treesOf(b.cases[i] as CaseResult);
-      return trees.length === first.length && trees.every((t, k) => same(t, first[k] as Map<string, string>));
-    });
+  const alike = (x: number, y: number): boolean => group.every((i) => {
+    const a = treesOf((bandCases[x] as { cases: readonly CaseResult[] }).cases[i] as CaseResult);
+    const b = treesOf((bandCases[y] as { cases: readonly CaseResult[] }).cases[i] as CaseResult);
+    return a.length === b.length && a.every((t, k) => same(t, b[k] as Map<string, string>));
+  });
+  const reps: number[] = [initialBand];
+  return bandCases.map((_, band) => {
+    const rep = reps.find((r) => alike(r, band));
+    if (rep !== undefined) return rep;
+    reps.push(band);
+    return band;
   });
 }

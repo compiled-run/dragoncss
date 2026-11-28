@@ -2,6 +2,7 @@
 // button with text beside an element passes on its compared text lines instead of failing as a node Chrome does not have.
 import { describe, expect, it } from 'vitest';
 import type { ControlBox, LayoutBox, LayoutInput, LayoutRect, LayoutStyle } from '@dragon/layout';
+import { NORMAL_NUMERIC } from '@dragon/layout';
 import type { WebCapture } from '../src/capture.ts';
 import { compareLayout } from '../src/compare.ts';
 import { ENVIRONMENT } from '../src/fixtures.ts';
@@ -11,7 +12,7 @@ const lu = (px: number): LayoutRect['x'] => (px * 64) as unknown as LayoutRect['
 const rect = (id: string, parent: string | null, y: number, height: number): LayoutRect => ({ id, parent, x: lu(0), y: lu(y), width: lu(40), height: lu(height) });
 
 describe('compareLayout and form controls', () => {
-  const anon: LayoutBox = { kind: 'box', id: 'btn:anon0', boxType: 'anonymous', style, strut: { font: { family: 'Ahem', size: 10, specifiedSize: { kind: 'px', value: 10 }, absoluteSize: true }, lineHeight: { kind: 'normal' } }, marker: null, children: [{ kind: 'text', id: 't', text: 'XX', font: { family: 'Ahem', size: 10, specifiedSize: { kind: 'px', value: 10 }, absoluteSize: true }, lineHeight: { kind: 'normal' }, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap', letterSpacing: { kind: 'px', value: 0 }, wordSpacing: { kind: 'px', value: 0 }, overflowWrap: 'normal', wordBreak: 'normal', smallCaps: false }] };
+  const anon: LayoutBox = { kind: 'box', id: 'btn:anon0', boxType: 'anonymous', style, strut: { font: { family: 'Ahem', size: 10, specifiedSize: { kind: 'px', value: 10 }, absoluteSize: true }, lineHeight: { kind: 'normal' } }, marker: null, children: [{ kind: 'text', id: 't', text: 'XX', font: { family: 'Ahem', size: 10, specifiedSize: { kind: 'px', value: 10 }, absoluteSize: true }, lineHeight: { kind: 'normal' }, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap', letterSpacing: { kind: 'px', value: 0 }, wordSpacing: { kind: 'px', value: 0 }, overflowWrap: 'normal', wordBreak: 'normal', smallCaps: false, variantNumeric: NORMAL_NUMERIC }] };
   const button: ControlBox = { kind: 'control', id: 'btn', boxType: 'element', style, control: { kind: 'button-block' }, strut: null, children: [anon, { kind: 'box', id: 'el', boxType: 'element', style, strut: null, marker: null, children: [] }] };
   const input = { viewport: ENVIRONMENT.viewport, devicePixelRatio: 1, root: { kind: 'box', id: 'root', boxType: 'element', style, children: [button] } } as unknown as LayoutInput;
   const absolute = new Map([rect('root', null, 0, 40), rect('btn', 'root', 0, 30), rect('btn:anon0', 'btn', 0, 10), rect('t', 'btn:anon0', 0, 10), rect('t:line0', 't', 0, 10), rect('el', 'btn', 10, 8)].map((r) => [r.id, r]));

@@ -103,7 +103,7 @@ public func anchor_anchorOf(_ anchors: JsStringMap<AnchorRect>, _ id: JsString, 
   let r: AnchorRect? = anchors.get(id)
   // ts: packages/layout/src/anchor.ts:74
   if (r == nil) {
-    try unsupported_unsupported(S.s_anchor_order, box, S.s717, jsConcat(S.s1214, id, S.s167, box, S.s130))
+    try unsupported_unsupported(S.s_anchor_order, box, S.s721, jsConcat(S.s1224, id, S.s169, box, S.s132))
   }
   return try jsUnwrap(r)
 }
@@ -408,11 +408,11 @@ public func anchor_placeOption(_ ctx: Ctx, _ box: LayoutBox, _ o: AnchorOption, 
   }
   // ts: packages/layout/src/anchor.ts:346
   if try (ratio_hasAspectRatio(s, ctx.faults) && (sizeKeyword(s.width.kind) || sizeKeyword(s.height.kind))) {
-    try unsupported_unsupported(S.s_intrinsic_size_keyword, box.id, S.s741, jsConcat(S.s631, box.id))
+    try unsupported_unsupported(S.s_intrinsic_size_keyword, box.id, S.s745, jsConcat(S.s635, box.id))
   }
   // ts: packages/layout/src/anchor.ts:347
   if (s.height.kind == S.s_stretch) {
-    try unsupported_unsupported(S.s_intrinsic_size_keyword, box.id, S.s740, jsConcat(S.s862, box.id))
+    try unsupported_unsupported(S.s_intrinsic_size_keyword, box.id, S.s744, jsConcat(S.s867, box.id))
   }
   let specified: Double? = try (sizeKeyword(s.width.kind) ? (nil as Double?) : (box_resolveInlineLengthWith(box_lengthWidth(box.id, s.width), regionWidth, ctx.faults) as Double?))
   var width: Double
@@ -511,7 +511,7 @@ public func anchor_layoutAnchored(_ ctx: Ctx, _ box: LayoutBox, _ cb: Containing
   let a: AnchorStyle? = box.style.anchor
   // ts: packages/layout/src/anchor.ts:425
   if (a == nil) {
-    throw JsError(message: jsConcat(box.id, S.s127))
+    throw JsError(message: jsConcat(box.id, S.s129))
   }
   let options: JsArray<AnchorOption> = try jsUnwrap(a).options
   let base: Anchor_Placed = try anchor_placeOption(ctx, box, jsUnwrap(jsAt(options, 0.0)), jsUnwrap(a).anchor, cb, staticX, staticY, anchors)

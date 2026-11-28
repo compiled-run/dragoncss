@@ -14,7 +14,7 @@ import type { CapturedNode, CollectedElement, Rect } from './capture.ts';
 import { nameCollected } from './capture.ts';
 import type { ParityCase } from './cases.ts';
 import { casesOf } from './cases.ts';
-import { CHROME_VERSION, openPage } from './chrome.ts';
+import { CHROME_VERSION, launchChrome, openPage } from './chrome.ts';
 import { compareZoomedLayout } from './compare.ts';
 import type { RgbaImage } from './native-compare.ts';
 import { decodePng, rasterSize } from './pixel-reference.ts';
@@ -28,6 +28,7 @@ import { repoPath } from './paths.ts';
 import { compileFixture, fixtureCompileInput, webCssOf } from './pipeline.ts';
 import { canonicalJsonText } from './state-cases.ts';
 import { MediaRuntime } from './media-runtime.ts';
+import { checkTouchEmulationHolds } from './trace-capture.ts';
 
 export const RESIZE_SCHEMA = 'dragon-resize-capture/1';
 export const RESIZE_DPRS: readonly number[] = [1, 2, 2.625, 3];
@@ -102,6 +103,22 @@ export function blinkPointerArgs(p: PointerReadings): string[] {
   pointerBits(p);
   const available = p.anyPointer.length === 0 ? POINTER_TYPE.none : p.anyPointer.reduce((a, k) => a | POINTER_TYPE[k], 0);
   return [`--blink-settings=primaryPointerType=${POINTER_TYPE[p.pointer]},availablePointerTypes=${available},primaryHoverType=${HOVER_TYPE[p.hover]},availableHoverTypes=${HOVER_TYPE[p.anyHover]}`];
+}
+
+/**
+ * A resize capture's Chrome at a DPR, with a pointers step's --blink-settings or none. Playwright's own pointer settings are dropped:
+ * Blink writes them past touch emulation on any WebPreferences update, which turned a touch step back to (pointer: fine) and
+ * (hover: hover) when one arrived mid-script, so a launch for touch steps is checked to keep its emulation through one first.
+ */
+export async function launchResizeChrome(dpr: number, extra: readonly string[]): Promise<Browser> {
+  const browser = await launchChrome(dpr, { extra, withoutPointerSettings: true });
+  try {
+    if (extra.length === 0) await checkTouchEmulationHolds(browser);
+  } catch (e) {
+    await browser.close();
+    throw e;
+  }
+  return browser;
 }
 
 /**
@@ -297,13 +314,12 @@ export async function captureResize(browser: Browser, c: ResizeCase, dpr: number
     const dump = async (size: Size): Promise<void> => {
       const inner = await page.evaluate(() => [window.innerWidth, window.innerHeight]);
       if (inner[0] !== size.width || inner[1] !== size.height) throw new Error(`${c.id} DPR ${dpr}: the viewport is ${inner.join('x')}, the script's ${size.width}x${size.height}`);
-      samples.push({ size, nodes: nameCollected(await page.evaluate(pageStep, { kind: 'dump', props } as PageStep)) });
       // MQ-R2: Chrome answers the readings the script says it emulates, or the capture is not of them.
-      const device = (points[samples.length - 1] as ScriptPoint).device;
-      const queries = readingQueries(device);
+      const queries = readingQueries((points[samples.length] as ScriptPoint).device);
       const got = await page.evaluate((qs) => qs.map((q) => matchMedia(q).matches), queries.map(([q]) => q));
       const wrong = queries.filter(([, want], k) => got[k] !== want).map(([q, want]) => `${q} ${want ? 'does not match' : 'matches'}`);
-      if (wrong.length > 0) throw new Error(`${c.id} DPR ${dpr} step ${samples.length - 1}: Chrome's readings are not the script's: ${wrong.join(', ')}`);
+      if (wrong.length > 0) throw new Error(`${c.id} DPR ${dpr} step ${samples.length}: Chrome's readings are not the script's: ${wrong.join(', ')}`);
+      samples.push({ size, nodes: nameCollected(await page.evaluate(pageStep, { kind: 'dump', props } as PageStep)) });
       if (shot !== null) {
         // A resize can leave raster tiles Chrome does not repaint (a box edge of the previous size stays in about half the runs of
         // mqr-music-shape step 1 at DPR 2), so the pixels are taken after one whole-document repaint: the root hidden for a frame and

@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+/* Checkboxes and radios at their UA display, inline-block: atomic inlines on their lines, with the UA margins (a checkbox's
+   3px 3px 3px 4px, a radio's 3px 3px 0 5px). A radio is laid out only inside a box an empty clip-path hides, as @markless/ui's
+   radio group writes it; Dragon does not draw a themed radio. */
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+.c { width: 200px; margin-bottom: 4px; background-color: rgb(236, 240, 244); }
+.big { font-size: 24px; }
+.lh { line-height: 30px; }
+.narrow { width: 40px; }
+.sized { width: 20px; height: 20px; }
+/* html.css resets an input's line-height to normal, which Dragon's UA rows do not carry yet (a value equal to the initial one). */
+.lh input { line-height: normal; }
+.tiny { width: 8px; height: 6px; }
+.mg { margin: 0; }
+.choice { position: relative; display: flex; align-items: center; gap: 8px; width: 200px; height: 24px; margin-bottom: 4px; background-color: rgb(250, 200, 60); }
+.sr { clip-path: inset(50%); height: 1px; overflow: hidden; position: absolute; white-space: nowrap; width: 1px; }
+.dot { width: 12px; height: 12px; background-color: rgb(30, 160, 90); }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="words" class="c">XX <input data-dragon-id="c1" type="checkbox"> XX</div>
+<div data-dragon-id="checked" class="c">XX<input data-dragon-id="c2" type="checkbox" checked="">XX</div>
+<div data-dragon-id="size" class="c big">XX <input data-dragon-id="c3" type="checkbox"> XX</div>
+<div data-dragon-id="tall" class="c lh">XX <input data-dragon-id="c4" type="checkbox" class="sized" checked=""> XX</div>
+<div data-dragon-id="small" class="c">XX <input data-dragon-id="c5" type="checkbox" class="tiny"> X <input data-dragon-id="c6" type="checkbox" class="mg"> XX</div>
+<div data-dragon-id="wrap" class="c narrow">XXX <input data-dragon-id="c7" type="checkbox"> XXX <input data-dragon-id="c8" type="checkbox" checked=""> X</div>
+<div data-dragon-id="alone" class="c"><input data-dragon-id="c9" type="checkbox"></div>
+<div data-dragon-id="choice1" class="choice"><span data-dragon-id="sr1" class="sr"><input data-dragon-id="r1" type="radio" name="size" checked=""></span><div data-dragon-id="dot1" class="dot"></div><label data-dragon-id="l1">Small</label></div>
+<div data-dragon-id="choice2" class="choice"><span data-dragon-id="sr2" class="sr"><input data-dragon-id="r2" type="radio" name="size"></span><div data-dragon-id="dot2" class="dot"></div><label data-dragon-id="l2">Large</label></div>
+<div data-dragon-id="choice3" class="choice big"><span data-dragon-id="sr3" class="sr"><input data-dragon-id="r3" type="radio" name="other" class="sized"></span><div data-dragon-id="dot3" class="dot"></div><label data-dragon-id="l3">X</label></div>
+<div data-dragon-id="choice4" class="choice"><span data-dragon-id="sr4" class="sr"><input data-dragon-id="c10" type="checkbox"></span><div data-dragon-id="dot4" class="dot"></div><label data-dragon-id="l4">Pin</label></div>
+</body>
+</html>

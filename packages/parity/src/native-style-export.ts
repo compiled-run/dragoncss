@@ -152,6 +152,11 @@ export type ExportGroup = Pick<ExportTarget, 'states' | 'initial' | 'assignments
   /** The group's state keys, without @env#band, which every table shares. */
   readonly groupStates: readonly string[];
   readonly owned: readonly string[];
+  /**
+   * When some @media bands share the group's rows: per band, the band whose rows it reads, the only values of its @env#band. The
+   * product maps the page's band through it (state-groups.ts); slimTarget writes the product instead, so a host never reads it.
+   */
+  readonly bandClasses?: readonly number[];
 };
 
 export type NativeStyleExport = {
@@ -501,7 +506,7 @@ export function nativeStyleExport(styles: NativeStyles, component: string, sourc
         // A group's interaction states lay out as plan assignments after its own entries, which follow the tables before it.
         const first = merged?.groups?.[k]?.first ?? 0;
         const interaction = table.interaction === undefined ? {} : { interaction: { levels: table.interaction.levels.map((l) => (l.planAssignments === undefined ? l : { ...l, planAssignments: l.planAssignments.map((x) => x + first) })) } };
-        return { groupStates: g.states, owned: g.owned, ...table, ...interaction };
+        return { groupStates: g.states, owned: g.owned, ...table, ...interaction, ...(g.bandClasses === undefined ? {} : { bandClasses: g.bandClasses }) };
       }),
     };
     const { interaction: pageInteraction, ...own } = page;

@@ -64,7 +64,7 @@ import type { EngineFaults } from './block.ts';
 import { calcHasPercent, evaluateCalc, resolveCalc } from './calc.ts';
 import { menuListInnerInsets, textAreaScrollbar, zoomTrackLength } from './controls.ts';
 import type { FontLengths, TextMeasurer } from './text.ts';
-import { AHEM_FONT_DATA, ahemMeasurerWith } from './text.ts';
+import { AHEM_FONT_DATA, ahemMeasurerWith, NORMAL_NUMERIC } from './text.ts';
 import { unsupported } from './unsupported.ts';
 import {
   clampLengthFloat,
@@ -306,7 +306,7 @@ function editorLineHeightIsNormal(c: Extract<ControlKind, { kind: 'text-field' }
 /** FORM-b: while a select's line height is normal its inner element's is the font's ascent + descent (menu_list_inner_element.cc:45-55). */
 function menuListLineHeight(font: FontSpec, env: Env): LineHeightValue {
   refuseUnknownFace(env.measurer, font, env);
-  const m = env.measurer.metrics({ family: font.family, size: font.size, letterSpacing: 0, wordSpacing: 0, smallCaps: false });
+  const m = env.measurer.metrics({ family: font.family, size: font.size, letterSpacing: 0, wordSpacing: 0, smallCaps: false, variantNumeric: NORMAL_NUMERIC });
   return { kind: 'px', value: toPx(add(m.ascent, m.descent)) };
 }
 
@@ -395,7 +395,7 @@ function resolveText(t: TextLeaf, parent: Env): TextLeaf {
     kind: 'text', id: t.id, text: t.text, font, lineHeight: resolveLineHeightValue(t.lineHeight, size, env), whiteSpaceCollapse: t.whiteSpaceCollapse, textWrapMode: t.textWrapMode,
     letterSpacing: resolveSpacing('letter-spacing', t.letterSpacing, env),
     wordSpacing: resolveSpacing('word-spacing', t.wordSpacing, env), overflowWrap: t.overflowWrap, wordBreak: t.wordBreak,
-    smallCaps: t.smallCaps,
+    smallCaps: t.smallCaps, variantNumeric: t.variantNumeric,
   };
 }
 
@@ -688,7 +688,7 @@ function fontLengths(font: FontSpec, env: Env): FontLengths {
   const size = computedSize(font, env);
   const m = env.faults.exUntruncatedFontSize ? ahemMeasurerWith({ metricHalfUp: env.faults.metricHalfUp, untruncatedFontSize: true }) : env.measurer;
   refuseUnknownFace(m, font, env);
-  return m.lengths({ family: font.family, size, letterSpacing: 0, wordSpacing: 0, smallCaps: false });
+  return m.lengths({ family: font.family, size, letterSpacing: 0, wordSpacing: 0, smallCaps: false, variantNumeric: NORMAL_NUMERIC });
 }
 
 /** A face the measurer does not hold is refused with text-glyph, at the node whose font or length names it. */
@@ -719,7 +719,7 @@ function computedLineHeightPx(lh: LineHeightValue, font: FontSpec, env: Env): nu
         return floatAdd(floatAdd(fontMetricPx(i, d.unitsPerEm, d.ascent), fontMetricPx(i, d.unitsPerEm, d.descent)), fontMetricPx(i, d.unitsPerEm, d.lineGap));
       }
       refuseUnknownFace(env.measurer, font, env);
-      const m = env.measurer.metrics({ family: font.family, size, letterSpacing: 0, wordSpacing: 0, smallCaps: false });
+      const m = env.measurer.metrics({ family: font.family, size, letterSpacing: 0, wordSpacing: 0, smallCaps: false, variantNumeric: NORMAL_NUMERIC });
       return toPx(add(add(m.ascent, m.descent), m.lineGap));
     }
     case 'number':

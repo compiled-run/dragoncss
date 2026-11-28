@@ -1,0 +1,21 @@
+{
+  "case": "text-font-variant-numeric",
+  "chrome": "145.0.7632.6",
+  "dpr": 2.625,
+  "texts": [
+    {"id":"pn:text0","data":"1111 2020 1/2 0123456789","lines":3,"units":[0,0,0,0,0,0,0,0,0,0,1,1,1,1,2,2,2,2,2,2,2,2,2,2],"blank":[9,13]},
+    {"id":"on:text0","data":"Since 1984, 2025 and 3/4","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"df:text0","data":"1/2 3/4 5/8 cups","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"ord:text0","data":"1st 2nd 3rd 4th","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"all:text0","data":"1st of 1/2 2020 11","lines":2,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1],"blank":[15]},
+    {"id":"sh:text0","data":"1111 10:01","lines":1,"units":[0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"tn:text0","data":"1111 2222 1010 11:11","lines":3,"units":[0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,2,2,2,2,2],"blank":[9,14]},
+    {"id":"tz:text0","data":"0101 1/2 1st 10.01","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]},
+    {"id":"mixed:text0","data":"Paid 111 ","lines":1,"units":[0,0,0,0,0,0,0,0,0],"blank":[8]},
+    {"id":"mixed:text1","data":" of 1,111","lines":2,"units":[0,0,0,0,1,1,1,1,1],"blank":[3]},
+    {"id":"mixed1:text0","data":"111.11","lines":1,"units":[0,0,0,0,0,0],"blank":[]},
+    {"id":"r1:text0","data":"11 11","lines":1,"units":[0,0,0,0,0],"blank":[]},
+    {"id":"r2:text0","data":"11 11","lines":1,"units":[0,0,0,0,0],"blank":[]},
+    {"id":"plain:text0","data":"1111 0101 1/2","lines":1,"units":[0,0,0,0,0,0,0,0,0,0,0,0,0],"blank":[]}
+  ]
+}

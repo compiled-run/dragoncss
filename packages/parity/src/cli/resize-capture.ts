@@ -3,12 +3,11 @@
 // Directories of cases that no longer exist are removed. Run with: pnpm run parity:resize-capture
 import { mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
-import { launchChrome } from '../chrome.ts';
 import { zoomGuard } from '../dpr.ts';
 import { hostPlatform, requireReferencePlatform } from '../platform.ts';
 import type { Browser } from 'playwright';
 import type { PointerReadings } from 'dragon';
-import { blinkPointerArgs, captureResize, expectedResizeDir, RESIZE_DPRS, resizeCaptureJson, resizeCapturePath, resizeCases, resizePixelsPath } from '../resize-capture.ts';
+import { blinkPointerArgs, captureResize, expectedResizeDir, launchResizeChrome, RESIZE_DPRS, resizeCaptureJson, resizeCapturePath, resizeCases, resizePixelsPath } from '../resize-capture.ts';
 import { requireSoftwareRaster } from '../pixel-reference.ts';
 
 requireReferencePlatform(hostPlatform());
@@ -25,8 +24,7 @@ for (const dpr of RESIZE_DPRS) {
   const launched: Browser[] = [];
   const pixels = dpr !== 1;
   const launch = async (extra: readonly string[]): Promise<Browser> => {
-    // A pointers step's --blink-settings replace Playwright's own pointer settings rather than follow them.
-    const b = await launchChrome(dpr, { extra, withoutPointerSettings: extra.length > 0 });
+    const b = await launchResizeChrome(dpr, extra);
     launched.push(b);
     // The launch must lay out at the DPR, not only report it (dpr.ts zoomGuard); DPR 1 has no guard value and needs none.
     if (dpr !== 1) await zoomGuard(b, dpr);

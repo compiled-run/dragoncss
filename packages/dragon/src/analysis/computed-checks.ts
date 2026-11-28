@@ -99,7 +99,8 @@ import { checkInlineLevel } from './blockify.ts';
 import { isTopLayer, topLayerAncestorsOf } from './top-layer.ts';
 import { uaTagOf } from './elements.ts';
 import { isDisabled } from './match.ts';
-import { buttonAppearance, inputTypeState, isCheckboxType, isControlTag, isRangeType, isTextFieldType, selectAppearance, textAreaAppearance, textFieldAppearance } from './elements/controls.ts';
+import { clipHidesWhole } from '../css/properties/clip-hidden.ts';
+import { buttonAppearance, inputTypeState, isCheckboxType, isControlTag, isRadioType, isRangeType, isTextFieldType, selectAppearance, textAreaAppearance, textFieldAppearance } from './elements/controls.ts';
 import { isReplacedTag } from './elements/replaced.ts';
 import { isSvgShapeTag, shapeOf, svgGeometryOf, type SvgGeometryProperty, svgPaintRefusal, svgPercentageRefusal, svgShapePainted, svgZeroLengthSubpath } from './elements/svg.ts';
 import { colorMatrixFilters } from '../css/properties/filter.ts';
@@ -118,6 +119,7 @@ import type { Rgba8 } from '../css/color.ts';
 import { parseComputedColor, serializeColor } from '../css/color.ts';
 import { markerTypeOf } from './markers.ts';
 import { glyphFill, usedColors } from '../lower/paint/colors.ts';
+import { emptyInlineBox } from './paint-values/empty-inline.ts';
 import { checkOutlinePlacement } from './paint-values/outline.ts';
 import { checkTransformContexts, elementWillChange } from './paint-values/transform.ts';
 import { opacityOf } from '../css/properties/effects.ts';
@@ -602,7 +604,7 @@ function checkInline(el: ResolvedElement, targets: readonly string[], diagnostic
       // The native runtime places inline box views unpainted (their decorations are INL1b), so a paint an inline box would draw
       // is refused on native rather than dropped. Of the paint longhands, only background-color paints an inline box without a
       // border width (which the inline/ltr context refuses); transform, overflow and will-change do not apply to inline boxes.
-      if (it.kind === 'open' && usedColors(it.el)['background-color'].alpha !== 0) {
+      if (it.kind === 'open' && usedColors(it.el)['background-color'].alpha !== 0 && !emptyInlineBox(it.el)) {
         const bg = valueToString((it.el.props.get('background-color') as ResolvedValue).value);
         refuseNative(it.el, 'background', `background-color: ${bg} on the inline box <${it.el.element.tag}> ${it.el.element.address}: the native runtime does not paint inline boxes until INL1b (inline box decorations), so the background would be dropped`, `Move the background to a block, or remove it from <${it.el.element.tag}> ${it.el.element.address}, until INL1b.`);
       }
@@ -1717,10 +1719,10 @@ function refuseOn(el: ResolvedElement, v: ResolvedValue | null, what: string, co
   }
 }
 
-/** FORM-a: on a native target a button or range is drawn but not interactive, and its view has no control accessibility role yet. */
+/** FORM-a: on a native target a button, select, checkbox, radio or range is drawn but not interactive, and its view has no control accessibility role yet. */
 function noteStaticOnNative(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
   const tag = el.element.tag;
-  const what = tag === 'button' ? `<button> ${el.element.address} needs the app to handle its activation, and screen readers read its label as static text` : tag === 'select' ? `<select> ${el.element.address} shows its compiled option with no picker, and screen readers read its label as static text` : isCheckboxType(el.element.attributes.get('type')) ? `<input type=checkbox> ${el.element.address} needs the app to toggle it (dragonSetCheckboxChecked), and screen readers do not see a checkbox` : `<input type=range> ${el.element.address} shows its compiled value with no thumb drag, and screen readers do not see an adjustable control`;
+  const what = tag === 'button' ? `<button> ${el.element.address} needs the app to handle its activation, and screen readers read its label as static text` : tag === 'select' ? `<select> ${el.element.address} shows its compiled option with no picker, and screen readers read its label as static text` : isCheckboxType(el.element.attributes.get('type')) ? `<input type=checkbox> ${el.element.address} needs the app to toggle it (dragonSetCheckboxChecked), and screen readers do not see a checkbox` : isRadioType(el.element.attributes.get('type')) ? `<input type=radio> ${el.element.address} needs the app to keep its checkedness, and screen readers do not see a radio` : `<input type=range> ${el.element.address} shows its compiled value with no thumb drag, and screen readers do not see an adjustable control`;
   for (const t of targets.filter((x) => x === 'ios' || x === 'android')) {
     const id = `${t}|control-static|${el.element.address}`;
     if (reported.has(id)) continue;
@@ -2378,24 +2380,34 @@ const CHECKBOX_THEMED_BOX: readonly (readonly [Longhand, (v: CssValue) => boolea
 ];
 
 /**
- * FORM-checkbox: an input[type=checkbox] with appearance: auto is laid out as a block box 13px square unless its width or height is
- * set, and drawn as Chrome's light theme draws it (forms/checkbox.ts, layout controls.ts checkboxMarks). Refused: any other
- * appearance, an inline-level or positioned checkbox, a grid item, author padding, border or content-box sizing (which Chrome's
- * theme discards), a translucent accent-color, a disabled checkbox, and a zoom on it or an ancestor.
+ * FORM-checkbox: an input[type=checkbox] with appearance: auto is laid out as a box 13px square unless its width or height is set,
+ * and drawn as Chrome's light theme draws it (forms/checkbox.ts, layout controls.ts checkboxMarks). A block-level one is a block
+ * box; an inline-block one (the UA display) is an atomic inline whose baseline is its border box's block-end edge, as Chrome 145
+ * places a leaf theme part on its line (controls-checkbox-inline). An input[type=radio] is laid out the same way, and Dragon draws no themed radio, so
+ * one is accepted only inside a box an empty clip or clip-path hides (MASK-CLIP-path-hidden), where Chrome paints nothing of it.
+ * Refused: any other appearance, an inline-flex or inline-grid one, a positioned one, a grid item, author padding, border
+ * or content-box sizing (which Chrome's theme discards), and a zoom on it or an ancestor; for a drawn checkbox also a translucent
+ * accent-color, a disabled one and one of 2px or less.
  */
-function checkCheckbox(el: ResolvedElement, parentDisplay: string | null, chain: readonly ResolvedElement[], targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+function checkCheckable(el: ResolvedElement, parentDisplay: string | null, chain: readonly ResolvedElement[], targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
   const address = el.element.address;
+  const type = isRadioType(el.element.attributes.get('type')) ? 'radio' : 'checkbox';
   const refuse = (v: ResolvedValue | null, what: string, message: string, manual: string): void => refuseOn(el, v, what, 'DRAGON_UNSUPPORTED_VALUE', targets, diagnostics, reported, message, manual);
   const appearance = el.props.get('appearance') as ResolvedValue;
   if (keywordOf(appearance) !== 'auto') {
-    refuse(appearance, 'checkbox-appearance', `appearance: ${valueToString(appearance.value)} on <input type=checkbox> ${address} is not supported: only the themed checkbox (appearance: auto) is drawn`, `Remove appearance from <input> ${address}.`);
+    refuse(appearance, `${type}-appearance`, `appearance: ${valueToString(appearance.value)} on <input type=${type}> ${address} is not supported: only the themed ${type} (appearance: auto) is laid out`, `Remove appearance from <input> ${address}.`);
+  }
+  const hidden = [...chain, el].some((a) => clipHidesWhole(a));
+  if (type === 'radio' && !hidden) {
+    refuse(null, 'radio-theme', `<input type=radio> ${address} is drawn by Chrome's theme, which Dragon does not draw yet; a radio is laid out only inside a box an empty clip or clip-path hides (the visually-hidden pattern)`, `Hide <input> ${address} visually (clip-path: inset(50%) on a 1px wrapper) and draw the choice with a styled element, or target web only.`);
   }
   const display = el.props.get('display') as ResolvedValue;
   const d = valueToString(display.value);
-  if (d === 'inline-block' || d === 'inline-flex' || d === 'inline-grid' || d === 'inline') {
-    refuse(display, 'inline', `display: ${d} on <input> ${address} makes it an inline-level control, which waits for the RF-INL package (atomic inlines)`, `Set display: block on <input> ${address}, or make it a flex item.`);
-  } else if (d !== 'block') {
-    refuse(display, 'display', `display: ${d} on <input type=checkbox> ${address} is not supported; only a block-level checkbox is laid out`, `Set display: block on <input> ${address}.`);
+  // A themed control's display: inline computes to inline-block (analysis/computed.ts's appearance adjustment).
+  if (d === 'inline-flex' || d === 'inline-grid') {
+    refuse(display, 'inline', `display: ${d} on <input type=${type}> ${address} is not supported: only a block-level or inline-block ${type} is laid out`, `Remove display from <input> ${address}, or set display: block on it.`);
+  } else if (d !== 'block' && d !== 'inline-block') {
+    refuse(display, 'display', `display: ${d} on <input type=${type}> ${address} is not supported; only a block-level or inline-block ${type} is laid out`, `Set display: block on <input> ${address}.`);
   }
   const position = el.props.get('position') as ResolvedValue;
   const pos = keywordOf(position);
@@ -2413,14 +2425,28 @@ function checkCheckbox(el: ResolvedElement, parentDisplay: string | null, chain:
     const cross = column ? 'width' : 'height';
     const size = el.props.get(cross) as ResolvedValue;
     if ((align === 'normal' || align === 'stretch') && keywordOf(size) === 'auto') {
-      refuse(size, 'checkbox-stretch', `<input type=checkbox> ${address} with ${cross}: auto is stretched by its flex container, as Chrome stretches a checkbox's natural size, which Dragon does not lay out yet`, `Give <input> ${address} a ${cross}, or set align-self: center on it.`);
+      refuse(size, `${type}-stretch`, `<input type=${type}> ${address} with ${cross}: auto is stretched by its flex container, as Chrome stretches a ${type}'s natural size, which Dragon does not lay out yet`, `Give <input> ${address} a ${cross}, or set align-self: center on it.`);
     }
   }
   for (const [p, used] of CHECKBOX_THEMED_BOX) {
     const v = el.props.get(p) as ResolvedValue;
     if (used(v.value)) continue;
-    refuse(v, `checkbox-${p}`, `${p}: ${valueToString(v.value)} on <input type=checkbox> ${address} is not supported: Chrome's theme discards a themed checkbox's padding and border, which no fixture pins`, `Remove ${p} from <input> ${address}.`);
+    refuse(v, `${type}-${p}`, `${p}: ${valueToString(v.value)} on <input type=${type}> ${address} is not supported: Chrome's theme discards a themed ${type}'s padding and border, which no fixture pins`, `Remove ${p} from <input> ${address}.`);
   }
+  if (type === 'checkbox') checkCheckboxPaint(el, targets, diagnostics, reported);
+  for (const a of [...chain, el]) {
+    const z = a.props.get('zoom') as ResolvedValue | undefined;
+    if (z === undefined || (z.value.kind === 'number' && z.value.value === 1) || keywordOf(z) === 'normal') continue;
+    refuse(z, `${type}-zoom`, `zoom: ${valueToString(z.value)} on ${a.element.address} zooms <input type=${type}> ${address}, ${type === 'checkbox' ? 'whose themed drawing Dragon draws' : 'whose themed part Dragon lays out'} at zoom 1 only`, `Remove zoom from ${a.element.address}.`);
+    break;
+  }
+  noteStaticOnNative(el, targets, diagnostics, reported);
+}
+
+/** What Dragon's drawing of a themed checkbox does not cover: a translucent or unresolved accent, a checkbox of 2px or less, a disabled one. */
+function checkCheckboxPaint(el: ResolvedElement, targets: readonly string[], diagnostics: Diagnostic[], reported: Set<string>): void {
+  const address = el.element.address;
+  const refuse = (v: ResolvedValue | null, what: string, message: string, manual: string): void => refuseOn(el, v, what, 'DRAGON_UNSUPPORTED_VALUE', targets, diagnostics, reported, message, manual);
   const accent = el.props.get('accent-color') as ResolvedValue;
   if (accent.value.kind === 'color' && accent.value.value.alpha !== 255) {
     refuse(accent, 'checkbox-accent', `a translucent accent-color on <input type=checkbox> ${address} is not supported: Chrome blends it with the page, not with the checkbox, which no fixture pins`, `Use an opaque accent-color on <input> ${address}.`);
@@ -2437,13 +2463,6 @@ function checkCheckbox(el: ResolvedElement, parentDisplay: string | null, chain:
   if (el.element.attributes.has('disabled')) {
     refuse(null, 'checkbox-disabled', `a disabled <input type=checkbox> ${address} is not supported: its theme colours are not captured`, `Remove disabled from <input> ${address}, or draw a disabled state with a div.`);
   }
-  for (const a of [...chain, el]) {
-    const z = a.props.get('zoom') as ResolvedValue | undefined;
-    if (z === undefined || (z.value.kind === 'number' && z.value.value === 1) || keywordOf(z) === 'normal') continue;
-    refuse(z, 'checkbox-zoom', `zoom: ${valueToString(z.value)} on ${a.element.address} zooms <input type=checkbox> ${address}, whose themed drawing Dragon draws at zoom 1 only`, `Remove zoom from ${a.element.address}.`);
-    break;
-  }
-  noteStaticOnNative(el, targets, diagnostics, reported);
 }
 
 /** A range shadow part of input el (resolve.ts), or null. */
@@ -2588,6 +2607,15 @@ function checkInsideButton(el: ResolvedElement, button: ResolvedElement, targets
   const position = el.props.get('position') as ResolvedValue;
   const pos = keywordOf(position);
   if (pos !== 'absolute' && pos !== 'fixed') return;
+  // A block button lays out its out-of-flow boxes as any block container does (controls-button-abspos), but Chrome gives one with
+  // both insets of an axis auto the static position of an inline in the button's centred line, which Dragon does not.
+  if (pos === 'absolute' && button.element.tag === 'button' && keywordOf(button.props.get('display') as ResolvedValue) === 'block') {
+    const auto = (p: Longhand): boolean => keywordOf(el.props.get(p) as ResolvedValue) === 'auto';
+    const axis = auto('left') && auto('right') ? 'left' : auto('top') && auto('bottom') ? 'top' : null;
+    if (axis === null) return;
+    refuseOn(el, el.props.get(axis) as ResolvedValue, 'inside-static', 'DRAGON_UNSUPPORTED_VALUE', targets.filter((t) => t === 'ios' || t === 'android'), diagnostics, reported, `${axis}: auto on the absolutely positioned <${el.element.tag}> ${el.element.address} inside <button> ${button.element.address}, with its opposite inset auto too, places it at its static position, which Chrome takes from the button's centred line and Dragon does not lay out`, `Set ${axis} (or ${axis === 'left' ? 'right' : 'bottom'}) on ${el.element.address}.`);
+    return;
+  }
   refuseOn(el, position, 'inside', 'DRAGON_UNSUPPORTED_VALUE', targets, diagnostics, reported, `position: ${pos} on <${el.element.tag}> ${el.element.address} inside <${button.element.tag}> ${button.element.address} is not supported yet: an absolutely positioned box inside a form control`, `Position the box outside <${button.element.tag}> ${button.element.address}.`);
 }
 
@@ -2673,8 +2701,8 @@ export function checkComputed(root: ResolvedElement, targets: readonly string[],
     } else if (!here && ((el.element.tag === 'input' && isTextFieldType(el.element.attributes.get('type'))) || el.element.tag === 'textarea')) {
       checkTextField(el, layoutParent, parentDisplay, chain, targets, diagnostics, reported, environmentOf(root).hostTextEditing === true, faults);
       checkInline(el, targets, diagnostics, reported, shapedAt, environmentOf(root).ua);
-    } else if (!here && el.element.tag === 'input' && isCheckboxType(el.element.attributes.get('type'))) {
-      checkCheckbox(el, parentDisplay, chain, targets, diagnostics, reported);
+    } else if (!here && el.element.tag === 'input' && (isCheckboxType(el.element.attributes.get('type')) || isRadioType(el.element.attributes.get('type')))) {
+      checkCheckable(el, parentDisplay, chain, targets, diagnostics, reported);
       checkInline(el, targets, diagnostics, reported, shapedAt, environmentOf(root).ua);
     } else if (!here && el.element.tag === 'input') {
       checkRange(el, parentDisplay, targets, diagnostics, reported);

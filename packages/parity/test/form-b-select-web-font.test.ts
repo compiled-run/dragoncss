@@ -4,7 +4,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import type { ControlBox, LayoutBox, LayoutInput, LineStrut } from '@dragon/layout';
-import { deviceShapedMeasurer, LU_PER_PX, NO_ENGINE_FAULTS, resolvedInput } from '@dragon/layout';
+import { deviceShapedMeasurer, LU_PER_PX, NO_ENGINE_FAULTS, NORMAL_NUMERIC, resolvedInput } from '@dragon/layout';
 import { inSelectOptions, marklessStyleExport, parseMarklessStyleInput } from '../src/markless-style-input.ts';
 import type { MarklessPlan } from '../src/markless-plan.ts';
 import type { ExportNode } from '../src/native-style-export.ts';
@@ -81,7 +81,7 @@ describe('FORM-b select in a Markless page drawn in Lato WOFF2', () => {
       const inner = box.children.find((k): k is ControlBox => k.kind === 'control' && k.control.kind === 'select-inner');
       if (inner === undefined) throw new Error(`${t}: the select has no inner element`);
       const font = box.control.font;
-      const m = measurer.metrics({ family: font.family, size: font.size, letterSpacing: 0, wordSpacing: 0, smallCaps: false });
+      const m = measurer.metrics({ family: font.family, size: font.size, letterSpacing: 0, wordSpacing: 0, smallCaps: false, variantNumeric: NORMAL_NUMERIC });
       expect((inner.strut as LineStrut).lineHeight, t).toEqual({ kind: 'px', value: (m.ascent + m.descent) / LU_PER_PX });
       expect((m.ascent + m.descent) / LU_PER_PX, `${t}: Lato's normal line is not its em, as Ahem's is`).not.toBe(font.size);
     }

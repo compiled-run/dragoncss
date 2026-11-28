@@ -85,6 +85,7 @@ export { BACKEND_TARGET, NATIVE_BACKENDS, NATIVE_CLASSES, PROGRAM_VERSIONS, rena
 export type { ExpectedDump, ExpectedEngine, ExpectedNode, NodeGeometry } from './emit/expected-dump.ts';
 export { appliedKeyMap, appliedValue, borderDevicePx, cssCoverage, EXPECTED_SCHEMA, expectedDigest, expectedDump, programInput, replacedContents, replacedGeometries, textInstanceSize } from './emit/expected-dump.ts';
 export { clipPathInsets, clipPathRect, clipShapeGeometry, clipShapeKind, clipShapeValues } from './emit/paint/clip.ts';
+export { insetClipsEverything, shapeClipsEverything } from './css/properties/clip-hidden.ts';
 export type { EmitCase } from './emit/native-support.ts';
 export { emitNativeSupport, NATIVE_SUPPORT_VERSION, SUPPORT_FILES, SUPPORT_PLANTS } from './emit/native-support.ts';
 export type { SupportPlant } from './emit/native-support.ts';
@@ -146,12 +147,15 @@ export function laneOnlyNative(compiled: object, target: 'ios' | 'android'): boo
   return internalRecord(compiled)?.laneOnlyNative.includes(target) === true;
 }
 
-/** The factored groups (analysis/link.ts StateGroup) with their cases' assignments, the initial first; null when cases are every assignment. */
-export function stateGroupsIn(compiled: object): readonly { readonly states: readonly number[]; readonly bandFree: boolean; readonly cases: readonly { readonly assignment: Assignment; readonly isInitial: boolean }[] }[] | null {
+/**
+ * The factored groups (analysis/link.ts StateGroup) with their cases' assignments, the initial first, and with @media bands per band
+ * the band whose rows the group's table holds for it (null without bands); null when cases are every assignment.
+ */
+export function stateGroupsIn(compiled: object): readonly { readonly states: readonly number[]; readonly bandClasses: readonly number[] | null; readonly cases: readonly { readonly assignment: Assignment; readonly isInitial: boolean }[] }[] | null {
   const record = internalRecord(compiled);
   const groups = record?.linked?.groups ?? null;
   if (record === undefined || groups === null) return null;
-  return groups.map((g, k) => ({ states: g.states, bandFree: record.groupBandFree?.[k] === true, cases: g.cases.map((i) => ({ assignment: (record.cases[i] as InternalCase).assignment, isInitial: (record.cases[i] as InternalCase).isInitial })) }));
+  return groups.map((g, k) => ({ states: g.states, bandClasses: record.groupBandClasses?.[k] ?? null, cases: g.cases.map((i) => ({ assignment: (record.cases[i] as InternalCase).assignment, isInitial: (record.cases[i] as InternalCase).isInitial })) }));
 }
 
 /** Dragon's reachable assignments, in its enumeration order, with the initial case marked. */
@@ -458,6 +462,8 @@ export function engineLayoutProjection(compiled: object, environment: Environmen
 import { elementTransformWrite } from './lower/paint/transform.ts';
 import { hitFactContext, hitFactOtherContext } from './lower/paint/stacking.ts';
 import { visibilityOf } from './css/properties/visibility.ts';
+import { zIndexOf } from './css/properties/effects.ts';
+import { clipHidesWhole } from './css/properties/clip-hidden.ts';
 export type { HitFact } from './emit/runtime/hit.ts';
 export { HIT_FACTS_VERSION } from './emit/runtime/hit.ts';
 
@@ -480,7 +486,9 @@ export function hitFacts(compiled: object, assignment: Assignment, state: string
   const c = caseOf(compiled, assignment, state);
   if (typeof c === 'string' || c.resolved === null) return null;
   const out = new Map<string, import('./emit/runtime/hit.ts').HitFact>();
-  const walk = (el: ResolvedElement): void => {
+  // An empty clip or clip-path hides its box and subtree from hit testing as from paint (MASK-CLIP-path-hidden F1 to F8).
+  const walk = (el: ResolvedElement, hiddenAbove: boolean): void => {
+    const clipped = hiddenAbove || clipHidesWhole(el);
     const v = el.props.get('pointer-events');
     if (v === undefined || v.value.kind !== 'keyword' || (v.value.value !== 'auto' && v.value.value !== 'none')) throw new Error(`${el.element.address}: pointer-events did not resolve to auto or none`);
     const vis = el.props.get('visibility');
@@ -490,10 +498,11 @@ export function hitFacts(compiled: object, assignment: Assignment, state: string
     const lengths = radiusLengths(el.props, el.element.address);
     const transform = elementTransformWrite(el);
     const context = hitFactContext(el);
-    out.set(el.element.address, { pointerEvents: none || hidden ? 'none' : 'auto', inherited: v.origin === 'inherited' && (none || !hidden), activation: activates(el.element.tag, el.element.attributes), radii: roundsAnyCorner(lengths) ? lengths : [], context, otherContext: context ? hitFactOtherContext(el) : '', transform: transform === null ? [] : transform.ops, origin: transform === null ? NO_ORIGIN : transform.origin });
-    for (const ch of el.children) if (ch.kind === 'element') walk(ch);
+    const zv = el.props.get('z-index');
+    out.set(el.element.address, { pointerEvents: clipped || none || hidden ? 'none' : 'auto', inherited: !clipped && v.origin === 'inherited' && (none || !hidden), activation: activates(el.element.tag, el.element.attributes), radii: roundsAnyCorner(lengths) ? lengths : [], context, otherContext: context ? hitFactOtherContext(el) : '', transform: transform === null ? [] : transform.ops, origin: transform === null ? NO_ORIGIN : transform.origin, z: zv === undefined ? null : zIndexOf(zv.value) });
+    for (const ch of el.children) if (ch.kind === 'element') walk(ch, clipped);
   };
-  walk(c.resolved);
+  walk(c.resolved, false);
   return out;
 }
 

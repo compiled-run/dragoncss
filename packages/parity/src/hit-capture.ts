@@ -6,7 +6,7 @@
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import type { Browser } from 'playwright';
-import { hitFacts, NO_HIT_FACT_FAULTS, programInput, svgScenes } from 'dragon';
+import { hitFacts, insetClipsEverything, NO_HIT_FACT_FAULTS, programInput, shapeClipsEverything, svgScenes } from 'dragon';
 import type { HitFactFaults } from 'dragon';
 import type { ControlBox, LayoutBox } from '../../layout/src/input.ts';
 import type { HitFaults, HitTable, HitTableFaults } from '../../layout/src/rt-hit.ts';
@@ -38,9 +38,9 @@ export const expectedHitPath = (caseId: string): string => `${expectedHitDir()}/
  * rows run at 2 and 3 only, as at 2.625 their centred grid item's text top is within a device px of Chrome's (the DPR lane's gate).
  */
 export const HIT_DPR_CAPTURES: readonly { readonly dpr: number; readonly ids: readonly string[] }[] = [
-  { dpr: 2, ids: ['hit-visibility', 'hit-visibility-rtl', 'hit-atomic-inline-context', 'hit-atomic-inline-context-rtl', 'hit-atomic-inline-context-nest', 'hit-atomic-inline-context-nest-rtl', 'hit-atomic-inline-notes', 'hit-atomic-inline-notes-rtl', 'controls-textarea', 'grid-controls-fields', 'hit-object-fit-rows', 'hit-object-fit-rows-rtl', 'replaced-fit', 'replaced-fit-rtl'] },
-  { dpr: 2.625, ids: ['hit-visibility', 'hit-visibility-rtl', 'interaction-combo', 'interaction-combo-rtl', 'radius-basic', 'radius-clip', 'transform-hit-scale', 'transform-hit-subpixel', 'transform-hit-snap', 'opacity-group-transform', 'hit-atomic-inline-context', 'hit-atomic-inline-context-rtl', 'hit-atomic-inline-context-nest', 'hit-atomic-inline-context-nest-rtl', 'hit-atomic-inline-notes', 'hit-atomic-inline-notes-rtl', 'controls-textarea', 'grid-controls-fields', 'replaced-fit', 'replaced-fit-rtl'] },
-  { dpr: 3, ids: ['hit-visibility', 'hit-visibility-rtl', 'hit-atomic-inline-context', 'hit-atomic-inline-context-rtl', 'hit-atomic-inline-context-nest', 'hit-atomic-inline-context-nest-rtl', 'hit-atomic-inline-notes', 'hit-atomic-inline-notes-rtl', 'controls-textarea', 'grid-controls-fields', 'hit-object-fit-rows', 'hit-object-fit-rows-rtl', 'replaced-fit', 'replaced-fit-rtl'] },
+  { dpr: 2, ids: ['hit-visibility', 'hit-visibility-rtl', 'hit-atomic-inline-context', 'hit-atomic-inline-context-rtl', 'hit-atomic-inline-context-nest', 'hit-atomic-inline-context-nest-rtl', 'hit-atomic-inline-notes', 'hit-atomic-inline-notes-rtl', 'controls-textarea', 'grid-controls-fields', 'hit-object-fit-rows', 'hit-object-fit-rows-rtl', 'replaced-fit', 'replaced-fit-rtl', 'hit-z-index-positive', 'hit-z-index-positive-rtl'] },
+  { dpr: 2.625, ids: ['hit-visibility', 'hit-visibility-rtl', 'interaction-combo', 'interaction-combo-rtl', 'radius-basic', 'radius-clip', 'transform-hit-scale', 'transform-hit-subpixel', 'transform-hit-snap', 'opacity-group-transform', 'hit-atomic-inline-context', 'hit-atomic-inline-context-rtl', 'hit-atomic-inline-context-nest', 'hit-atomic-inline-context-nest-rtl', 'hit-atomic-inline-notes', 'hit-atomic-inline-notes-rtl', 'controls-textarea', 'grid-controls-fields', 'replaced-fit', 'replaced-fit-rtl', 'hit-z-index-positive', 'hit-z-index-positive-rtl'] },
+  { dpr: 3, ids: ['hit-visibility', 'hit-visibility-rtl', 'hit-atomic-inline-context', 'hit-atomic-inline-context-rtl', 'hit-atomic-inline-context-nest', 'hit-atomic-inline-context-nest-rtl', 'hit-atomic-inline-notes', 'hit-atomic-inline-notes-rtl', 'controls-textarea', 'grid-controls-fields', 'hit-object-fit-rows', 'hit-object-fit-rows-rtl', 'replaced-fit', 'replaced-fit-rtl', 'hit-z-index-positive', 'hit-z-index-positive-rtl'] },
 ];
 export const expectedHitDprDir = (dpr: number): string => `${expectedHitDir()}/dpr-${dpr}`;
 export const expectedHitDprPath = (caseId: string, dpr: number): string => `${expectedHitDprDir(dpr)}/${caseId.replace(/#/g, '~')}.hit.json`;
@@ -198,9 +198,9 @@ export function tapTarget(t: HitTable, x: number, y: number, faults: HitFaults =
 
 /**
  * Why the hit lane leaves a layout case out, or null when it covers it. The hit test models box geometry, overflow clips, positioned
- * layers, pointer-events, scale and translate transforms and stacking contexts in the z-index 0 layer (T064 R13); a case whose program
+ * layers, pointer-events, scale and translate transforms and stacking contexts in the z-index 0 and positive layers (T064 R13); a case whose program
  * writes a rotated transform is refused by name until SELD-R2b (T146) models it; so is a case with a stacking context below the root
- * that rt-hit.ts does not order (an integer z-index, a context its hit facts do not name, PNT1), a case with an <svg> until SVG-a2 models its shapes, and one whose program
+ * that rt-hit.ts does not order (a negative z-index, a context its hit facts do not name, PNT1), a case with an <svg> until SVG-a2 models its shapes, and one whose program
  * rounds a corner until the hit test models rounded borders (Blink clips a hit to the rounded border box), so none is ever silently
  * mis-hit; one holding an inline box or a <br> (INL1a) or a form control (FORM-a) is refused as rt-hit.ts hitRefusal names it, since
  * the hit table does not model them yet; so is a case with a box its empty clip rect hides, or with a clip-path (MASK-CLIP), and one
@@ -213,18 +213,19 @@ export function hitRefusal(n: NativeCase): string | null {
   const moved = nodes.filter((x) => x.writes.some((w) => w.kind === 'transform' && hitTransformRefusal(x.id, w.ops) !== null)).map((x) => x.id);
   if (moved.length > 0) return `transform on ${moved.join(', ')}: hit testing through a rotated transform is SELD-R2b (T146)`;
   const facts = hitFacts(n.compiled, n.case.assignment);
-  // MASK-CLIP: Chrome's elementFromPoint passes over a box its empty clip rect hides, and over its descendants, which the hit test
-  // does not model yet.
-  const cut = nodes.filter((x) => x.writes.some((w) => w.kind === 'clip-rect-empty' || w.kind === 'clip-rect-label')).map((x) => x.id);
-  if (cut.length > 0) return `clip on ${cut.join(', ')}: hit testing past a box its clip rect hides is not modelled yet (MASK-CLIP)`;
+  // MASK-CLIP: Chrome's elementFromPoint passes over a box an empty clip rect or clip-path hides, and over its descendants; the hit
+  // facts give each of them pointer-events none (internal.ts hitFacts), so the table passes over them too (MASK-CLIP-path-hidden).
   // MASK-CLIP: Chrome's elementFromPoint passes over the part of a box and its descendants that its clip-path clips away, which the
   // hit test does not model yet.
-  const clipped = nodes.filter((x) => x.writes.some((w) => w.kind === 'clip-path-inset' || w.kind === 'clip-path-shape')).map((x) => x.id);
+  // A shape empty at every size hides its box and subtree, which the hit facts leave out (MASK-CLIP-path-hidden).
+  const clipped = nodes.filter((x) => x.writes.some((w) => (w.kind === 'clip-path-inset' && !insetClipsEverything(w.edges)) || (w.kind === 'clip-path-shape' && !shapeClipsEverything(w.shape)))).map((x) => x.id);
   if (clipped.length > 0) return `clip-path on ${clipped.join(', ')}: hit testing past what a clip-path clips away is not modelled yet (MASK-CLIP)`;
-  // rt-hit.ts orders only z-index 0 contexts its hit facts name; other contexts and normal-flow layers stay refused.
-  const ordered = (id: string, f: { readonly createsContext?: boolean; readonly layer?: string }): boolean => f.layer === 'positioned' && facts?.get(id)?.context === true;
-  const contexts = nodes.filter((x) => x.parent !== null && ((f) => f !== undefined && ((f.createsContext === true && !ordered(x.id, f)) || f.layer === 'normal-flow'))(x.facts['stacking'] as { readonly createsContext?: boolean; readonly layer?: string } | undefined)).map((x) => x.id);
-  if (contexts.length > 0) return `stacking context on ${contexts.join(', ')}: hit testing through z-index layers and stacking contexts in the normal flow is not modelled yet (rt-hit.ts orders z-index 0 contexts and positioned boxes as z-index auto)`;
+  // rt-hit.ts orders the z-index 0 and positive contexts its hit facts name (an applied z-index among them); negative layers, other
+  // contexts and normal-flow layers stay refused.
+  type Stack = { readonly createsContext?: boolean; readonly layer?: string; readonly z?: number | null };
+  const ordered = (id: string, f: Stack): boolean => (f.layer === 'positioned' || f.layer === 'positive') && (facts?.get(id)?.context === true || (f.z !== undefined && f.z !== null));
+  const contexts = nodes.filter((x) => x.parent !== null && ((f) => f !== undefined && ((f.createsContext === true && !ordered(x.id, f)) || f.layer === 'normal-flow'))(x.facts['stacking'] as Stack | undefined)).map((x) => x.id);
+  if (contexts.length > 0) return `stacking context on ${contexts.join(', ')}: hit testing through negative z-index layers and stacking contexts in the normal flow is not modelled yet (rt-hit.ts orders z-index 0 and positive contexts and positioned boxes)`;
   // SVG-a1: Chrome hits an svg's painted shapes (pointer-events: visiblePainted), which the hit test models with SVG-a2.
   const svgs = (svgScenes(n.compiled, n.case.assignment) ?? []).map((s) => s.address);
   if (svgs.length > 0) return `<svg> ${svgs.join(', ')}: hit testing an svg's shapes comes with SVG-a2`;
@@ -263,7 +264,7 @@ const lengthBits = (l: TransformLength): [string, string, string] => [l.kind, bi
 /**
  * The text of HIT_FACTS_PATH for these cases: each case's facts as [id, pointerEvents, inherited, activation, radii], radii the
  * eight [percent, value] border-radius components or empty, followed for a stacking context or a transformed box by [context,
- * transform, origin] and, when something else makes the context, its name, sorted by id, and the refused cases with their reasons, which the P1 hit suite skips by name.
+ * transform, origin] and, when something else makes the context or the z-index is an integer, its name (or ''), then that z-index, sorted by id, and the refused cases with their reasons, which the P1 hit suite skips by name.
  */
 export function hitFactsJson(cases: readonly NativeCase[], refused: readonly { readonly id: string; readonly reason: string }[] = hitRefusedCases()): string {
   const rows = cases.map((n) => {
@@ -271,8 +272,9 @@ export function hitFactsJson(cases: readonly NativeCase[], refused: readonly { r
     if (facts === null) throw new Error(`${n.case.id}: no hit facts`);
     const v = [...facts].sort(([x], [y]) => (x < y ? -1 : x > y ? 1 : 0)).map(([id, f]) => {
       const flat = [id, f.pointerEvents, f.inherited, f.activation, f.radii.map((l) => [l.percent, l.value])];
-      if (!f.context && f.transform.length === 0) return flat;
+      if (!f.context && f.transform.length === 0 && f.z === null) return flat;
       const painted = [...flat, f.context, f.transform.map((o) => [o.fn, lengthBits(o.x), lengthBits(o.y), bitsHex(o.angle), bitsHex(o.sx), bitsHex(o.sy)]), [lengthBits(f.origin.x), lengthBits(f.origin.y)]];
+      if (f.z !== null) return [...painted, f.otherContext, f.z];
       return f.otherContext === '' ? painted : [...painted, f.otherContext];
     });
     return `    ${JSON.stringify(n.case.id)}: ${JSON.stringify(v)}`;
@@ -515,9 +517,10 @@ function radiiField(radii: readonly { readonly percent: boolean; readonly value:
 }
 
 /**
- * Every layout case's hit facts as text lines "<case>\t<id>\t<pointer-events>\t<inherited 0|1>\t<activation 0|1>\t<radii>\t<context 0|1>\t<transform>\t<origin>\t<other context>",
+ * Every layout case's hit facts as text lines "<case>\t<id>\t<pointer-events>\t<inherited 0|1>\t<activation 0|1>\t<radii>\t<context 0|1>\t<transform>\t<origin>\t<other context>\t<z-index>",
  * in case order; radii is "-" for square corners, else the eight components as "<percent 0|1>:<value>" joined by commas; the transform
- * its functions "fn,x kind,x px,x percent,y kind,y px,y percent,angle,sx,sy" joined by ";", the origin "x kind,x px,x percent,y kind,y px,y percent".
+ * its functions "fn,x kind,x px,x percent,y kind,y px,y percent,angle,sx,sy" joined by ";", the origin "x kind,x px,x percent,y kind,y px,y percent",
+ * and the z-index "-" for auto, else the integer.
  */
 export function hitFactLines(): string[] {
   const out: string[] = [];
@@ -528,7 +531,7 @@ export function hitFactLines(): string[] {
       for (const s of [n.case.id, id]) if (/[\t\n\\"$]/.test(s)) throw new Error(`${n.case.id}: id ${JSON.stringify(s)} holds a character the device facts table cannot carry`);
       const len = (l: TransformLength): string => `${l.kind},${String(l.px)},${String(l.percent)}`;
       const ops = f.transform.map((o) => `${o.fn},${len(o.x)},${len(o.y)},${String(o.angle)},${String(o.sx)},${String(o.sy)}`).join(';');
-      out.push(`${n.case.id}\t${id}\t${f.pointerEvents}\t${f.inherited ? 1 : 0}\t${f.activation ? 1 : 0}\t${radiiField(f.radii)}\t${f.context ? 1 : 0}\t${ops}\t${len(f.origin.x)},${len(f.origin.y)}\t${f.otherContext}`);
+      out.push(`${n.case.id}\t${id}\t${f.pointerEvents}\t${f.inherited ? 1 : 0}\t${f.activation ? 1 : 0}\t${radiiField(f.radii)}\t${f.context ? 1 : 0}\t${ops}\t${len(f.origin.x)},${len(f.origin.y)}\t${f.otherContext}\t${f.z === null ? '-' : String(f.z)}`);
     }
   }
   return out;
@@ -574,6 +577,7 @@ struct DragonHitFact {
   let otherContext: String
   let transform: [TransformOp]
   let origin: TransformOrigin
+  let z: Double?
 }
 
 private func dragonHitLength(_ f: [String], _ at: Int, _ line: Substring) -> LengthValue {
@@ -599,7 +603,7 @@ let dragonHitFactsTable: [String: [DragonHitFact]] = {
   for chunk in dragonHitFactChunks {
     for line in chunk.split(separator: "\\n", omittingEmptySubsequences: true) {
       let f = line.split(separator: "\\t", omittingEmptySubsequences: false).map(String.init)
-      guard f.count == 10, f[2] == "auto" || f[2] == "none", f[3] == "0" || f[3] == "1", f[4] == "0" || f[4] == "1", f[6] == "0" || f[6] == "1" else { fatalError("dragon host: bad hit facts line: \\(line)") }
+      guard f.count == 11, f[2] == "auto" || f[2] == "none", f[3] == "0" || f[3] == "1", f[4] == "0" || f[4] == "1", f[6] == "0" || f[6] == "1" else { fatalError("dragon host: bad hit facts line: \\(line)") }
       let ops: [TransformOp] = f[7].isEmpty ? [] : f[7].split(separator: ";").map { o in
         let p = o.split(separator: ",", omittingEmptySubsequences: false).map(String.init)
         guard p.count == 10, ["translate", "translateX", "translateY", "rotate", "scale", "scaleX", "scaleY"].contains(p[0]), let angle = Double(p[7]), let sx = Double(p[8]), let sy = Double(p[9]) else { fatalError("dragon host: bad hit transform: \\(line)") }
@@ -607,7 +611,12 @@ let dragonHitFactsTable: [String: [DragonHitFact]] = {
       }
       let o = f[8].split(separator: ",", omittingEmptySubsequences: false).map(String.init)
       if o.count != 6 { fatalError("dragon host: bad hit transform origin: \\(line)") }
-      out[f[0], default: []].append(DragonHitFact(id: f[1], pointerEvents: f[2], inherited: f[3] == "1", activation: f[4] == "1", radii: dragonHitRadii(f[5], String(line)), context: f[6] == "1", otherContext: f[9], transform: ops, origin: TransformOrigin(dragonHitLength(o, 0, line), dragonHitLength(o, 3, line))))
+      var z: Double? = nil
+      if f[10] != "-" {
+        guard let v = Int(f[10]) else { fatalError("dragon host: bad hit z-index: \\(line)") }
+        z = Double(v)
+      }
+      out[f[0], default: []].append(DragonHitFact(id: f[1], pointerEvents: f[2], inherited: f[3] == "1", activation: f[4] == "1", radii: dragonHitRadii(f[5], String(line)), context: f[6] == "1", otherContext: f[9], transform: ops, origin: TransformOrigin(dragonHitLength(o, 0, line), dragonHitLength(o, 3, line)), z: z))
     }
   }
   return out
@@ -616,9 +625,9 @@ let dragonHitFactsTable: [String: [DragonHitFact]] = {
 /// The translated hit test of a case at a device scale: its answers at every point of its derived grid, run-length encoded.
 func dragonHitRuns(_ c: DragonCase, _ facts: [DragonHitFact], scale: Double, measurer: TextMeasurer) -> String {
   let map = JsStringMap<HitFact>()
-  for f in facts { map.set(JsString(f.id), HitFact(JsString(f.pointerEvents), f.inherited, f.activation, JsArray(f.radii), f.context, JsString(f.otherContext), JsArray(f.transform), f.origin)) }
+  for f in facts { map.set(JsString(f.id), HitFact(JsString(f.pointerEvents), f.inherited, f.activation, JsArray(f.radii), f.context, JsString(f.otherContext), JsArray(f.transform), f.origin, f.z)) }
   do {
-    let t = try rtHit_hitTableOf(c.input(scale), measurer, map, HitTableFaults(false, false, false))
+    let t = try rtHit_hitTableOf(c.input(scale), measurer, map, HitTableFaults(false, false, false, false))
     let zoom = scale * 64
     let grid = try rtHit_hitGrid(t, c.viewport.width * zoom, c.viewport.height * zoom)
     return try rtHit_hitRuns(t, grid, HitFaults(false, false)).description
@@ -653,7 +662,7 @@ private val dragonHitFactChunks: List<String> = listOf(
 ${chunks.map((c) => `  ${lit(c).replace(/\$/g, '\\$')},`).join('\n')}
 )
 
-class DragonHitFact(val id: String, val pointerEvents: String, val inherited: Boolean, val activation: Boolean, val radii: List<RadiusLength>, val context: Boolean, val otherContext: String, val transform: List<TransformOp>, val origin: TransformOrigin)
+class DragonHitFact(val id: String, val pointerEvents: String, val inherited: Boolean, val activation: Boolean, val radii: List<RadiusLength>, val context: Boolean, val otherContext: String, val transform: List<TransformOp>, val origin: TransformOrigin, val z: Double?)
 
 private fun dragonHitLength(f: List<String>, at: Int, line: String): LengthValue {
   if (f.size < at + 3 || (f[at] != "px" && f[at] != "percent" && f[at] != "calc")) throw IllegalStateException("dragon host: bad hit transform length: " + line)
@@ -682,7 +691,7 @@ val dragonHitFactsTable: Map<String, List<DragonHitFact>> by lazy {
     for (line in chunk.split("\\n")) {
       if (line.isEmpty()) continue
       val f = line.split("\\t")
-      if (f.size != 10 || (f[2] != "auto" && f[2] != "none") || (f[3] != "0" && f[3] != "1") || (f[4] != "0" && f[4] != "1") || (f[6] != "0" && f[6] != "1")) throw IllegalStateException("dragon host: bad hit facts line: " + line)
+      if (f.size != 11 || (f[2] != "auto" && f[2] != "none") || (f[3] != "0" && f[3] != "1") || (f[4] != "0" && f[4] != "1") || (f[6] != "0" && f[6] != "1")) throw IllegalStateException("dragon host: bad hit facts line: " + line)
       val ops = if (f[7].isEmpty()) emptyList() else f[7].split(";").map { o ->
         val p = o.split(",")
         if (p.size != 10 || p[0] !in listOf("translate", "translateX", "translateY", "rotate", "scale", "scaleX", "scaleY")) throw IllegalStateException("dragon host: bad hit transform: " + line)
@@ -693,7 +702,8 @@ val dragonHitFactsTable: Map<String, List<DragonHitFact>> by lazy {
       }
       val o = f[8].split(",")
       if (o.size != 6) throw IllegalStateException("dragon host: bad hit transform origin: " + line)
-      out.getOrPut(f[0]) { ArrayList() }.add(DragonHitFact(f[1], f[2], f[3] == "1", f[4] == "1", dragonHitRadii(f[5], line), f[6] == "1", f[9], ops, TransformOrigin(dragonHitLength(o, 0, line), dragonHitLength(o, 3, line))))
+      val z = if (f[10] == "-") null else (f[10].toIntOrNull() ?: throw IllegalStateException("dragon host: bad hit z-index: " + line)).toDouble()
+      out.getOrPut(f[0]) { ArrayList() }.add(DragonHitFact(f[1], f[2], f[3] == "1", f[4] == "1", dragonHitRadii(f[5], line), f[6] == "1", f[9], ops, TransformOrigin(dragonHitLength(o, 0, line), dragonHitLength(o, 3, line)), z))
     }
   }
   out
@@ -702,8 +712,8 @@ val dragonHitFactsTable: Map<String, List<DragonHitFact>> by lazy {
 /** The translated hit test of a case at a device scale: its answers at every point of its derived grid, run-length encoded. */
 fun dragonHitRuns(c: DragonCase, facts: List<DragonHitFact>, scale: Double, measurer: TextMeasurer): String {
   val map = JsStringMap<HitFact>()
-  for (f in facts) map.set(f.id, HitFact(f.pointerEvents, f.inherited, f.activation, JsArray(f.radii.toMutableList()), f.context, f.otherContext, JsArray(f.transform.toMutableList()), f.origin))
-  val t = rtHit_hitTableOf(c.input(scale), measurer, map, HitTableFaults(false, false, false))
+  for (f in facts) map.set(f.id, HitFact(f.pointerEvents, f.inherited, f.activation, JsArray(f.radii.toMutableList()), f.context, f.otherContext, JsArray(f.transform.toMutableList()), f.origin, f.z))
+  val t = rtHit_hitTableOf(c.input(scale), measurer, map, HitTableFaults(false, false, false, false))
   val zoom = scale * 64.0
   val grid = rtHit_hitGrid(t, c.viewportWidth * zoom, c.viewportHeight * zoom)
   return rtHit_hitRuns(t, grid, HitFaults(false, false))

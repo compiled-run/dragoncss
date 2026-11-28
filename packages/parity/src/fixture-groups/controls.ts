@@ -77,6 +77,9 @@ export const CONTROLS: readonly FixtureSpec[] = [
   // is the Markless notes form's field, resize: vertical included, which a phone draws no grip for, without its border-radius
   // (a rounded scroll container: Dragon #682).
   layout('controls-textarea-scrollbar'),
+  // FORM-a: absolutely positioned boxes inside block-level buttons (check-in /settings' switch thumbs).
+  both('controls-button-abspos'),
+  reject('reject-controls-button-abspos-static', 'DRAGON_UNSUPPORTED_VALUE', '<span data-dragon-id="a" class="a"></span>', 'left: auto on the absolutely positioned <span> a inside <button> b'),
   layout('controls-text-field-inline'),
   reject('reject-controls-text-field-inline-dir', 'DRAGON_UNSUPPORTED_VALUE', 'rtl', 'the inline-block <input> f is on a right-to-left line of d'),
   reject('reject-controls-text-field-inline-valign', 'DRAGON_UNSUPPORTED_VALUE', 'middle', 'vertical-align: middle on the inline-block <input> f is not supported'),
@@ -84,13 +87,16 @@ export const CONTROLS: readonly FixtureSpec[] = [
   // FORM-checkbox: a themed checkbox, 13px unless sized, as a block and a flex item (the notes form's row), checked
   // and not, under a dark and a light accent; the rejects name what the slice does not draw.
   both('controls-checkbox'),
-  reject('reject-checkbox-inline', 'DRAGON_UNSUPPORTED_VALUE', 'inline-block', 'display: inline-block on <input> c makes it an inline-level control'),
+  // FORM-checkbox: a checkbox and a radio at their UA display, inline-block, as atomic inlines with their UA margins and their
+  // border box's block-end edge on the baseline; a radio only inside a box an empty clip-path hides (@markless/ui's radio group).
+  both('controls-checkbox-inline'),
+  reject('reject-checkbox-inline', 'DRAGON_UNSUPPORTED_VALUE', 'inline-flex', 'display: inline-flex on <input type=checkbox> c is not supported'),
   reject('reject-checkbox-appearance', 'DRAGON_UNSUPPORTED_VALUE', 'none', 'appearance: none on <input type=checkbox> c is not supported'),
   reject('reject-checkbox-padding', 'DRAGON_UNSUPPORTED_VALUE', '3px', 'padding-top: 3px on <input type=checkbox> c is not supported'),
   reject('reject-checkbox-accent-alpha', 'DRAGON_UNSUPPORTED_VALUE', 'rgb(0 0 0 / 0.5)', 'a translucent accent-color on <input type=checkbox> c'),
   reject('reject-checkbox-disabled', 'DRAGON_UNSUPPORTED_ATTRIBUTE', '<input data-dragon-id="c" type="checkbox" disabled="">', 'attribute disabled on c is not supported'),
   reject('reject-checkbox-stretch', 'DRAGON_UNSUPPORTED_VALUE', '<input data-dragon-id="c" type="checkbox">', '<input type=checkbox> c with width: auto is stretched by its flex container'),
-  reject('reject-checkbox-radio', 'DRAGON_UNSUPPORTED_ELEMENT', '<input data-dragon-id="c" type="radio">', '<input> c of type radio is not supported'),
+  reject('reject-checkbox-radio', 'DRAGON_UNSUPPORTED_VALUE', '<input data-dragon-id="c" type="radio">', '<input type=radio> c is drawn by Chrome\'s theme, which Dragon does not draw yet'),
   layout('controls-search'),
   both('controls-select-none'),
   both('controls-select-button'),

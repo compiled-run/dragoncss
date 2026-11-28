@@ -22,7 +22,7 @@ public func paintMenulist_menuListArrows(_ input: LayoutInput, _ boxes: JsArray<
   try paintMenulist_collectArrows(zoomed.root, zoomed.devicePixelRatio, input.devicePixelRatio, zooms, layout_absoluteRects(boxes), out)
   // ts: packages/layout/src/paint-menulist.ts:29
   if (jsLength(out) != selects) {
-    throw JsError(message: jsConcat(S.s385, jsNumberToString(selects), S.s158, jsNumberToString(jsLength(out)), S.s18))
+    throw JsError(message: jsConcat(S.s389, jsNumberToString(selects), S.s160, jsNumberToString(jsLength(out)), S.s18))
   }
   return out
 }
@@ -32,7 +32,7 @@ public func paintMenulist_collectArrowZooms(_ b: any U_ControlBox_LayoutBox, _ d
   var found: Double = 0.0
   // ts: packages/layout/src/paint-menulist.ts:36
   if (b.kind == S.s_control) {
-    let c: any U_ControlKind_d084c13b74a53fa6 = (b as! ControlBox).control
+    let c: any U_ControlKind_57c5cd1a1bb26daa = (b as! ControlBox).control
     // ts: packages/layout/src/paint-menulist.ts:38
     if ((c.kind == S.s_select_menulist) && ((c as! ControlKind_selectMenulist).arrowWidth > 0.0)) {
       _ = try out.set((b as! ControlBox).id, units_effectiveZoom(device, (b as! ControlBox).style.zoom))
@@ -59,14 +59,14 @@ public func paintMenulist_collectArrowZooms(_ b: any U_ControlBox_LayoutBox, _ d
 public func paintMenulist_collectArrows(_ b: any U_ControlBox_LayoutBox, _ zoomedRatio: Double, _ device: Double, _ zooms: JsStringMap<Double>, _ abs: JsStringMap<LayoutRect>, _ out: JsArray<MenuListArrowPaint>) throws -> Void {
   // ts: packages/layout/src/paint-menulist.ts:51
   if (b.kind == S.s_control) {
-    let c: any U_ControlKind_d084c13b74a53fa6 = (b as! ControlBox).control
+    let c: any U_ControlKind_57c5cd1a1bb26daa = (b as! ControlBox).control
     let zoom: Double? = zooms.get((b as! ControlBox).id)
     // ts: packages/layout/src/paint-menulist.ts:54
     if ((c.kind == S.s_select_menulist) && (zoom != nil)) {
       let r: LayoutRect? = abs.get((b as! ControlBox).id)
       // ts: packages/layout/src/paint-menulist.ts:56
       if (r == nil) {
-        throw JsError(message: jsConcat(S.s386, (b as! ControlBox).id, S.s60))
+        throw JsError(message: jsConcat(S.s390, (b as! ControlBox).id, S.s60))
       }
       let s: SnappedRect = try snap_snapRect(jsUnwrap(r))
       let border: Edges = try box_resolveBorder((b as! ControlBox).style, zoomedRatio)

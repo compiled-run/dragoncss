@@ -1,0 +1,280 @@
+{
+ "platform": "darwin-arm64",
+ "devicePixelRatio": 2,
+ "input": [
+  {
+   "id": "html",
+   "parent": null,
+   "x": 0,
+   "y": 0,
+   "width": 51200,
+   "height": 10240
+  },
+  {
+   "id": "body",
+   "parent": "html",
+   "x": 0,
+   "y": 0,
+   "width": 51200,
+   "height": 9216
+  },
+  {
+   "id": "choice1",
+   "parent": "body",
+   "x": 25600,
+   "y": 0,
+   "width": 25600,
+   "height": 4096
+  },
+  {
+   "id": "mark1",
+   "parent": "choice1",
+   "x": 16384,
+   "y": 1024,
+   "width": 2048,
+   "height": 2048
+  },
+  {
+   "id": "dot1",
+   "parent": "mark1",
+   "x": 2048,
+   "y": 0,
+   "width": 0,
+   "height": 0
+  },
+  {
+   "id": "dot1:line0",
+   "parent": "dot1",
+   "x": 0,
+   "y": 0,
+   "width": 0,
+   "height": 0
+  },
+  {
+   "id": "l1",
+   "parent": "choice1",
+   "x": 7168,
+   "y": 1024,
+   "width": 8192,
+   "height": 2048
+  },
+  {
+   "id": "l1:text0",
+   "parent": "l1",
+   "x": 0,
+   "y": 0,
+   "width": 8192,
+   "height": 2048
+  },
+  {
+   "id": "l1:text0:line0",
+   "parent": "l1:text0",
+   "x": 0,
+   "y": 0,
+   "width": 8192,
+   "height": 2048
+  },
+  {
+   "id": "choice2",
+   "parent": "body",
+   "x": 25600,
+   "y": 5120,
+   "width": 25600,
+   "height": 4096
+  },
+  {
+   "id": "mark2",
+   "parent": "choice2",
+   "x": 14336,
+   "y": 1024,
+   "width": 2048,
+   "height": 2048
+  },
+  {
+   "id": "dot2",
+   "parent": "mark2",
+   "x": 2048,
+   "y": 0,
+   "width": 0,
+   "height": 0
+  },
+  {
+   "id": "dot2:line0",
+   "parent": "dot2",
+   "x": 0,
+   "y": 0,
+   "width": 0,
+   "height": 0
+  },
+  {
+   "id": "l2",
+   "parent": "choice2",
+   "x": 9216,
+   "y": 1024,
+   "width": 4096,
+   "height": 2048
+  },
+  {
+   "id": "l2:text0",
+   "parent": "l2",
+   "x": 0,
+   "y": 0,
+   "width": 4096,
+   "height": 2048
+  },
+  {
+   "id": "l2:text0:line0",
+   "parent": "l2:text0",
+   "x": 0,
+   "y": 0,
+   "width": 4096,
+   "height": 2048
+  }
+ ],
+ "output": [
+  {
+   "id": "html",
+   "left": 0,
+   "top": 0,
+   "right": 800,
+   "bottom": 160,
+   "width": 800,
+   "height": 160
+  },
+  {
+   "id": "body",
+   "left": 0,
+   "top": 0,
+   "right": 800,
+   "bottom": 144,
+   "width": 800,
+   "height": 144
+  },
+  {
+   "id": "choice1",
+   "left": 400,
+   "top": 0,
+   "right": 800,
+   "bottom": 64,
+   "width": 400,
+   "height": 64
+  },
+  {
+   "id": "mark1",
+   "left": 656,
+   "top": 16,
+   "right": 688,
+   "bottom": 48,
+   "width": 32,
+   "height": 32
+  },
+  {
+   "id": "dot1",
+   "left": 688,
+   "top": 16,
+   "right": 688,
+   "bottom": 16,
+   "width": 0,
+   "height": 0
+  },
+  {
+   "id": "dot1:line0",
+   "left": 688,
+   "top": 16,
+   "right": 688,
+   "bottom": 16,
+   "width": 0,
+   "height": 0
+  },
+  {
+   "id": "l1",
+   "left": 512,
+   "top": 16,
+   "right": 640,
+   "bottom": 48,
+   "width": 128,
+   "height": 32
+  },
+  {
+   "id": "l1:text0",
+   "left": 512,
+   "top": 16,
+   "right": 640,
+   "bottom": 48,
+   "width": 128,
+   "height": 32
+  },
+  {
+   "id": "l1:text0:line0",
+   "left": 512,
+   "top": 16,
+   "right": 640,
+   "bottom": 48,
+   "width": 128,
+   "height": 32
+  },
+  {
+   "id": "choice2",
+   "left": 400,
+   "top": 80,
+   "right": 800,
+   "bottom": 144,
+   "width": 400,
+   "height": 64
+  },
+  {
+   "id": "mark2",
+   "left": 624,
+   "top": 96,
+   "right": 656,
+   "bottom": 128,
+   "width": 32,
+   "height": 32
+  },
+  {
+   "id": "dot2",
+   "left": 656,
+   "top": 96,
+   "right": 656,
+   "bottom": 96,
+   "width": 0,
+   "height": 0
+  },
+  {
+   "id": "dot2:line0",
+   "left": 656,
+   "top": 96,
+   "right": 656,
+   "bottom": 96,
+   "width": 0,
+   "height": 0
+  },
+  {
+   "id": "l2",
+   "left": 544,
+   "top": 96,
+   "right": 608,
+   "bottom": 128,
+   "width": 64,
+   "height": 32
+  },
+  {
+   "id": "l2:text0",
+   "left": 544,
+   "top": 96,
+   "right": 608,
+   "bottom": 128,
+   "width": 64,
+   "height": 32
+  },
+  {
+   "id": "l2:text0:line0",
+   "left": 544,
+   "top": 96,
+   "right": 608,
+   "bottom": 128,
+   "width": 64,
+   "height": 32
+  }
+ ]
+}

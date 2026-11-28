@@ -144,8 +144,6 @@ describe('clip: native refusals', () => {
   it('refuses an empty rect beside a view outside the box view, or on a box that is not visible, and names it', () => {
     const cases: readonly [string, RegExp][] = [
       ['.a { box-shadow: 0 0 0 2px red; }', /it has a box-shadow, drawn by a companion view beside the box view/],
-      ['.a { outline: 1px solid red; }', /it has an outline, drawn in the root view/],
-      ['.b { outline: 1px solid red; }', /b has an outline, drawn in the root view/],
       ['.b { position: relative; z-index: 1; }', /b has z-index 1, and its layer may be hosted under a stacking context outside the box view/],
       ['.a { visibility: hidden; }', /it is hidden too, and the visibility readback reads the same hidden flag/],
     ];
@@ -156,7 +154,8 @@ describe('clip: native refusals', () => {
       expectCatalogued(errs);
     }
     // A z-index 0 or one that does not apply (a static box outside a flex or grid container) keeps the layer inside the box view.
-    for (const css of ['.b { position: relative; z-index: 0; }', '.b { z-index: 3; }', '.b { outline: 0px solid red; }', '.b { outline-style: none; }']) expect(clipErrors(compile(HIDDEN + css)), css).toEqual([]);
+    // An outline on or in the box is drawn nowhere, as Chrome draws none (MASK-CLIP-path-hidden F9).
+    for (const css of ['.b { position: relative; z-index: 0; }', '.b { z-index: 3; }', '.b { outline: 0px solid red; }', '.b { outline-style: none; }', '.a { outline: 1px solid red; }', '.b { outline: 1px solid red; }']) expect(clipErrors(compile(HIDDEN + css)), css).toEqual([]);
   });
   it('carries the text of an empty rect as one accessibility label, which Chrome keeps in its accessibility tree', () => {
     // Chrome paints nothing of the box and keeps its text in the accessibility tree; natively the box view draws nothing and is one
@@ -269,10 +268,12 @@ describe('clip: the label of a box its empty rect hides (lower/paint/clip-label.
 });
 
 describe('clip: hit testing (R13; the hit lane refuses the clip fixtures by name, hit-capture.ts hitRefusal)', () => {
-  it('refuses an interaction rule on native beside a clipped box, not on web', () => {
+  // An empty rect leaves the box out of the hit test (paint-clip-path.test.ts 'a shape empty at every size'); any other rect is unmodelled.
+  it('refuses an interaction rule on native beside a clip the hit test does not model, not on web', () => {
     const lanes = createProjectWith({ projectId: 'test', targets: { web: {}, ios: { minimum: '15.0' } } }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr', interactionLanes: true });
-    const found = errors(lanes.compile(input(`${HIDDEN} .p:hover { background-color: #0c0; }`))).map((d) => `${d.code} [${d.target}] ${d.message}`);
+    const found = errors(lanes.compile(input('.a { position: static; clip: rect(0, 10px, 10px, 0); } .p:hover { background-color: #0c0; }'))).map((d) => `${d.code} [${d.target}] ${d.message}`);
     expect(found).toEqual(['DRAGON_UNSUPPORTED_SELECTOR [ios] :hover needs Dragon hit testing through clip on a, which is not built yet (package SELD-R2b)']);
+    expect(errors(lanes.compile(input(`${HIDDEN} .p:hover { background-color: #0c0; }`)))).toEqual([]);
   });
 });
 

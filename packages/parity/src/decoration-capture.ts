@@ -9,7 +9,7 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import type { CompilerFaults, Environment, FrontEndResult } from 'dragon';
 import { createProjectWith, engineLayoutProjection, NO_FAULTS, resolvedTextColors } from 'dragon';
 import type { ControlBox, LayoutBox, InlineChild, TextFont } from '@dragon/layout';
-import { pieceGlyphs, textDecoration as td, zoomInput, NO_ENGINE_FAULTS } from '@dragon/layout';
+import { pieceGlyphs, textDecoration as td, zoomInput, NO_ENGINE_FAULTS, NORMAL_NUMERIC } from '@dragon/layout';
 import type { AppliedDecoration, DecorationAnalysisFaults } from '../../dragon/src/analysis/text-decoration.ts';
 import { appliedDecorationsOf, NO_DECORATION_ANALYSIS_FAULTS } from '../../dragon/src/analysis/text-decoration.ts';
 import { readSfnt } from '../../dragon/src/fonts/sfnt.ts';
@@ -126,12 +126,12 @@ function prepare(f: FontFixture, c: ParityCase, dpr: number): Prepared {
   const fonts = new Map<string, TextFont>();
   const inline = (k: InlineChild): void => {
     if (k.kind === 'inline') {
-      fonts.set(k.id, { family: k.font.family, size: k.font.size, letterSpacing: 0, wordSpacing: 0, smallCaps: false });
+      fonts.set(k.id, { family: k.font.family, size: k.font.size, letterSpacing: 0, wordSpacing: 0, smallCaps: false, variantNumeric: NORMAL_NUMERIC });
       for (const x of k.children) inline(x);
     }
   };
   const walk = (b: LayoutBox | ControlBox): void => {
-    if (b.strut !== null) fonts.set(b.id, { family: b.strut.font.family, size: b.strut.font.size, letterSpacing: 0, wordSpacing: 0, smallCaps: false });
+    if (b.strut !== null) fonts.set(b.id, { family: b.strut.font.family, size: b.strut.font.size, letterSpacing: 0, wordSpacing: 0, smallCaps: false, variantNumeric: NORMAL_NUMERIC });
     for (const k of b.children) {
       if (k.kind === 'box' || k.kind === 'control') walk(k);
       // A replaced leaf (REPL-a) holds no text, so it has no decoration font.

@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import type { ControlBox, LayoutBox, LayoutInput, LayoutStyle, LineStrut } from '@dragon/layout';
 import { borderDevicePx } from 'dragon';
-import { deviceShapedMeasurer, layout, LU_PER_PX, menuListArrows, NO_ENGINE_FAULTS, resolvedInput } from '@dragon/layout';
+import { deviceShapedMeasurer, layout, LU_PER_PX, menuListArrows, NO_ENGINE_FAULTS, NORMAL_NUMERIC, resolvedInput } from '@dragon/layout';
 import { vendorFontBytes } from '../src/font-reference.ts';
 import { repoPath } from '../src/paths.ts';
 import { expectedEngine } from '../src/native-host.ts';
@@ -56,7 +56,7 @@ describe('FORM-b select in a face other than Ahem', () => {
         if (select.control.kind !== 'select-menulist') continue;
         expect(borders.has(select.id), `${select.id}@${dpr}`).toBe(true);
         const font = select.control.font;
-        const ex = measurer.lengths({ family: font.family, size: font.size, letterSpacing: 0, wordSpacing: 0, smallCaps: false }).xHeight;
+        const ex = measurer.lengths({ family: font.family, size: font.size, letterSpacing: 0, wordSpacing: 0, smallCaps: false, variantNumeric: NORMAL_NUMERIC }).xHeight;
         const pad = select.style.paddingTop;
         expect(pad.kind === 'px' ? Math.abs(pad.value - ex) : Infinity, `${select.id}@${dpr}: 1ex is Lato's x-height`).toBeLessThan(0.01);
         expect(pad.kind === 'px' ? pad.value : 0, `${select.id}@${dpr}: Lato's ex is not Ahem's 0.8em`).not.toBeCloseTo(0.8 * font.size, 2);
@@ -86,7 +86,7 @@ describe('FORM-b select in a face other than Ahem', () => {
         const s = resolved.get(g.select.id);
         if (s === undefined || s.select.control.kind !== 'select-menulist') throw new Error(`${g.select.id} is not resolved`);
         const font = s.select.control.font;
-        const m = measurer.metrics({ family: font.family, size: font.size, letterSpacing: 0, wordSpacing: 0, smallCaps: false });
+        const m = measurer.metrics({ family: font.family, size: font.size, letterSpacing: 0, wordSpacing: 0, smallCaps: false, variantNumeric: NORMAL_NUMERIC });
         const strut = s.inner.strut as LineStrut;
         expect(strut.lineHeight, g.select.id).toEqual({ kind: 'px', value: (m.ascent + m.descent) / LU_PER_PX });
         expect((m.ascent + m.descent) / LU_PER_PX, `${g.select.id}: Lato's line is not its em, as Ahem's is`).not.toBe(font.size);

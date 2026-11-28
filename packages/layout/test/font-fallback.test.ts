@@ -5,7 +5,7 @@ import type { GlyphShaper } from '../src/shaping.ts';
 import { NO_HAN_KERNING, pieceGlyphs, shapedMeasurer } from '../src/shaping.ts';
 import { absoluteRects, layout, NO_SHAPING_FAULTS } from '../src/index.ts';
 import { box, neutralEnvironment, text } from './helpers.ts';
-import { AHEM_FONT_DATA } from '../src/text.ts';
+import { AHEM_FONT_DATA, NORMAL_NUMERIC } from '../src/text.ts';
 
 const LU = 64;
 const RING = 0x25ce;
@@ -31,7 +31,7 @@ function shaperWith(fallbackFace: string): { readonly shaper: GlyphShaper; reado
   return { shaper, asked };
 }
 
-const font = { family: 'A', size: 10, letterSpacing: 0, wordSpacing: 0, smallCaps: false };
+const font = { family: 'A', size: 10, letterSpacing: 0, wordSpacing: 0, smallCaps: false, variantNumeric: NORMAL_NUMERIC };
 const faces = new Map([['A', { id: 'A', data: AHEM_FONT_DATA, hanKerning: NO_HAN_KERNING }]]);
 
 describe('font fallback in the shaping core', () => {

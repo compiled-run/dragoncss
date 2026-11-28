@@ -636,6 +636,15 @@ describe('interaction states: hit model (R13)', () => {
     for (const v of ['hidden', 'collapse']) expect(otherErrors(compile({}, css.replace('visibility: hidden', `visibility: ${v}`), fbody, TARGETS, 'derive').diagnostics), v).toEqual([]);
   });
 
+  // rt-hit.ts orders z-index 0 and positive stacking contexts (hit-z-index-positive); a negative z-index is refused by name.
+  it('compiles interaction rules beside a z-index 0 or positive flex item, and refuses them beside a negative one', () => {
+    const css = BODY + '.fx { display: flex; height: 30px; } .s { width: 60px; height: 30px; z-index: 10; } .k:active { background-color: #0c0; }';
+    const fbody = (r: Parameters<Parameters<typeof inputFor>[1]>[0]) => [div(r, 'fx', ['fx'], [div(r, 's', ['s']), div(r, 'k', ['k'])])];
+    for (const z of ['10', '0', 'auto']) expect(otherErrors(compile({}, css.replace('z-index: 10', `z-index: ${z}`), fbody, TARGETS, 'derive').diagnostics), z).toEqual([]);
+    const negative = otherErrors(compile({}, css.replace('z-index: 10', 'z-index: -1'), fbody, TARGETS, 'derive').diagnostics);
+    for (const t of ['ios', 'android']) expect(negative).toContain(`DRAGON_UNSUPPORTED_SELECTOR [${t}] :active needs Dragon hit testing through the negative z-index on s, which is not built yet (package SELD-R2b)`);
+  });
+
   it('catches the plant hitUnmodelledNotRefused', () => {
     expect(otherErrors(compile({ hitUnmodelledNotRefused: true }, css, body, TARGETS, 'derive').diagnostics)).toEqual([]);
   });
@@ -650,6 +659,15 @@ describe('interaction states: hit model (R13)', () => {
     expect(HIT_MODELLED.get('transform')?.(rotated)).toBe(false);
     const plain = internalRecord(compile({}, css.replace('transform: rotate(5deg);', 'overflow: hidden; transform-origin: 0 0;'), body, TARGETS, 'derive'))?.cases[0]?.resolved as ResolvedElement;
     expect(hitUnmodelledFact(plain, referenceDataset())).toBeNull();
+  });
+
+  it('models the individual translate, the first op of the transform the hit facts carry (transform-hit-translate); rotate and scale stay unmodelled', () => {
+    const factOf = (decl: string): ReturnType<typeof hitUnmodelledFact> => hitUnmodelledFact(internalRecord(compile({}, css.replace('transform: rotate(5deg);', decl), body, TARGETS, 'derive'))?.cases[0]?.resolved as ResolvedElement, referenceDataset());
+    expect(factOf('translate: 20px 0;')).toBeNull();
+    expect(factOf('translate: -25% 50%;')).toBeNull();
+    expect(factOf('translate: 10px 0; transform: scale(0.8);')).toBeNull();
+    expect(factOf('rotate: 5deg;')).toEqual({ property: 'rotate', address: 'h' });
+    expect(factOf('scale: 0.5;')).toEqual({ property: 'scale', address: 'h' });
   });
 });
 

@@ -58,8 +58,9 @@ export const OUTLINE_LOWERING: PaintLowering<OutlineWrite> = {
   },
   css: { outline: [...OUTLINE_LONGHANDS] },
   // An anonymous box takes the initial outline (CSS2 §9.2.1.1): none, so no write.
-  lower: ({ el, facts }) => {
-    if (el === null) return [];
+  lower: ({ el, facts, clipHidden }) => {
+    // Chrome draws no outline in a box an empty clip hides (MASK-CLIP-path-hidden F4, F5, F9), and its view would sit outside the hidden box view.
+    if (el === null || clipHidden) return [];
     const address = el.element.address;
     const visibility = el.props.get('visibility');
     if (visibility === undefined) throw new ProgramError(`${address}: visibility did not resolve`);

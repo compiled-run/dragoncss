@@ -1,12 +1,21 @@
 // Text measurement is injected. The Ahem measurer is pure: it models the WPT Ahem v1.50 metrics without reading the font.
-import type { TextFont } from './input.ts';
+import type { TextFont, VariantNumeric } from './input.ts';
 import type { ShapedItem } from './shaping.ts';
 import type { TextRefusalCode } from './unsupported.ts';
 import type { LU } from './units.ts';
+
+
 import {
   cachedRangeWidth, floatAdd, fontMetricPx, fromPxCeil, glyphAdvance16, glyphBoundsMetricPx, inlineToFloat, inlineToLayoutUnitCeil, platformFontSize, roundFontMetricHalfUpToWholePx,
   roundFontMetricToWholePx, sub, textAdvanceAt, textRunLayoutUnit, ZERO,
 } from './units.ts';
+
+/** font-variant-numeric: normal. */
+export const NORMAL_NUMERIC: VariantNumeric = { figure: 'normal', spacing: 'normal', fraction: 'normal', ordinal: false, slashedZero: false };
+
+export function sameNumeric(a: VariantNumeric, b: VariantNumeric): boolean {
+  return a.figure === b.figure && a.spacing === b.spacing && a.fraction === b.fraction && a.ordinal === b.ordinal && a.slashedZero === b.slashedZero;
+}
 
 /** normalGapAbove: the part of lineGap a line-height: normal line puts above the glyphs; Blink puts none there, WebKit half. */
 export type FontMetrics = { readonly ascent: LU; readonly descent: LU; readonly lineGap: LU; readonly normalGapAbove: LU };
