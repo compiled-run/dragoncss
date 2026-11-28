@@ -110,6 +110,7 @@ public enum DragonStateWrite {
   case text(String, String, DragonRGBA8)
   case syntheticBold([Double], [Double])
   case image(String, Double, Double, String, Bool)
+  case visibility(String, Bool)
 }
 
 /// One node record of a state program.
@@ -292,6 +293,7 @@ public final class DragonStateMachine {
         case let .image(data, width, height, fit, pixelated):
           v.dragonSetImage(data, width: width, height: height, fit: fit)
           if pixelated { v.dragonSetImagePixelated() }
+        case let .visibility(value, canvas): dragonVisibility(v, value, canvas)
         case .text, .syntheticBold: fatalError("dragon: box \(n.id) holds a text write")
         }
       }
@@ -524,6 +526,7 @@ sealed class DragonStateWrite {
   class Text(val text: String, val family: String, val color: DragonRGBA8) : DragonStateWrite()
   class SyntheticBold(val keys: DoubleArray, val values: DoubleArray) : DragonStateWrite()
   class Image(val data: String, val width: Double, val height: Double, val fit: String, val layer: Boolean, val pixelated: Boolean) : DragonStateWrite()
+  class Visibility(val value: String, val canvas: Boolean) : DragonStateWrite()
 }
 
 /** One node record of a state program. */
@@ -710,6 +713,7 @@ class DragonStateMachine(
             v.dragonSetImage(w.data, w.width, w.height, w.fit, w.layer)
             if (w.pixelated) v.dragonSetImagePixelated()
           }
+          is DragonStateWrite.Visibility -> dragonVisibility(v, w.value, w.canvas)
           is DragonStateWrite.Text, is DragonStateWrite.SyntheticBold -> throw IllegalStateException("dragon: box " + n.id + " holds a text write")
         }
       }
@@ -1041,8 +1045,8 @@ export function nodeLit(lang: Lang, n: ProgramNode, moving: ReadonlySet<string> 
         // TXT-FX draws text shadows from the static program only; the state runtime has no text shadow writer yet.
         throw new StateEmitError(`${n.id}: text shadows in a state program have no state-node write (TXT-FX draws them on the static program only)`);
       case 'visibility':
-        // T150a: a state record holds no visibility write; T150b adds the setter on the device-states lane.
-        throw new StateEmitError(`${n.id}: visibility ${w.value} in a state program has no state-node write (T150b adds it)`);
+        writes.push(lang === 'swift' ? `.visibility(${q(w.value)}, ${w.canvas})` : `DragonStateWrite.Visibility(${q(w.value)}, ${w.canvas})`);
+        break;
       case 'clip-rect-empty':
       case 'clip-rect-label':
         // MASK-CLIP: a state record holds no clip write; the empty clip rect hides the box on the static program only.

@@ -41,13 +41,13 @@
   "engineOverflow": 3000,
   "engineWrapStyle": 400,
   "snapGenerated": 20000,
-  "snapVectors": 4023,
+  "snapVectors": 4029,
   "cases": {
-    "vectors-m2": 1155,
-    "vectors-dpr": 4239,
-    "engine-dpr": 4239,
+    "vectors-m2": 1157,
+    "vectors-dpr": 4245,
+    "engine-dpr": 4245,
     "units-m2": 160000,
-    "snap": 24023,
+    "snap": 24029,
     "snap-values": 216,
     "calc-goldens": 17,
     "engine-calc": 4000,
@@ -58,26 +58,26 @@
     "engine-wrap-style": 400
   },
   "engineSplit": {
-    "ok": 4227,
-    "unsupported": 12,
+    "ok": 4230,
+    "unsupported": 15,
     "refused": 0,
     "threw": 0,
     "harnessError": 0
   },
   "digests": {
-    "vectors-m2": "fc748f2cbda37bdcf82290a1f0017d2f6736c20bf90dfe10869804021cbb4aac",
-    "vectors-dpr": "9ea0fd41a5a0f30ea2fa994d83b103eecc4396ec0cac1dc433900457d8e1f63e",
-    "engine-dpr": "0c8900aa97abd46d6481e7653c7fb5406fa3f3e75c3450035bd64763967ce16c",
+    "vectors-m2": "9c2889825bd45a7f8a4464628d32056c696eb5e38e76ca705b0de617a103fd51",
+    "vectors-dpr": "2b63c05a4282abd2587281afbb58898ea381a43fe67b81644853f1154805c4c8",
+    "engine-dpr": "e4c14cef1f06b2a69646b8b43a12d6cf31c1dd036c2ce42b5f91a24916ae5376",
     "units-m2": "dab55e2f7cf33a3987ca5e28302be5630eac2bb207b21721f1a005ee3e2f9a01",
-    "snap": "04baa05324514a4a5762ec8b567b0d0a368f59b1d59e649ac19bbbffad1032d2",
+    "snap": "ee2362c4924d747e30cbc7c5d13939e58ded5374c5243e809f818b36494fd84d",
     "snap-values": "58ce79fe0e7e0ff8be7bab82c5ae62d22131fea58335d95781b900b7edfa8a0a",
     "calc-goldens": "af413ed19d5ab1ac8184b127a26d4bb4c9bd73c95a19559dac6b95b7f2e5542f",
-    "engine-calc": "36aa6fe4c955969a5f2e28b882242f140dfe8c97b8d05d9d137c98b05dcadda1",
+    "engine-calc": "fdef4ccde67771072879dab6e3f24483cf48ebf3062718110d35a4ac0654f0fa",
     "units-calc": "eda8617b15bc8097b620707fe9becfaae88afe16ad7c35c3916cb5fbdf7e5c50",
     "engine-inline": "c908e9c8ed4c3ef97ecb27c5e9b456d987837476d33adde5f6c397506a7c9b1a",
     "engine-overflow": "1ae936475c7fa9e734b66b07cf3bba4811a8b47d4bd92795fbbd3197b92f1f79",
     "text-latin": "5c13d33b175ec0a7b6eb4281996078b81372c94e73c556fe9737cfb4abdff44f",
     "engine-wrap-style": "6dfdad2ed2e2050bf22c54f6a2ebab4cd244b99fd97bdaa7ca2ee70229ea6136"
   },
-  "digest": "372c70aa40f00be4c001c6cde0e50be2fb232fa45bd41acb27c10ae5b7491c91"
+  "digest": "d99bfe091a3bcb5691f4067d15ff074dc0d83589de0e0b495951375893085504"
 }

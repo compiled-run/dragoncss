@@ -82,9 +82,8 @@ export const STACKING_OUT: readonly string[] = [
   'isolation-stacking', 'isolation-stacking-rtl',
 ];
 export const STACKING_REASON = /^stacking context on .+: hit testing through negative z-index layers and stacking contexts in the normal flow is not modelled yet/;
-// Chrome hits an svg's painted shapes (pointer-events: visiblePainted), which the hit table models with SVG-a2. svg-hidden is in
-// VISIBILITY_OUT instead: its <svg> s3 is visibility hidden, and hitRefusal names visibility before an svg.
-export const SVG_OUT: readonly string[] = ['svg-basic', 'svg-basic-rtl', 'svg-viewbox', 'svg-viewbox-rtl', 'svg-paint', 'svg-paint-rtl', 'svg-flex', 'svg-flex-rtl', 'svg-colors', 'svg-colors-rtl', 'svg-opacity', 'svg-opacity-rtl', 'svg-stroke', 'svg-stroke-rtl', 'svg-dash', 'svg-dash-rtl', 'svg-geometry', 'svg-geometry-rtl', 'svg-paint-order', 'svg-paint-order-rtl', 'svg-rrect', 'svg-rrect-rtl', 'svg-vector-effect', 'svg-vector-effect-rtl', 'svg-inert', 'svg-inert-rtl', 'inline-replaced-svg', 'inline-replaced-svg-rtl'];
+// Chrome hits an svg's painted shapes (pointer-events: visiblePainted), which the hit table models with SVG-a2.
+export const SVG_OUT: readonly string[] = ['svg-basic', 'svg-basic-rtl', 'svg-hidden', 'svg-hidden-rtl', 'svg-viewbox', 'svg-viewbox-rtl', 'svg-paint', 'svg-paint-rtl', 'svg-flex', 'svg-flex-rtl', 'svg-colors', 'svg-colors-rtl', 'svg-opacity', 'svg-opacity-rtl', 'svg-stroke', 'svg-stroke-rtl', 'svg-dash', 'svg-dash-rtl', 'svg-geometry', 'svg-geometry-rtl', 'svg-paint-order', 'svg-paint-order-rtl', 'svg-rrect', 'svg-rrect-rtl', 'svg-vector-effect', 'svg-vector-effect-rtl', 'svg-inert', 'svg-inert-rtl', 'inline-replaced-svg', 'inline-replaced-svg-rtl'];
 export const SVG_REASON = /^<svg> .+: hit testing an svg's shapes comes with SVG-a2$/;
 
 // TXT1a-2 phase R: the device lanes run the shaped cases (targets.ts deviceCaseIds), but the hit lane keeps them out until real-face hit

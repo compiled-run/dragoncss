@@ -16,7 +16,6 @@ import { hitCases, hitRefusedCases } from '../src/hit-capture.ts';
 import { CLAMP_OUT, CLAMP_REASON, FLOAT_OUT, FLOAT_REASON, INLINE_OUT, INLINE_REASON, MARKER_OUT, MARKER_REASON, SHAPED_REASON, STACKING_OUT, STACKING_REASON, SVG_OUT, SVG_REASON, TRANSFORM_NAMED, TRANSFORM_REASON } from './hit-refusals.ts';
 import { GRID_OUT, GRID_REASON } from './hit-refusals-grid.ts';
 import { CONTROLS_OUT, CONTROLS_REASON } from './hit-refusals-controls.ts';
-import { VISIBILITY_OUT, VISIBILITY_REASON } from './hit-refusals-visibility.ts';
 import { CLIP_PATH_OUT, CLIP_PATH_REASON, CLIP_RECT_OUT, CLIP_RECT_REASON } from './hit-refusals-clip-rect.ts';
 import { DUMP_FAULTS } from '../src/native-compare.ts';
 import { repoPath } from '../src/paths.ts';
@@ -266,7 +265,6 @@ describe('committed out/lanes.json', () => {
     expect(refused.filter((id) => CLAMP_OUT.includes(id)).sort()).toEqual([...CLAMP_OUT].sort());
     expect(refused.filter((id) => STACKING_OUT.includes(id)).sort()).toEqual([...STACKING_OUT].sort());
     expect(refused.filter((id) => GRID_OUT.includes(id)).sort()).toEqual([...GRID_OUT].sort());
-    expect(refused.filter((id) => VISIBILITY_OUT.includes(id)).sort()).toEqual([...VISIBILITY_OUT].sort());
     expect(refused.filter((id) => SVG_OUT.includes(id)).sort()).toEqual([...SVG_OUT].sort());
     expect(refused.filter((id) => CLIP_RECT_OUT.includes(id)).sort()).toEqual([...CLIP_RECT_OUT].sort());
     expect(refused.filter((id) => CLIP_PATH_OUT.includes(id)).sort()).toEqual([...CLIP_PATH_OUT].sort());
@@ -279,7 +277,6 @@ describe('committed out/lanes.json', () => {
       else if (INLINE_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(INLINE_REASON);
       else if (STACKING_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(STACKING_REASON);
       else if (GRID_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(GRID_REASON);
-      else if (VISIBILITY_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(VISIBILITY_REASON);
       else if (SVG_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(SVG_REASON);
       else if (CLIP_RECT_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(CLIP_RECT_REASON);
       else if (CLIP_PATH_OUT.includes(r.id)) expect(r.reason, r.id).toMatch(CLIP_PATH_REASON);

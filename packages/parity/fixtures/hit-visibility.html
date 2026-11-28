@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; }
+.row { margin-bottom: 10px; }
+.opt { display: flex; align-items: center; column-gap: 6px; width: 120px; height: 24px; padding-inline-start: 6px; background-color: rgb(236, 240, 244); }
+.mark { width: 12px; height: 12px; background-color: rgb(40, 170, 60); }
+.label { width: 60px; height: 12px; background-color: rgb(40, 40, 40); }
+.box { width: 100px; height: 20px; }
+.up { margin-top: -10px; width: 60px; height: 30px; }
+.kid { width: 40px; height: 10px; }
+.pad { padding: 6px; }
+.hid { visibility: hidden; }
+.col { visibility: collapse; }
+.vis { visibility: visible; }
+.red { background-color: rgb(220, 40, 40); }
+.teal { background-color: rgb(0, 150, 150); }
+.gold { background-color: rgb(250, 200, 0); }
+.blue { background-color: rgb(40, 80, 220); }
+.t:active { background-color: rgb(120, 120, 120); }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="o1" class="row opt t"><div data-dragon-id="o1-m" class="mark hid"></div><div data-dragon-id="o1-l" class="label"></div></div>
+<div data-dragon-id="o2" class="row opt t"><div data-dragon-id="o2-m" class="mark"></div><div data-dragon-id="o2-l" class="label"></div></div>
+<div data-dragon-id="l" class="row"><div data-dragon-id="l-b" class="box teal t"></div><div data-dragon-id="l-o" class="up red hid"></div></div>
+<div data-dragon-id="p" class="row pad blue hid t"><div data-dragon-id="p-k" class="kid gold vis"></div><div data-dragon-id="p-h" class="kid red"></div></div>
+<div data-dragon-id="c" class="row pad teal t"><div data-dragon-id="c-k" class="box gold col"></div></div>
+</body>
+</html>

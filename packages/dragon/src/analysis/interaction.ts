@@ -622,6 +622,8 @@ export const HIT_MODELLED: ReadonlyMap<Longhand, (v: CssValue) => boolean> = new
   // Blink hits the border box (box-shadow is ink only); opacity, 0 too, moves no hit, and below 1 is a layer rt-hit.ts orders.
   ['box-shadow', all],
   ['opacity', all],
+  // internal.ts hitFacts reads a box that is not visible as pointer-events none, as Blink's hit test does.
+  ['visibility', all],
   ['transform', hitModelsTransform],
   // transform-hit-translate: the hit facts carry it as the transform's first op (elementTransformWrite).
   ['translate', hitModelsTranslate],

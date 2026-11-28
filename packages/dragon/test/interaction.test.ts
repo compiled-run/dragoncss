@@ -630,6 +630,12 @@ describe('interaction states: hit model (R13)', () => {
     expect(hitUnmodelledBox(plain)).toBeNull();
   });
 
+  it('compiles interaction rules beside a box whose visibility is hidden or collapse', () => {
+    const css = BODY + '.fx { display: flex; height: 30px; } .s { width: 60px; height: 30px; visibility: hidden; } .k:active { background-color: #0c0; }';
+    const fbody = (r: Parameters<Parameters<typeof inputFor>[1]>[0]) => [div(r, 'fx', ['fx', 'k'], [div(r, 's', ['s']), div(r, 'k2', ['k'])])];
+    for (const v of ['hidden', 'collapse']) expect(otherErrors(compile({}, css.replace('visibility: hidden', `visibility: ${v}`), fbody, TARGETS, 'derive').diagnostics), v).toEqual([]);
+  });
+
   // rt-hit.ts orders z-index 0 and positive stacking contexts (hit-z-index-positive); a negative z-index is refused by name.
   it('compiles interaction rules beside a z-index 0 or positive flex item, and refuses them beside a negative one', () => {
     const css = BODY + '.fx { display: flex; height: 30px; } .s { width: 60px; height: 30px; z-index: 10; } .k:active { background-color: #0c0; }';
