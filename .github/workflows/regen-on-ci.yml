@@ -15,6 +15,11 @@
 # resume (either dispatch mode; a label run or a branch dispatch finds one by itself on its branch): an earlier run's id. When its chrome-1 tree, applied to this commit, leaves every Chrome step
 # skipped (a fix that touched only host code, say), the chain starts at host-1; otherwise chrome-1 runs seeded with its store.
 # Either way the outputs equal a run from scratch, since cache entries are keyed by content. A run given resume saves no cache.
+# chrome_runner (workflow_dispatch only): hosted, or macbook, the owner's macOS 26 MacBook slots (label dragon-macbook). A
+# self-hosted runner on this public repository must never run pull request or fork code, so every runner that names it is
+# `github.event_name == 'workflow_dispatch' && inputs.chrome_runner == 'macbook' && 'dragon-macbook' || 'macos-26'`, resolve
+# refuses such a run for a sha no branch of this repository contains, and the slot's job-started hook (outside the repository)
+# fails before any step every job that is not a workflow_dispatch of this repository's regen-on-ci.yml or full-test.yml.
 # A push made with GITHUB_TOKEN starts no workflow, so the push job dispatches ci.yml on the branch for the new commit's checks.
 # Every push to master runs the same chain without pushing ("warm"): Actions caches made in a pull request are visible only to
 # that pull request, while master's are visible to every branch, so master's run keeps the regen cache warm for all of them.
@@ -43,6 +48,17 @@ on:
         description: Id of an earlier regen-on-ci run to take chrome-1 from when this commit changes no Chrome-step input; saves no cache
         required: false
         type: string
+      chrome_runner:
+        description: Where the Chrome rounds run - hosted (GitHub's macos-26) or macbook (the owner's macOS 26 MacBook slots, label dragon-macbook)
+        required: false
+        default: hosted
+        type: choice
+        options: [hosted, macbook]
+      cold:
+        description: chrome-1 runs every step whatever the regen cache holds (pnpm regen --force), to prove a runner's captures
+        required: false
+        default: false
+        type: boolean
   pull_request:
     types: [labeled]
   push:
@@ -196,6 +212,17 @@ jobs:
       # scratch, as without it. A regen label run, or a branch dispatch without resume, takes the newest earlier run of the same
       # branch that qualifies, so the landing's fix rounds resume by themselves. A store from another run never goes into the
       # shared cache: a run that resumes saves none.
+      - name: A self-hosted Chrome round runs only commits on this repository's branches
+        if: github.event_name == 'workflow_dispatch' && inputs.chrome_runner == 'macbook'
+        env:
+          SHA: ${{ steps.r.outputs.sha }}
+          REPO: ${{ github.repository }}
+        run: |
+          git init -q "$RUNNER_TEMP/refs" && cd "$RUNNER_TEMP/refs"
+          git fetch -q --filter=tree:0 --no-tags "https://github.com/$REPO.git" '+refs/heads/*:refs/remotes/origin/*'
+          on=$(git for-each-ref --contains "$SHA" --count=1 --format='%(refname:lstrip=3)' refs/remotes/origin 2>/dev/null || true)
+          [ -n "$on" ] || { echo "::error::$SHA is on no branch of $REPO; chrome_runner=macbook runs only commits of this repository's branches"; exit 1; }
+          echo "$SHA is on branch $on; Chrome rounds on dragon-macbook" >> "$GITHUB_STEP_SUMMARY"
       - name: Check the run to resume from
         id: resume
         env:
@@ -386,7 +413,7 @@ jobs:
     needs: [resolve, resume-chrome-1]
     if: ${{ !cancelled() && needs.resolve.result == 'success' && needs.resolve.outputs.mode != 'skip' && needs.resume-chrome-1.outputs.resumed != 'true' }}
     uses: ./.github/workflows/regen-on-ci-round.yml
-    with: { runner: macos-26, side: chrome, args: '--skip lanes-host', sha: '${{ needs.resolve.outputs.sha }}', seed_run: '${{ needs.resolve.outputs.resume }}', name: chrome-1, save_cache: "${{ needs.resolve.outputs.save == 'true' }}" }
+    with: { runner: "${{ github.event_name == 'workflow_dispatch' && inputs.chrome_runner == 'macbook' && 'dragon-macbook' || 'macos-26' }}", side: chrome, args: "${{ github.event_name == 'workflow_dispatch' && inputs.cold && '--skip lanes-host --force' || '--skip lanes-host' }}", sha: '${{ needs.resolve.outputs.sha }}', seed_run: '${{ needs.resolve.outputs.resume }}', name: chrome-1, save_cache: "${{ needs.resolve.outputs.save == 'true' }}" }
   # Beside host-1, on Linux: parity:lanes --run-host on chrome-1's tree with kotlinc only (iOS reads as blocked), so a lane
   # configuration, manifest or verdict break shows in this job long before the macOS host round ends. It only reports: host-1
   # still decides the run, and nothing here is kept. continue-on-error keeps the run's conclusion whatever this job does (a
@@ -470,7 +497,7 @@ jobs:
     needs: [resolve, host-1]
     if: ${{ !cancelled() && needs.host-1.result == 'success' && needs.host-1.outputs.changed == 'true' && needs.host-1.outputs.next != 'false' }}
     uses: ./.github/workflows/regen-on-ci-round.yml
-    with: { runner: macos-26, side: chrome, args: '--skip lanes-host', sha: '${{ needs.resolve.outputs.sha }}', prev: host-1, name: chrome-2, save_cache: "${{ needs.resolve.outputs.save == 'true' }}" }
+    with: { runner: "${{ github.event_name == 'workflow_dispatch' && inputs.chrome_runner == 'macbook' && 'dragon-macbook' || 'macos-26' }}", side: chrome, args: '--skip lanes-host', sha: '${{ needs.resolve.outputs.sha }}', prev: host-1, name: chrome-2, save_cache: "${{ needs.resolve.outputs.save == 'true' }}" }
   host-2:
     needs: [resolve, chrome-2]
     if: ${{ !cancelled() && needs.chrome-2.result == 'success' && needs.chrome-2.outputs.changed == 'true' && needs.chrome-2.outputs.next != 'false' }}
@@ -480,7 +507,7 @@ jobs:
     needs: [resolve, host-2]
     if: ${{ !cancelled() && needs.host-2.result == 'success' && needs.host-2.outputs.changed == 'true' && needs.host-2.outputs.next != 'false' }}
     uses: ./.github/workflows/regen-on-ci-round.yml
-    with: { runner: macos-26, side: chrome, args: '--skip lanes-host', sha: '${{ needs.resolve.outputs.sha }}', prev: host-2, name: chrome-3, save_cache: "${{ needs.resolve.outputs.save == 'true' }}" }
+    with: { runner: "${{ github.event_name == 'workflow_dispatch' && inputs.chrome_runner == 'macbook' && 'dragon-macbook' || 'macos-26' }}", side: chrome, args: '--skip lanes-host', sha: '${{ needs.resolve.outputs.sha }}', prev: host-2, name: chrome-3, save_cache: "${{ needs.resolve.outputs.save == 'true' }}" }
   converge:
     needs: [resolve, resume-chrome-1, chrome-1, host-1, chrome-2, host-2, chrome-3]
     # The rounds' results only: resume-chrome-1 failing at job level means chrome-1 ran instead.

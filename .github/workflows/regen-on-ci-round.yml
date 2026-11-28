@@ -32,7 +32,8 @@ permissions:
   actions: read
 jobs:
   round:
-    runs-on: ${{ inputs.runner }}
+    # A self-hosted label (dragon-*) only for a dispatch; regen-on-ci.yml asks for one only then.
+    runs-on: ${{ (github.event_name == 'workflow_dispatch' || !startsWith(inputs.runner, 'dragon-')) && inputs.runner || 'macos-26' }}
     timeout-minutes: 300
     outputs:
       changed: ${{ steps.regen.outputs.changed }}
@@ -118,15 +119,16 @@ jobs:
         run: |
           test "$(pnpm --filter @dragon/parity exec playwright --version)" = "Version 1.58.2"
           pnpm --filter @dragon/parity exec playwright install chromium
+      # A self-hosted slot's /Users/runner/wpt is a read-only copy at the pinned commit (the fetch below checks it).
       - name: Chrome side - cache the WPT copy
-        if: inputs.side == 'chrome' && inputs.save_cache
+        if: inputs.side == 'chrome' && inputs.save_cache && runner.environment == 'github-hosted'
         uses: actions/cache@v4
         with:
           path: /Users/runner/wpt
           key: wpt-${{ hashFiles('packages/wpt/wpt.lock') }}
       # Restored only: a patch-mode run regenerates an unreviewed tree at master's cache scope, so it never saves into it.
       - name: Chrome side - restore the WPT copy (patch mode)
-        if: inputs.side == 'chrome' && !inputs.save_cache
+        if: inputs.side == 'chrome' && !inputs.save_cache && runner.environment == 'github-hosted'
         uses: actions/cache/restore@v4
         with:
           path: /Users/runner/wpt
