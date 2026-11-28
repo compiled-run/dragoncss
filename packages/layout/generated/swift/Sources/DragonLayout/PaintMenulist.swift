@@ -32,7 +32,7 @@ public func paintMenulist_collectArrowZooms(_ b: any U_ControlBox_LayoutBox, _ d
   var found: Double = 0.0
   // ts: packages/layout/src/paint-menulist.ts:36
   if (b.kind == S.s_control) {
-    let c: any U_ControlKind_d084c13b74a53fa6 = (b as! ControlBox).control
+    let c: any U_ControlKind_57c5cd1a1bb26daa = (b as! ControlBox).control
     // ts: packages/layout/src/paint-menulist.ts:38
     if ((c.kind == S.s_select_menulist) && ((c as! ControlKind_selectMenulist).arrowWidth > 0.0)) {
       _ = try out.set((b as! ControlBox).id, units_effectiveZoom(device, (b as! ControlBox).style.zoom))
@@ -59,7 +59,7 @@ public func paintMenulist_collectArrowZooms(_ b: any U_ControlBox_LayoutBox, _ d
 public func paintMenulist_collectArrows(_ b: any U_ControlBox_LayoutBox, _ zoomedRatio: Double, _ device: Double, _ zooms: JsStringMap<Double>, _ abs: JsStringMap<LayoutRect>, _ out: JsArray<MenuListArrowPaint>) throws -> Void {
   // ts: packages/layout/src/paint-menulist.ts:51
   if (b.kind == S.s_control) {
-    let c: any U_ControlKind_d084c13b74a53fa6 = (b as! ControlBox).control
+    let c: any U_ControlKind_57c5cd1a1bb26daa = (b as! ControlBox).control
     let zoom: Double? = zooms.get((b as! ControlBox).id)
     // ts: packages/layout/src/paint-menulist.ts:54
     if ((c.kind == S.s_select_menulist) && (zoom != nil)) {

@@ -74,7 +74,7 @@ fun environment_resolveEnvironment(input: LayoutInput, faults: EngineFaults, mea
 // ts: packages/layout/src/environment.ts:177
 fun environment_boxNeedsEnvironment(b: U_ControlBox_LayoutBox, faults: EngineFaults): Boolean {
   // ts: packages/layout/src/environment.ts:179
-  if ((jsStrEq(b.kind, "control") && (jsStrEq((b as ControlBox).control.kind, "text-field") || jsStrEq(((b as ControlBox).control as U_ControlKind_4bd11acfa0b830ad).kind, "select-menulist")))) {
+  if ((jsStrEq(b.kind, "control") && (jsStrEq((b as ControlBox).control.kind, "text-field") || jsStrEq(((b as ControlBox).control as U_ControlKind_f2458316df6f3b3e).kind, "select-menulist")))) {
     return true
   }
   // ts: packages/layout/src/environment.ts:181
@@ -293,7 +293,7 @@ fun environment_resolveChildren(children: JsArray<U_ControlBox_InlineBox_LayoutB
 // ts: packages/layout/src/environment.ts:263
 fun environment_resolveControl(b: ControlBox, parent: Env): ControlBox {
   val env: Env = environment_atElement(parent, b.id, b.style)
-  val c: U_ControlKind_d084c13b74a53fa6 = b.control
+  val c: U_ControlKind_57c5cd1a1bb26daa = b.control
   val style: LayoutStyle = environment_resolveStyle(b.style, env)
   // ts: packages/layout/src/environment.ts:267
   if (jsStrEq(c.kind, "text-field")) {
@@ -305,12 +305,12 @@ fun environment_resolveControl(b: ControlBox, parent: Env): ControlBox {
     return ControlBox("control", b.id, b.boxType, style, ControlKind_textField("text-field", (c as ControlKind_textField).size, own.font, own.lineHeight, (c as ControlKind_textField).avgChar, (if (((c as ControlKind_textField).cancelButton == null)) null else CancelButton(units_zoomCssPx(jsUnwrap((c as ControlKind_textField).cancelButton).marginStart, env.zoom), units_zoomCssPx(jsUnwrap((c as ControlKind_textField).cancelButton).marginEnd, env.zoom)))), environment_resolveStrutOf(b, env), environment_resolveChildren(children, env))
   }
   // ts: packages/layout/src/environment.ts:274
-  if (jsStrEq((c as U_ControlKind_4bd11acfa0b830ad).kind, "text-area")) {
+  if (jsStrEq((c as U_ControlKind_f2458316df6f3b3e).kind, "text-area")) {
     val own: LineStrut = environment_resolveStrut(LineStrut((c as ControlKind_textArea).font, (c as ControlKind_textArea).lineHeight), env)
     return ControlBox("control", b.id, b.boxType, style, ControlKind_textArea("text-area", (c as ControlKind_textArea).cols, (c as ControlKind_textArea).rows, own.font, own.lineHeight, (c as ControlKind_textArea).avgChar, controls_textAreaScrollbar((c as ControlKind_textArea).scrollbarInline, env.device), controls_textAreaScrollbar((c as ControlKind_textArea).scrollbarBlock, env.device)), environment_resolveStrutOf(b, env), environment_resolveChildren(b.children, env))
   }
   // ts: packages/layout/src/environment.ts:278
-  if (jsStrEq((c as U_ControlKind_fcf228c48ff511b1).kind, "select-menulist")) {
+  if (jsStrEq((c as U_ControlKind_a6b9a3a1b54fa608).kind, "select-menulist")) {
     val own: LineStrut = environment_resolveStrut(LineStrut((c as ControlKind_selectMenulist).font, (c as ControlKind_selectMenulist).lineHeight), env)
     val children: JsArray<U_ControlBox_InlineBox_LayoutBox_LineBreak_ReplacedLeaf_TextLeaf> = environment_resolveChildren(b.children, env)
     val lh: U_LineHeightCalc_NormalValue_NumberValue_Percent_Px? = (if (jsStrEq(own.lineHeight.kind, "normal")) environment_menuListLineHeight(own.font, env) else null)
@@ -324,8 +324,8 @@ fun environment_resolveControl(b: ControlBox, parent: Env): ControlBox {
     return environment_resolveText(o, env)
 })), environment_resolveStrutOf(b, env), inset)
   }
-  val control: U_ControlKind_d084c13b74a53fa6 = (if (jsStrEq((c as U_ControlKind_buttonBlock_ControlKind_fieldset_ControlKind_legend_ControlKind_range_ControlKind_selectInner_ControlKind_sliderThumb_ControlKind_textEditor_ControlKind_textPlaceholder).kind, "range")) ControlKind_range("range", controls_zoomTrackLength((c as ControlKind_range).defaultInlineSize, env.zoom)) else ((c as U_ControlKind_buttonBlock_ControlKind_fieldset_ControlKind_legend_ControlKind_selectInner_ControlKind_sliderThumb_ControlKind_textEditor_ControlKind_textPlaceholder) as U_ControlKind_d084c13b74a53fa6))
-  return ControlBox("control", b.id, b.boxType, style, ((control as U_ControlKind_buttonBlock_ControlKind_fieldset_ControlKind_legend_ControlKind_range_ControlKind_selectInner_ControlKind_sliderThumb_ControlKind_textEditor_ControlKind_textPlaceholder) as U_ControlKind_d084c13b74a53fa6), environment_resolveStrutOf(b, env), environment_resolveChildren(b.children, env))
+  val control: U_ControlKind_57c5cd1a1bb26daa = (if (jsStrEq((c as U_ControlKind_7090d88b641171f7).kind, "range")) ControlKind_range("range", controls_zoomTrackLength((c as ControlKind_range).defaultInlineSize, env.zoom)) else ((c as U_ControlKind_buttonBlock_ControlKind_fieldset_ControlKind_legend_ControlKind_selectInner_ControlKind_sliderThumb_ControlKind_textEditor_ControlKind_textPlaceholder_ControlKind_themeLeaf) as U_ControlKind_57c5cd1a1bb26daa))
+  return ControlBox("control", b.id, b.boxType, style, ((control as U_ControlKind_7090d88b641171f7) as U_ControlKind_57c5cd1a1bb26daa), environment_resolveStrutOf(b, env), environment_resolveChildren(b.children, env))
 }
 
 // ts: packages/layout/src/environment.ts:298
