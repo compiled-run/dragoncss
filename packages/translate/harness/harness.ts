@@ -74,6 +74,7 @@ import type {
   TextOverflow,
   TextWrapStyle,
   TextLeaf,
+  VariantNumeric,
   TextWrapMode,
   WhiteSpaceCollapse,
   OverflowWrap,
@@ -106,7 +107,7 @@ import { deviceShapedMeasurer, measurerFor } from '../../layout/src/platform.ts'
 import type { GlyphShaper, HanKerningFontData, ShapedItem, ShapeResult, ShapingFaults } from '../../layout/src/shaping.ts';
 import { GLYPH_STRIDE, latinScopedMeasurer, makeItem, pieceGlyphs, shapeItem, viewSnappedWidth, wholeView } from '../../layout/src/shaping.ts';
 import type { FontData, FontLengths, FontMetrics, MeasureResult, TextMeasurer } from '../../layout/src/text.ts';
-import { fontMetricLengths, smallCapsFontSize } from '../../layout/src/text.ts';
+import { fontMetricLengths, NORMAL_NUMERIC, smallCapsFontSize } from '../../layout/src/text.ts';
 import type { TextFont } from '../../layout/src/input.ts';
 import type { ScrollMetrics } from '../../layout/src/overflow.ts';
 import { scrollMetricsWithFaults } from '../../layout/src/overflow.ts';
@@ -1050,7 +1051,7 @@ function decodeStyle(v: JsonValue, path: string): LayoutStyle {
 }
 
 function decodeText(v: JsonValue, path: string): TextLeaf {
-  const o = obj(v, ['kind', 'id', 'text', 'font', 'lineHeight', 'whiteSpaceCollapse', 'textWrapMode', 'letterSpacing', 'wordSpacing', 'overflowWrap', 'wordBreak', 'smallCaps'], path);
+  const o = obj(v, ['kind', 'id', 'text', 'font', 'lineHeight', 'whiteSpaceCollapse', 'textWrapMode', 'letterSpacing', 'wordSpacing', 'overflowWrap', 'wordBreak', 'smallCaps', 'variantNumeric'], path);
   return {
     kind: 'text',
     id: str(field(o, 'id', path), `${path}.id`),
@@ -1064,6 +1065,18 @@ function decodeText(v: JsonValue, path: string): TextLeaf {
     overflowWrap: lit(field(o, 'overflowWrap', path), ['normal', 'break-word', 'anywhere'], `${path}.overflowWrap`) as OverflowWrap,
     wordBreak: lit(field(o, 'wordBreak', path), ['normal', 'break-all', 'keep-all', 'break-word', 'auto-phrase'], `${path}.wordBreak`) as WordBreak,
     smallCaps: bool(field(o, 'smallCaps', path), `${path}.smallCaps`),
+    variantNumeric: variantNumericValue(field(o, 'variantNumeric', path), `${path}.variantNumeric`),
+  };
+}
+
+function variantNumericValue(v: JsonValue, path: string): VariantNumeric {
+  const o = obj(v, ['figure', 'spacing', 'fraction', 'ordinal', 'slashedZero'], path);
+  return {
+    figure: lit(field(o, 'figure', path), ['normal', 'lining-nums', 'oldstyle-nums'], `${path}.figure`) as VariantNumeric['figure'],
+    spacing: lit(field(o, 'spacing', path), ['normal', 'proportional-nums', 'tabular-nums'], `${path}.spacing`) as VariantNumeric['spacing'],
+    fraction: lit(field(o, 'fraction', path), ['normal', 'diagonal-fractions', 'stacked-fractions'], `${path}.fraction`) as VariantNumeric['fraction'],
+    ordinal: bool(field(o, 'ordinal', path), `${path}.ordinal`),
+    slashedZero: bool(field(o, 'slashedZero', path), `${path}.slashedZero`),
   };
 }
 
@@ -1158,6 +1171,10 @@ function controlKind(v: JsonValue, path: string): ControlKind {
   if (k === 'legend') {
     obj(v, ['kind'], path);
     return { kind: 'legend' };
+  }
+  if (k === 'theme-leaf') {
+    obj(v, ['kind'], path);
+    return { kind: 'theme-leaf' };
   }
   if (k === 'select-menulist') {
     const o = obj(v, ['kind', 'font', 'lineHeight', 'arrowWidth', 'options'], path);
@@ -1293,13 +1310,13 @@ const FAULT_KEYS: readonly string[] = [
   'halfLeadingUnflooredPerBox', 'brIgnored', 'breakAtBoxBoundary', 'fragmentFromLineTop',
   'advanceNot16_16', 'doubleAccumulation', 'noReshapeAtBreak', 'kerningDropped', 'wholePixelPositions', 'softHyphenWidthMissing',
   'metricRoundingSwapped', 'latinCheckSkipped', 'trailingSpacingDropped', 'spacingPerCodePoint', 'ligaturesKept',
-  'wordSpacingAtItemStart', 'wordSpacingSkipsNbsp',
+  'wordSpacingAtItemStart', 'wordSpacingSkipsNbsp', 'numericFeaturesDropped',
   'orderHalfEven', 'orderUnclamped', 'gutterReserved', 'overflowIgnoresPadding', 'ellipsisInTextFont', 'noDotsFallback', 'truncateChangesBlockSize',
   'preservedSpaceCollapsed', 'trailingPreWrapNotHanging', 'breakSpacesHanging', 'indentEveryLine', 'indentAfterBr', 'indentPercentInIntrinsic', 'indentRtlFromLeft',
   'anywhereMinContentIgnored', 'breakWordShrinksMinContent', 'breakAnywhereAlways', 'emergencyBreakBeforeOpportunity', 'wordBreakBreakWordIgnored', 'breakAllIgnored',
   'clampHeightIncludesHiddenLines', 'clampEllipsisMissingWhenLineFits', 'clampEllipsisOnExactLastLine', 'containedContentSized', 'menuListShownLabelOnly', 'containerJoinsFlow', 'wrapStyleGreedy', 'textBoxTrimIgnored', 'searchCancelIgnored', 'runtimeFollowsReadUnguarded', 'runtimeFollowsDeviceCheckSkipped',
   'inlineBlockFirstBaseline', 'overflowBaselineIgnored', 'inlineFlexLastBaseline', 'atomicMarginExcluded', 'noBreakAroundAtomic', 'atomicShrinkToFitIgnored',
-  'inlineGridLastItemBaseline',
+  'inlineGridLastItemBaseline', 'themeLeafMarginBaseline',
   'ratioNoTrivialClamp', 'ratioDoubleFraction', 'ratioTruncatedParts', 'ratioEightSteps', 'ratioExactSpec', 'ratioRoundedMulDiv',
 ];
 
@@ -1359,11 +1376,13 @@ function decodeFaults(v: JsonValue): EngineFaults {
     ligaturesKept: b('ligaturesKept'),
     wordSpacingAtItemStart: b('wordSpacingAtItemStart'),
     wordSpacingSkipsNbsp: b('wordSpacingSkipsNbsp'),
+    numericFeaturesDropped: b('numericFeaturesDropped'),
     orderHalfEven: b('orderHalfEven'),
     orderUnclamped: b('orderUnclamped'),
     gutterReserved: b('gutterReserved'),
     overflowIgnoresPadding: b('overflowIgnoresPadding'),
     inlineBlockFirstBaseline: b('inlineBlockFirstBaseline'),
+    themeLeafMarginBaseline: b('themeLeafMarginBaseline'),
     overflowBaselineIgnored: b('overflowBaselineIgnored'),
     inlineFlexLastBaseline: b('inlineFlexLastBaseline'),
     inlineGridLastItemBaseline: b('inlineGridLastItemBaseline'),
@@ -1574,6 +1593,7 @@ function replayMeasurer(s: Shaping, faults: EngineFaults): TextMeasurer {
     wholePixelPositions: faults.wholePixelPositions, softHyphenWidthMissing: faults.softHyphenWidthMissing, metricRoundingSwapped: faults.metricRoundingSwapped,
     trailingSpacingDropped: faults.trailingSpacingDropped, spacingPerCodePoint: faults.spacingPerCodePoint, ligaturesKept: faults.ligaturesKept,
     wordSpacingAtItemStart: faults.wordSpacingAtItemStart, wordSpacingSkipsNbsp: faults.wordSpacingSkipsNbsp,
+    numericFeaturesDropped: faults.numericFeaturesDropped,
   };
   const faceOf = (family: string): ReplayFace => {
     const f = s.faces.get(family);
@@ -1583,7 +1603,7 @@ function replayMeasurer(s: Shaping, faults: EngineFaults): TextMeasurer {
   const itemFor = (text: string, font: TextFont): ShapedItem => {
     const f = s.faces.get(font.family);
     if (f === undefined) return { ok: false, code: 'text-glyph', reason: `no bundled face ${font.family}` };
-    const made = makeItem({ shaper, face: font.family, size: platformFontSize(font.size), text, language: s.language, hanKerning: f.hanKerning, letterSpacing: font.letterSpacing, wordSpacing: font.wordSpacing, smallCapsSize: font.smallCaps ? smallCapsFontSize(font.size) : -1, faults: sf });
+    const made = makeItem({ shaper, face: font.family, size: platformFontSize(font.size), text, language: s.language, hanKerning: f.hanKerning, letterSpacing: font.letterSpacing, wordSpacing: font.wordSpacing, smallCapsSize: font.smallCaps ? smallCapsFontSize(font.size) : -1, variantNumeric: font.variantNumeric, faults: sf });
     if (!made.ok) return { ok: false, code: 'text-glyph', reason: made.reason };
     const result = shapeItem(made.item);
     if (result.missing >= 0) return { ok: false, code: 'text-glyph', reason: `U+${result.missing.toString(16).toUpperCase()} has no glyph; font fallback is outside the shaping core` };
@@ -1743,6 +1763,7 @@ function shapingPlantOf(f: EngineFaults): string {
   if (f.ligaturesKept) return 'ligaturesKept';
   if (f.wordSpacingAtItemStart) return 'wordSpacingAtItemStart';
   if (f.wordSpacingSkipsNbsp) return 'wordSpacingSkipsNbsp';
+  if (f.numericFeaturesDropped) return 'numericFeaturesDropped';
   return '';
 }
 
@@ -2899,7 +2920,7 @@ function rtAnimationsResult(a: readonly JsonValue[]): string {
 
 // ---------------------------------------------------------------- hit suite (SELD-R1b, T047 RT-9)
 
-const HIT_TABLE_CLEAN: HitTableFaults = { pointerEventsNotInherited: false, transformIgnored: false, contextNotLayered: false };
+const HIT_TABLE_CLEAN: HitTableFaults = { pointerEventsNotInherited: false, transformIgnored: false, contextNotLayered: false, zIndexIgnored: false };
 const HIT_CLEAN: HitFaults = { ignorePointerEventsNone: false, reversedOrder: false };
 const HIT_NO_ORIGIN: TransformOrigin = { x: { kind: 'px', px: 0, percent: 0 }, y: { kind: 'px', px: 0, percent: 0 } };
 
@@ -2912,7 +2933,7 @@ function rtHitResult(a: readonly JsonValue[]): string {
   arr(item(a, 3, '$'), '$[3]').forEach((f, i) => {
     const path = `$[3][${i.toString(16)}]`;
     const g = arr(f, path);
-    if (g.length !== 5 && g.length !== 8 && g.length !== 9) return fail(`${path}: expected [id, pointerEvents, inherited, activation, radii], or those and [context, transform, origin], or those and otherContext`);
+    if (g.length !== 5 && g.length !== 8 && g.length !== 9 && g.length !== 10) return fail(`${path}: expected [id, pointerEvents, inherited, activation, radii], or those and [context, transform, origin], or those and otherContext, or those and z`);
     const pe = str(item(g, 1, path), path);
     if (pe !== 'auto' && pe !== 'none') return fail(`${path}: pointer-events ${pe} is not auto or none`);
     const rs = arr(item(g, 4, path), `${path}[4]`);
@@ -2920,11 +2941,12 @@ function rtHitResult(a: readonly JsonValue[]): string {
     const radii: RadiusLength[] = [];
     for (let k = 0; k < rs.length; k++) radii.push(factRadius(item(rs, k, `${path}[4]`), `${path}[4][${k}]`));
     const painted = g.length >= 8;
-    const otherContext = g.length === 9 ? str(item(g, 8, path), `${path}[8]`) : '';
+    const otherContext = g.length >= 9 ? str(item(g, 8, path), `${path}[8]`) : '';
+    const z = g.length === 10 ? num(item(g, 9, path), `${path}[9]`) : null;
     const context = painted ? bool(item(g, 5, path), `${path}[5]`) : false;
     const transform = painted ? decodeOps(item(g, 6, path), `${path}[6]`) : [];
     const origin = painted ? decodeOrigin(item(g, 7, path), `${path}[7]`) : HIT_NO_ORIGIN;
-    facts.set(str(item(g, 0, path), path), { pointerEvents: pe, inherited: bool(item(g, 2, path), path), activation: bool(item(g, 3, path), path), radii, context, otherContext, transform, origin });
+    facts.set(str(item(g, 0, path), path), { pointerEvents: pe, inherited: bool(item(g, 2, path), path), activation: bool(item(g, 3, path), path), radii, context, otherContext, transform, origin, z });
   });
   const m = measurerFor(platform);
   if (m.kind !== 'ok') return fail(`rt-hit: no measurer for ${platform}`);
@@ -3608,7 +3630,7 @@ function planTextLines(input: LayoutInput, measurer: TextMeasurer, boxes: readon
       const box = abs.get(marker.id);
       if (piece === undefined || pieces.length !== 1 || marker.text === null || box === undefined) return fail(`${r.id}: the text marker is not placed`);
       const a = abs.get(piece.id) as LayoutRect;
-      out.push({ id: r.id, textFont: { family: marker.font.family, size: marker.font.size, letterSpacing: 0, wordSpacing: 0, smallCaps: false }, lines: [{ start: 0, cps: codePointsOf(marker.text), shifts: [], rect: a, snappedTop: snappedTop.get(piece.id) as number, halfLeading: a.y - box.y, ellipsis: null }] });
+      out.push({ id: r.id, textFont: { family: marker.font.family, size: marker.font.size, letterSpacing: 0, wordSpacing: 0, smallCaps: false, variantNumeric: NORMAL_NUMERIC }, lines: [{ start: 0, cps: codePointsOf(marker.text), shifts: [], rect: a, snappedTop: snappedTop.get(piece.id) as number, halfLeading: a.y - box.y, ellipsis: null }] });
       continue;
     }
     const pId = textContainer.get(r.id);

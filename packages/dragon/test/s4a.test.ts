@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import type { LayoutBox, LayoutStyle } from '@dragon/layout';
+import { NORMAL_NUMERIC } from '@dragon/layout';
 import type { FrontEndResult } from '../src/index.ts';
 import * as publicEntry from '../src/index.ts';
 import { createProject } from '../src/index.ts';
@@ -218,7 +219,7 @@ describe('C5: a text leaf carries the text-align and direction of its block cont
       ['text-align', { value: { kind: 'keyword', value: align }, origin: 'inherited', span: null, declaration: null, declared: null, losing: [] }],
       ['direction', { value: { kind: 'keyword', value: direction }, origin: 'inherited', span: null, declaration: null, declared: null, losing: [] }],
     ]),
-    smallCaps: false,
+    smallCaps: false, variantNumeric: NORMAL_NUMERIC,
   } as ResolvedText);
   const container = (textAlign: LayoutStyle['textAlign'], direction: LayoutStyle['direction']) => ({ textAlign, direction }) as LayoutStyle;
   it('passes when they are equal, in both directions', () => {

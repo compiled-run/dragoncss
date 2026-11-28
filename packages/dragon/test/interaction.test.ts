@@ -630,6 +630,15 @@ describe('interaction states: hit model (R13)', () => {
     expect(hitUnmodelledBox(plain)).toBeNull();
   });
 
+  // rt-hit.ts orders z-index 0 and positive stacking contexts (hit-z-index-positive); a negative z-index is refused by name.
+  it('compiles interaction rules beside a z-index 0 or positive flex item, and refuses them beside a negative one', () => {
+    const css = BODY + '.fx { display: flex; height: 30px; } .s { width: 60px; height: 30px; z-index: 10; } .k:active { background-color: #0c0; }';
+    const fbody = (r: Parameters<Parameters<typeof inputFor>[1]>[0]) => [div(r, 'fx', ['fx'], [div(r, 's', ['s']), div(r, 'k', ['k'])])];
+    for (const z of ['10', '0', 'auto']) expect(otherErrors(compile({}, css.replace('z-index: 10', `z-index: ${z}`), fbody, TARGETS, 'derive').diagnostics), z).toEqual([]);
+    const negative = otherErrors(compile({}, css.replace('z-index: 10', 'z-index: -1'), fbody, TARGETS, 'derive').diagnostics);
+    for (const t of ['ios', 'android']) expect(negative).toContain(`DRAGON_UNSUPPORTED_SELECTOR [${t}] :active needs Dragon hit testing through the negative z-index on s, which is not built yet (package SELD-R2b)`);
+  });
+
   it('catches the plant hitUnmodelledNotRefused', () => {
     expect(otherErrors(compile({ hitUnmodelledNotRefused: true }, css, body, TARGETS, 'derive').diagnostics)).toEqual([]);
   });

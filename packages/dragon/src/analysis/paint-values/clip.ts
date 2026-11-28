@@ -24,6 +24,7 @@ import type { ClipShape } from '../../css/properties/clip-path.ts';
 import { clipPathShape, clipShapeOf, mapShapeLengths, shapeLengths, shapeValue } from '../../css/properties/clip-path.ts';
 import type { ClipEdges } from '../../css/properties/clip-rect.ts';
 import { appliedClipEdges, clipEdgesOf, clipHidesBox, clipRectValue } from '../../css/properties/clip-rect.ts';
+import { clipPathHidesBox } from '../../css/properties/clip-hidden.ts';
 import { zIndexOf } from '../../css/properties/effects.ts';
 import { paintsOwn, visibilityOf } from '../../css/properties/visibility.ts';
 import { CANONICAL_LENGTH_UNIT, lengthToPx } from '../../css/units.ts';
@@ -75,7 +76,6 @@ export function viewOutsideClip(el: ResolvedElement): string | null {
   if (shadow !== undefined && !(shadow.kind === 'keyword' && shadow.value === 'none')) return 'it has a box-shadow, drawn by a companion view beside the box view';
   const visit = (e: ResolvedElement, root: boolean, flexOrGrid: boolean): string | null => {
     if (keywordOf(e, 'display') === 'none') return null;
-    if (paintedOutlineStyle(e) !== null) return `${root ? 'it has' : `${e.element.address} has`} an outline, drawn in the root view`;
     if (!root) {
       const z = zIndexOf((e.props.get('z-index') as ResolvedValue).value);
       if (z !== null && z !== 0 && (keywordOf(e, 'position') !== 'static' || flexOrGrid)) return `${e.element.address} has z-index ${z}, and its layer may be hosted under a stacking context outside the box view`;
@@ -157,7 +157,8 @@ function clipPathRefusal(el: ResolvedElement): { readonly fact: string; readonly
     }
     return null;
   };
-  const ringed = outline(el, true);
+  // A shape empty at every size hides every outline in the box, which is then drawn nowhere (MASK-CLIP-path-hidden F4, F5).
+  const ringed = clipPathHidesBox(el) ? null : outline(el, true);
   if (ringed !== null) return { fact: `${ringed} an outline, which Dragon draws in the root view, outside the clip`, manual: `Remove the outline inside ${at}, or the clip-path.` };
   // The clip covers every descendant, text included, which Chrome keeps in the accessibility tree; the native clip touches no view's
   // accessibility either, as the clip-text readback proves on the device (lower/paint/clip.ts).

@@ -1397,7 +1397,14 @@
          },
          "overflowWrap": "anywhere",
          "wordBreak": "normal",
-         "smallCaps": false
+         "smallCaps": false,
+         "variantNumeric": {
+          "figure": "normal",
+          "spacing": "normal",
+          "fraction": "normal",
+          "ordinal": false,
+          "slashedZero": false
+         }
         }
        ]
       },
@@ -1587,7 +1594,14 @@
          },
          "overflowWrap": "break-word",
          "wordBreak": "normal",
-         "smallCaps": false
+         "smallCaps": false,
+         "variantNumeric": {
+          "figure": "normal",
+          "spacing": "normal",
+          "fraction": "normal",
+          "ordinal": false,
+          "slashedZero": false
+         }
         }
        ]
       },
@@ -1777,7 +1791,14 @@
          },
          "overflowWrap": "normal",
          "wordBreak": "break-word",
-         "smallCaps": false
+         "smallCaps": false,
+         "variantNumeric": {
+          "figure": "normal",
+          "spacing": "normal",
+          "fraction": "normal",
+          "ordinal": false,
+          "slashedZero": false
+         }
         }
        ]
       },
@@ -1967,7 +1988,14 @@
          },
          "overflowWrap": "normal",
          "wordBreak": "normal",
-         "smallCaps": false
+         "smallCaps": false,
+         "variantNumeric": {
+          "figure": "normal",
+          "spacing": "normal",
+          "fraction": "normal",
+          "ordinal": false,
+          "slashedZero": false
+         }
         }
        ]
       },
@@ -2157,7 +2185,14 @@
          },
          "overflowWrap": "break-word",
          "wordBreak": "normal",
-         "smallCaps": false
+         "smallCaps": false,
+         "variantNumeric": {
+          "figure": "normal",
+          "spacing": "normal",
+          "fraction": "normal",
+          "ordinal": false,
+          "slashedZero": false
+         }
         },
         {
          "kind": "inline",
@@ -2340,7 +2375,14 @@
            },
            "overflowWrap": "break-word",
            "wordBreak": "normal",
-           "smallCaps": false
+           "smallCaps": false,
+           "variantNumeric": {
+            "figure": "normal",
+            "spacing": "normal",
+            "fraction": "normal",
+            "ordinal": false,
+            "slashedZero": false
+           }
           }
          ]
         },
@@ -2372,7 +2414,14 @@
          },
          "overflowWrap": "break-word",
          "wordBreak": "normal",
-         "smallCaps": false
+         "smallCaps": false,
+         "variantNumeric": {
+          "figure": "normal",
+          "spacing": "normal",
+          "fraction": "normal",
+          "ordinal": false,
+          "slashedZero": false
+         }
         }
        ]
       },
@@ -2706,7 +2755,14 @@
            },
            "overflowWrap": "anywhere",
            "wordBreak": "normal",
-           "smallCaps": false
+           "smallCaps": false,
+           "variantNumeric": {
+            "figure": "normal",
+            "spacing": "normal",
+            "fraction": "normal",
+            "ordinal": false,
+            "slashedZero": false
+           }
           }
          ]
         },
@@ -2895,7 +2951,14 @@
            },
            "overflowWrap": "break-word",
            "wordBreak": "normal",
-           "smallCaps": false
+           "smallCaps": false,
+           "variantNumeric": {
+            "figure": "normal",
+            "spacing": "normal",
+            "fraction": "normal",
+            "ordinal": false,
+            "slashedZero": false
+           }
           }
          ]
         }

@@ -3,8 +3,8 @@
 // HitTestItemsChildren, HitTestTextItem, HitTestLineBoxFragment and HitTestClippedOutByBorder; layout/inline/fragment_item.cc
 // ComputeTextBoundsRectForHitTest; paint/contoured_border_geometry.cc, platform/geometry/contoured_rect.cc and
 // float_rounded_rect.cc (the inclusive border test); paint/clip_rect.cc Intersects; ui/gfx/geometry/quad_f.cc IntersectsRect. The
-// point semantics (floor to 1/64 px, a 1x1 px box, exclusive rect intersection), the layer order (positioned boxes in reverse
-// document order, then the root) and the layer clips (a clipping layer clips its in-flow content to its border box, and descendant
+// point semantics (floor to 1/64 px, a 1x1 px box, exclusive rect intersection), the layer order (the reverse of CSS2 Appendix E's
+// paint order of positioned boxes and z-index 0 and positive stacking contexts, then the root) and the layer clips (a clipping layer clips its in-flow content to its border box, and descendant
 // layers on its containing-block chain to its padding box) are measured against Chrome, not taken from the LGPL
 // hit_test_location.cc or paint_layer.cc. Transforms map the 1x1 px box in float (paint/hit_testing_transform_state.cc, ui/gfx/geometry/axis_transform2d.h, no FMA).
 // Every length is in LU (1/64 px), absolute to the root.
@@ -47,7 +47,7 @@ export type HitNode = {
   readonly borderRight: number;
   readonly borderBottom: number;
   readonly borderLeft: number;
-  /** position other than static: the box paints and hit tests as its own layer (z-index auto). */
+  /** position other than static: the box paints and hit tests as its own layer. */
   readonly layer: boolean;
   /** position absolute: its containing block is the nearest layer ancestor. */
   readonly absolute: boolean;
@@ -69,7 +69,7 @@ export type HitNode = {
   readonly pointerEvents: PointerEvents;
   /** A box's rounded border box (a line's rect, with its block's radii) in device px: eight outer radii, then eight inner; empty when square. */
   readonly radii: readonly number[];
-  /** A stacking context in the z-index 0 layer (opacity below 1, a transform), hit as its own layer like a positioned box. */
+  /** A stacking context (opacity below 1, a transform, an applied integer z-index), hit as its own layer like a positioned box. */
   readonly context: boolean;
   /** A scale and translate transform: container px X = x * scale + offset, x in px from the box's top left (float AxisTransform2d). */
   readonly transformed: boolean;
@@ -77,6 +77,8 @@ export type HitNode = {
   readonly scaleY: number;
   readonly offsetX: number;
   readonly offsetY: number;
+  /** A stacking context's z-index where it applies, which sorts it among its context's layers; 0 for z-index auto and every other node. */
+  readonly z: number;
 };
 
 export type HitKind = 'box' | 'text' | 'line';
@@ -586,6 +588,7 @@ export function prepareHit(nodes: readonly HitNode[], faults: HitFaults): HitPre
     if (n.parent < 0 || n.parent >= i) throw new HitError(`hit node ${i} has parent ${n.parent}, not an earlier node`);
     if (n.target < 0 || n.target >= nodes.length) throw new HitError(`hit node ${i} has target ${n.target}`);
     if (n.kind !== 'box' && !(Number.isInteger(n.line) && n.line >= 0 && n.line < nodes.length)) throw new HitError(`hit node ${i} has line ${n.line}`);
+    if (!(Number.isInteger(n.z) && n.z >= 0) || (n.z > 0 && !(n.kind === 'box' && n.context))) throw new HitError(`hit node ${i} has z-index ${n.z}; only a stacking context box has one, and none is negative`);
     (children[n.parent] as number[]).push(i);
   });
   const nodeOf = (i: number): HitNode => {
@@ -595,16 +598,27 @@ export function prepareHit(nodes: readonly HitNode[], faults: HitFaults): HitPre
   };
   // The atomic paint follows fragment order, a stable sort by order.
   const ordered = children.map((own) => own.slice(0).sort((a, b) => nodeOf(a).order - nodeOf(b).order));
-  // The layers in paint order: a preorder walk in order-modified document order, a stable sort by the CSS order with an absolute
-  // child at 0 (measured: Chrome 145 does not reverse positioned items under a reverse direction).
+  // The layers in paint order (CSS2 Appendix E): each stacking context's layers, found in order-modified document order (a stable
+  // sort by the CSS order with an absolute child at 0; measured: Chrome 145 does not reverse positioned items under a reverse
+  // direction) without entering a nested context, stably sorted by z (auto and 0 first), each context followed by its own layers.
   const layerOrdered = children.map((own) => own.slice(0).sort((a, b) => nodeOf(a).layerOrder - nodeOf(b).layerOrder));
   const layers: number[] = [];
-  const collect = (i: number): void => {
-    const n = nodeOf(i);
-    if (i > 0 && n.kind === 'box' && ownLayer(n)) layers.push(i);
+  const itemsOf = (out: number[], i: number): void => {
     const own = layerOrdered[i];
     if (own === undefined) throw new HitError(`no children list for ${i}`);
-    for (const c of own) collect(c);
+    for (const c of own) {
+      const n = nodeOf(c);
+      if (n.kind === 'box' && ownLayer(n)) out.push(c);
+      if (!(n.kind === 'box' && n.context)) itemsOf(out, c);
+    }
+  };
+  const collect = (context: number): void => {
+    const items: number[] = [];
+    itemsOf(items, context);
+    for (const c of items.slice(0).sort((a, b) => nodeOf(a).z - nodeOf(b).z)) {
+      layers.push(c);
+      if (nodeOf(c).context) collect(c);
+    }
   };
   collect(0);
   const reversed = faults.reversedOrder ? ordered : ordered.map((own) => own.slice(0).reverse());
@@ -719,6 +733,8 @@ export type HitFact = {
   /** The transform functions (none when empty) and origin. */
   readonly transform: readonly TransformOp[];
   readonly origin: TransformOrigin;
+  /** The computed z-index, null for auto; the table applies it to a positioned box or a flex or grid item only. */
+  readonly z: number | null;
 };
 /** Why the hit table does not model a transform, or null: it models translate and positive scale functions (a rotate by 0 is the identity). */
 export function hitTransformRefusal(id: string, ops: readonly TransformOp[]): string | null {
@@ -768,12 +784,31 @@ function paintOf(id: string, f: HitFact, r: LayoutRect, zoom: number, ox: number
 }
 
 
+/** A box's z-index in the hit table: whether it makes the box a stacking context, and the z that sorts it there. */
+type HitZ = { readonly context: boolean; readonly z: number };
+
+/**
+ * z-index applies to a positioned box or a flex or grid item (Blink StyleAdjuster; the rule lower/paint/stacking.ts layoutStackTree
+ * paints by), where any integer makes a stacking context. A negative z-index paints under the context's flow, which the table does not model.
+ */
+function zOf(id: string, f: HitFact, position: string, item: boolean, faults: HitTableFaults): HitZ {
+  const z = f.z;
+  if (z === null || (position === 'static' && !item)) return { context: false, z: 0 };
+  if (z < 0) throw new HitError(negativeZRefusal(id, z));
+  return { context: true, z: faults.zIndexIgnored ? 0 : z };
+}
+
+/** A negative z-index layer paints before its stacking context's flow, which the hit table does not order yet. */
+export function negativeZRefusal(id: string, z: number): string {
+  return `${id} has the negative z-index ${z}, which paints under its stacking context's flow, and the hit table orders z-index 0 and positive layers only (SELD-R2b)`;
+}
+
 /** A table: the nodes hitTest takes, the id each names, and each node's activation flag. */
 export type HitTable = { readonly nodes: readonly HitNode[]; readonly ids: readonly string[]; readonly activation: readonly boolean[] };
 
-/** Table plants: inherited pointer-events read as auto; transforms ignored; untransformed stacking contexts hit with their parent's flow. */
-export type HitTableFaults = { readonly pointerEventsNotInherited: boolean; readonly transformIgnored: boolean; readonly contextNotLayered: boolean };
-export const NO_HIT_TABLE_FAULTS: HitTableFaults = { pointerEventsNotInherited: false, transformIgnored: false, contextNotLayered: false };
+/** Table plants: inherited pointer-events read as auto; transforms ignored; untransformed stacking contexts hit with their parent's flow; positive z-index read as 0 (tree order). */
+export type HitTableFaults = { readonly pointerEventsNotInherited: boolean; readonly transformIgnored: boolean; readonly contextNotLayered: boolean; readonly zIndexIgnored: boolean };
+export const NO_HIT_TABLE_FAULTS: HitTableFaults = { pointerEventsNotInherited: false, transformIgnored: false, contextNotLayered: false, zIndexIgnored: false };
 
 type TableState = {
   readonly nodes: HitNode[];
@@ -991,7 +1026,7 @@ function linePieces(s: TableState, b: LayoutBox, parent: number, target: number,
   }
   const y = top - run.halfLeading;
   const radii = roundedOf(x0, y, x1 - x0, run.lineHeight, NO_EDGES, lengths, s.dpr, sox, soy);
-  pushNode(s, { kind: 'line', parent, target, x: x0, y, width: x1 - x0, height: run.lineHeight, clips: false, borderTop: 0, borderRight: 0, borderBottom: 0, borderLeft: 0, layer: false, absolute: false, fixed: false, atomic: false, order: 0, layerOrder: 0, line: k, inkLeft: 0, inkTop: 0, inkRight: 0, inkBottom: 0, pointerEvents: pe, radii, context: false, transformed: false, scaleX: 1, scaleY: 1, offsetX: 0, offsetY: 0 }, `${b.id}:hitline${k}`, false);
+  pushNode(s, { kind: 'line', parent, target, x: x0, y, width: x1 - x0, height: run.lineHeight, clips: false, borderTop: 0, borderRight: 0, borderBottom: 0, borderLeft: 0, layer: false, absolute: false, fixed: false, atomic: false, order: 0, layerOrder: 0, line: k, inkLeft: 0, inkTop: 0, inkRight: 0, inkBottom: 0, pointerEvents: pe, radii, context: false, transformed: false, scaleX: 1, scaleY: 1, offsetX: 0, offsetY: 0, z: 0 }, `${b.id}:hitline${k}`, false);
   for (const p of own) textNode(s, parent, target, pe, p.rect, run.ascent, em, p.full, k);
 }
 
@@ -1006,7 +1041,7 @@ function textNode(s: TableState, parent: number, target: number, pe: PointerEven
   pushNode(s, {
     kind: 'text', parent, target, x: q.x, y: q.y, width: q.width, height: q.height, clips: false, borderTop: 0, borderRight: 0, borderBottom: 0, borderLeft: 0,
     layer: false, absolute: false, fixed: false, atomic: false, order: 0, layerOrder: 0, line: k, inkLeft: q.x, inkTop: baseline + above * LU_PX, inkRight: q.x - floorOf(-(glyphs * em)) * LU_PX,
-    inkBottom: baseline - floorOf(-0.2 * em) * LU_PX, pointerEvents: pe, radii: [], context: false, transformed: false, scaleX: 1, scaleY: 1, offsetX: 0, offsetY: 0,
+    inkBottom: baseline - floorOf(-0.2 * em) * LU_PX, pointerEvents: pe, radii: [], context: false, transformed: false, scaleX: 1, scaleY: 1, offsetX: 0, offsetY: 0, z: 0,
   }, q.id, false);
 }
 
@@ -1035,6 +1070,7 @@ function boxNodes(s: TableState, b: LayoutBox, parent: number, orders: Map<strin
   let lengths: readonly RadiusLength[] = [];
   const r = rectOf(s, b.id);
   let paint: HitPaint = { context: false, transformed: false, scaleX: 1, scaleY: 1, offsetX: 0, offsetY: 0 };
+  let zi: HitZ = { context: false, z: 0 };
   if (b.boxType !== 'anonymous') {
     const f = s.facts.get(b.id);
     if (f === undefined) throw new HitError(`no hit facts for element ${b.id}`);
@@ -1043,6 +1079,7 @@ function boxNodes(s: TableState, b: LayoutBox, parent: number, orders: Map<strin
     act = f.activation;
     lengths = f.radii;
     paint = paintOf(b.id, f, r, s.dpr, ox, oy, sox, soy, s.faults);
+    zi = zOf(b.id, f, b.style.position, orders !== null, s.faults);
   }
   if (own < 0) throw new HitError(`anonymous box ${b.id} has no element ancestor`);
   const border = resolveBorder(zoomedBox(s, b.id).style, s.ctx.devicePixelRatio);
@@ -1056,7 +1093,7 @@ function boxNodes(s: TableState, b: LayoutBox, parent: number, orders: Map<strin
     absolute: b.style.position === 'absolute', fixed: b.style.position === 'fixed', atomic: orders !== null || line >= 0, order: order === undefined ? 0 : order,
     layerOrder: orders !== null && b.style.position !== 'absolute' && b.style.position !== 'fixed' ? b.style.order : 0, line,
     inkLeft: 0, inkTop: 0, inkRight: 0, inkBottom: 0, pointerEvents: pe, radii: roundedOf(r.x, r.y, r.width, r.height, border, lengths, s.dpr, snapX0, snapY0),
-    context: paint.context, transformed: paint.transformed, scaleX: paint.scaleX, scaleY: paint.scaleY, offsetX: paint.offsetX, offsetY: paint.offsetY,
+    context: paint.context || zi.context, transformed: paint.transformed, scaleX: paint.scaleX, scaleY: paint.scaleY, offsetX: paint.offsetX, offsetY: paint.offsetY, z: zi.z,
   }, b.id, act);
   const sx = paint.transformed ? r.x : ox;
   const sy = paint.transformed ? r.y : oy;
@@ -1168,7 +1205,7 @@ function inlineAtomicNodes(s: TableState, b: LayoutBox, parent: number, target: 
     }
     const ly = top + l.line.top;
     const radii = roundedOf(first.start, ly, last.end - first.start, l.line.height, NO_EDGES, lengths, s.dpr, sox, soy);
-    pushNode(s, { kind: 'line', parent, target, x: first.start, y: ly, width: last.end - first.start, height: l.line.height, clips: false, borderTop: 0, borderRight: 0, borderBottom: 0, borderLeft: 0, layer: false, absolute: false, fixed: false, atomic: false, order: 0, layerOrder: 0, line: k, inkLeft: 0, inkTop: 0, inkRight: 0, inkBottom: 0, pointerEvents: pe, radii, context: false, transformed: false, scaleX: 1, scaleY: 1, offsetX: 0, offsetY: 0 }, `${b.id}:hitline${k}`, false);
+    pushNode(s, { kind: 'line', parent, target, x: first.start, y: ly, width: last.end - first.start, height: l.line.height, clips: false, borderTop: 0, borderRight: 0, borderBottom: 0, borderLeft: 0, layer: false, absolute: false, fixed: false, atomic: false, order: 0, layerOrder: 0, line: k, inkLeft: 0, inkTop: 0, inkRight: 0, inkBottom: 0, pointerEvents: pe, radii, context: false, transformed: false, scaleX: 1, scaleY: 1, offsetX: 0, offsetY: 0, z: 0 }, `${b.id}:hitline${k}`, false);
     for (const it of ordered) {
       if (it.atom >= 0) {
         const c = atoms[it.atom] as LayoutBox | ReplacedLeaf;
@@ -1248,7 +1285,7 @@ function withInk(s: TableState, n: HitNode, i: number): HitNode {
     kind: n.kind, parent: n.parent, target: n.target, x: n.x, y: n.y, width: n.width, height: n.height, clips: n.clips, borderTop: n.borderTop, borderRight: n.borderRight,
     borderBottom: n.borderBottom, borderLeft: n.borderLeft, layer: n.layer, absolute: n.absolute, fixed: n.fixed, atomic: n.atomic, order: n.order, layerOrder: n.layerOrder, line: n.line,
     inkLeft: k.left, inkTop: k.top, inkRight: k.right, inkBottom: k.bottom, pointerEvents: n.pointerEvents, radii: n.radii,
-    context: n.context, transformed: n.transformed, scaleX: n.scaleX, scaleY: n.scaleY, offsetX: n.offsetX, offsetY: n.offsetY,
+    context: n.context, transformed: n.transformed, scaleX: n.scaleX, scaleY: n.scaleY, offsetX: n.offsetX, offsetY: n.offsetY, z: n.z,
   };
 }
 
@@ -1272,13 +1309,14 @@ function replacedNode(s: TableState, c: ReplacedLeaf, parent: number, orders: Ma
   const border = resolveBorder(style, s.ctx.devicePixelRatio);
   const order = orders === null ? undefined : orders.get(c.id);
   const paint = paintOf(c.id, f, r, s.dpr, ox, oy, sox, soy, s.faults);
+  const zi = zOf(c.id, f, c.style.position, orders !== null, s.faults);
   pushNode(s, {
     kind: 'box', parent, target: s.nodes.length, x: r.x, y: r.y, width: r.width, height: r.height, clips: c.style.overflowX === 'hidden',
     borderTop: border.top, borderRight: border.right, borderBottom: border.bottom, borderLeft: border.left, layer: c.style.position !== 'static',
     absolute: c.style.position === 'absolute', fixed: c.style.position === 'fixed', atomic: orders !== null || line >= 0, order: order === undefined ? 0 : order,
     layerOrder: orders !== null && c.style.position !== 'absolute' && c.style.position !== 'fixed' ? c.style.order : 0, line,
     inkLeft: 0, inkTop: 0, inkRight: 0, inkBottom: 0, pointerEvents: pe, radii: roundedOf(r.x, r.y, r.width, r.height, border, f.radii, s.dpr, paint.transformed && !(paint.scaleX === 1 && paint.scaleY === 1) ? r.x : sox, paint.transformed && !(paint.scaleX === 1 && paint.scaleY === 1) ? r.y : soy),
-    context: paint.context, transformed: paint.transformed, scaleX: paint.scaleX, scaleY: paint.scaleY, offsetX: paint.offsetX, offsetY: paint.offsetY,
+    context: paint.context || zi.context, transformed: paint.transformed, scaleX: paint.scaleX, scaleY: paint.scaleY, offsetX: paint.offsetX, offsetY: paint.offsetY, z: zi.z,
   }, c.id, f.activation);
   if (line >= 0) atomicInk(s, s.nodes.length - 1);
 }
@@ -1316,9 +1354,9 @@ function controlRefusal(id: string): string {
   return `${id} is a form control, which the hit table does not model yet (FORM-a; Chrome retargets its parts to the control, no Chrome hit capture)`;
 }
 
-/** Whether the hit table models a control: a button, a select, a text field or a textarea; a range (its touch, T064 P7), a fieldset and a legend not yet. */
+/** Whether the hit table models a control: a button, a select, a text field, a textarea or a theme leaf (a checkbox or radio); a range (its touch, T064 P7), a fieldset and a legend not yet. */
 function hitModelsControl(c: ControlBox): boolean {
-  return c.control.kind === 'button-block' || c.control.kind === 'select-menulist' || c.control.kind === 'text-field' || c.control.kind === 'text-area';
+  return c.control.kind === 'button-block' || c.control.kind === 'select-menulist' || c.control.kind === 'text-field' || c.control.kind === 'text-area' || c.control.kind === 'theme-leaf';
 }
 
 /** A control the hit table models as its box: a button with its children, a select, text field or textarea as one box, since Chrome retargets its UA shadow parts to it. */

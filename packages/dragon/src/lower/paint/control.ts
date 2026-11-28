@@ -29,7 +29,7 @@ export const CONTROL_LOWERING: PaintLowering<ControlWrite> = {
   },
   css: { 'select-arrow': ['appearance', 'color'], checkbox: ['appearance', 'accent-color'] },
   lower: ({ box, el }) => {
-    if (box.kind === 'box' && el !== null && el.element.tag === 'input' && isCheckboxType(el.element.attributes.get('type'))) {
+    if ((box.kind === 'box' || (box.kind === 'control' && box.control.kind === 'theme-leaf')) && el !== null && el.element.tag === 'input' && isCheckboxType(el.element.attributes.get('type'))) {
       const accent = (el.props.get('accent-color') as ResolvedValue).value;
       return [{ kind: 'checkbox', checked: el.element.attributes.has('checked'), colors: checkboxColors(accent.kind === 'color' ? accent.value : null, { checkboxLightCheckOnLightAccent: false }) }];
     }

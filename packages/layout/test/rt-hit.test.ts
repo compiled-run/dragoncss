@@ -6,9 +6,9 @@ import type { HitFact, HitNode } from '../src/rt-hit.ts';
 import { activationTarget, HitError, hitAt, hitTest, NO_HIT_FAULTS, NO_HIT_TABLE_FAULTS, prepareHit } from '../src/rt-hit.ts';
 
 const PX = 64;
-const base = { clips: false, borderTop: 0, borderRight: 0, borderBottom: 0, borderLeft: 0, layer: false, absolute: false, fixed: false, atomic: false, order: 0, layerOrder: 0, line: -1, inkLeft: 0, inkTop: 0, inkRight: 0, inkBottom: 0, pointerEvents: 'auto', radii: [], context: false, transformed: false, scaleX: 1, scaleY: 1, offsetX: 0, offsetY: 0 } as const;
+const base = { clips: false, borderTop: 0, borderRight: 0, borderBottom: 0, borderLeft: 0, layer: false, absolute: false, fixed: false, atomic: false, order: 0, layerOrder: 0, line: -1, inkLeft: 0, inkTop: 0, inkRight: 0, inkBottom: 0, pointerEvents: 'auto', radii: [], context: false, transformed: false, scaleX: 1, scaleY: 1, offsetX: 0, offsetY: 0, z: 0 } as const;
 const NO_ORIGIN = { x: { kind: 'px', px: 0, percent: 0 }, y: { kind: 'px', px: 0, percent: 0 } } as const;
-const FLAT = { radii: [], context: false, otherContext: '', transform: [], origin: NO_ORIGIN } as const;
+const FLAT = { radii: [], context: false, otherContext: '', transform: [], origin: NO_ORIGIN, z: null } as const;
 const box = (parent: number, target: number, x: number, y: number, w: number, h: number, more: Partial<HitNode> = {}): HitNode => ({ ...base, kind: 'box', parent, target, x: x * PX, y: y * PX, width: w * PX, height: h * PX, ...more });
 const at = (nodes: readonly HitNode[], x: number, y: number, faults = NO_HIT_FAULTS): number => hitTest(nodes, Math.floor(x * PX), Math.floor(y * PX), faults);
 
@@ -657,7 +657,7 @@ describe('hitTableOf reads a transform and a stacking context from the hit facts
     const root = { ...layoutBox('html', { width: px(400) }), children: [layoutBox('a', { width: px(100), height: px(40) }), layoutBox('b', { width: px(100), height: px(40), marginTop: px(-20) })] } as unknown as Parameters<typeof hitTableOf>[0]['root'];
     const input = { viewport: { width: 400, height: 300 }, devicePixelRatio: 1, ...neutralEnvironment({ width: 400, height: 300 }), root };
     const centre = { x: { kind: 'percent', px: 0, percent: 50 }, y: { kind: 'percent', px: 0, percent: 50 } } as const;
-    const facts = new Map([['html', { pointerEvents: 'auto', inherited: false, activation: false, ...FLAT }], ['a', { pointerEvents: 'auto', inherited: false, activation: false, radii: [], context, transform, origin: centre }], ['b', { pointerEvents: 'auto', inherited: false, activation: false, ...FLAT }]] as const);
+    const facts = new Map([['html', { pointerEvents: 'auto', inherited: false, activation: false, ...FLAT }], ['a', { pointerEvents: 'auto', inherited: false, activation: false, radii: [], context, otherContext: '', transform, origin: centre, z: null }], ['b', { pointerEvents: 'auto', inherited: false, activation: false, ...FLAT }]] as const);
     return (faults = NO_HIT_TABLE_FAULTS) => hitTableOf(input, ahemMeasurer, facts as unknown as Parameters<typeof hitTableOf>[2], faults);
   };
   const len = (v: number) => ({ kind: 'px', px: v, percent: 0 }) as const;
@@ -744,5 +744,67 @@ describe('hitTableOf places a tall inline-block button\'s lines where the engine
     // The 12px line is centred in the 40px content box, 14px down, so the box sits there and not at the top.
     expect([s.y, s.y / PX]).toEqual([(absoluteRects(laid.boxes).get('s') as { y: number }).y, 14]);
     expect(t.ids[hitTest(t.nodes, s.x + 5 * PX, s.y + 5 * PX, NO_HIT_FAULTS)]).toBe('s');
+  });
+});
+
+// CSS2 Appendix E for z >= 0: a context's z-index auto and 0 layers in tree order, then its positive ones by ascending z (tree order
+// among equal z), each context followed by its own layers; a positioned z-index auto box is no context, so its layers are its context's.
+describe('z-index stacking order', () => {
+  const root = box(-1, 0, 0, 0, 400, 300);
+  const ctx = (parent: number, target: number, x: number, y: number, w: number, h: number, z: number, more: Partial<HitNode> = {}): HitNode => box(parent, target, x, y, w, h, { layer: true, context: true, z, ...more });
+  it('hits the higher z over a later sibling, and the later of two equal z', () => {
+    expect(at([root, ctx(0, 1, 0, 0, 100, 20, 2), ctx(0, 2, 0, 10, 100, 20, 1)], 5, 15)).toBe(1);
+    expect(at([root, ctx(0, 1, 0, 0, 100, 20, 1), ctx(0, 2, 0, 10, 100, 20, 1)], 5, 15)).toBe(2);
+    expect(at([root, ctx(0, 1, 0, 0, 100, 20, 1), box(0, 2, 0, 10, 100, 20, { layer: true })], 5, 15)).toBe(1);
+  });
+  it('keeps a positive z inside its z-index 0 context, and lifts one under a positioned z-index auto box into the outer context', () => {
+    const trapped = [root, ctx(0, 1, 0, 0, 100, 40, 0), ctx(1, 2, 0, 0, 50, 20, 5), box(0, 3, 0, 10, 100, 20, { layer: true })];
+    expect(at(trapped, 5, 15)).toBe(3);
+    const lifted = [root, box(0, 1, 0, 0, 100, 40, { layer: true }), ctx(1, 2, 0, 0, 50, 20, 5), box(0, 3, 0, 10, 100, 20, { layer: true })];
+    expect(at(lifted, 5, 15)).toBe(2);
+  });
+  it('refuses a negative z and a z on a box that makes no context', () => {
+    expect(() => hitTest([root, ctx(0, 1, 0, 0, 10, 10, -1)], 0, 0, NO_HIT_FAULTS)).toThrow(/z-index -1/);
+    expect(() => hitTest([root, box(0, 1, 0, 0, 10, 10, { z: 2 })], 0, 0, NO_HIT_FAULTS)).toThrow(/z-index 2/);
+  });
+  it('orders exactly as tree order when no layer has a positive z', () => {
+    const nodes = [root, box(0, 1, 0, 0, 100, 40, { layer: true }), ctx(1, 2, 0, 0, 50, 20, 0), box(2, 3, 0, 0, 20, 10, { layer: true }), box(0, 4, 0, 0, 10, 10, { context: true }), box(1, 5, 0, 0, 10, 10, { layer: true })];
+    expect(prepareHit(nodes, NO_HIT_FAULTS).layers).toEqual([4, 5, 3, 2, 1]);
+  });
+});
+
+describe('hitTableOf applies z-index to a positioned box or a flex item only', () => {
+  const setup = async (display: 'block' | 'flex', position: 'static' | 'relative') => {
+    const { hitTableOf } = await import('../src/rt-hit.ts');
+    const { ahemMeasurer } = await import('../src/index.ts');
+    const { box: layoutBox, neutralEnvironment, px } = await import('./helpers.ts');
+    // a (z-index 1) and b (relative, z-index auto) overlap; b comes later in tree order.
+    const kids = [layoutBox('a', { position, width: px(100), height: px(40) }), layoutBox('b', { position: 'relative', width: px(100), height: px(40), ...(display === 'block' ? { marginTop: px(-20) } : { marginLeft: px(-50) }) })];
+    const parent = { ...layoutBox('p', { display, width: px(300), height: px(80) }), children: kids };
+    const root = { ...layoutBox('html', { width: px(400) }), children: [parent] } as unknown as Parameters<typeof hitTableOf>[0]['root'];
+    const input = { viewport: { width: 400, height: 300 }, devicePixelRatio: 1, ...neutralEnvironment({ width: 400, height: 300 }), root };
+    const fact = (z: number | null) => ({ pointerEvents: 'auto', inherited: false, activation: false, ...FLAT, z });
+    const facts = new Map([['html', fact(null)], ['p', fact(null)], ['a', fact(1)], ['b', fact(null)]] as const);
+    return (faults = NO_HIT_TABLE_FAULTS) => hitTableOf(input, ahemMeasurer, facts as unknown as Parameters<typeof hitTableOf>[2], faults);
+  };
+  const hitIn = (t: ReturnType<Awaited<ReturnType<typeof setup>>>): string => {
+    const a = t.nodes[t.ids.indexOf('a')] as HitNode;
+    const b = t.nodes[t.ids.indexOf('b')] as HitNode;
+    const x = (a.x + a.width + b.x) / 2;
+    const y = (Math.max(a.y, b.y) + Math.min(a.y + a.height, b.y + b.height)) / 2;
+    return t.ids[hitTest(t.nodes, Math.floor(x), Math.floor(y), NO_HIT_FAULTS)] as string;
+  };
+  it('a static flex item with z-index 1 paints over its later positioned sibling; positive z read as 0 (zIndexIgnored) does not', async () => {
+    const table = await setup('flex', 'static');
+    expect((table().nodes[table().ids.indexOf('a')] as HitNode).context).toBe(true);
+    expect(hitIn(table())).toBe('a');
+    expect(hitIn(table({ ...NO_HIT_TABLE_FAULTS, zIndexIgnored: true }))).toBe('b');
+  });
+  it('a relative box with z-index 1 paints over its later positioned sibling', async () => {
+    expect(hitIn((await setup('block', 'relative'))())).toBe('a');
+  });
+  it('z-index on a static block child applies nowhere: the later positioned sibling wins', async () => {
+    const t = (await setup('block', 'static'))();
+    expect([(t.nodes[t.ids.indexOf('a')] as HitNode).context, hitIn(t)]).toEqual([false, 'b']);
   });
 });

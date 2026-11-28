@@ -505,7 +505,17 @@ export type LayoutStyle = {
  * A text item's font as the measurer reads it: the face, the computed size and the used letter-spacing in px (css-text-3 §8.2,
  * 0 for normal), which Blink keeps in the FontDescription and adds after every cluster (ShapeResult::ApplySpacing).
  */
-export type TextFont = { readonly family: string; readonly size: number; readonly letterSpacing: number; readonly wordSpacing: number; readonly smallCaps: boolean };
+export type TextFont = { readonly family: string; readonly size: number; readonly letterSpacing: number; readonly wordSpacing: number; readonly smallCaps: boolean; readonly variantNumeric: VariantNumeric };
+
+/** css-fonts-4 §6.7 font-variant-numeric as Blink's FontVariantNumeric holds it, one field per keyword group; normal is all normal. */
+export type VariantNumeric = {
+  readonly figure: 'normal' | 'lining-nums' | 'oldstyle-nums';
+  readonly spacing: 'normal' | 'proportional-nums' | 'tabular-nums';
+  readonly fraction: 'normal' | 'diagonal-fractions' | 'stacked-fractions';
+  readonly ordinal: boolean;
+  readonly slashedZero: boolean;
+};
+
 
 /**
  * A text run's font (css-fonts-4 §2). specifiedSize is the specified font size (css-fonts-4 §2.5) as an expression in CSS px at
@@ -552,6 +562,8 @@ export type TextLeaf = {
    * run of lowercase letters uppercased at 70% of the font size, rounded (HarfBuzzShaper::ShapeSegment, SmallCapsFontData).
    */
   readonly smallCaps: boolean;
+  /** css-fonts-4 §6.7 font-variant-numeric, which the shaper applies as OpenType features (shaping.ts numericFeatures). */
+  readonly variantNumeric: VariantNumeric;
 };
 
 /**
@@ -619,6 +631,8 @@ export type CancelButton = { readonly marginStart: number; readonly marginEnd: n
  * - fieldset: a block fieldset, whose rendered legend sits in its block-start border and whose other contents flow in an anonymous
  *   new formatting context that carries its padding (HTML §15.3.13, FieldsetLayoutAlgorithm);
  * - legend: a fieldset's rendered legend, its first in-flow legend child, sized to fit its content;
+ * - theme-leaf: an inline-block themed checkbox or radio (FORM-checkbox), an empty atomic inline whose baseline is its border box's
+ *   block-end edge, as Chrome 145 places a leaf theme part on its line (controls-checkbox-inline), not its margin box's;
  * - select-menulist (FORM-b): a single select, a flex row container of its inner element. font and lineHeight are the select's
  *   own: while its line height is normal, the inner element's is the primary font's ascent + descent (environment.ts).
  *   arrowWidth is the platform's menulist arrow width in DIP when the select has an effective appearance (menulist-button), which
@@ -644,6 +658,7 @@ export type ControlKind =
   | { readonly kind: 'text-placeholder' }
   | { readonly kind: 'fieldset' }
   | { readonly kind: 'legend' }
+  | { readonly kind: 'theme-leaf' }
   | { readonly kind: 'select-menulist'; readonly font: FontSpec; readonly lineHeight: LineHeightValue; readonly arrowWidth: number; readonly options: readonly TextLeaf[] }
   | { readonly kind: 'select-inner' };
 

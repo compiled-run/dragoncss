@@ -1479,7 +1479,14 @@
          },
          "overflowWrap": "normal",
          "wordBreak": "break-all",
-         "smallCaps": false
+         "smallCaps": false,
+         "variantNumeric": {
+          "figure": "normal",
+          "spacing": "normal",
+          "fraction": "normal",
+          "ordinal": false,
+          "slashedZero": false
+         }
         }
        ]
       },
@@ -1669,7 +1676,14 @@
          },
          "overflowWrap": "normal",
          "wordBreak": "break-all",
-         "smallCaps": false
+         "smallCaps": false,
+         "variantNumeric": {
+          "figure": "normal",
+          "spacing": "normal",
+          "fraction": "normal",
+          "ordinal": false,
+          "slashedZero": false
+         }
         }
        ]
       },
@@ -1859,7 +1873,14 @@
          },
          "overflowWrap": "normal",
          "wordBreak": "keep-all",
-         "smallCaps": false
+         "smallCaps": false,
+         "variantNumeric": {
+          "figure": "normal",
+          "spacing": "normal",
+          "fraction": "normal",
+          "ordinal": false,
+          "slashedZero": false
+         }
         }
        ]
       },
@@ -2049,7 +2070,14 @@
          },
          "overflowWrap": "normal",
          "wordBreak": "break-all",
-         "smallCaps": false
+         "smallCaps": false,
+         "variantNumeric": {
+          "figure": "normal",
+          "spacing": "normal",
+          "fraction": "normal",
+          "ordinal": false,
+          "slashedZero": false
+         }
         }
        ]
       },
@@ -2383,7 +2411,14 @@
            },
            "overflowWrap": "normal",
            "wordBreak": "break-all",
-           "smallCaps": false
+           "smallCaps": false,
+           "variantNumeric": {
+            "figure": "normal",
+            "spacing": "normal",
+            "fraction": "normal",
+            "ordinal": false,
+            "slashedZero": false
+           }
           }
          ]
         },
@@ -2572,7 +2607,14 @@
            },
            "overflowWrap": "normal",
            "wordBreak": "keep-all",
-           "smallCaps": false
+           "smallCaps": false,
+           "variantNumeric": {
+            "figure": "normal",
+            "spacing": "normal",
+            "fraction": "normal",
+            "ordinal": false,
+            "slashedZero": false
+           }
           }
          ]
         }

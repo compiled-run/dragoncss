@@ -8,7 +8,7 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, w
 import { join } from 'node:path';
 import type { Page } from 'playwright';
 import type { ControlBox, Ctx, InlineChild, LayoutBox, LayoutInput, LayoutRect, ListMarker, LU, PlacedLine, TextFont, TextLeaf, TextMeasurer } from '@dragon/layout';
-import { absoluteRects, clampedInput, controlAsBox, fromCssPx, layout, inlineLeaves, leafFontOf, markerTextId, NO_ENGINE_FAULTS, NO_GRID_FAULTS, placeLines, resolveBorder, resolvedInput, resolvePadding, snapEdges } from '@dragon/layout';
+import { absoluteRects, clampedInput, controlAsBox, fromCssPx, layout, inlineLeaves, leafFontOf, markerTextId, NO_ENGINE_FAULTS, NO_GRID_FAULTS, NORMAL_NUMERIC, placeLines, resolveBorder, resolvedInput, resolvePadding, snapEdges } from '@dragon/layout';
 import type { TextTransform } from 'dragon';
 import { applyTextTransform, NO_FAULTS } from 'dragon';
 import { dprLabel } from './dpr.ts';
@@ -178,7 +178,7 @@ function markerTextLines(r: LayoutRect, m: ListMarker, boxes: readonly LayoutRec
   if (text === null || a === undefined || e === undefined || box === undefined) throw new Error(`${r.id}: the text marker ${m.id} is not placed`);
   const cps = [...text].map((ch) => ch.codePointAt(0) as number);
   const line: EngineLine = { start: 0, end: text.length, cps, shifts: [], rect: a, snapped: { left: e.left, top: e.top, right: e.right, bottom: e.bottom }, halfLeading: a.y - box.y, ellipsis: null, fragments: [[0, text.length]] };
-  return { id: r.id, container: m.id, font: m.font, textFont: { family: m.font.family, size: m.font.size, letterSpacing: 0, wordSpacing: 0, smallCaps: false }, lines: [line] };
+  return { id: r.id, container: m.id, font: m.font, textFont: { family: m.font.family, size: m.font.size, letterSpacing: 0, wordSpacing: 0, smallCaps: false, variantNumeric: NORMAL_NUMERIC }, lines: [line] };
 }
 
 // ---------------------------------------------------------------- break vectors

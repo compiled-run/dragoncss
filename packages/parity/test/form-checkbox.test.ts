@@ -227,3 +227,34 @@ describe("FORM-checkbox: Chrome's themed checkbox", () => {
     }
   });
 });
+
+describe('FORM-checkbox: an inline-block checkbox, and a radio inside a box an empty clip-path hides', () => {
+  const inline = (style: string, body: string): string => page(`input { display: inline-block; } ${style}`, body);
+  const SR = '.sr { clip-path: inset(50%); height: 1px; overflow: hidden; position: absolute; white-space: nowrap; width: 1px; }';
+  const RADIO_ROW = '<div data-dragon-id="row" class="row"><span data-dragon-id="sr" class="sr"><input data-dragon-id="r" type="radio" name="size"></span><label data-dragon-id="l">Small</label></div>';
+  const ROW = '.row { position: relative; display: flex; align-items: center; gap: 8px; }';
+  const theme = /^<input type=radio> r is drawn by Chrome's theme, which Dragon does not draw yet/;
+
+  it('compiles an inline-block checkbox on a line of text, beside a scroll container whose overflow it does not change', () => {
+    expect(compile(inline('', '<div data-dragon-id="d">XX <input data-dragon-id="c" type="checkbox"> XX</div>'))).toEqual([]);
+    const scroller = '<div data-dragon-id="s" class="s"><div data-dragon-id="k" class="k"></div></div>';
+    expect(compile(inline('.s { overflow: auto; height: 40px; } .k { height: 80px; }', `${scroller}<div data-dragon-id="d">XX <input data-dragon-id="c" type="checkbox"> XX</div>`))).toEqual([]);
+  });
+
+  it("compiles @markless/ui's hidden radio, at its UA margins, with no theme, border or outline refusal", () => {
+    expect(compile(inline(`${SR} ${ROW} :focus-visible { outline: 2px solid #c2410c; }`, RADIO_ROW), true)).toEqual([]);
+  });
+
+  it('refuses a radio Chrome would draw: outside a hidden box, or beside a clip-path that is not empty at every size', () => {
+    expect(compile(inline('', '<div data-dragon-id="d">XX <input data-dragon-id="r" type="radio"> XX</div>'))).toContainEqual(expect.stringMatching(theme));
+    const notEmpty = SR.replace('inset(50%)', 'inset(49%)');
+    expect(compile(inline(`${notEmpty} ${ROW}`, RADIO_ROW))).toContainEqual(expect.stringMatching(theme));
+  });
+
+  it('keeps what the themed part does not lay out refused on a hidden radio too: author padding, an inline-flex display, a zoom', () => {
+    const hidden = (style: string): string[] => compile(inline(`${SR} ${ROW} ${style}`, RADIO_ROW));
+    expect(hidden('input { padding-top: 3px; }')).toContainEqual(expect.stringMatching(/^padding-top: 3px on <input type=radio> r is not supported/));
+    expect(hidden('input { display: inline-flex; }')).toContainEqual(expect.stringMatching(/^display: inline-flex on <input type=radio> r is not supported/));
+    expect(hidden('.row { zoom: 2; }')).toContainEqual(expect.stringMatching(/^zoom: 2 on row zooms <input type=radio> r/));
+  });
+});

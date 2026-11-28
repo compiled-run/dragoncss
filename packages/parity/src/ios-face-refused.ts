@@ -8,6 +8,7 @@ export const IOS_FACE_REFUSED: ReadonlyMap<string, readonly FaceRefusal[]> = new
   ['controls-text-field-font-definite', [{ code: 'DRAGON_UNSUPPORTED_VALUE', feature: 'font-family:<pinned>' }]],
   ['controls-text-font', [{ code: 'DRAGON_UNSUPPORTED_VALUE', feature: 'font-family:<declared>' }, { code: 'DRAGON_UNSUPPORTED_VALUE', feature: 'font-family:<declared>' }]],
   ['controls-text-font-column-flex', [{ code: 'DRAGON_UNSUPPORTED_VALUE', feature: 'font-family:<declared>' }, { code: 'DRAGON_UNSUPPORTED_VALUE', feature: 'font-family:<declared>' }]],
+  ['text-font-variant-numeric', [{ code: 'DRAGON_UNSUPPORTED_VALUE', feature: 'font-family:<pinned>' }, { code: 'DRAGON_UNSUPPORTED_VALUE', feature: 'font-family:<pinned>' }]],
   ['controls-text-font-grid', [{ code: 'DRAGON_UNSUPPORTED_VALUE', feature: 'font-family:<declared>' }, { code: 'DRAGON_UNSUPPORTED_VALUE', feature: 'font-family:<declared>' }]],
 ]);
 

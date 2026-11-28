@@ -37,6 +37,8 @@ export type BoxPaintContext = {
   readonly images: ReadonlyMap<string, Uint8Array>;
   /** The host draws each <img>'s picture (InternalOptions.hostImages), so an <img> gets no image content write. */
   readonly hostImages: boolean;
+  /** Whether this box or an ancestor is hidden whole by an empty clip rect or clip-path, so Chrome paints none of it (MASK-CLIP-path-hidden). */
+  readonly clipHidden: boolean;
   /** Whether this box or an ancestor has a transform that moves at run time (animated, transitioned or state-dependent). */
   readonly transformMoves: boolean;
   /**

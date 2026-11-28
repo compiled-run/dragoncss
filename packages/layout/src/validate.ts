@@ -247,6 +247,7 @@ export const textLeafSchema = obj({
   overflowWrap: lit('normal', 'break-word', 'anywhere'),
   wordBreak: lit('normal', 'break-all', 'keep-all', 'break-word', 'auto-phrase'),
   smallCaps: bool,
+  variantNumeric: obj({ figure: lit('normal', 'lining-nums', 'oldstyle-nums'), spacing: lit('normal', 'proportional-nums', 'tabular-nums'), fraction: lit('normal', 'diagonal-fractions', 'stacked-fractions'), ordinal: bool, slashedZero: bool }),
 });
 
 /** A replaced leaf (input.ts ReplacedLeaf); its style is checked as a box style. */
@@ -263,7 +264,7 @@ export const replacedLeafSchema = obj({
 });
 
 /** A control box's facts (input.ts ControlKind); the ratio is also checked to be at most 1. */
-export const controlKindSchema = tagged({ range: { defaultInlineSize: num(0) }, 'slider-thumb': { ratio: num(0) }, 'button-block': {}, 'text-field': { size: num(1), font: fontSpecSchema, lineHeight: lineHeightSchema, avgChar: lit('ahem', 'unmeasured'), cancelButton: nullable(obj({ marginStart: num(0), marginEnd: num(0) })) }, 'text-area': { cols: num(1), rows: num(1), font: fontSpecSchema, lineHeight: lineHeightSchema, avgChar: lit('ahem', 'unmeasured'), scrollbarInline: num(0), scrollbarBlock: num(0) }, 'text-editor': {}, 'text-placeholder': {}, fieldset: {}, legend: {}, 'select-menulist': { font: fontSpecSchema, lineHeight: lineHeightSchema, arrowWidth: num(0), options: arr(textLeafSchema, 0) }, 'select-inner': {} });
+export const controlKindSchema = tagged({ range: { defaultInlineSize: num(0) }, 'slider-thumb': { ratio: num(0) }, 'button-block': {}, 'text-field': { size: num(1), font: fontSpecSchema, lineHeight: lineHeightSchema, avgChar: lit('ahem', 'unmeasured'), cancelButton: nullable(obj({ marginStart: num(0), marginEnd: num(0) })) }, 'text-area': { cols: num(1), rows: num(1), font: fontSpecSchema, lineHeight: lineHeightSchema, avgChar: lit('ahem', 'unmeasured'), scrollbarInline: num(0), scrollbarBlock: num(0) }, 'text-editor': {}, 'text-placeholder': {}, fieldset: {}, legend: {}, 'theme-leaf': {}, 'select-menulist': { font: fontSpecSchema, lineHeight: lineHeightSchema, arrowWidth: num(0), options: arr(textLeafSchema, 0) }, 'select-inner': {} });
 
 /** A <br> (input.ts LineBreak). */
 export const lineBreakSchema = obj({ kind: lit('br'), id: str, font: fontSpecSchema, lineHeight: lineHeightSchema });
@@ -867,6 +868,8 @@ function checkControl(value: Record<string, unknown>, path: string, errors: Vali
   if (control['kind'] === 'text-field' && style['display'] !== 'block' && style['display'] !== 'inline-block') bad('style.display', 'a text field is a block container, block-level or inline-block');
   if ((control['kind'] === 'text-editor' || control['kind'] === 'text-placeholder') && style['display'] !== 'block') bad('style.display', 'the parts of a text field are block containers');
   if (control['kind'] === 'text-area' && style['display'] !== 'block') bad('style.display', 'a textarea is a block container');
+  if (control['kind'] === 'theme-leaf' && style['display'] !== 'inline-block') bad('style.display', 'a theme leaf is an inline-block checkbox or radio');
+  if (control['kind'] === 'theme-leaf' && Array.isArray(value['children']) && value['children'].length > 0) bad('children', 'a theme leaf has no children');
   if (control['kind'] === 'select-menulist' && style['display'] !== 'flex') bad('style.display', 'a select is a flex container');
   if (control['kind'] === 'select-inner' && style['display'] !== 'block') bad('style.display', 'a select inner element is a block container');
   if ((control['kind'] === 'fieldset' || control['kind'] === 'legend') && style['display'] !== 'block') bad('style.display', `a ${control['kind']} control is a block container`);
@@ -897,13 +900,13 @@ function childrenOf(value: Record<string, unknown>, path: string, errors: Valida
 
 /**
  * An atomic inline (CSS2 §9.2.4): a box with display inline-block, inline-flex or inline-grid, a replaced leaf with display
- * inline, inline-block or inline-flex (RF-INL; css-display-3 §2.4), or an inline-block text field or button control.
+ * inline, inline-block or inline-flex (RF-INL; css-display-3 §2.4), or an inline-block text field, button or theme leaf control.
  */
 const isAtomic = (c: unknown): boolean => {
   if (!isRecord(c) || !isRecord(c['style'])) return false;
   const d = c['style']['display'];
   if (c['kind'] === 'replaced') return d === 'inline' || d === 'inline-block' || d === 'inline-flex';
-  if (c['kind'] === 'control') return isRecord(c['control']) && (c['control']['kind'] === 'text-field' || c['control']['kind'] === 'button-block') && d === 'inline-block';
+  if (c['kind'] === 'control') return isRecord(c['control']) && (c['control']['kind'] === 'text-field' || c['control']['kind'] === 'button-block' || c['control']['kind'] === 'theme-leaf') && d === 'inline-block';
   return c['kind'] === 'box' && (d === 'inline-block' || d === 'inline-flex' || d === 'inline-grid');
 };
 

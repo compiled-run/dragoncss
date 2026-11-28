@@ -54,6 +54,7 @@ import type {
   VerticalAlignValue,
   WhiteSpaceCollapse,
 } from '@dragon/layout';
+import { NORMAL_VARIANT_NUMERIC } from '../css/properties/font-variant.ts';
 import type { Longhand, TextLonghand } from '../css/properties.ts';
 import { INHERITED, LONGHANDS } from '../css/properties.ts';
 import type { CssValue } from '../css/stylesheet.ts';
@@ -70,7 +71,7 @@ import type { CompilerFaults } from '../faults.ts';
 import type { MathFonts } from '../css/math.ts';
 import { fontUnitsIn, lowerLengthCalc, lowerMathNode, mathContextFor, mathHasViewport, parseMath } from '../css/math.ts';
 import type { UaDataset } from '../ua/datasets.ts';
-import { inputTypeState, isCheckboxType, isControlTag, selectAppearance } from '../analysis/elements/controls.ts';
+import { inputTypeState, isCheckboxType, isControlTag, isRadioType, selectAppearance } from '../analysis/elements/controls.ts';
 import { rangePartOf, selectOptionLabelsOf, selectPartOf, textFieldPartOf } from '../analysis/resolve.ts';
 import { SEARCH_CANCEL_BUTTON } from '../forms/text-field.ts';
 import { rangeRatio } from '../forms/range-value.ts';
@@ -697,7 +698,7 @@ function lowerText(t: ResolvedText, mode: LowerMode, zoom: readonly number[]): T
   if (wordBreak.kind !== 'keyword' || !WORD_BREAK.includes(wordBreak.value)) return fail(id, 'word-break', wordBreak, WORD_BREAK.join(' | '));
   return {
     kind: 'text', id, text: t.text, font, lineHeight, whiteSpaceCollapse: collapse.value as WhiteSpaceCollapse, textWrapMode: wrap.value as TextWrapMode, letterSpacing: lowerSpacing(id, 'letter-spacing', get('letter-spacing')), wordSpacing: lowerSpacing(id, 'word-spacing', get('word-spacing')),
-    overflowWrap: overflowWrap.value as OverflowWrap, wordBreak: wordBreak.value as WordBreak, smallCaps: t.smallCaps,
+    overflowWrap: overflowWrap.value as OverflowWrap, wordBreak: wordBreak.value as WordBreak, smallCaps: t.smallCaps, variantNumeric: t.variantNumeric,
   };
 }
 
@@ -786,7 +787,7 @@ function lowerInline(c: ResolvedElement | ResolvedText, l: Lowerer): InlineChild
   const zoom = zoomChain(c, l.zoom);
   const own = lowerFont(id, zoomedGet(id, (p: TextLonghand) => (c.props.get(p) as ResolvedValue).value, zoom), l.mode);
   if (c.element.tag === 'br') {
-    if (l.faults.brAsSpace) return { kind: 'text', id, text: ' ', font: own.font, lineHeight: own.lineHeight, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap', letterSpacing: { kind: 'px', value: 0 }, wordSpacing: { kind: 'px', value: 0 }, overflowWrap: 'normal', wordBreak: 'normal', smallCaps: false };
+    if (l.faults.brAsSpace) return { kind: 'text', id, text: ' ', font: own.font, lineHeight: own.lineHeight, whiteSpaceCollapse: 'collapse', textWrapMode: 'wrap', letterSpacing: { kind: 'px', value: 0 }, wordSpacing: { kind: 'px', value: 0 }, overflowWrap: 'normal', wordBreak: 'normal', smallCaps: false, variantNumeric: NORMAL_VARIANT_NUMERIC };
     return { kind: 'br', id, font: own.font, lineHeight: own.lineHeight };
   }
   const kids = boxChildren(c);
@@ -818,8 +819,8 @@ function lowerInlineLevel(c: ResolvedElement | ResolvedText, l: Lowerer): Layout
   const el = c as ResolvedElement;
   if (isReplacedTag(el.element.tag)) return lowerReplaced(el, l, null);
   const box = lowerBox(el, l, null);
-  // Of the inline-level controls only an inline-block text field or button is laid out (analysis/computed-checks.ts refuses the rest).
-  if (box.kind === 'control' && ((box.control.kind !== 'text-field' && box.control.kind !== 'button-block') || box.style.display !== 'inline-block')) throw new LoweringError(box.id, 'display', `the inline-level control ${box.id} is not laid out`);
+  // Of the inline-level controls only an inline-block text field, button, checkbox or radio is laid out (analysis/computed-checks.ts refuses the rest).
+  if (box.kind === 'control' && ((box.control.kind !== 'text-field' && box.control.kind !== 'button-block' && box.control.kind !== 'theme-leaf') || box.style.display !== 'inline-block')) throw new LoweringError(box.id, 'display', `the inline-level control ${box.id} is not laid out`);
   return box;
 }
 
@@ -1048,10 +1049,13 @@ function lowerBox(given: ResolvedElement, l: Lowerer, gridParent: GridContainer 
   // FORM-a: a block button centres its contents (Blink AlignBlockContent), and so does an inline-block one, which Blink lays out with
   // the same BlockLayoutAlgorithm (RF-INL); a flex or inline-flex button is the plain flex container it is.
   if (el.element.tag === 'button' && (style.display === 'block' || style.display === 'inline-block')) return { kind: 'control', id, boxType: 'element', style, control: { kind: 'button-block' }, strut, children };
-  if (el.element.tag === 'input' && isCheckboxType(el.element.attributes.get('type'))) {
-    // FORM-checkbox: Chrome's theme gives an auto width or height the part size, 13px (LayoutTheme, native_theme_base.cc kCheckboxSize).
+  if (el.element.tag === 'input' && (isCheckboxType(el.element.attributes.get('type')) || isRadioType(el.element.attributes.get('type')))) {
+    // FORM-checkbox: Chrome's theme gives an auto width or height the part size, 13px for a checkbox and a radio (LayoutTheme,
+    // native_theme_base.cc kCheckboxSize); an inline-block one is a theme leaf on its line.
     const part = (v: LayoutStyle['width']): LayoutStyle['width'] => (v.kind === 'auto' ? { kind: 'px', value: CHECKBOX_PART_SIZE } : v);
-    return { kind: 'box', id, boxType: 'element', style: { ...style, width: part(style.width), height: part(style.height) }, strut, marker: null, children };
+    const sized: LayoutStyle = { ...style, width: part(style.width), height: part(style.height) };
+    if (style.display === 'inline-block') return { kind: 'control', id, boxType: 'element', style: sized, control: { kind: 'theme-leaf' }, strut, children };
+    return { kind: 'box', id, boxType: 'element', style: sized, strut, marker: null, children };
   }
   const field = textFieldPartOf(el);
   if (field !== undefined && field.part === null) {

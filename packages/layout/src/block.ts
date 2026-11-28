@@ -147,6 +147,8 @@ export type EngineFaults = {
   readonly wordSpacingAtItemStart: boolean;
   /** TXT2-b: no word spacing after a no-break space in a shaped item (Character::TreatAsSpace includes it). */
   readonly wordSpacingSkipsNbsp: boolean;
+  /** TXT-FONTFEAT: font-variant-numeric applies no OpenType feature (font_features.cc). */
+  readonly numericFeaturesDropped: boolean;
   /** A non-integer order rounds a tie to the even integer instead of toward +infinity (Blink RoundHalfTowardsPositiveInfinity). */
   readonly orderHalfEven: boolean;
   /** order is not clamped to the int range after rounding (Blink ClampToWithNaNTo0<int>). */
@@ -157,6 +159,8 @@ export type EngineFaults = {
   readonly overflowIgnoresPadding: boolean;
   /** An inline-block's baseline is its first baseline instead of its last line box's (CSS2 §10.8.1). */
   readonly inlineBlockFirstBaseline: boolean;
+  /** A theme leaf (an inline-block checkbox or radio) takes an empty inline-block's margin-box baseline instead of its border box's block-end edge (inline-box.ts). */
+  readonly themeLeafMarginBaseline: boolean;
   /** A scroll container inline-block keeps its content baseline instead of its bottom margin edge (CSS2 §10.8.1). */
   readonly overflowBaselineIgnored: boolean;
   /** An inline-flex box's baseline is its last item's instead of the flex container's first baseline (css-flexbox-1 §8.5). */
@@ -292,11 +296,13 @@ export const NO_ENGINE_FAULTS: EngineFaults = {
   ligaturesKept: false,
   wordSpacingAtItemStart: false,
   wordSpacingSkipsNbsp: false,
+  numericFeaturesDropped: false,
   orderHalfEven: false,
   orderUnclamped: false,
   gutterReserved: false,
   overflowIgnoresPadding: false,
   inlineBlockFirstBaseline: false,
+  themeLeafMarginBaseline: false,
   overflowBaselineIgnored: false,
   inlineFlexLastBaseline: false,
   inlineGridLastItemBaseline: false,
