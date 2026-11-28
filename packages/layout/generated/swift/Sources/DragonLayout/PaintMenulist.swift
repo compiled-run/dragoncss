@@ -22,7 +22,7 @@ public func paintMenulist_menuListArrows(_ input: LayoutInput, _ boxes: JsArray<
   try paintMenulist_collectArrows(zoomed.root, zoomed.devicePixelRatio, input.devicePixelRatio, zooms, layout_absoluteRects(boxes), out)
   // ts: packages/layout/src/paint-menulist.ts:29
   if (jsLength(out) != selects) {
-    throw JsError(message: jsConcat(S.s385, jsNumberToString(selects), S.s158, jsNumberToString(jsLength(out)), S.s18))
+    throw JsError(message: jsConcat(S.s389, jsNumberToString(selects), S.s160, jsNumberToString(jsLength(out)), S.s18))
   }
   return out
 }
@@ -66,7 +66,7 @@ public func paintMenulist_collectArrows(_ b: any U_ControlBox_LayoutBox, _ zoome
       let r: LayoutRect? = abs.get((b as! ControlBox).id)
       // ts: packages/layout/src/paint-menulist.ts:56
       if (r == nil) {
-        throw JsError(message: jsConcat(S.s386, (b as! ControlBox).id, S.s60))
+        throw JsError(message: jsConcat(S.s390, (b as! ControlBox).id, S.s60))
       }
       let s: SnappedRect = try snap_snapRect(jsUnwrap(r))
       let border: Edges = try box_resolveBorder((b as! ControlBox).style, zoomedRatio)

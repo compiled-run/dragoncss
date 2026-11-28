@@ -30,6 +30,7 @@ import { isShared, selectPartOf, textFieldPartOf } from './resolve.ts';
 import { holdsAtomicLine, lineAtomics, propagatedFrom } from './computed-checks.ts';
 import { hitFactContext, hitFactOtherContext } from '../lower/paint/stacking.ts';
 import { INDIVIDUAL_TRANSFORM_TYPE, individualTransformOf, matrixParts, TRANSFORM_LIST_TYPE, transformFunctionsOf } from '../css/properties/transform.ts';
+import { zIndexOf } from '../css/properties/effects.ts';
 
 /** R7: the distinct reachable interaction states one app assignment compiles; more are refused (package SELD-R2s). */
 export const MAX_INTERACTION_STATES = 256;
@@ -623,6 +624,8 @@ export const HIT_MODELLED: ReadonlyMap<Longhand, (v: CssValue) => boolean> = new
   ['transform', hitModelsTransform],
   // transform-hit-translate: the hit facts carry it as the transform's first op (elementTransformWrite).
   ['translate', hitModelsTranslate],
+  // rt-hit.ts orders z-index auto, 0 and positive stacking contexts as Appendix E paints them; a negative one paints under its context's flow.
+  ['z-index', (v) => (zIndexOf(v) ?? 0) >= 0],
   // css-view-transitions-2: a name only captures its box once a transition starts, and the only one that compiles is the UA
   // sheet's :root { view-transition-name: root } (scroll-containment.ts VIEW_TRANSITION), so it changes no hit.
   ['view-transition-name', all],

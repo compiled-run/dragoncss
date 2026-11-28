@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+body { margin: 0; }
+.row { margin-bottom: 10px; }
+.grid { display: grid; grid-template-columns: 60px 60px; height: 30px; }
+.flex { display: flex; height: 30px; }
+.sheet { display: grid; z-index: 10; background-color: rgb(220, 40, 40); }
+.cell { width: 30px; height: 10px; background-color: rgb(40, 40, 40); }
+.item { width: 60px; height: 30px; }
+.box { width: 60px; height: 20px; }
+.wide { width: 100px; height: 20px; }
+.kid { position: absolute; inset-inline-start: 0; top: 10px; width: 40px; height: 20px; }
+.rel { position: relative; }
+.z0 { z-index: 0; }
+.z1 { z-index: 1; }
+.z2 { z-index: 2; }
+.z3 { z-index: 3; }
+.z5 { z-index: 5; }
+.z9 { z-index: 9; }
+.pull30 { margin-inline-start: -30px; }
+.up10 { margin-top: -10px; }
+.up5 { margin-top: -5px; }
+.red { background-color: rgb(220, 40, 40); }
+.teal { background-color: rgb(0, 150, 150); }
+.gold { background-color: rgb(250, 200, 0); }
+.blue { background-color: rgb(40, 80, 220); }
+.green { background-color: rgb(40, 170, 60); }
+.plum { background-color: rgb(150, 30, 150); }
+.t:active { background-color: rgb(120, 120, 120); }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="g" class="row grid"><div data-dragon-id="g-a" class="sheet t"><div data-dragon-id="g-a1" class="cell"></div></div><div data-dragon-id="g-b" class="z1 pull30 teal"></div></div>
+<div data-dragon-id="f" class="row flex"><div data-dragon-id="f-a" class="item z2 red t"></div><div data-dragon-id="f-b" class="item z1 pull30 teal"></div><div data-dragon-id="f-c" class="item z1 pull30 gold"></div></div>
+<div data-dragon-id="p" class="row"><div data-dragon-id="p-s" class="box z5 blue"></div><div data-dragon-id="p-s2" class="box rel up10 green"></div><div data-dragon-id="p-a" class="box rel z3 red t"></div><div data-dragon-id="p-b" class="box rel up10 gold"></div></div>
+<div data-dragon-id="c" class="row"><div data-dragon-id="c-0" class="wide rel z0 blue"><div data-dragon-id="c-0k" class="kid z9 red"></div></div><div data-dragon-id="c-1" class="wide rel up5 teal t"></div></div>
+<div data-dragon-id="a" class="row"><div data-dragon-id="a-0" class="wide rel blue"><div data-dragon-id="a-0k" class="kid z9 red t"></div></div><div data-dragon-id="a-1" class="wide rel up5 teal"></div></div>
+<div data-dragon-id="n" class="row"><div data-dragon-id="n-1" class="wide rel z2 blue"><div data-dragon-id="n-1k" class="kid z1 plum t"></div></div><div data-dragon-id="n-2" class="wide rel z1 up5 green"></div></div>
+</body>
+</html>

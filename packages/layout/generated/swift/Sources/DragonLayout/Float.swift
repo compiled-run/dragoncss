@@ -60,7 +60,7 @@ public func float_layoutFloat(_ ctx: Ctx, _ node: any U_LayoutBox_ReplacedLeaf, 
   let s: LayoutStyle = node.style
   // ts: packages/layout/src/float.ts:68
   if (s.position != S.s_static) {
-    try unsupported_unsupported(S.s_float, node.id, S.s359, jsConcat(S.s577, s.position, S.s43, node.id))
+    try unsupported_unsupported(S.s_float, node.id, S.s363, jsConcat(S.s581, s.position, S.s43, node.id))
   }
   let marginLeft: Double = try box_resolveMarginWith(s.marginLeft, cbInline, ctx.faults).value
   let marginRight: Double = try box_resolveMarginWith(s.marginRight, cbInline, ctx.faults).value
@@ -68,7 +68,7 @@ public func float_layoutFloat(_ ctx: Ctx, _ node: any U_LayoutBox_ReplacedLeaf, 
   let marginBottom: Double = try box_resolveMarginWith(s.marginBottom, cbInline, ctx.faults).value
   // ts: packages/layout/src/float.ts:73
   if ((((marginLeft < 0.0) || (marginRight < 0.0)) || (marginTop < 0.0)) || (marginBottom < 0.0)) {
-    try unsupported_unsupported(S.s_float, node.id, S.s361, jsConcat(S.s589, node.id))
+    try unsupported_unsupported(S.s_float, node.id, S.s365, jsConcat(S.s593, node.id))
   }
   // ts: packages/layout/src/float.ts:74
   if (node.kind == S.s_replaced) {
@@ -76,7 +76,7 @@ public func float_layoutFloat(_ ctx: Ctx, _ node: any U_LayoutBox_ReplacedLeaf, 
   }
   // ts: packages/layout/src/float.ts:76
   if try (ratio_hasAspectRatio(s, ctx.faults) && (s.width.kind == S.s_auto)) {
-    try unsupported_unsupported(S.s_float, (node as! LayoutBox).id, S.s741, jsConcat(S.s649, (node as! LayoutBox).id))
+    try unsupported_unsupported(S.s_float, (node as! LayoutBox).id, S.s745, jsConcat(S.s653, (node as! LayoutBox).id))
   }
   let width: Double = try float_floatWidth(ctx, (node as! LayoutBox), cbInline, units_add(marginLeft, marginRight))
   let r: ContentsResult = try block_layoutContents(ctx, (node as! LayoutBox), ContentsArgs(cbInline, width, nil, false, basis, true, units_ZERO, box_NO_STRETCH))
@@ -184,7 +184,7 @@ public func float_floatsBottom(_ ctx: Ctx, _ box: LayoutBox, _ placed: JsArray<B
         if (inner != nil) {
           // ts: packages/layout/src/float.ts:147
           if (kb.style.position != S.s_static) {
-            try unsupported_unsupported(S.s_float, kb.id, S.s358, jsConcat(S.s1213, kb.style.position, S.s29, kb.id, S.s77))
+            try unsupported_unsupported(S.s_float, kb.id, S.s362, jsConcat(S.s1217, kb.style.position, S.s29, kb.id, S.s79))
           }
           try b = units_add(jsUnwrap(p).y, jsUnwrap(inner))
         }

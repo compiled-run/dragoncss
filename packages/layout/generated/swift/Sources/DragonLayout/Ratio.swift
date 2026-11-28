@@ -35,7 +35,7 @@ public func ratio_layoutRatioOf(_ s: LayoutStyle, _ f: EngineFaults) throws -> L
   let r: LayoutRatio? = try ratio_styleLayoutRatio(s, f)
   // ts: packages/layout/src/ratio.ts:53
   if (r == nil) {
-    throw JsError(message: S.s1217)
+    throw JsError(message: S.s1221)
   }
   return try jsUnwrap(r)
 }

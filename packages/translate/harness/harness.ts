@@ -2899,7 +2899,7 @@ function rtAnimationsResult(a: readonly JsonValue[]): string {
 
 // ---------------------------------------------------------------- hit suite (SELD-R1b, T047 RT-9)
 
-const HIT_TABLE_CLEAN: HitTableFaults = { pointerEventsNotInherited: false, transformIgnored: false, contextNotLayered: false };
+const HIT_TABLE_CLEAN: HitTableFaults = { pointerEventsNotInherited: false, transformIgnored: false, contextNotLayered: false, zIndexIgnored: false };
 const HIT_CLEAN: HitFaults = { ignorePointerEventsNone: false, reversedOrder: false };
 const HIT_NO_ORIGIN: TransformOrigin = { x: { kind: 'px', px: 0, percent: 0 }, y: { kind: 'px', px: 0, percent: 0 } };
 
@@ -2912,7 +2912,7 @@ function rtHitResult(a: readonly JsonValue[]): string {
   arr(item(a, 3, '$'), '$[3]').forEach((f, i) => {
     const path = `$[3][${i.toString(16)}]`;
     const g = arr(f, path);
-    if (g.length !== 5 && g.length !== 8 && g.length !== 9) return fail(`${path}: expected [id, pointerEvents, inherited, activation, radii], or those and [context, transform, origin], or those and otherContext`);
+    if (g.length !== 5 && g.length !== 8 && g.length !== 9 && g.length !== 10) return fail(`${path}: expected [id, pointerEvents, inherited, activation, radii], or those and [context, transform, origin], or those and otherContext, or those and z`);
     const pe = str(item(g, 1, path), path);
     if (pe !== 'auto' && pe !== 'none') return fail(`${path}: pointer-events ${pe} is not auto or none`);
     const rs = arr(item(g, 4, path), `${path}[4]`);
@@ -2920,11 +2920,12 @@ function rtHitResult(a: readonly JsonValue[]): string {
     const radii: RadiusLength[] = [];
     for (let k = 0; k < rs.length; k++) radii.push(factRadius(item(rs, k, `${path}[4]`), `${path}[4][${k}]`));
     const painted = g.length >= 8;
-    const otherContext = g.length === 9 ? str(item(g, 8, path), `${path}[8]`) : '';
+    const otherContext = g.length >= 9 ? str(item(g, 8, path), `${path}[8]`) : '';
+    const z = g.length === 10 ? num(item(g, 9, path), `${path}[9]`) : null;
     const context = painted ? bool(item(g, 5, path), `${path}[5]`) : false;
     const transform = painted ? decodeOps(item(g, 6, path), `${path}[6]`) : [];
     const origin = painted ? decodeOrigin(item(g, 7, path), `${path}[7]`) : HIT_NO_ORIGIN;
-    facts.set(str(item(g, 0, path), path), { pointerEvents: pe, inherited: bool(item(g, 2, path), path), activation: bool(item(g, 3, path), path), radii, context, otherContext, transform, origin });
+    facts.set(str(item(g, 0, path), path), { pointerEvents: pe, inherited: bool(item(g, 2, path), path), activation: bool(item(g, 3, path), path), radii, context, otherContext, transform, origin, z });
   });
   const m = measurerFor(platform);
   if (m.kind !== 'ok') return fail(`rt-hit: no measurer for ${platform}`);
