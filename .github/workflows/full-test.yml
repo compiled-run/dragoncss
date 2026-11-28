@@ -14,6 +14,12 @@
 #     (input regen=false): its build has already regenerated the tree to its fixed point.
 # The summary job merges the shards' JSON reports into full-test-results (every test's state) and fails on any failure.
 # Trigger: workflow_dispatch with a commit sha (the landing driver), or the `fulltest` label on a pull request.
+# runner (workflow_dispatch only): hosted (GitHub's runners, as above) or mini, the owner's Mac mini slots (label dragon-mini;
+#   setup in docs/self-hosted-runners.md), where the chrome files run in MINI_CHROME_SHARDS shards side by side. A self-hosted
+#   runner on this public repository must never run pull request or fork code, so: every runs-on that names dragon-mini is
+#   `github.event_name == 'workflow_dispatch' && inputs.runner == 'mini' && 'dragon-mini' || <hosted image>`; resolve refuses
+#   a mini run whose sha no branch of this repository contains; and each slot's job-started hook, outside the repository,
+#   fails before any step every job that is not a workflow_dispatch of this repository's full-test.yml or regen-on-ci.yml.
 name: full-test
 run-name: full test of ${{ inputs.sha || github.event.pull_request.head.sha }}
 on:
@@ -28,6 +34,12 @@ on:
         required: false
         default: true
         type: boolean
+      runner:
+        description: Where the chrome shards run - hosted (GitHub's macos-26) or mini (the owner's Mac mini slots, label dragon-mini)
+        required: false
+        default: hosted
+        type: choice
+        options: [hosted, mini]
   pull_request:
     types: [labeled]
 permissions:
@@ -37,20 +49,37 @@ concurrency:
   cancel-in-progress: false
 env:
   DRAGON_WPT_DIR: /Users/runner/wpt
+  MINI_CHROME_SHARDS: 12
 jobs:
   resolve:
     if: github.event_name == 'workflow_dispatch' || github.event.label.name == 'fulltest'
     runs-on: ubuntu-latest
     outputs:
       sha: ${{ steps.r.outputs.sha }}
+      chrome_count: ${{ steps.r.outputs.chrome_count }}
+      chrome_shards: ${{ steps.r.outputs.chrome_shards }}
     steps:
       - id: r
         env:
           SHA: ${{ inputs.sha || github.event.pull_request.head.sha }}
+          MINI: ${{ github.event_name == 'workflow_dispatch' && inputs.runner == 'mini' }}
+          REPO: ${{ github.repository }}
         run: |
           [[ "$SHA" =~ ^[0-9a-f]{40}$ ]] || { echo "::error::not a full commit sha: $SHA"; exit 1; }
+          count=4
+          if [ "$MINI" = true ]; then
+            # A self-hosted slot runs only commits on this repository's own branches: never a pull request's merge or head ref.
+            git init -q "$RUNNER_TEMP/refs" && cd "$RUNNER_TEMP/refs"
+            git fetch -q --filter=tree:0 --no-tags "https://github.com/$REPO.git" '+refs/heads/*:refs/remotes/origin/*'
+            on=$(git for-each-ref --contains "$SHA" --count=1 --format='%(refname:lstrip=3)' refs/remotes/origin 2>/dev/null || true)
+            [ -n "$on" ] || { echo "::error::$SHA is on no branch of $REPO; runner=mini runs only commits of this repository's branches"; exit 1; }
+            echo "$SHA is on branch $on" >> "$GITHUB_STEP_SUMMARY"
+            count=$MINI_CHROME_SHARDS
+          fi
           echo "sha=$SHA" >> "$GITHUB_OUTPUT"
-          echo "full test of $SHA" >> "$GITHUB_STEP_SUMMARY"
+          echo "chrome_count=$count" >> "$GITHUB_OUTPUT"
+          echo "chrome_shards=$(jq -cn --argjson n "$count" '[range(1; $n + 1)]')" >> "$GITHUB_OUTPUT"
+          echo "full test of $SHA, $count chrome shards on ${{ inputs.runner || 'hosted' }}" >> "$GITHUB_STEP_SUMMARY"
 
   platform-free:
     needs: resolve
@@ -159,8 +188,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4]
-    runs-on: macos-26
+        shard: ${{ fromJSON(needs.resolve.outputs.chrome_shards) }}
+    runs-on: ${{ github.event_name == 'workflow_dispatch' && inputs.runner == 'mini' && 'dragon-mini' || 'macos-26' }}
     timeout-minutes: 120
     # android-profile.test.ts holds every fixture's native and enforced compiles (about 3 GB at its peak); macOS sizes the default heap near 2 GB.
     env:
@@ -183,7 +212,9 @@ jobs:
         with:
           path: ~/Library/Caches/ms-playwright
           key: playwright-1.58.2-macos-${{ runner.arch }}
-      - uses: actions/cache/restore@v4
+      # A slot's /Users/runner/wpt is a read-only copy at the pinned commit (fetch-wpt.sh below checks it).
+      - if: runner.environment == 'github-hosted'
+        uses: actions/cache/restore@v4
         with:
           path: /Users/runner/wpt
           key: wpt-${{ hashFiles('packages/wpt/wpt.lock') }}
@@ -204,11 +235,13 @@ jobs:
       # The Markless exports measure Android's system fonts out of the SDK's emulator system image, which macOS runners lack.
       - name: The Android system image the system fonts are read from
         run: bash scripts/android-system-image.sh
-      - name: vitest run (every other file, shard ${{ matrix.shard }}/4)
+      - name: vitest run (every other file, shard ${{ matrix.shard }}/${{ needs.resolve.outputs.chrome_count }})
         run: |
           set -o pipefail
           mkdir -p "$RUNNER_TEMP/report"
-          list=$(node scripts/test-shards.ts plan chrome ${{ matrix.shard }} 4) || { echo "::error::the shard planner failed"; exit 1; }
+          # A slot has 3 of the mini's cores, as a macos-26 runner has 3.
+          [ "$RUNNER_ENVIRONMENT" != self-hosted ] || export VITEST_MAX_WORKERS=3
+          list=$(node scripts/test-shards.ts plan chrome ${{ matrix.shard }} ${{ needs.resolve.outputs.chrome_count }}) || { echo "::error::the shard planner failed"; exit 1; }
           files=(); while IFS= read -r f; do files+=("$f"); done <<< "$list"
           npx vitest run "${files[@]}" --reporter=default --reporter=json --outputFile="$RUNNER_TEMP/report/chrome-${{ matrix.shard }}.json" 2>&1 | tee "$RUNNER_TEMP/shard.log"
       - name: No native run was blocked (owner tooling)
@@ -240,8 +273,10 @@ jobs:
           merge-multiple: true
       - name: Every test's state, and the failures
         env:
-          EXPECT: platform-free.json native-1.json native-2.json native-3.json native-4.json chrome-1.json chrome-2.json chrome-3.json chrome-4.json
+          CHROME_COUNT: ${{ needs.resolve.outputs.chrome_count }}
         run: |
+          EXPECT="platform-free.json native-1.json native-2.json native-3.json native-4.json$(seq -f ' chrome-%g.json' 1 "$CHROME_COUNT" | tr -d '\n')"
+          export EXPECT
           cat > "$RUNNER_TEMP/summary.mjs" <<'EOF'
           // Merges the shards' vitest JSON reports. A missing report is a failure: the run proves nothing about its files.
           import { existsSync, readFileSync, writeFileSync, appendFileSync } from 'node:fs';
