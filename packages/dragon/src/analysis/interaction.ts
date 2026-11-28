@@ -5,7 +5,7 @@
 // level under the case's app assignment, so case keys and counts do not change; each dimension is linear in the elements.
 import { emptyInlineBox } from './paint-values/empty-inline.ts';
 import { GENERATED_TAGS, MARKER_TAG } from './elements.ts';
-import { inputTypeState, isCheckboxType, isControlTag, isTextFieldType } from './elements/controls.ts';
+import { inputTypeState, isCheckboxType, isControlTag, isRadioType, isTextFieldType } from './elements/controls.ts';
 import { isReplacedTag } from './elements/replaced.ts';
 import { authored, diagnostic } from '../diagnostics/catalogue.ts';
 import { PROPERTY_ASPECTS } from '../css/properties.ts';
@@ -29,6 +29,7 @@ import { NO_INTERACTION } from './match.ts';
 import { isShared, selectPartOf, textFieldPartOf } from './resolve.ts';
 import { holdsAtomicLine, lineAtomics, propagatedFrom } from './computed-checks.ts';
 import { hitFactContext, hitFactOtherContext } from '../lower/paint/stacking.ts';
+import { emptyClipPathValue, emptyClipRectValue } from '../css/properties/clip-hidden.ts';
 import { INDIVIDUAL_TRANSFORM_TYPE, individualTransformOf, matrixParts, TRANSFORM_LIST_TYPE, transformFunctionsOf } from '../css/properties/transform.ts';
 import { zIndexOf } from '../css/properties/effects.ts';
 
@@ -671,6 +672,9 @@ export const HIT_MODELLED: ReadonlyMap<Longhand, (v: CssValue) => boolean> = new
   ['outline-style', all],
   ['outline-width', all],
   ['outline-offset', all],
+  // MASK-CLIP-path-hidden: an empty clip or clip-path leaves its box and subtree out of the hit test (internal.ts hitFacts).
+  ['clip-path', (v) => (v.kind === 'keyword' && v.value === 'none') || emptyClipPathValue(v)],
+  ['clip', (v) => (v.kind === 'keyword' && v.value === 'auto') || emptyClipRectValue(v)],
   // SELD-R2b: Blink hits a replaced box by its border box (LayoutReplaced::NodeAtPoint), wherever object-fit and object-position put
   // its image; replaced-fit's hit points equal Chrome over every object-fit value and object-position form.
   ['object-fit', all],
@@ -684,12 +688,12 @@ export function hitRetargetsParts(el: ResolvedElement): boolean {
 
 /**
  * FORM-a: the first form control of a resolved tree in preorder whose box the hit table does not model (rt-hit.ts hitModelsControl),
- * or null. A button, a select, a text field, a textarea and a checkbox (a plain box in the layout input, FORM-checkbox) are modelled;
+ * or null. A button, a select, a text field, a textarea, a checkbox and a radio (a plain box or a theme leaf, FORM-checkbox) are modelled;
  * a range is not (its touch, T064 P7), nor a block fieldset or any other control tag.
  */
 export function hitUnmodelledControl(root: ResolvedElement): string | null {
   const tag = root.element.tag;
-  if (isControlTag(tag) && tag !== 'button' && tag !== 'select' && tag !== 'textarea' && !(tag === 'input' && (isTextFieldType(root.element.attributes.get('type')) || isCheckboxType(root.element.attributes.get('type'))))) return root.element.address;
+  if (isControlTag(tag) && tag !== 'button' && tag !== 'select' && tag !== 'textarea' && !(tag === 'input' && (isTextFieldType(root.element.attributes.get('type')) || isCheckboxType(root.element.attributes.get('type')) || isRadioType(root.element.attributes.get('type'))))) return root.element.address;
   // A block fieldset lays out as the fieldset control with its rendered legend (ios-layout.ts), which the table refuses too.
   const display = root.props.get('display');
   if (tag === 'fieldset' && display !== undefined && display.value.kind === 'keyword' && display.value.value === 'block') return root.element.address;

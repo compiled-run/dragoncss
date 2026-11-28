@@ -31,6 +31,7 @@ import { inlineStackingFacts, markerStackingFacts } from './paint/stacking.ts';
 import { visibilityWrites } from './paint/visibility.ts';
 import type { NativeBackend, Technique, VocabularyEntry } from './paint/types.ts';
 import { ProgramError } from './paint/types.ts';
+import { clipHidesWhole } from '../css/properties/clip-hidden.ts';
 
 export type { NativeBackend, Technique } from './paint/types.ts';
 export { ProgramError } from './paint/types.ts';
@@ -224,14 +225,15 @@ function sharedPaint(root: LayoutBox, resolved: ResolvedElement, images: Readonl
   const foldBackdrops = provableFoldBackdrops(resolved, movingTransforms);
   const textUnders = nativeTextUnders(resolved);
   const out: NodePaint[] = [];
-  const visit = (b: LayoutNode, parent: string | null, enclosingColor: Rgba8, ancestorMoves: boolean): void => {
+  const visit = (b: LayoutNode, parent: string | null, enclosingColor: Rgba8, ancestorMoves: boolean, ancestorHidden: boolean): void => {
     const anonymous = b.kind === 'box' && b.boxType === 'anonymous';
     const el = anonymous ? null : (elements.get(b.id) ?? null);
     if (!anonymous && el === null) throw new ProgramError(`${b.id}: no resolved element for the layout box`);
     const own = el === null ? enclosingColor : usedColors(el).color;
     const facts: Record<string, unknown> = {};
     const transformMoves = ancestorMoves || (el !== null && movingTransforms.has(el.element.address));
-    const writes: WriteKind[] = lowerBoxPaint({ box: b, el, parentColor: enclosingColor, facts, images, hostImages, transformMoves, foldBackdrops, decorations, textShadows, textUnders });
+    const clipHidden = ancestorHidden || (el !== null && clipHidesWhole(el));
+    const writes: WriteKind[] = lowerBoxPaint({ box: b, el, parentColor: enclosingColor, facts, images, hostImages, transformMoves, clipHidden, foldBackdrops, decorations, textShadows, textUnders });
     // The host draws the text a user types into an editor it edits, so the editor box carries that text's font and colour.
     if (hostEdits && el !== null && b.kind === 'control' && b.control.kind === 'text-editor') {
       // An empty textarea's editor has no line, so no strut: its text is in the textarea's own font.
@@ -244,7 +246,7 @@ function sharedPaint(root: LayoutBox, resolved: ResolvedElement, images: Readonl
     if (b.kind === 'replaced') return;
     for (const c of b.children) {
       if (c.kind === 'box' || c.kind === 'control' || c.kind === 'replaced') {
-        visit(c, b.id, own, transformMoves);
+        visit(c, b.id, own, transformMoves, clipHidden);
         continue;
       }
       inline(c, b.id);
@@ -283,7 +285,7 @@ function sharedPaint(root: LayoutBox, resolved: ResolvedElement, images: Readonl
     out.push({ id: c.id, parent: container, kind: 'element', clips: false, text: null, writes, facts: { stacking: inlineStackingFacts(c) } });
     if (c.kind === 'inline') for (const k of c.children) inline(k, container);
   };
-  visit(root, null, TRANSPARENT, false);
+  visit(root, null, TRANSPARENT, false, false);
   return out;
 }
 

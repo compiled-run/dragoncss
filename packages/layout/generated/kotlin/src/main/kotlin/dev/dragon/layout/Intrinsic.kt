@@ -93,7 +93,7 @@ fun intrinsic_intrinsicContentInlineSize(ctx: Ctx, node: U_ControlBox_LayoutBox,
 
 // ts: packages/layout/src/intrinsic.ts:71
 fun intrinsic_menuListNaturalInlineSize(ctx: Ctx, node: ControlBox): Double {
-  val c: U_ControlKind_d084c13b74a53fa6 = node.control
+  val c: U_ControlKind_57c5cd1a1bb26daa = node.control
   // ts: packages/layout/src/intrinsic.ts:73
   if (!jsStrEq(c.kind, "select-menulist")) {
     throw JsError((node.id + " is not a select"))

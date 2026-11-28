@@ -3265,7 +3265,7 @@ fun grid_logicalBsp(pad: Edges, bor: Edges, rtl: Boolean): Edges {
 
 // ts: packages/layout/src/grid.ts:2219
 fun grid_gridPlacesControl(c: ControlBox): Boolean {
-  return (((jsStrEq(c.control.kind, "button-block") || jsStrEq((c.control as U_ControlKind_3783ef31a987d835).kind, "select-menulist")) || jsStrEq((c.control as U_ControlKind_bc81690f21173798).kind, "text-field")) || jsStrEq((c.control as U_ControlKind_fieldset_ControlKind_legend_ControlKind_range_ControlKind_selectInner_ControlKind_sliderThumb_ControlKind_textArea_ControlKind_textEditor_ControlKind_textPlaceholder).kind, "text-area"))
+  return (((jsStrEq(c.control.kind, "button-block") || jsStrEq((c.control as U_ControlKind_c47b8e3a9aaf124d).kind, "select-menulist")) || jsStrEq((c.control as U_ControlKind_f2c9e95521c39144).kind, "text-field")) || jsStrEq((c.control as U_ControlKind_d7c23ecce829c427).kind, "text-area"))
 }
 
 // ts: packages/layout/src/grid.ts:2224
