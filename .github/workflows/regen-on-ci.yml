@@ -6,6 +6,9 @@
 # the final combined outputs.patch (against that commit, the last round's) is the artifact regen-patch, and no cache is saved
 # (the regen and WPT caches are restored only, the pnpm store is not cached), since a dispatched run regenerates an unreviewed
 # tree at master's cache scope.
+# profile-rows, the one Chrome step that reads lanes.json, also runs at the end of each host round, so a host round that changes
+# only lanes.json leaves the next Chrome round nothing to do (batch 31: chrome-2 was a 9-minute job for profile-rows' 230 s).
+# Its outputs matched byte for byte on macOS 27 (mini-2) on batch 30's and batch 31's trees.
 # The chain is split by machine (regen-on-ci-round.yml): the Chrome steps on macos-26, whose captures are byte-identical to the
 # local Mac's (capture-proof.yml), and lanes-host on xcode-27 or a dragon-mini slot with the pinned Xcode 27.2. Rounds alternate until
 # one changes nothing (at most 5), and the last round's tree is committed. tw-sweep, which no other step reads, runs in the
@@ -487,7 +490,7 @@ jobs:
     needs: [resolve, resume-chrome-1, chrome-1]
     if: ${{ !cancelled() && needs.resolve.result == 'success' && (needs.chrome-1.result == 'success' || needs.resume-chrome-1.outputs.resumed == 'true') && (needs.resume-chrome-1.outputs.resumed == 'true' && needs.resume-chrome-1.outputs.next || needs.chrome-1.outputs.next) != 'false' }}
     uses: ./.github/workflows/regen-on-ci-round.yml
-    with: { runner: "${{ github.event_name == 'workflow_dispatch' && inputs.host_runner == 'mini' && 'dragon-mini' || 'xcode-27' }}", side: host, args: '--only lanes-host', sha: '${{ needs.resolve.outputs.sha }}', prev: chrome-1, name: host-1, save_cache: "${{ needs.resolve.outputs.save == 'true' }}" }
+    with: { runner: "${{ github.event_name == 'workflow_dispatch' && inputs.host_runner == 'mini' && 'dragon-mini' || 'xcode-27' }}", side: host, args: '--only lanes-host --only profile-rows', sha: '${{ needs.resolve.outputs.sha }}', prev: chrome-1, name: host-1, save_cache: "${{ needs.resolve.outputs.save == 'true' }}" }
   chrome-2:
     needs: [resolve, host-1]
     if: ${{ !cancelled() && needs.host-1.result == 'success' && needs.host-1.outputs.changed == 'true' && needs.host-1.outputs.next != 'false' }}
@@ -497,7 +500,7 @@ jobs:
     needs: [resolve, chrome-2]
     if: ${{ !cancelled() && needs.chrome-2.result == 'success' && needs.chrome-2.outputs.changed == 'true' && needs.chrome-2.outputs.next != 'false' }}
     uses: ./.github/workflows/regen-on-ci-round.yml
-    with: { runner: "${{ github.event_name == 'workflow_dispatch' && inputs.host_runner == 'mini' && 'dragon-mini' || 'xcode-27' }}", side: host, args: '--only lanes-host', sha: '${{ needs.resolve.outputs.sha }}', prev: chrome-2, name: host-2, save_cache: "${{ needs.resolve.outputs.save == 'true' }}" }
+    with: { runner: "${{ github.event_name == 'workflow_dispatch' && inputs.host_runner == 'mini' && 'dragon-mini' || 'xcode-27' }}", side: host, args: '--only lanes-host --only profile-rows', sha: '${{ needs.resolve.outputs.sha }}', prev: chrome-2, name: host-2, save_cache: "${{ needs.resolve.outputs.save == 'true' }}" }
   chrome-3:
     needs: [resolve, host-2]
     if: ${{ !cancelled() && needs.host-2.result == 'success' && needs.host-2.outputs.changed == 'true' && needs.host-2.outputs.next != 'false' }}
@@ -676,8 +679,8 @@ jobs:
           git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -q -F - <<EOF
           Regenerate on CI: pnpm regen (regen-on-ci)
 
-          Commands: pnpm regen --skip lanes-host (macos-26) and pnpm regen --only lanes-host (xcode-27), alternated to a fixed
-          point.
+          Commands: pnpm regen --skip lanes-host (macos-26) and pnpm regen --only lanes-host --only profile-rows (dragon-mini or
+          xcode-27), alternated to a fixed point.
           Base: $SHA$onto
           Run: $RUN_URL
           EOF
