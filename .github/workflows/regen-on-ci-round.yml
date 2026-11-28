@@ -1,7 +1,7 @@
 # One round of regen-on-ci.yml: `pnpm regen <args>` on one runner, starting from the branch commit plus the previous round's
 # outputs and regen cache. Uploads the cumulative patch against the commit, the cache and the step logs as artifact <name>.
 # side chrome (macos-26, where the Chrome captures are byte-identical to the local Mac's): every step except lanes-host.
-# side host (xcode-27, Xcode 27.0 and Swift 6.4 like the local Mac): lanes-host only. The host toolchains must equal the ones
+# side host (xcode-27 or a dragon-mini slot, Xcode 27.2 and Swift 6.4.2): lanes-host only. The host toolchains must equal the ones
 # the committed lanes.json records, or the round fails before running anything.
 # seed_run (regen-on-ci.yml's resume, first round only): the regen store comes from that run's chrome-1 artifact instead of the
 # Actions cache, so steps whose inputs this commit leaves alone are skipped or restored. The tree still starts at the commit.
@@ -32,7 +32,8 @@ permissions:
   actions: read
 jobs:
   round:
-    runs-on: ${{ inputs.runner }}
+    # A self-hosted label (dragon-*) only for a dispatch; regen-on-ci.yml asks for one only then.
+    runs-on: ${{ (github.event_name == 'workflow_dispatch' || !startsWith(inputs.runner, 'dragon-')) && inputs.runner || 'xcode-27' }}
     timeout-minutes: 300
     outputs:
       changed: ${{ steps.regen.outputs.changed }}
@@ -134,7 +135,7 @@ jobs:
       - name: Chrome side - fetch the WPT copy when the cache missed
         if: inputs.side == 'chrome'
         run: bash scripts/fetch-wpt.sh
-      - name: Host side - select Xcode 27.0 (27A266a), the Swift lanes.json records
+      - name: Host side - select Xcode 27.2 (27B52), the Swift lanes.json records
         if: inputs.side == 'host'
         run: bash scripts/select-xcode27.sh
       - name: Host side - JDK 17 and kotlinc, checked against the toolchains lanes.json records

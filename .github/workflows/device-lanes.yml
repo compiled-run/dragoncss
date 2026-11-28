@@ -1,7 +1,7 @@
 # CI-OFFLOAD step 3-4: the device lanes of a commit on GitHub-hosted standard runners, in parallel. Each job runs parts of one
 # matrix device's run on its own booted device (device-ci.ts one --parts: cases, anim, vectors), so no job runs a whole device:
 # Android, whose runners are plentiful, runs every part in its own job; iOS, limited to 5 macOS jobs across the account, runs the
-# iPhone's vectors lane apart and the rest of each device together. iOS simulators run on xcode-27 (Xcode 27.0, the local Mac's)
+# iPhone's vectors lane apart and the rest of each device together. iOS simulators run on xcode-27 (Xcode 27.2, scripts/select-xcode27.sh)
 # with the pinned iOS 26.5 (23F77) runtime; Android emulators run on ubuntu-latest with KVM and the x86_64 android-36 image
 # (device-run.ts androidImage). Each job writes its part outcome with the evidence stamp and host it ran on; the merge job makes
 # each device's outcome from its parts (device-ci.ts combine), uploaded together as device-outcomes. Every lane runs here, android
@@ -101,8 +101,8 @@ jobs:
           tar xf "$RUNNER_TEMP/$zig.tar.xz" -C "$RUNNER_TEMP"
           echo "$RUNNER_TEMP/$zig" >> "$GITHUB_PATH"
           "$RUNNER_TEMP/$zig/zig" version
-      # The image's default Xcode moves (27.1 by 2026-10-26); the Mac's 27.0 stays installed beside it.
-      - name: Select Xcode 27.0 (27A266a)
+      # The image's default Xcode moves; the pinned 27.2 stays installed beside it.
+      - name: Select Xcode 27.2 (27B52)
         run: bash scripts/select-xcode27.sh
       - name: The pinned iOS 26.5 (23F77) simulator runtime
         run: |
@@ -117,10 +117,10 @@ jobs:
           sw_vers
           sysctl -n machdep.cpu.brand_string hw.model
           system_profiler SPDisplaysDataType | grep -E 'Chipset Model|Type|Metal' || true
-      - name: Xcode 27.0 (27A266a) and the Swift the committed host lane records
+      - name: Xcode 27.2 (27B52) and the Swift the committed host lane records
         run: |
           xcodebuild -version
-          xcodebuild -version | grep -qx 'Build version 27A266a' || { echo "::error::Xcode is not 27.0 (27A266a), the Mac's"; exit 1; }
+          xcodebuild -version | grep -qx 'Build version 27B52' || { echo "::error::Xcode is not 27.2 (27B52), the pinned one (scripts/select-xcode27.sh)"; exit 1; }
           cat > "$RUNNER_TEMP/toolchain.mts" <<'EOF'
           // The host toolchains the committed lanes.json records (layout-vectors-host): the CI apps must be built by the same ones.
           import { readFileSync } from 'node:fs';

@@ -23,8 +23,9 @@ else
   # --force-bottle: a missing bottle for this runner fails here instead of building the JDK from source for an hour.
   brew install --force-bottle dragon/pin/openjdk@17
 fi
-# Keeps a later brew upgrade from moving it.
-brew pin openjdk@17 2>/dev/null || brew pin dragon/pin/openjdk@17
+# Keeps a later brew upgrade from moving it; a self-hosted slot user cannot write brew's locks, so an existing pin stands.
+[ "$(readlink "$(brew --prefix)/var/homebrew/pinned/openjdk@17")" = "../../../Cellar/openjdk@17/$VERSION" ] ||
+  brew pin openjdk@17 2>/dev/null || brew pin dragon/pin/openjdk@17
 java="$(brew --prefix)/opt/openjdk@17/bin/java"
 "$java" -version
 "$java" -version 2>&1 | grep -qF "openjdk version \"$VERSION\"" || { echo "the installed JDK is not openjdk $VERSION" >&2; exit 1; }
