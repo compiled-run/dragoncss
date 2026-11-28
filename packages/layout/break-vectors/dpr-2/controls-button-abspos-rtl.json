@@ -1,0 +1,9 @@
+{
+  "case": "controls-button-abspos-rtl",
+  "dpr": 2,
+  "texts": [
+    {"id":"label1:text0","lines":[[0,4]]},
+    {"id":"b2-in:text0","lines":[[0,2]]},
+    {"id":"b4-in:text0","lines":[[0,2]]}
+  ]
+}

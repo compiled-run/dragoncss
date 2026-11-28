@@ -3,6 +3,7 @@
 // ever tested against, to a fixed point), builds the four dimensions (hover chains, active chains, focus with or without
 // focus-visible), resolves every combination of them and stores each distinct resolution once. The combinations are a second
 // level under the case's app assignment, so case keys and counts do not change; each dimension is linear in the elements.
+import { emptyInlineBox } from './paint-values/empty-inline.ts';
 import { GENERATED_TAGS, MARKER_TAG } from './elements.ts';
 import { inputTypeState, isCheckboxType, isControlTag, isTextFieldType } from './elements/controls.ts';
 import { isReplacedTag } from './elements/replaced.ts';
@@ -28,7 +29,7 @@ import { NO_INTERACTION } from './match.ts';
 import { isShared, selectPartOf, textFieldPartOf } from './resolve.ts';
 import { holdsAtomicLine, lineAtomics, propagatedFrom } from './computed-checks.ts';
 import { hitFactContext, hitFactOtherContext } from '../lower/paint/stacking.ts';
-import { matrixParts, TRANSFORM_LIST_TYPE, transformFunctionsOf } from '../css/properties/transform.ts';
+import { INDIVIDUAL_TRANSFORM_TYPE, individualTransformOf, matrixParts, TRANSFORM_LIST_TYPE, transformFunctionsOf } from '../css/properties/transform.ts';
 
 /** R7: the distinct reachable interaction states one app assignment compiles; more are refused (package SELD-R2s). */
 export const MAX_INTERACTION_STATES = 256;
@@ -588,12 +589,14 @@ export const hitModelsTransform = (v: CssValue): boolean => {
   if (scaled >= 0 && fs.slice(scaled + 1).some((f) => f.kind === 'translate')) return false;
   return fs.every((f) => f.kind === 'translate' || (f.kind === 'scale' && f.sx >= 0 && f.sy >= 0) || (f.kind !== 'scale' && (f.kind === 'rotate' ? f.deg : matrixParts(f.values).deg) === 0));
 };
+/** none, or a translate: css-transforms-2 §4 applies it first, before rotate, scale and transform, so it never follows a scale. */
+export const hitModelsTranslate = (v: CssValue): boolean => (v.kind === 'keyword' && v.value === 'none') || (v.kind === 'other' && v.type === INDIVIDUAL_TRANSFORM_TYPE && individualTransformOf('translate', v.text).kind === 'translate');
 
 /**
  * R13: the paint longhands Dragon's hit test (packages/layout/src/rt-hit.ts) models, each with the values it models. Box
  * geometry (every layout longhand) and pointer-events are modelled too. Every other paint longhand at any value but its
  * initial one is an unmodelled fact (fail closed): a later paint package is refused here until the hit test reads it (T146).
- * The individual translate, rotate and scale stay unmodelled until a Chrome capture covers them.
+ * The individual rotate and scale stay unmodelled until a Chrome capture covers them.
  */
 export const HIT_MODELLED: ReadonlyMap<Longhand, (v: CssValue) => boolean> = new Map<Longhand, (v: CssValue) => boolean>([
   ['color', all],
@@ -618,6 +621,8 @@ export const HIT_MODELLED: ReadonlyMap<Longhand, (v: CssValue) => boolean> = new
   ['box-shadow', all],
   ['opacity', all],
   ['transform', hitModelsTransform],
+  // transform-hit-translate: the hit facts carry it as the transform's first op (elementTransformWrite).
+  ['translate', hitModelsTranslate],
   // css-view-transitions-2: a name only captures its box once a transition starts, and the only one that compiles is the UA
   // sheet's :root { view-transition-name: root } (scroll-containment.ts VIEW_TRANSITION), so it changes no hit.
   ['view-transition-name', all],
@@ -751,6 +756,7 @@ export function hitUnmodelledFact(root: ResolvedElement, ua: UaDataset, compiles
   const propagated = propagatedFrom(root);
   const visit = (el: ResolvedElement): { property: Longhand; address: string } | null => {
     if (el.element.tag === 'svg') return { property: 'fill', address: el.element.address };
+    if (emptyInlineBox(el)) return null;
     // An overflow value computed from its partner (computeOverflowPair) has no declaration: it compiles only when the partner does.
     const partner = (p: Longhand): ResolvedValue | undefined => (p === 'overflow-x' ? el.props.get('overflow-y') : p === 'overflow-y' ? el.props.get('overflow-x') : undefined);
     const oneBox = hitRetargetsParts(el);

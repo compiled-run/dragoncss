@@ -17,7 +17,7 @@ import { buttonContentShift, controlAsBox } from './controls.ts';
 import type { HitLine, LinePiece } from './inline.ts';
 import { placeHitLines, placeLines } from './inline.ts';
 import { fromPxCeil, fromPxFloor, fromRaw, ZERO } from './units.ts';
-import type { ControlBox, InlineChild, LayoutBox, LayoutInput, LayoutStyle, ReplacedLeaf, TextLeaf } from './input.ts';
+import type { BorderWidthValue, ControlBox, InlineBox, InlineChild, LayoutBox, LayoutInput, LayoutStyle, MarginValue, PaddingValue, ReplacedLeaf, TextLeaf } from './input.ts';
 import type { LayoutRect } from './layout.ts';
 import { absoluteRects, layout, resolvedInput } from './layout.ts';
 import { UnsupportedSignal } from './unsupported.ts';
@@ -1066,6 +1066,7 @@ function boxNodes(s: TableState, b: LayoutBox, parent: number, orders: Map<strin
   for (const child of b.children) {
     const c = child.kind === 'control' ? hitControlBox(child) : child;
     if (c.kind === 'text') leaves.push(c);
+    else if (c.kind === 'inline' && emptyInline(c)) continue;
     else if (c.kind === 'inline' || c.kind === 'br') throw new HitError(inlineRefusal(c.id, c.kind));
     else if ((c.kind === 'box' || c.kind === 'replaced') && isAtomicInline(c) && b.strut === null) throw new HitError(atomicRefusal(c.id));
     else if ((c.kind === 'box' || c.kind === 'replaced') && isAtomicInline(c)) {
@@ -1282,6 +1283,27 @@ function replacedNode(s: TableState, c: ReplacedLeaf, parent: number, orders: Ma
   if (line >= 0) atomicInk(s, s.nodes.length - 1);
 }
 
+function zeroMargin(v: MarginValue): boolean {
+  return v.kind === 'px' && v.value === 0;
+}
+
+function zeroPadding(v: PaddingValue): boolean {
+  return v.kind === 'px' && v.value === 0;
+}
+
+function zeroBorder(v: BorderWidthValue): boolean {
+  return (v.kind === 'px' && v.value === 0) || (v.kind === 'device-px' && v.value === 0);
+}
+
+/**
+ * An inline box with no children and no inline-axis margin, border or padding: its one fragment is 0 wide, so Chrome hits nothing
+ * of it (inline-box-empty-hit), and the hit table leaves it out.
+ */
+function emptyInline(c: InlineBox): boolean {
+  const s = c.style;
+  return c.children.length === 0 && zeroMargin(s.marginLeft) && zeroMargin(s.marginRight) && zeroPadding(s.paddingLeft) && zeroPadding(s.paddingRight) && zeroBorder(s.borderLeftWidth) && zeroBorder(s.borderRightWidth);
+}
+
 function inlineRefusal(id: string, kind: 'inline' | 'br'): string {
   return `${id} is ${kind === 'br' ? 'a <br>' : 'an inline box'}, which the hit table does not model yet (INL1a; no Chrome hit capture)`;
 }
@@ -1351,6 +1373,7 @@ function boxHitRefusal(b: LayoutBox): string | null {
   for (const child of b.children) {
     if (child.kind === 'control' && !hitModelsControl(child)) return controlRefusal(child.id);
     const c = child.kind === 'control' ? hitControlBox(child) : child;
+    if (c.kind === 'inline' && emptyInline(c)) continue;
     if (c.kind === 'inline' || c.kind === 'br') return inlineRefusal(c.id, c.kind);
     if ((c.kind === 'replaced' || c.kind === 'box') && isAtomicInline(c) && b.strut !== null && percentPadded(b.style)) return paddingRefusal(b.id);
     if (c.kind === 'replaced' && isAtomicInline(c) && b.strut === null) return atomicRefusal(c.id);

@@ -13,11 +13,29 @@ export function tableEntry(table: Pick<ExportTarget, 'states' | 'assignments'>, 
   return k;
 }
 
+/** The band whose rows a table holds for the page's band: the band itself, or its class's in a group whose bands share rows. */
+export function classBand(table: Pick<ExportGroup, 'bandClasses'> | ExportTarget, band: Scalar | undefined): Scalar | undefined {
+  const classes = 'bandClasses' in table ? table.bandClasses : undefined;
+  if (classes === undefined || typeof band !== 'number') return band;
+  const to = classes[band];
+  if (to === undefined) throw new Error(`band ${band} has no class among ${classes.length} bands`);
+  return to;
+}
+
 /** Each table's entry at values: the target's own first, then each group's. */
 export function tableEntries(target: ExportTarget, values: Readonly<Record<string, Scalar>>): number[] {
   // A group whose elements style alike in every band has no band state.
   const banded = (t: Pick<ExportTarget, 'states'>): string[] => (t.states.some((s) => s.key === BAND_KEY) ? [BAND_KEY] : []);
-  return [tableEntry(target, values, banded(target)), ...(target.groups ?? []).map((g) => tableEntry(g, values, [...g.groupStates, ...banded(g)]))];
+  const page = tableEntry(target, values, banded(target));
+  const groups = target.groups ?? [];
+  // A slim export names no band classes: its product's combination of the page's entry and the groups' states gives each entry.
+  if (target.product !== undefined) {
+    const tuple = target.product.assignments.find((t) => t[0] === page && groups.every((g, k) => g.groupStates.every((st) => (g.assignments[t[k + 1] as number] as ExportAssignment).values[st] === values[st])));
+    if (tuple === undefined) throw new Error(`no combination of the product has the page's entry ${page} and ${groups.flatMap((g) => g.groupStates.map((st) => `${st}=${JSON.stringify(values[st])}`)).join(', ')}`);
+    return [...tuple];
+  }
+  const inClass = (g: ExportGroup): Readonly<Record<string, Scalar>> => (values[BAND_KEY] === undefined ? values : { ...values, [BAND_KEY]: classBand(g, values[BAND_KEY]) as Scalar });
+  return [page, ...groups.map((g) => tableEntry(g, inClass(g), [...g.groupStates, ...banded(g)]))];
 }
 
 /**
@@ -177,7 +195,9 @@ export function slimTarget(full: ExportTarget, declared: (key: string) => readon
       // A group's plan names are only those the page's initial entry does not give alike; a host lays them over the page's.
       const pageNames = new Map((x.planNames?.[x.initial] ?? []).map(([d, m]) => [d, m]));
       const planNames = g.planNames?.map((names) => names.filter(([d, m]) => pageNames.get(d) !== m));
-      return { ...g, assignments, ...(planNames === undefined ? {} : { planNames }), ...(g.interaction === undefined ? {} : { interaction: slimLevels({ interaction: g.interaction }, g.assignments, keeps) }) };
+      // The product holds each band's class, so a host reads no bandClasses.
+      const rest = Object.fromEntries(Object.entries(g).filter(([key]) => key !== 'bandClasses')) as unknown as ExportGroup;
+      return { ...rest, assignments, ...(planNames === undefined ? {} : { planNames }), ...(g.interaction === undefined ? {} : { interaction: slimLevels({ interaction: g.interaction }, g.assignments, keeps) }) };
     }),
   });
 }
@@ -414,7 +434,7 @@ export type GroupProduct = {
 /** The product of a factored target's tables (GroupProduct); declared orders each state's domain as the input declares it. */
 export function groupProduct(x: ExportTarget, declared: (key: string) => readonly Scalar[] | undefined = () => undefined): GroupProduct {
   const groups = x.groups ?? [];
-  type T = Pick<ExportTarget, 'states' | 'initial' | 'assignments' | 'next' | 'interaction'>;
+  type T = Pick<ExportTarget, 'states' | 'initial' | 'assignments' | 'next' | 'interaction'> & Pick<ExportGroup, 'bandClasses'>;
   const tables: readonly T[] = [x, ...groups];
   const nodeOwner = new Map<string, number>();
   groups.forEach((g, k) => {
@@ -445,7 +465,7 @@ export function groupProduct(x: ExportTarget, declared: (key: string) => readonl
       return;
     }
     const t = tables[prefix.length] as T;
-    const band = (x.assignments[prefix[0] as number] as ExportAssignment).values[BAND_KEY];
+    const band = classBand(t, (x.assignments[prefix[0] as number] as ExportAssignment).values[BAND_KEY]);
     t.assignments.forEach((a, e) => {
       if (prefix.length > 0 && banded[prefix.length] === true && a.values[BAND_KEY] !== band) return;
       extend([...prefix, e]);
@@ -460,7 +480,9 @@ export function groupProduct(x: ExportTarget, declared: (key: string) => readonl
       if (owner !== t) return e;
       const at = slot[t]?.[s] as number;
       const table = tables[t] as T;
-      return table.next[e]?.[at]?.[table.states[at]?.domain.indexOf(value) ?? -1] ?? -1;
+      // A band move in a group whose bands share rows goes to the row of the new band's class (classBand).
+      const to = key === BAND_KEY ? classBand(table, value) : value;
+      return table.next[e]?.[at]?.[table.states[at]?.domain.indexOf(to as Scalar) ?? -1] ?? -1;
     });
     return moved.includes(-1) ? -1 : (index.get(moved.join()) ?? -1);
   })));

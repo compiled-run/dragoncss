@@ -118,6 +118,7 @@ import type { Rgba8 } from '../css/color.ts';
 import { parseComputedColor, serializeColor } from '../css/color.ts';
 import { markerTypeOf } from './markers.ts';
 import { glyphFill, usedColors } from '../lower/paint/colors.ts';
+import { emptyInlineBox } from './paint-values/empty-inline.ts';
 import { checkOutlinePlacement } from './paint-values/outline.ts';
 import { checkTransformContexts, elementWillChange } from './paint-values/transform.ts';
 import { opacityOf } from '../css/properties/effects.ts';
@@ -602,7 +603,7 @@ function checkInline(el: ResolvedElement, targets: readonly string[], diagnostic
       // The native runtime places inline box views unpainted (their decorations are INL1b), so a paint an inline box would draw
       // is refused on native rather than dropped. Of the paint longhands, only background-color paints an inline box without a
       // border width (which the inline/ltr context refuses); transform, overflow and will-change do not apply to inline boxes.
-      if (it.kind === 'open' && usedColors(it.el)['background-color'].alpha !== 0) {
+      if (it.kind === 'open' && usedColors(it.el)['background-color'].alpha !== 0 && !emptyInlineBox(it.el)) {
         const bg = valueToString((it.el.props.get('background-color') as ResolvedValue).value);
         refuseNative(it.el, 'background', `background-color: ${bg} on the inline box <${it.el.element.tag}> ${it.el.element.address}: the native runtime does not paint inline boxes until INL1b (inline box decorations), so the background would be dropped`, `Move the background to a block, or remove it from <${it.el.element.tag}> ${it.el.element.address}, until INL1b.`);
       }
@@ -2588,6 +2589,15 @@ function checkInsideButton(el: ResolvedElement, button: ResolvedElement, targets
   const position = el.props.get('position') as ResolvedValue;
   const pos = keywordOf(position);
   if (pos !== 'absolute' && pos !== 'fixed') return;
+  // A block button lays out its out-of-flow boxes as any block container does (controls-button-abspos), but Chrome gives one with
+  // both insets of an axis auto the static position of an inline in the button's centred line, which Dragon does not.
+  if (pos === 'absolute' && button.element.tag === 'button' && keywordOf(button.props.get('display') as ResolvedValue) === 'block') {
+    const auto = (p: Longhand): boolean => keywordOf(el.props.get(p) as ResolvedValue) === 'auto';
+    const axis = auto('left') && auto('right') ? 'left' : auto('top') && auto('bottom') ? 'top' : null;
+    if (axis === null) return;
+    refuseOn(el, el.props.get(axis) as ResolvedValue, 'inside-static', 'DRAGON_UNSUPPORTED_VALUE', targets.filter((t) => t === 'ios' || t === 'android'), diagnostics, reported, `${axis}: auto on the absolutely positioned <${el.element.tag}> ${el.element.address} inside <button> ${button.element.address}, with its opposite inset auto too, places it at its static position, which Chrome takes from the button's centred line and Dragon does not lay out`, `Set ${axis} (or ${axis === 'left' ? 'right' : 'bottom'}) on ${el.element.address}.`);
+    return;
+  }
   refuseOn(el, position, 'inside', 'DRAGON_UNSUPPORTED_VALUE', targets, diagnostics, reported, `position: ${pos} on <${el.element.tag}> ${el.element.address} inside <${button.element.tag}> ${button.element.address} is not supported yet: an absolutely positioned box inside a form control`, `Position the box outside <${button.element.tag}> ${button.element.address}.`);
 }
 

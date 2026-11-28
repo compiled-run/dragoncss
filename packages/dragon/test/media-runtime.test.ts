@@ -115,16 +115,23 @@ describe('the native refusals MQ-R1 adds beside R8 (PR #140 review)', () => {
     const k = rtBand.bandAtPx(bandTableOf(p), 1400, 1000, { ...bandEnvironmentOf(DESKTOP_DEVICE), dpr: 3.5 }, rtBand.NO_BAND_FAULTS);
     expect(p.bands[k]?.truth).toEqual([true, true]);
   });
-  it('the (assignment, band) pairs of a native state table are capped at 64, as a diagnostic at the first @media', () => {
+  it('the (assignment, band class) pairs of a native state table are capped at 64, as a diagnostic at the first @media', () => {
     const text = '@media (max-width: 300px) { .a { width: 1px; } }';
     const SRC = { uri: 's.css', revision: 'r', hash: 'h' };
     const rules = parseStylesheet(text, { source: SRC, start: 0, end: text.length }, { id: 'sheet', owner: 'o', scope: 'document' }, 0, [], []);
     const conditions = rules.flatMap((r) => r.condition ?? []);
     const out: Diagnostic[] = [];
-    refuseBandedStateSpace(32, 2, conditions, ['ios', 'android'], out);
+    refuseBandedStateSpace(32, 2, 2, conditions, ['ios', 'android'], out);
     expect(out).toEqual([]);
-    refuseBandedStateSpace(5, 16, conditions, ['ios', 'android'], out);
-    expect(out.map((d) => [d.code, d.target, d.message])).toEqual(['ios', 'android'].map((t) => ['DRAGON_STATE_SPACE_LIMIT', t, `5 reachable assignments in 16 @media bands are 80 (assignment, band) pairs, above the ${t} state table limit of ${MAX_STATE_TABLE_ASSIGNMENTS}`]));
+    // A group whose elements style alike in pairs of bands holds a row per (assignment, class): 32 x 2 fits where 32 x 4 would not.
+    refuseBandedStateSpace(32, 4, 2, conditions, ['ios', 'android'], out);
+    expect(out).toEqual([]);
+    refuseBandedStateSpace(5, 16, 16, conditions, ['ios', 'android'], out);
+    refuseBandedStateSpace(33, 4, 2, conditions, ['ios'], out);
+    expect(out.map((d) => [d.code, d.target, d.message])).toEqual([
+      ...['ios', 'android'].map((t) => ['DRAGON_STATE_SPACE_LIMIT', t, `5 reachable assignments in 16 @media bands are 80 (assignment, band) pairs, above the ${t} state table limit of ${MAX_STATE_TABLE_ASSIGNMENTS}`]),
+      ['DRAGON_STATE_SPACE_LIMIT', 'ios', `33 reachable assignments in 4 @media bands are 66 (assignment, band class) pairs over 2 classes of bands that style its elements alike, above the ios state table limit of ${MAX_STATE_TABLE_ASSIGNMENTS}`],
+    ]);
     expectCatalogued(out);
   });
   it('a document id starting with @ is invalid input: @ is reserved for the environment states (@env#band)', () => {

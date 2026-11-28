@@ -1,7 +1,7 @@
 // Computed visibility (css-display-3 §4): the keyword as specified, inherited, so there is nothing to compute. The refusals, on the
 // native targets only:
 // - an inline box whose used visibility differs from its block container's: Dragon draws every run of a block container in flat
-//   text views that follow the container's visibility;
+//   text views that follow the container's visibility; an empty inline box (empty-inline.ts) has no run to hide;
 // - a body that is not visible with a background of its own (html has one too, so body's does not propagate): Dragon takes the
 //   background of html and body for the canvas's, which Chrome paints whatever their visibility;
 // - a box that is not visible and has native views of its own beyond its paint stages, which the paint gate does not reach: an
@@ -14,6 +14,7 @@ import type { ResolvedElement } from '../resolve.ts';
 import { isSvgShapeTag } from '../elements/svg.ts';
 import { videoLoads } from '../../videos/compile.ts';
 import { usedColors } from '../../lower/paint/colors.ts';
+import { emptyInlineBox } from './empty-inline.ts';
 import type { PaintCheck, PaintValues } from './types.ts';
 
 /** Whether an element's box is an inline box: its computed display (after blockification) is inline. */
@@ -37,7 +38,7 @@ const checkInlineVisibility: PaintCheck = (el, targets, diagnostics, reported) =
     for (const c of parent.children) {
       // An SVG shape is the content of its <svg>, never a box (elements/svg.ts), so its visibility is no text run's.
       if (c.kind !== 'element' || isSvgShapeTag(c.element.tag) || !isInlineBox(c)) continue;
-      if (elementPaintsOwn(c) !== own) {
+      if (elementPaintsOwn(c) !== own && !emptyInlineBox(c)) {
         const v = c.props.get('visibility') as ResolvedValue;
         const origin = v.declaration === null ? c.element.node.origin : authored(v.declaration.valueSpan);
         for (const t of targets) {

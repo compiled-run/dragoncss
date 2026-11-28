@@ -133,6 +133,34 @@ describe('refusals', () => {
     expect(clear.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
   });
 
+  it('an empty inline box with no inline-axis margin, border or padding paints nothing, so its background and visibility refuse nothing', () => {
+    // Chrome 145 (inline-box-empty-paint): its fragment is 0 wide, whatever its background, radius or visibility; @markless/ui's radio dot.
+    const css = 'body { font-family: Ahem; font-size: 10px; } .dot { width: 10px; height: 10px; border-radius: 50%; background-color: red; } .off { visibility: hidden; } .pad { padding-left: 2px; } .rule { border-left: 1px solid red; } .gap { margin-left: 3px; }';
+    const errors = (classes: string[], kids: (r: SourceRef) => TreeNode[] = () => []): string[] =>
+      createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' }, android: { minSdk: 31 } } }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr' })
+        .compile(inputFor(css, (r) => [el(r, 'd', 'div', [], [el(r, 's', 'span', classes, kids(r))])]))
+        .diagnostics.filter((d) => d.severity === 'error' && d.code === 'DRAGON_UNSUPPORTED_VALUE')
+        .map((d) => d.message);
+    expect(errors(['dot'])).toEqual([]);
+    expect(errors(['dot', 'off'])).toEqual([]);
+    // Any inline-axis edge or any content gives it a fragment Chrome paints, which stays refused.
+    for (const edge of ['pad', 'rule', 'gap']) expect(errors(['dot', edge]), edge).toContainEqual(expect.stringMatching(/^background-color: .* on the inline box <span> s: the native runtime does not paint inline boxes until INL1b/));
+    expect(errors(['dot'], (r) => [text(r, 't0', 'b')])).toContainEqual(expect.stringMatching(/until INL1b/));
+    expect(errors(['dot', 'off'], (r) => [text(r, 't0', 'b')])).toContainEqual(expect.stringMatching(/^the inline box s has visibility hidden and its block container d does not paint alike/));
+  });
+
+  it("an empty inline box is never hit, so its visibility refuses no interaction rule, unlike a block's", () => {
+    const css = 'body { font-family: Ahem; font-size: 10px; } .d { height: 20px; } .off { visibility: hidden; } .d:active { background-color: red; }';
+    const hitRefusals = (inner: (r: SourceRef) => TreeNode): string[] =>
+      createProjectWith({ projectId: 'test', targets: { ios: { minimum: '15.0' } } }, { faults: NO_FAULTS, profiles: 'derive', direction: 'ltr', interactionLanes: true })
+        .compile(inputFor(css, (r) => [el(r, 'd', 'div', ['d'], [inner(r)])]))
+        .diagnostics.filter((d) => d.severity === 'error' && d.message.includes('needs Dragon hit testing'))
+        .map((d) => d.message);
+    expect(hitRefusals((r) => el(r, 's', 'span', ['off']))).toEqual([]);
+    // A block is hit, so its visibility is a fact the hit test does not model yet.
+    expect(hitRefusals((r) => el(r, 's', 'div', ['off']))).toContainEqual(expect.stringMatching(/hit testing through visibility on s/));
+  });
+
   const refused = (tree: (r: SourceRef) => TreeNode[]) => compile(tree).diagnostics.map((d) => `${d.code} ${String(d.target)}`);
   it('an inline box whose white-space-collapse is not collapse is refused on every target', () => {
     const got = compile((r) => [el(r, 'p', 'div', [], [text(r, 't0', 'a '), el(r, 's', 'span', ['pre'], [text(r, 't1', 'b  c')])])]).diagnostics;

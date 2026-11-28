@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html data-dragon-id="html">
+<head>
+<style>
+/* Absolutely positioned boxes inside block buttons, as Chrome 145 lays them out: a switch's thumb against its positioned track
+   (check-in /settings), insets from each side and in %, and a box whose containing block is outside a button that is not
+   positioned. Each button's other contents are a block, so no box is beside text. */
+body { margin: 0; font-family: Ahem; font-size: 10px; }
+button { font-family: inherit; font-size: inherit; appearance: none; border: 0 solid; padding: 0; color: rgb(0, 0, 0); }
+.row { display: flex; align-items: center; justify-content: space-between; width: 200px; min-height: 52px; }
+.track { position: relative; width: 52px; height: 32px; border-radius: 999px; background-color: rgb(210, 215, 220); }
+.thumb { position: absolute; top: 3px; left: 3px; width: 26px; height: 26px; border-radius: 50%; background-color: rgb(255, 255, 255); }
+.c { position: relative; width: 200px; margin-bottom: 4px; background-color: rgb(236, 240, 244); }
+.b { position: relative; width: 80px; height: 40px; background-color: rgb(9, 105, 218); color: rgb(255, 255, 255); }
+.br { position: absolute; right: 4px; bottom: 2px; width: 10px; height: 10px; background-color: rgb(207, 34, 46); }
+.pct { position: absolute; left: 25%; top: 50%; width: 20%; height: 25%; background-color: rgb(26, 127, 55); }
+.static { width: 80px; height: 30px; background-color: rgb(250, 200, 60); }
+.blk { display: block; }
+.in { width: 30px; }
+.out { position: absolute; top: 0; right: 0; width: 14px; height: 14px; background-color: rgb(207, 34, 46); }
+</style>
+</head>
+<body data-dragon-id="body">
+<div data-dragon-id="row1" class="row"><span data-dragon-id="label1">XXXX</span><button data-dragon-id="t1" class="track" type="button"><span data-dragon-id="t1-thumb" class="thumb"></span></button></div>
+<div data-dragon-id="block1" class="c"><button data-dragon-id="b2" class="b blk" type="button"><div data-dragon-id="b2-in" class="in">YY</div><span data-dragon-id="b2-pct" class="pct"></span><span data-dragon-id="b2-br" class="br"></span></button></div>
+<div data-dragon-id="block3" class="c"><button data-dragon-id="b4" class="static blk" type="button"><div data-dragon-id="b4-in" class="in">YY</div><span data-dragon-id="b4-out" class="out"></span></button></div>
+</body>
+</html>

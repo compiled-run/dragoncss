@@ -5,6 +5,7 @@
 import type { Browser } from 'playwright';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { launchChrome } from '../src/chrome.ts';
+import { launchResizeChrome } from '../src/resize-capture.ts';
 import { checkTouchEmulationHolds, launchTraceChrome, sendWebPreferencesUpdate } from '../src/trace-capture.ts';
 
 type Media = { hover: boolean; coarse: boolean; fine: boolean; maxTouchPoints: number };
@@ -54,5 +55,23 @@ describe('the trace lane keeps touch emulation through a WebPreferences update',
     expect(m.before).toEqual({ hover: false, coarse: true, fine: false, maxTouchPoints: 1 });
     expect(m.after).toEqual({ hover: true, coarse: false, fine: true, maxTouchPoints: 0 });
     await expect(checkTouchEmulationHolds(playwrightDefault)).rejects.toThrow('after a WebPreferences update under touch emulation, Chrome reports (hover: hover)');
+  });
+});
+
+// The resize lane's touch steps (mqr2-pointer-hover~resize step 5 at DPR 3 turned (pointer: fine) and (hover: hover) in a regen).
+describe('the resize lane keeps touch emulation through a WebPreferences update', () => {
+  let resize: Browser;
+  beforeAll(async () => {
+    resize = await launchResizeChrome(3, []);
+  }, 120_000);
+  afterAll(async () => {
+    await resize?.close();
+  });
+
+  it('gives (hover: none) and (pointer: coarse) under touch emulation and (hover: hover) and (pointer: fine) without it, at DPR 3', async () => {
+    const touch = { hover: false, coarse: true, fine: false };
+    expect(await mediaAround(resize, true)).toEqual({ before: { ...touch, maxTouchPoints: 1 }, after: { ...touch, maxTouchPoints: 0 } });
+    const mouse: Media = { hover: true, coarse: false, fine: true, maxTouchPoints: 0 };
+    expect(await mediaAround(resize, false)).toEqual({ before: mouse, after: mouse });
   });
 });
